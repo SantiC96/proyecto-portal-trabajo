@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { OFERTAS_MOCK, CATEGORIAS_RUBROS } from "@/data/mock-ofertas";
 import { OfertaLaboral } from "@/types/oferta";
-import { JobCard } from "@/components/public/JobCard";
+import { JobCard } from "@/components/public/job-card";
 import { Search, Filter, X, LogIn, UserPlus, AlertCircle } from "lucide-react";
 
 export function JobDirectory() {
@@ -61,9 +61,9 @@ export function JobDirectory() {
   const handleConfirmLoginRedirect = () => {
     if (applyModalOferta) {
       const redirectTarget = `/ofertas/${applyModalOferta.id}?accion=postular`;
-      router.push(`/login?redirect=${encodeURIComponent(redirectTarget)}`);
+      router.push(`/auth/login?redirect=${encodeURIComponent(redirectTarget)}`);
     } else {
-      router.push("/login");
+      router.push("/auth/login");
     }
   };
 
@@ -251,7 +251,7 @@ export function JobDirectory() {
               </button>
 
               <Link
-                href="/registro/postulante"
+                href="/auth/registro"
                 onClick={() => setApplyModalOferta(null)}
                 className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#d8ddd7] bg-white font-medium text-[#1b2926] transition hover:border-[#0f5b53] hover:text-[#0f5b53]"
               >

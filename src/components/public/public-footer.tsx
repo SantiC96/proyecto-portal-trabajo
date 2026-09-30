@@ -47,35 +47,35 @@ export function PublicFooter() {
             </h4>
             <ul className="mt-3 flex flex-col gap-2 text-xs text-[#4f5a54]">
               <li>
-                <a
+                <Link
                   href="/#ofertas"
                   onClick={(e) => handleScrollTo(e, "ofertas")}
                   className="hover:text-[#0f5b53] hover:underline"
                 >
                   Ver ofertas vigentes
-                </a>
+                </Link>
               </li>
               <li>
-                <a
+                <Link
                   href="/#como-funciona"
                   onClick={(e) => handleScrollTo(e, "como-funciona")}
                   className="hover:text-[#0f5b53] hover:underline"
                 >
                   ¿Cómo funciona el portal?
-                </a>
+                </Link>
               </li>
               <li>
-                <Link href="/login" className="hover:text-[#0f5b53] hover:underline">
+                <Link href="/auth/login" className="hover:text-[#0f5b53] hover:underline">
                   Iniciar sesión (Postulantes y Empresas)
                 </Link>
               </li>
               <li>
-                <Link href="/registro/postulante" className="hover:text-[#0f5b53] hover:underline">
+                <Link href="/auth/registro" className="hover:text-[#0f5b53] hover:underline">
                   Registro para Postulantes
                 </Link>
               </li>
               <li>
-                <Link href="/registro/empresa" className="hover:text-[#0f5b53] hover:underline">
+                <Link href="/auth/registro?tipo=empresa" className="hover:text-[#0f5b53] hover:underline">
                   Registro para Empresas
                 </Link>
               </li>

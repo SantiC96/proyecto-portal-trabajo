@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Menu, X, LogIn, UserPlus } from "lucide-react";
-import { RegisterModal } from "@/components/auth/RegisterModal";
+import { RegisterModal } from "@/components/auth/register-modal";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -70,7 +70,7 @@ export function Navbar() {
           {/* Desktop Actions: Login & Registro */}
           <div className="hidden items-center gap-3 md:flex">
             <Link
-              href="/login"
+              href="/auth/login"
               className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#d8ddd7] bg-white px-3.5 text-sm font-medium text-[#1b2926] transition hover:border-[#0f5b53] hover:text-[#0f5b53] focus:outline-none focus:ring-2 focus:ring-[#0f5b53]/30"
             >
               <LogIn className="h-4 w-4" />
@@ -126,7 +126,7 @@ export function Navbar() {
 
               <div className="mt-3 flex flex-col gap-2.5 border-t border-[#d8ddd7] pt-4">
                 <Link
-                  href="/login"
+                  href="/auth/login"
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#d8ddd7] bg-white font-medium text-[#1b2926]"
                 >
