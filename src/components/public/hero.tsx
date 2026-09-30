@@ -54,7 +54,7 @@ export function Hero() {
               <ArrowDown className="h-4 w-4" />
             </a>
             <Link
-              href="/login"
+              href="/auth/login"
               className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#d8ddd7] bg-white px-6 text-sm font-semibold text-[#1b2926] shadow-xs transition hover:border-[#0f5b53] hover:text-[#0f5b53] sm:w-auto"
             >
               <span>Acceso usuarios y empresas</span>
