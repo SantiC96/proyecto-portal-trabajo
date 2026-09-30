@@ -65,17 +65,17 @@ export function PublicFooter() {
                 </a>
               </li>
               <li>
-                <Link href="/login" className="hover:text-[#0f5b53] hover:underline">
+                <Link href="/auth/login" className="hover:text-[#0f5b53] hover:underline">
                   Iniciar sesión (Postulantes y Empresas)
                 </Link>
               </li>
               <li>
-                <Link href="/registro/postulante" className="hover:text-[#0f5b53] hover:underline">
+                <Link href="/auth/registro" className="hover:text-[#0f5b53] hover:underline">
                   Registro para Postulantes
                 </Link>
               </li>
               <li>
-                <Link href="/registro/empresa" className="hover:text-[#0f5b53] hover:underline">
+                <Link href="/auth/registro?tipo=empresa" className="hover:text-[#0f5b53] hover:underline">
                   Registro para Empresas
                 </Link>
               </li>

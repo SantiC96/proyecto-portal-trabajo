@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
-import { RegisterModal } from "@/components/auth/RegisterModal";
+import { RegisterModal } from "@/components/auth/register-modal";
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -81,7 +81,7 @@ export function LoginForm() {
                 Contraseña
               </label>
               <Link
-                href="/recuperar-contrasena"
+                href="/auth/recuperar-contrasena"
                 className="text-xs font-medium text-[#0f5b53] hover:underline"
               >
                 ¿Olvidaste tu contraseña?

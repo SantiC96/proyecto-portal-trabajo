@@ -1,8 +1,8 @@
-import { Navbar } from "@/components/public/Navbar";
-import { Hero } from "@/components/public/Hero";
-import { JobDirectory } from "@/components/public/JobDirectory";
-import { HowItWorks } from "@/components/public/HowItWorks";
-import { PublicFooter } from "@/components/public/PublicFooter";
+import { Navbar } from "@/components/public/navbar";
+import { Hero } from "@/components/public/hero";
+import { JobDirectory } from "@/components/public/job-directory";
+import { HowItWorks } from "@/components/public/how-it-works";
+import { PublicFooter } from "@/components/public/public-footer";
 
 export default function HomePage() {
   return (

@@ -489,7 +489,7 @@ export function RegistroPostulanteForm() {
         {/* ── Footer del form ────────────────────────────────────────────── */}
         <p className="text-center text-xs text-[#9ca3a0]">
           ¿Ya tenés una cuenta?{" "}
-          <Link href="/login" className="font-semibold text-[#0f5b53] hover:underline">
+          <Link href="/auth/login" className="font-semibold text-[#0f5b53] hover:underline">
             Iniciá sesión acá
           </Link>
         </p>
@@ -525,7 +525,7 @@ export function RegistroPostulanteForm() {
                 Tu cuenta fue creada correctamente. Revisá tu correo electrónico para confirmar tu dirección y activar tu cuenta.
               </p>
               <Link
-                href="/login"
+                href="/auth/login"
                 className="mt-6 flex h-10 w-full items-center justify-center rounded-lg bg-[#0f5b53] text-sm font-semibold text-white transition hover:bg-[#093e39]"
               >
                 Ir a iniciar sesión

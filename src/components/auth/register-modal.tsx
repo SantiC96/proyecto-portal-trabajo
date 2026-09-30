@@ -43,7 +43,7 @@ export function RegisterModal({ onClose }: RegisterModalProps) {
 
         <div className="flex flex-col gap-3">
           <Link
-            href="/registro/postulante"
+            href="/auth/registro"
             onClick={onClose}
             className="group flex items-start gap-4 rounded-xl border border-[#d8ddd7] p-4 text-left transition hover:border-[#0f5b53] hover:bg-[#f3f7f4]"
           >
@@ -61,7 +61,7 @@ export function RegisterModal({ onClose }: RegisterModalProps) {
           </Link>
 
           <Link
-            href="/registro/empresa"
+            href="/auth/registro?tipo=empresa"
             onClick={onClose}
             className="group flex items-start gap-4 rounded-xl border border-[#d8ddd7] p-4 text-left transition hover:border-[#0f5b53] hover:bg-[#f3f7f4]"
           >
@@ -83,7 +83,7 @@ export function RegisterModal({ onClose }: RegisterModalProps) {
           <p className="text-xs text-[#6e7772]">
             ¿Ya tenés una cuenta?{" "}
             <Link
-              href="/login"
+              href="/auth/login"
               onClick={onClose}
               className="font-semibold text-[#0f5b53] hover:underline"
             >

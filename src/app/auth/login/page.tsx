@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { NavbarSimple } from "@/components/public/NavbarSimple";
-import { PublicFooter } from "@/components/public/PublicFooter";
-import { LoginForm } from "@/components/auth/LoginForm";
+import { NavbarSimple } from "@/components/public/navbar-simple";
+import { PublicFooter } from "@/components/public/public-footer";
+import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata: Metadata = {
   title: "Iniciar sesión | Portal de Empleo Funes",
