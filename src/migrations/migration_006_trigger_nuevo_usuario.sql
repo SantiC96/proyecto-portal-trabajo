@@ -5,8 +5,9 @@
 -- Crea el trigger que, al crear un usuario en auth.users,
 -- inserta automáticamente su fila en public.usuarios.
 --
--- El rol se lee de raw_user_meta_data (enviado por el cliente
--- en supabase.auth.signUp). Si no viene, defaultea a 'postulante'.
+-- El rol se lee de raw_user_meta_data, pero solo se acepta 'empresa';
+-- cualquier otro valor se guarda como 'postulante'. El rol
+-- 'municipalidad' se asigna manualmente.
 -- ============================================================
 
 create or replace function public.handle_new_user()
@@ -21,7 +22,10 @@ begin
     coalesce(new.raw_user_meta_data->>'nombre',   ''),
     coalesce(new.raw_user_meta_data->>'apellido', ''),
     coalesce(new.raw_user_meta_data->>'telefono', ''),
-    coalesce(new.raw_user_meta_data->>'rol', 'postulante')::public.rol_usuario
+    case
+      when new.raw_user_meta_data->>'rol' = 'empresa' then 'empresa'
+      else 'postulante'
+    end::public.rol_usuario
   );
   return new;
 end;
