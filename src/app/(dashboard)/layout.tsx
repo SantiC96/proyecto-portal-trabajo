@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { Navbar } from "@/components/public/navbar";
+import { PublicFooter } from "@/components/public/public-footer";
 
 export default async function DashboardLayout({
   children,
@@ -15,5 +17,14 @@ export default async function DashboardLayout({
     redirect("/auth/login");
   }
 
-  return <>{children}</>;
+  const nombre = (user.user_metadata?.nombre as string) ?? "";
+  const apellido = (user.user_metadata?.apellido as string) ?? "";
+
+  return (
+    <div className="flex min-h-screen flex-col bg-[#f8f8f4] text-[#1b2926]">
+      <Navbar session={{ nombre, apellido }} />
+      <main className="flex-1">{children}</main>
+      <PublicFooter />
+    </div>
+  );
 }

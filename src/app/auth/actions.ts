@@ -57,6 +57,7 @@ export async function registrarPostulante(data: {
     .insert({ usuario_id: authData.user.id, dni: data.dni });
 
   if (profileError) {
+    await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
     if (profileError.code === "23505") {
       return { error: "Ya existe una cuenta con ese DNI." };
     }
