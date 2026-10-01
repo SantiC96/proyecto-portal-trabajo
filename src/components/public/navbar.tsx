@@ -3,10 +3,17 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, X, LogIn, UserPlus } from "lucide-react";
+import { Menu, X, LogIn, UserPlus, LogOut } from "lucide-react";
 import { RegisterModal } from "@/components/auth/register-modal";
+import { logout } from "@/app/auth/actions";
 
-export function Navbar() {
+type NavbarSession = { nombre: string; apellido: string };
+
+interface NavbarProps {
+  session?: NavbarSession | null;
+}
+
+export function Navbar({ session = null }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
 
@@ -42,49 +49,77 @@ export function Navbar() {
 
           </Link>
 
-          {/* Desktop Navigation Links con scroll suave */}
+          {/* Desktop Navigation Links */}
           <nav className="hidden items-center gap-6 md:flex">
-            <a
-              href="#ofertas"
-              onClick={(e) => handleScrollTo(e, "ofertas")}
-              className="text-sm font-medium text-[#4f5a54] transition-colors hover:text-[#0f5b53]"
-            >
-              Ofertas laborales
-            </a>
-            <a
-              href="#como-funciona"
-              onClick={(e) => handleScrollTo(e, "como-funciona")}
-              className="text-sm font-medium text-[#4f5a54] transition-colors hover:text-[#0f5b53]"
-            >
-              ¿Cómo funciona?
-            </a>
-            <a
-              href="#empresas"
-              onClick={(e) => handleScrollTo(e, "empresas")}
-              className="text-sm font-medium text-[#4f5a54] transition-colors hover:text-[#0f5b53]"
-            >
-              Para empresas
-            </a>
+            {!session ? (
+              <>
+                <a
+                  href="#ofertas"
+                  onClick={(e) => handleScrollTo(e, "ofertas")}
+                  className="text-sm font-medium text-[#4f5a54] transition-colors hover:text-[#0f5b53]"
+                >
+                  Ofertas laborales
+                </a>
+                <a
+                  href="#como-funciona"
+                  onClick={(e) => handleScrollTo(e, "como-funciona")}
+                  className="text-sm font-medium text-[#4f5a54] transition-colors hover:text-[#0f5b53]"
+                >
+                  ¿Cómo funciona?
+                </a>
+                <a
+                  href="#empresas"
+                  onClick={(e) => handleScrollTo(e, "empresas")}
+                  className="text-sm font-medium text-[#4f5a54] transition-colors hover:text-[#0f5b53]"
+                >
+                  Para empresas
+                </a>
+              </>
+            ) : (
+              <Link
+                href="/inicio"
+                className="text-sm font-medium text-[#4f5a54] transition-colors hover:text-[#0f5b53]"
+              >
+                Mi panel
+              </Link>
+            )}
           </nav>
 
-          {/* Desktop Actions: Login & Registro */}
-          <div className="hidden items-center gap-3 md:flex">
-            <Link
-              href="/auth/login"
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#d8ddd7] bg-white px-3.5 text-sm font-medium text-[#1b2926] transition hover:border-[#0f5b53] hover:text-[#0f5b53] focus:outline-none focus:ring-2 focus:ring-[#0f5b53]/30"
-            >
-              <LogIn className="h-4 w-4" />
-              <span>Iniciar sesión</span>
-            </Link>
-            <button
-              onClick={() => setRegisterModalOpen(true)}
-              type="button"
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-[#0f5b53] px-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#093e39] focus:outline-none focus:ring-2 focus:ring-[#0f5b53]/40"
-            >
-              <UserPlus className="h-4 w-4" />
-              <span>Registrarse</span>
-            </button>
-          </div>
+          {/* Desktop Actions */}
+          {!session ? (
+            <div className="hidden items-center gap-3 md:flex">
+              <Link
+                href="/auth/login"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#d8ddd7] bg-white px-3.5 text-sm font-medium text-[#1b2926] transition hover:border-[#0f5b53] hover:text-[#0f5b53] focus:outline-none focus:ring-2 focus:ring-[#0f5b53]/30"
+              >
+                <LogIn className="h-4 w-4" />
+                <span>Iniciar sesión</span>
+              </Link>
+              <button
+                onClick={() => setRegisterModalOpen(true)}
+                type="button"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-[#0f5b53] px-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#093e39] focus:outline-none focus:ring-2 focus:ring-[#0f5b53]/40"
+              >
+                <UserPlus className="h-4 w-4" />
+                <span>Registrarse</span>
+              </button>
+            </div>
+          ) : (
+            <div className="hidden items-center gap-3 md:flex">
+              <span className="text-sm font-medium text-[#1b2926]">
+                {session.nombre} {session.apellido}
+              </span>
+              <form action={logout}>
+                <button
+                  type="submit"
+                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#d8ddd7] bg-white px-3.5 text-sm font-medium text-[#1b2926] transition hover:border-[#0f5b53] hover:text-[#0f5b53] focus:outline-none focus:ring-2 focus:ring-[#0f5b53]/30"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Cerrar sesión</span>
+                </button>
+              </form>
+            </div>
+          )}
 
           {/* Mobile menu button */}
           <button
@@ -98,52 +133,83 @@ export function Navbar() {
           </button>
         </div>
 
-        {/* Mobile dropdown menu con scroll suave */}
+        {/* Mobile dropdown menu */}
         {mobileMenuOpen && (
           <div className="border-b border-[#d8ddd7] bg-[#f8f8f4] px-4 pt-3 pb-6 md:hidden">
             <nav className="flex flex-col gap-2.5">
-              <a
-                href="#ofertas"
-                onClick={(e) => handleScrollTo(e, "ofertas")}
-                className="rounded-lg px-3 py-2 text-base font-medium text-[#1b2926] hover:bg-[#e4ece5]"
-              >
-                Ofertas laborales
-              </a>
-              <a
-                href="#como-funciona"
-                onClick={(e) => handleScrollTo(e, "como-funciona")}
-                className="rounded-lg px-3 py-2 text-base font-medium text-[#1b2926] hover:bg-[#e4ece5]"
-              >
-                ¿Cómo funciona?
-              </a>
-              <a
-                href="#empresas"
-                onClick={(e) => handleScrollTo(e, "empresas")}
-                className="rounded-lg px-3 py-2 text-base font-medium text-[#1b2926] hover:bg-[#e4ece5]"
-              >
-                Para empresas
-              </a>
+              {!session ? (
+                <>
+                  <a
+                    href="#ofertas"
+                    onClick={(e) => handleScrollTo(e, "ofertas")}
+                    className="rounded-lg px-3 py-2 text-base font-medium text-[#1b2926] hover:bg-[#e4ece5]"
+                  >
+                    Ofertas laborales
+                  </a>
+                  <a
+                    href="#como-funciona"
+                    onClick={(e) => handleScrollTo(e, "como-funciona")}
+                    className="rounded-lg px-3 py-2 text-base font-medium text-[#1b2926] hover:bg-[#e4ece5]"
+                  >
+                    ¿Cómo funciona?
+                  </a>
+                  <a
+                    href="#empresas"
+                    onClick={(e) => handleScrollTo(e, "empresas")}
+                    className="rounded-lg px-3 py-2 text-base font-medium text-[#1b2926] hover:bg-[#e4ece5]"
+                  >
+                    Para empresas
+                  </a>
+                </>
+              ) : (
+                <Link
+                  href="/inicio"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-lg px-3 py-2 text-base font-medium text-[#1b2926] hover:bg-[#e4ece5]"
+                >
+                  Mi panel
+                </Link>
+              )}
 
               <div className="mt-3 flex flex-col gap-2.5 border-t border-[#d8ddd7] pt-4">
-                <Link
-                  href="/auth/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#d8ddd7] bg-white font-medium text-[#1b2926]"
-                >
-                  <LogIn className="h-4 w-4" />
-                  Iniciar sesión
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    setRegisterModalOpen(true);
-                  }}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0f5b53] font-semibold text-white"
-                >
-                  <UserPlus className="h-4 w-4" />
-                  Registrarse
-                </button>
+                {!session ? (
+                  <>
+                    <Link
+                      href="/auth/login"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#d8ddd7] bg-white font-medium text-[#1b2926]"
+                    >
+                      <LogIn className="h-4 w-4" />
+                      Iniciar sesión
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        setRegisterModalOpen(true);
+                      }}
+                      className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0f5b53] font-semibold text-white"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      Registrarse
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="px-3 text-sm font-medium text-[#1b2926]">
+                      {session.nombre} {session.apellido}
+                    </p>
+                    <form action={logout}>
+                      <button
+                        type="submit"
+                        className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#d8ddd7] bg-white font-medium text-[#1b2926]"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Cerrar sesión
+                      </button>
+                    </form>
+                  </>
+                )}
               </div>
             </nav>
           </div>
@@ -151,7 +217,7 @@ export function Navbar() {
       </header>
 
       {/* Registration Type Choice Modal */}
-      {registerModalOpen && (
+      {!session && registerModalOpen && (
         <RegisterModal onClose={() => setRegisterModalOpen(false)} />
       )}
     </>
