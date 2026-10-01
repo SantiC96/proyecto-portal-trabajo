@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { traducirErrorAuth } from "@/lib/auth-errors";
 
 export async function login(credentials: {
   email: string;
@@ -15,7 +16,7 @@ export async function login(credentials: {
   });
 
   if (error) {
-    return { error: error.message };
+    return { error: traducirErrorAuth(error) };
   }
 
   redirect("/inicio");
@@ -46,7 +47,7 @@ export async function registrarPostulante(data: {
   });
 
   if (signUpError) {
-    return { error: signUpError.message };
+    return { error: traducirErrorAuth(signUpError) };
   }
 
   if (!authData.user) {

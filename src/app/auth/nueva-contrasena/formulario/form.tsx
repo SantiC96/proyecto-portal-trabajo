@@ -6,6 +6,7 @@ import { Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { NavbarSimple } from "@/components/public/navbar-simple";
 import { PublicFooter } from "@/components/public/public-footer";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { traducirErrorAuth } from "@/lib/auth-errors";
 
 export function NuevaContrasenaForm() {
   const [password, setPassword] = useState("");
@@ -23,7 +24,7 @@ export function NuevaContrasenaForm() {
     const { error: updateError } = await supabase.auth.updateUser({ password });
 
     if (updateError) {
-      setError(updateError.message);
+      setError(traducirErrorAuth(updateError));
       setIsLoading(false);
       return;
     }
