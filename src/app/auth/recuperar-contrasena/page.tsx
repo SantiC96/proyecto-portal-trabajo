@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Mail, AlertCircle } from "lucide-react";
-import { NavbarSimple } from "@/components/public/navbar-simple";
 import { PublicFooter } from "@/components/public/public-footer";
 import { solicitarResetContrasena } from "@/app/auth/actions";
 
@@ -19,9 +18,7 @@ export default async function RecuperarContrasenaPage({
   const linkVencido = error === "link-vencido";
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <NavbarSimple />
-
+    <>
       <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
         <div className="w-full max-w-md rounded-2xl border border-border bg-white px-8 py-10 shadow-sm">
           <div className="mb-6 text-center">
@@ -86,6 +83,6 @@ export default async function RecuperarContrasenaPage({
       </main>
 
       <PublicFooter />
-    </div>
+    </>
   );
 }
