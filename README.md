@@ -6,6 +6,11 @@ Portal web de gestión de empleo para la Municipalidad de Funes. Conecta a postu
 
 **Tres roles:** postulante · empresa · municipalidad (admin)
 
+## Integrantes
+
+- Santiago Cancio
+- Jessica Lopez
+
 ---
 
 ## Funcionalidades actuales
