@@ -28,16 +28,16 @@ function InputWrapper({ children }: { children: React.ReactNode }) {
 
 function FieldIcon({ icon: Icon }: { icon: React.ElementType }) {
   return (
-    <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9ca3a0]" />
+    <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-icon" />
   );
 }
 
 const inputClass =
-  "w-full rounded-lg border border-[#d8ddd7] bg-[#f8f8f4] py-2.5 pl-10 pr-4 text-sm text-[#1b2926] placeholder:text-[#b0b8b4] outline-none transition focus:border-[#0f5b53] focus:bg-white focus:ring-2 focus:ring-[#0f5b53]/20 disabled:cursor-not-allowed disabled:opacity-60";
+  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60";
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-4 text-xs font-bold uppercase tracking-wider text-[#0f5b53]">
+    <h2 className="mb-4 text-xs font-bold uppercase tracking-wider text-primary">
       {children}
     </h2>
   );
@@ -134,13 +134,13 @@ export function RegistroPostulanteForm() {
     <div className="w-full max-w-xl">
       {/* Header */}
       <div className="mb-6 text-center">
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#0f5b53]/10 text-[#0f5b53]">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
           <UserPlus className="h-6 w-6" />
         </div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-[#1b2926]">
+        <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
           Registro de Postulante
         </h1>
-        <p className="mt-1 text-sm text-[#6e7772]">
+        <p className="mt-1 text-sm text-muted-foreground">
           Portal de Empleo · Municipalidad de Funes
         </p>
       </div>
@@ -148,7 +148,7 @@ export function RegistroPostulanteForm() {
       <form
         onSubmit={handleSubmit}
         noValidate
-        className="flex flex-col gap-6 rounded-2xl border border-[#d8ddd7] bg-white px-7 py-8 shadow-sm"
+        className="flex flex-col gap-6 rounded-2xl border border-border bg-white px-7 py-8 shadow-sm"
       >
         {/* ── 1. Datos personales ────────────────────────────────────────── */}
         <section>
@@ -157,7 +157,7 @@ export function RegistroPostulanteForm() {
             {/* Nombre + Apellido */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="reg-nombre" className="text-sm font-medium text-[#1b2926]">
+                <label htmlFor="reg-nombre" className="text-sm font-medium text-foreground">
                   Nombre <span className="text-red-500">*</span>
                 </label>
                 <InputWrapper>
@@ -175,7 +175,7 @@ export function RegistroPostulanteForm() {
                 </InputWrapper>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="reg-apellido" className="text-sm font-medium text-[#1b2926]">
+                <label htmlFor="reg-apellido" className="text-sm font-medium text-foreground">
                   Apellido <span className="text-red-500">*</span>
                 </label>
                 <InputWrapper>
@@ -196,7 +196,7 @@ export function RegistroPostulanteForm() {
 
             {/* DNI */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="reg-dni" className="text-sm font-medium text-[#1b2926]">
+              <label htmlFor="reg-dni" className="text-sm font-medium text-foreground">
                 DNI <span className="text-red-500">*</span>
               </label>
               <InputWrapper>
@@ -219,7 +219,7 @@ export function RegistroPostulanteForm() {
 
             {/* Dirección */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="reg-calle" className="text-sm font-medium text-[#1b2926]">
+              <label htmlFor="reg-calle" className="text-sm font-medium text-foreground">
                 Dirección <span className="text-red-500">*</span>
               </label>
               <InputWrapper>
@@ -243,9 +243,9 @@ export function RegistroPostulanteForm() {
                   { label: "País", value: "Argentina" },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex flex-col gap-1">
-                    <span className="text-xs text-[#9ca3a0]">{label}</span>
-                    <div className="flex items-center gap-1.5 rounded-lg border border-[#d8ddd7] bg-[#f0f4f1] px-3 py-2.5 text-sm font-medium text-[#4f5a54]">
-                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#0f5b53]" />
+                    <span className="text-xs text-muted-icon">{label}</span>
+                    <div className="flex items-center gap-1.5 rounded-lg border border-border bg-surface-tinted px-3 py-2.5 text-sm font-medium text-muted-foreground-strong">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
                       {value}
                     </div>
                   </div>
@@ -255,7 +255,7 @@ export function RegistroPostulanteForm() {
 
             {/* Teléfono */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="reg-telefono" className="text-sm font-medium text-[#1b2926]">
+              <label htmlFor="reg-telefono" className="text-sm font-medium text-foreground">
                 Teléfono / Celular <span className="text-red-500">*</span>
               </label>
               <InputWrapper>
@@ -275,7 +275,7 @@ export function RegistroPostulanteForm() {
           </div>
         </section>
 
-        <div className="h-px bg-[#d8ddd7]" />
+        <div className="h-px bg-border" />
 
         {/* ── 2. Acceso ──────────────────────────────────────────────────── */}
         <section>
@@ -283,7 +283,7 @@ export function RegistroPostulanteForm() {
           <div className="flex flex-col gap-4">
             {/* Email */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="reg-email" className="text-sm font-medium text-[#1b2926]">
+              <label htmlFor="reg-email" className="text-sm font-medium text-foreground">
                 Correo electrónico <span className="text-red-500">*</span>
               </label>
               <InputWrapper>
@@ -303,7 +303,7 @@ export function RegistroPostulanteForm() {
 
             {/* Contraseña */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="reg-password" className="text-sm font-medium text-[#1b2926]">
+              <label htmlFor="reg-password" className="text-sm font-medium text-foreground">
                 Contraseña <span className="text-red-500">*</span>
               </label>
               <InputWrapper>
@@ -323,7 +323,7 @@ export function RegistroPostulanteForm() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3a0] transition hover:text-[#4f5a54]"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-icon transition hover:text-muted-foreground-strong"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -332,7 +332,7 @@ export function RegistroPostulanteForm() {
 
             {/* Repetir contraseña */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="reg-password-repeat" className="text-sm font-medium text-[#1b2926]">
+              <label htmlFor="reg-password-repeat" className="text-sm font-medium text-foreground">
                 Repetir contraseña <span className="text-red-500">*</span>
               </label>
               <InputWrapper>
@@ -355,7 +355,7 @@ export function RegistroPostulanteForm() {
                   type="button"
                   onClick={() => setShowPasswordRepeat(!showPasswordRepeat)}
                   aria-label={showPasswordRepeat ? "Ocultar contraseña" : "Mostrar contraseña"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3a0] transition hover:text-[#4f5a54]"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-icon transition hover:text-muted-foreground-strong"
                 >
                   {showPasswordRepeat ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -367,7 +367,7 @@ export function RegistroPostulanteForm() {
                 </p>
               )}
               {!passwordRepeatError && passwordRepeat !== "" && (
-                <p className="flex items-center gap-1.5 text-xs text-[#0f5b53]">
+                <p className="flex items-center gap-1.5 text-xs text-primary">
                   <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
                   Las contraseñas coinciden.
                 </p>
@@ -376,7 +376,7 @@ export function RegistroPostulanteForm() {
           </div>
         </section>
 
-        <div className="h-px bg-[#d8ddd7]" />
+        <div className="h-px bg-border" />
 
         {/* ── 3. CV ──────────────────────────────────────────────────────── */}
         <section>
@@ -406,32 +406,32 @@ export function RegistroPostulanteForm() {
               onDrop={handleDrop}
               className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-8 text-center transition ${
                 cvDragOver
-                  ? "border-[#0f5b53] bg-[#f0f9f7]"
-                  : "border-[#d8ddd7] bg-[#f8f8f4] hover:border-[#0f5b53]/50 hover:bg-[#f3f7f4]"
+                  ? "border-primary bg-surface-tinted"
+                  : "border-border bg-background hover:border-primary/50 hover:bg-surface-tinted"
               }`}
             >
-              <Upload className="h-8 w-8 text-[#9ca3a0]" />
+              <Upload className="h-8 w-8 text-muted-icon" />
               <div>
-                <p className="text-sm font-medium text-[#1b2926]">
+                <p className="text-sm font-medium text-foreground">
                   Arrastrá tu CV acá o{" "}
-                  <span className="text-[#0f5b53] underline underline-offset-2">
+                  <span className="text-primary underline underline-offset-2">
                     hacé clic para seleccionarlo
                   </span>
                 </p>
-                <p className="mt-1 text-xs text-[#9ca3a0]">
+                <p className="mt-1 text-xs text-muted-icon">
                   Solo PDF · Máximo 5 MB
                 </p>
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-[#d8ddd7] bg-[#f3f7f4] px-4 py-3">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-tinted px-4 py-3">
               <div className="flex items-center gap-3">
-                <FileText className="h-8 w-8 shrink-0 text-[#0f5b53]" />
+                <FileText className="h-8 w-8 shrink-0 text-primary" />
                 <div>
-                  <p className="text-sm font-medium text-[#1b2926] break-all">
+                  <p className="text-sm font-medium text-foreground break-all">
                     {cvFile.name}
                   </p>
-                  <p className="text-xs text-[#6e7772]">
+                  <p className="text-xs text-muted-foreground">
                     {(cvFile.size / 1024).toFixed(0)} KB · PDF
                   </p>
                 </div>
@@ -439,7 +439,7 @@ export function RegistroPostulanteForm() {
               <button
                 type="button"
                 onClick={() => setCvFile(null)}
-                className="shrink-0 rounded-full p-1 text-[#6e7772] transition hover:bg-red-50 hover:text-red-500"
+                className="shrink-0 rounded-full p-1 text-muted-foreground transition hover:bg-red-50 hover:text-red-500"
                 aria-label="Quitar archivo"
               >
                 <X className="h-4 w-4" />
@@ -448,7 +448,7 @@ export function RegistroPostulanteForm() {
           )}
         </section>
 
-        <div className="h-px bg-[#d8ddd7]" />
+        <div className="h-px bg-border" />
 
         {/* ── 4. Confirmación de residencia ──────────────────────────────── */}
         <section>
@@ -459,10 +459,10 @@ export function RegistroPostulanteForm() {
               required
               checked={confirmaFunes}
               onChange={(e) => setConfirmaFunes(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-[#0f5b53] cursor-pointer"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-primary cursor-pointer"
             />
-            <span className="text-sm text-[#4f5a54]">
-              <span className="font-semibold text-[#1b2926]">
+            <span className="text-sm text-muted-foreground-strong">
+              <span className="font-semibold text-foreground">
                 Confirmo que soy residente de la ciudad de Funes, Santa Fe, Argentina.
               </span>{" "}
               Este portal es exclusivo para habitantes de Funes.
@@ -483,7 +483,7 @@ export function RegistroPostulanteForm() {
           type="submit"
           id="reg-postulante-submit"
           disabled={isLoading || passwordRepeatError}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0f5b53] text-sm font-semibold text-white shadow-sm transition hover:bg-[#093e39] focus:outline-none focus:ring-2 focus:ring-[#0f5b53]/40 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isLoading ? (
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -494,17 +494,17 @@ export function RegistroPostulanteForm() {
         </button>
 
         {/* ── Footer del form ────────────────────────────────────────────── */}
-        <p className="text-center text-xs text-[#9ca3a0]">
+        <p className="text-center text-xs text-muted-icon">
           ¿Ya tenés una cuenta?{" "}
-          <Link href="/auth/login" className="font-semibold text-[#0f5b53] hover:underline">
+          <Link href="/auth/login" className="font-semibold text-primary hover:underline">
             Iniciá sesión acá
           </Link>
         </p>
       </form>
 
       {/* Back to home */}
-      <p className="mt-5 mb-8 text-center text-xs text-[#9ca3a0]">
-        <Link href="/" className="hover:text-[#0f5b53] hover:underline">
+      <p className="mt-5 mb-8 text-center text-xs text-muted-icon">
+        <Link href="/" className="hover:text-primary hover:underline">
           ← Volver al inicio
         </Link>
       </p>

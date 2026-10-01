@@ -5,7 +5,7 @@ import Image from "next/image";
 
 export function NavbarSimple() {
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-[#d8ddd7] bg-[#f8f8f4]/95 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         {/* Brand Logo */}
         <Link

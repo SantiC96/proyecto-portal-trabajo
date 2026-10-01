@@ -21,7 +21,7 @@ export default async function DashboardLayout({
   const apellido = (user.user_metadata?.apellido as string) ?? "";
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f8f8f4] text-[#1b2926]">
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
       <Navbar session={{ nombre, apellido }} />
       <main className="flex-1">{children}</main>
       <PublicFooter />

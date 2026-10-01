@@ -16,10 +16,10 @@ export default async function InicioPage() {
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
-      <h1 className="text-2xl font-bold tracking-tight text-[#1b2926] sm:text-3xl">
+      <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         Bienvenido/a, {nombre} {apellido}
       </h1>
-      <p className="mt-2 text-sm text-[#6e7772]">
+      <p className="mt-2 text-sm text-muted-foreground">
         Portal de Empleo · Municipalidad de Funes
       </p>
     </section>
