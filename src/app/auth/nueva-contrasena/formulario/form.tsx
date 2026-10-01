@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
-import { NavbarSimple } from "@/components/public/navbar-simple";
 import { PublicFooter } from "@/components/public/public-footer";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { traducirErrorAuth } from "@/lib/auth-errors";
@@ -33,9 +32,7 @@ export function NuevaContrasenaForm() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <NavbarSimple />
-
+    <>
       <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
         <div className="w-full max-w-md rounded-2xl border border-border bg-white px-8 py-10 shadow-sm">
           <div className="mb-6 text-center">
@@ -110,6 +107,6 @@ export function NuevaContrasenaForm() {
       </main>
 
       <PublicFooter />
-    </div>
+    </>
   );
 }

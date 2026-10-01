@@ -1,9 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Building, MapPin, Clock, Briefcase, Sparkles, LogIn } from "lucide-react";
-import { Navbar } from "@/components/public/navbar";
 import { PublicFooter } from "@/components/public/public-footer";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { getOfertaById } from "@/lib/ofertas";
 
 interface Props {
@@ -12,24 +10,9 @@ interface Props {
 
 export default async function OfertaDetallePage({ params }: Props) {
   const { id } = await params;
-
-  const [supabase, oferta] = await Promise.all([
-    createSupabaseServerClient(),
-    getOfertaById(id),
-  ]);
+  const oferta = await getOfertaById(id);
 
   if (!oferta) notFound();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const session = user
-    ? {
-        nombre: (user.user_metadata?.nombre as string) ?? "",
-        apellido: (user.user_metadata?.apellido as string) ?? "",
-      }
-    : null;
 
   const formattedDate = new Date(oferta.fechaPublicacion).toLocaleDateString("es-AR", {
     day: "numeric",
@@ -38,9 +21,7 @@ export default async function OfertaDetallePage({ params }: Props) {
   });
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <Navbar session={session} />
-
+    <>
       <main className="flex-1 px-4 py-8 sm:px-6 sm:py-12">
         <div className="mx-auto max-w-3xl">
           {/* Back link */}
@@ -165,6 +146,6 @@ export default async function OfertaDetallePage({ params }: Props) {
       </main>
 
       <PublicFooter />
-    </div>
+    </>
   );
 }

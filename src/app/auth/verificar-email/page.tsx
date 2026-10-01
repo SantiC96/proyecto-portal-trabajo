@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Mail } from "lucide-react";
-import { NavbarSimple } from "@/components/public/navbar-simple";
 import { PublicFooter } from "@/components/public/public-footer";
 
 export const metadata: Metadata = {
@@ -11,9 +10,7 @@ export const metadata: Metadata = {
 
 export default function VerificarEmailPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <NavbarSimple />
-
+    <>
       <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
         <div className="w-full max-w-md rounded-2xl border border-border bg-white px-8 py-10 text-center shadow-sm">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -26,6 +23,12 @@ export default function VerificarEmailPage() {
             Te enviamos un correo de confirmación. Hacé clic en el enlace para
             activar tu cuenta y empezar a buscar empleo.
           </p>
+          <div className="mt-4 rounded-lg border border-border bg-secondary px-4 py-3 text-left text-sm text-muted-foreground-strong">
+            <p className="font-semibold text-foreground">¿Qué sigue después de confirmar?</p>
+            <p className="mt-1">
+              Una vez que actives tu cuenta, iniciá sesión y completá tu perfil: agregá tu foto, subí tu CV en PDF y seleccioná los rubros que te interesan. Cuanto más completo esté tu perfil, más fácil te va a resultar postularte a las ofertas disponibles.
+            </p>
+          </div>
           <p className="mt-6 text-xs text-muted-icon">
             ¿Ya confirmaste?{" "}
             <Link
@@ -39,6 +42,6 @@ export default function VerificarEmailPage() {
       </main>
 
       <PublicFooter />
-    </div>
+    </>
   );
 }
