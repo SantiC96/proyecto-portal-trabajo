@@ -45,24 +45,22 @@ export default function Contador() {
 }
 ```
 
-**Regla práctica:** empezá sin `"use client"`. Solo lo agregás cuando el componente necesita estado, efectos o interacción del usuario. Podés ver un ejemplo real en `src/app/saludo/page.tsx`.
+**Regla práctica:** empezá sin `"use client"`. Solo lo agregás cuando el componente necesita estado, efectos o interacción del usuario.
 
 ### Route Handlers — APIs dentro del proyecto
 
 Las rutas de API se definen con un archivo `route.ts`. La carpeta `api/` dentro de `src/app/` es convención, pero no obligatoria.
 
 ```
-src/app/api/saludo/route.ts  →  GET http://localhost:3000/api/saludo
+src/app/api/ejemplo/route.ts  →  GET http://localhost:3000/api/ejemplo
 ```
 
 ```ts
-// src/app/api/saludo/route.ts
+// src/app/api/ejemplo/route.ts
 export async function GET() {
   return Response.json({ mensaje: "Hola" });
 }
 ```
-
-Podés ver cómo `src/app/saludo/page.tsx` consume esa API con un `fetch`.
 
 ### Navegación entre páginas — componente `<Link>`
 
@@ -189,23 +187,23 @@ Un **custom hook** es una función que empieza con `use` y encapsula lógica que
 
 **Cuándo crear un hook:** cuando un componente mezcla lógica de datos con lógica de presentación, o cuando la misma lógica aparece en más de un lugar.
 
-El proyecto incluye `src/hooks/useOferta.ts` como punto de partida:
+Un hook de datos típico luce así:
 
 ```ts
-// src/hooks/useOferta.ts
+// src/hooks/useAlgo.ts
 import { useEffect, useState } from "react";
 
-interface Oferta {
+interface Algo {
   id: string;
 }
 
-export function useOferta(id: string) {
-  const [data, setData] = useState<Oferta | null>(null);
+export function useAlgo(id: string) {
+  const [data, setData] = useState<Algo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`/api/ofertas/${id}`)
+    fetch(`/api/algo/${id}`)
       .then((r) => r.json())
       .then((d) => setData(d))
       .catch((e) => setError(e.message))
@@ -221,18 +219,16 @@ Para usarlo en un Client Component:
 ```tsx
 "use client";
 
-import { useOferta } from "@/hooks/useOferta";
+import { useAlgo } from "@/hooks/useAlgo";
 
-export default function DetalleOferta({ id }: { id: string }) {
-  const { data, loading, error } = useOferta(id);
+export default function DetalleItem({ id }: { id: string }) {
+  const { data, loading, error } = useAlgo(id);
 
   if (loading) return <p>Cargando...</p>;
   if (error) return <p>Error: {error}</p>;
-  return <p>Oferta #{data?.id}</p>;
+  return <p>Item #{data?.id}</p>;
 }
 ```
-
-A medida que construyas la API (`/api/ofertas/[id]`), extendé la interfaz `Oferta` en el hook para que refleje los campos reales que devuelve el servidor.
 
 ---
 
