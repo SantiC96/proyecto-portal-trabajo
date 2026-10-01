@@ -78,18 +78,18 @@ export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
       {/* Section Header */}
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
-          <span className="text-xs font-bold tracking-wider text-[#0f5b53] uppercase">
+          <span className="text-xs font-bold tracking-wider text-primary uppercase">
             Búsquedas activas en Funes
           </span>
-          <h2 className="text-2xl font-bold tracking-tight text-[#1b2926] sm:text-3xl">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             Ofertas laborales publicadas
           </h2>
-          <p className="mt-1 text-sm text-[#6e7772]">
+          <p className="mt-1 text-sm text-muted-foreground">
             Explorá las vacantes vigentes de comercios, empresas e industrias de la ciudad.
           </p>
         </div>
 
-        <div className="mt-2 flex items-center gap-2 text-xs font-medium text-[#4f5a54] md:mt-0">
+        <div className="mt-2 flex items-center gap-2 text-xs font-medium text-muted-foreground-strong md:mt-0">
           <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
           <span>
             {filteredOfertas.length}{" "}
@@ -99,22 +99,22 @@ export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
       </div>
 
       {/* Search and Filters Bar */}
-      <div className="mt-6 rounded-2xl border border-[#d8ddd7] bg-white p-4 shadow-xs">
+      <div className="mt-6 rounded-2xl border border-border bg-white p-4 shadow-xs">
         {/* Main Search Input */}
         <div className="relative flex items-center">
-          <Search className="pointer-events-none absolute left-3.5 h-4 w-4 text-[#6e7772]" />
+          <Search className="pointer-events-none absolute left-3.5 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar por puesto, empresa, palabra clave o conocimiento..."
-            className="h-11 w-full rounded-xl border border-[#d8ddd7] bg-[#f8f8f4]/60 pl-10 pr-10 text-sm text-[#1b2926] placeholder:text-[#6e7772]/70 focus:border-[#0f5b53] focus:bg-white focus:outline-none focus:ring-3 focus:ring-[#0f5b53]/15"
+            className="h-11 w-full rounded-xl border border-border bg-background/60 pl-10 pr-10 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:bg-white focus:outline-none focus:ring-3 focus:ring-primary/15"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 rounded-full p-1 text-[#6e7772] hover:bg-gray-100"
+              className="absolute right-3 rounded-full p-1 text-muted-foreground hover:bg-gray-100"
               aria-label="Borrar búsqueda"
             >
               <X className="h-4 w-4" />
@@ -125,12 +125,12 @@ export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
         {/* Categories / Rubros Pills (Mobile horizontal scroll) */}
         <div className="mt-4">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#1b2926]">Rubro o Sector:</span>
+            <span className="text-xs font-semibold text-foreground">Rubro o Sector:</span>
             {hasActiveFilters && (
               <button
                 type="button"
                 onClick={resetFilters}
-                className="text-xs font-medium text-[#0f5b53] hover:underline"
+                className="text-xs font-medium text-primary hover:underline"
               >
                 Limpiar filtros
               </button>
@@ -146,8 +146,8 @@ export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
                   onClick={() => setSelectedRubro(rubro)}
                   className={`shrink-0 rounded-lg px-3 py-1.5 font-medium transition-all ${
                     isSelected
-                      ? "bg-[#0f5b53] text-white shadow-xs"
-                      : "border border-[#d8ddd7] bg-white text-[#4f5a54] hover:border-[#0f5b53] hover:text-[#0f5b53]"
+                      ? "bg-primary text-white shadow-xs"
+                      : "border border-border bg-white text-muted-foreground-strong hover:border-primary hover:text-primary"
                   }`}
                 >
                   {rubro}
@@ -158,8 +158,8 @@ export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
         </div>
 
         {/* Modality Filter Pills */}
-        <div className="mt-3 flex flex-wrap items-center gap-2 pt-3 border-t border-[#d8ddd7]/60 text-xs">
-          <span className="font-semibold text-[#1b2926]">Modalidad:</span>
+        <div className="mt-3 flex flex-wrap items-center gap-2 pt-3 border-t border-border/60 text-xs">
+          <span className="font-semibold text-foreground">Modalidad:</span>
           {(["Todas", "Presencial", "Híbrido", "Remoto"] as const).map((mod) => {
             const isSelected = selectedModalidad === mod;
             return (
@@ -169,8 +169,8 @@ export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
                 onClick={() => setSelectedModalidad(mod)}
                 className={`rounded-md px-2.5 py-1 transition-all ${
                   isSelected
-                    ? "bg-[#1b2926] text-white font-medium"
-                    : "bg-[#f0f4f1] text-[#4f5a54] hover:bg-[#e2ebe4]"
+                    ? "bg-foreground text-white font-medium"
+                    : "bg-surface-tinted text-muted-foreground-strong hover:bg-secondary-hover"
                 }`}
               >
                 {mod}
@@ -188,20 +188,20 @@ export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
           ))}
         </div>
       ) : (
-        <div className="mt-8 rounded-2xl border border-dashed border-[#d8ddd7] bg-white p-10 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-[#6e7772]">
+        <div className="mt-8 rounded-2xl border border-dashed border-border bg-white p-10 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-muted-foreground">
             <Filter className="h-6 w-6" />
           </div>
-          <h3 className="mt-3 text-base font-bold text-[#1b2926]">
+          <h3 className="mt-3 text-base font-bold text-foreground">
             No encontramos ofertas con esos criterios
           </h3>
-          <p className="mt-1 text-xs text-[#6e7772]">
+          <p className="mt-1 text-xs text-muted-foreground">
             Probá quitando o modificando los filtros aplicados o buscando un término más general.
           </p>
           <button
             type="button"
             onClick={resetFilters}
-            className="mt-4 inline-flex items-center rounded-lg bg-[#0f5b53] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#093e39]"
+            className="mt-4 inline-flex items-center rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-primary-hover"
           >
             Ver todas las ofertas
           </button>
@@ -216,11 +216,11 @@ export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
           aria-modal="true"
           aria-labelledby="apply-modal-title"
         >
-          <div className="relative w-full max-w-md rounded-2xl border border-[#d8ddd7] bg-white p-6 shadow-xl">
+          <div className="relative w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-xl">
             <button
               type="button"
               onClick={() => setApplyModalOferta(null)}
-              className="absolute top-4 right-4 rounded-full p-1.5 text-[#6e7772] transition hover:bg-gray-100 hover:text-[#1b2926]"
+              className="absolute top-4 right-4 rounded-full p-1.5 text-muted-foreground transition hover:bg-gray-100 hover:text-foreground"
               aria-label="Cerrar ventana"
             >
               <X className="h-5 w-5" />
@@ -230,18 +230,18 @@ export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
               <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-700">
                 <AlertCircle className="h-6 w-6" />
               </div>
-              <h3 id="apply-modal-title" className="text-lg font-bold text-[#1b2926]">
+              <h3 id="apply-modal-title" className="text-lg font-bold text-foreground">
                 Iniciá sesión para postularte
               </h3>
-              <p className="mt-2 text-sm text-[#4f5a54]">
+              <p className="mt-2 text-sm text-muted-foreground-strong">
                 Para postularte a la búsqueda de{" "}
-                <strong className="text-[#1b2926]">&ldquo;{applyModalOferta.titulo}&rdquo;</strong> en{" "}
-                <span className="font-semibold text-[#1b2926]">{applyModalOferta.empresa}</span>, es
+                <strong className="text-foreground">&ldquo;{applyModalOferta.titulo}&rdquo;</strong> en{" "}
+                <span className="font-semibold text-foreground">{applyModalOferta.empresa}</span>, es
                 necesario ingresar con tu cuenta de Postulante.
               </p>
             </div>
 
-            <div className="rounded-xl bg-[#f8f8f4] p-3 text-xs text-[#6e7772]">
+            <div className="rounded-xl bg-background p-3 text-xs text-muted-foreground">
               💡 Las postulaciones son revisadas por el equipo de intermediación laboral municipal antes
               de ser presentadas a la empresa.
             </div>
@@ -250,7 +250,7 @@ export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
               <button
                 type="button"
                 onClick={handleConfirmLoginRedirect}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0f5b53] font-semibold text-white shadow-xs transition hover:bg-[#093e39]"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary font-semibold text-white shadow-xs transition hover:bg-primary-hover"
               >
                 <LogIn className="h-4 w-4" />
                 <span>Ir al formulario de Login</span>
@@ -259,7 +259,7 @@ export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
               <Link
                 href="/auth/registro"
                 onClick={() => setApplyModalOferta(null)}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#d8ddd7] bg-white font-medium text-[#1b2926] transition hover:border-[#0f5b53] hover:text-[#0f5b53]"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white font-medium text-foreground transition hover:border-primary hover:text-primary"
               >
                 <UserPlus className="h-4 w-4" />
                 <span>¿No tenés cuenta? Registrate gratis</span>

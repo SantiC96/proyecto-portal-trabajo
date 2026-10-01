@@ -25,7 +25,7 @@ export default async function HomePage() {
     : null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f8f8f4] text-[#1b2926]">
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
       <Navbar session={session} />
 
       <main className="flex-1">

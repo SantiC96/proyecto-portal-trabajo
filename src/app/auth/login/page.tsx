@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-[#f8f8f4] text-[#1b2926]">
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
       <NavbarSimple />
 
       <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
