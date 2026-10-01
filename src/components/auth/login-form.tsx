@@ -8,7 +8,7 @@ import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle } from "lucide-react";
 import { RegisterModal } from "@/components/auth/register-modal";
 import { login } from "@/app/auth/actions";
 
-export function LoginForm() {
+export function LoginForm({ confirmacionError }: { confirmacionError?: boolean }) {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,6 +50,17 @@ export function LoginForm() {
             </p>
           </div>
         </div>
+
+        {/* Confirmation error banner */}
+        {confirmacionError && (
+          <div className="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-1">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              No pudimos confirmar tu cuenta. El enlace puede haber vencido;
+              intentá iniciar sesión o registrate de nuevo.
+            </span>
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
