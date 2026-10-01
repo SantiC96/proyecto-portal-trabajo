@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { createPortal } from "react-dom";
+import { registrarPostulante } from "@/app/auth/actions";
 import Link from "next/link";
 import {
   User,
@@ -71,7 +71,6 @@ export function RegistroPostulanteForm() {
   // Submit state
   const [isLoading, setIsLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [successModalOpen, setSuccessModalOpen] = useState(false);
 
   // ── derived ────────────────────────────────────────────────────────────────
   const passwordsMatch =
@@ -116,10 +115,18 @@ export function RegistroPostulanteForm() {
 
     setSubmitError(null);
     setIsLoading(true);
-    // TODO: integrar con Supabase Auth + Storage para el CV
-    await new Promise((r) => setTimeout(r, 1200));
-    setIsLoading(false);
-    setSuccessModalOpen(true);
+    const result = await registrarPostulante({
+      nombre,
+      apellido,
+      telefono,
+      dni,
+      email,
+      password,
+    });
+    if (result?.error) {
+      setSubmitError(result.error);
+      setIsLoading(false);
+    }
   };
 
   // ── render ─────────────────────────────────────────────────────────────────
@@ -502,38 +509,6 @@ export function RegistroPostulanteForm() {
         </Link>
       </p>
 
-      {/* ── Success Modal ─────────────────────────────────────────────────── */}
-      {successModalOpen &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="success-dialog-title"
-          >
-            <div className="relative w-full max-w-sm rounded-2xl border border-[#d8ddd7] bg-white p-8 text-center shadow-xl">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#0f5b53]/10 text-[#0f5b53]">
-                <CheckCircle2 className="h-7 w-7" />
-              </div>
-              <h3
-                id="success-dialog-title"
-                className="text-xl font-bold text-[#1b2926]"
-              >
-                ¡Registro exitoso!
-              </h3>
-              <p className="mt-2 text-sm text-[#6e7772]">
-                Tu cuenta fue creada correctamente. Revisá tu correo electrónico para confirmar tu dirección y activar tu cuenta.
-              </p>
-              <Link
-                href="/auth/login"
-                className="mt-6 flex h-10 w-full items-center justify-center rounded-lg bg-[#0f5b53] text-sm font-semibold text-white transition hover:bg-[#093e39]"
-              >
-                Ir a iniciar sesión
-              </Link>
-            </div>
-          </div>,
-          document.body
-        )}
     </div>
   );
 }

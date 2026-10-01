@@ -4,8 +4,9 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
-import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle } from "lucide-react";
 import { RegisterModal } from "@/components/auth/register-modal";
+import { login } from "@/app/auth/actions";
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -13,13 +14,17 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
-    // TODO: integrar con Supabase Auth
-    await new Promise((r) => setTimeout(r, 1000));
-    setIsLoading(false);
+    setError(null);
+    const result = await login({ email, password });
+    if (result?.error) {
+      setError(result.error);
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -113,6 +118,14 @@ export function LoginForm() {
               </button>
             </div>
           </div>
+
+          {/* Error */}
+          {error && (
+            <div className="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
           {/* Submit */}
           <button
