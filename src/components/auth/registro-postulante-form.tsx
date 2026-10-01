@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { registrarPostulante } from "@/app/auth/actions";
 import Link from "next/link";
 import {
@@ -12,9 +12,6 @@ import {
   Lock,
   Eye,
   EyeOff,
-  FileText,
-  Upload,
-  X,
   CheckCircle2,
   AlertCircle,
   UserPlus,
@@ -50,7 +47,7 @@ export function RegistroPostulanteForm() {
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
   const [dni, setDni] = useState("");
-  const [calle, setCalle] = useState("");
+  const [domicilio, setDomicilio] = useState("");
   const [telefono, setTelefono] = useState("");
 
   // Access
@@ -60,11 +57,6 @@ export function RegistroPostulanteForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordRepeat, setShowPasswordRepeat] = useState(false);
 
-  // CV
-  const [cvFile, setCvFile] = useState<File | null>(null);
-  const [cvDragOver, setCvDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   // Residency confirmation
   const [confirmaFunes, setConfirmaFunes] = useState(false);
 
@@ -73,32 +65,10 @@ export function RegistroPostulanteForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // ── derived ────────────────────────────────────────────────────────────────
-  const passwordsMatch =
-    passwordRepeat === "" || password === passwordRepeat;
   const passwordRepeatError =
     passwordRepeat !== "" && password !== passwordRepeat;
 
   // ── handlers ───────────────────────────────────────────────────────────────
-  const handleCvFile = (file: File) => {
-    if (file.type !== "application/pdf") {
-      setSubmitError("El CV debe ser un archivo PDF.");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setSubmitError("El CV no puede superar los 5 MB.");
-      return;
-    }
-    setSubmitError(null);
-    setCvFile(file);
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setCvDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleCvFile(file);
-  };
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -120,6 +90,7 @@ export function RegistroPostulanteForm() {
       apellido,
       telefono,
       dni,
+      domicilio,
       email,
       password,
     });
@@ -219,18 +190,18 @@ export function RegistroPostulanteForm() {
 
             {/* Dirección */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="reg-calle" className="text-sm font-medium text-foreground">
+              <label htmlFor="reg-domicilio" className="text-sm font-medium text-foreground">
                 Dirección <span className="text-red-500">*</span>
               </label>
               <InputWrapper>
                 <FieldIcon icon={MapPin} />
                 <input
-                  id="reg-calle"
+                  id="reg-domicilio"
                   type="text"
                   autoComplete="street-address"
                   required
-                  value={calle}
-                  onChange={(e) => setCalle(e.target.value)}
+                  value={domicilio}
+                  onChange={(e) => setDomicilio(e.target.value)}
                   placeholder="Calle y número  (Ej: San Martín 432)"
                   className={inputClass}
                 />
@@ -378,79 +349,7 @@ export function RegistroPostulanteForm() {
 
         <div className="h-px bg-border" />
 
-        {/* ── 3. CV ──────────────────────────────────────────────────────── */}
-        <section>
-          <SectionTitle>Curriculum Vitae</SectionTitle>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/pdf"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleCvFile(file);
-            }}
-          />
-          {!cvFile ? (
-            <div
-              role="button"
-              tabIndex={0}
-              aria-label="Subir CV en PDF"
-              onClick={() => fileInputRef.current?.click()}
-              onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setCvDragOver(true);
-              }}
-              onDragLeave={() => setCvDragOver(false)}
-              onDrop={handleDrop}
-              className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-8 text-center transition ${
-                cvDragOver
-                  ? "border-primary bg-surface-tinted"
-                  : "border-border bg-background hover:border-primary/50 hover:bg-surface-tinted"
-              }`}
-            >
-              <Upload className="h-8 w-8 text-muted-icon" />
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  Arrastrá tu CV acá o{" "}
-                  <span className="text-primary underline underline-offset-2">
-                    hacé clic para seleccionarlo
-                  </span>
-                </p>
-                <p className="mt-1 text-xs text-muted-icon">
-                  Solo PDF · Máximo 5 MB
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-tinted px-4 py-3">
-              <div className="flex items-center gap-3">
-                <FileText className="h-8 w-8 shrink-0 text-primary" />
-                <div>
-                  <p className="text-sm font-medium text-foreground break-all">
-                    {cvFile.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {(cvFile.size / 1024).toFixed(0)} KB · PDF
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCvFile(null)}
-                className="shrink-0 rounded-full p-1 text-muted-foreground transition hover:bg-red-50 hover:text-red-500"
-                aria-label="Quitar archivo"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-        </section>
-
-        <div className="h-px bg-border" />
-
-        {/* ── 4. Confirmación de residencia ──────────────────────────────── */}
+        {/* ── 3. Confirmación de residencia ──────────────────────────────── */}
         <section>
           <label className="flex cursor-pointer items-start gap-3">
             <input

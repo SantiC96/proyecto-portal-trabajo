@@ -26,6 +26,12 @@ export default function VerificarEmailPage() {
             Te enviamos un correo de confirmación. Hacé clic en el enlace para
             activar tu cuenta y empezar a buscar empleo.
           </p>
+          <div className="mt-4 rounded-lg border border-border bg-secondary px-4 py-3 text-left text-sm text-muted-foreground-strong">
+            <p className="font-semibold text-foreground">¿Qué sigue después de confirmar?</p>
+            <p className="mt-1">
+              Una vez que actives tu cuenta, iniciá sesión y completá tu perfil: agregá tu foto, subí tu CV en PDF y seleccioná los rubros que te interesan. Cuanto más completo esté tu perfil, más fácil te va a resultar postularte a las ofertas disponibles.
+            </p>
+          </div>
           <p className="mt-6 text-xs text-muted-icon">
             ¿Ya confirmaste?{" "}
             <Link

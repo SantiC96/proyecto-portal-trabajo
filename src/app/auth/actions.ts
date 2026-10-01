@@ -19,7 +19,7 @@ export async function login(credentials: {
     return { error: traducirErrorAuth(error) };
   }
 
-  redirect("/inicio");
+  redirect("/perfil");
 }
 
 export async function registrarPostulante(data: {
@@ -27,6 +27,7 @@ export async function registrarPostulante(data: {
   apellido: string;
   telefono: string;
   dni: string;
+  domicilio: string;
   email: string;
   password: string;
 }): Promise<{ error: string } | undefined> {
@@ -56,7 +57,7 @@ export async function registrarPostulante(data: {
 
   const { error: profileError } = await supabaseAdmin
     .from("postulantes")
-    .insert({ usuario_id: authData.user.id, dni: data.dni });
+    .insert({ usuario_id: authData.user.id, dni: data.dni, domicilio: data.domicilio });
 
   if (profileError) {
     await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
