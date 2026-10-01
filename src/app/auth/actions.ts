@@ -35,6 +35,7 @@ export async function registrarPostulante(data: {
     email: data.email,
     password: data.password,
     options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
       data: {
         nombre: data.nombre,
         apellido: data.apellido,
@@ -65,6 +66,20 @@ export async function registrarPostulante(data: {
   }
 
   redirect("/auth/verificar-email");
+}
+
+export async function solicitarResetContrasena(
+  formData: FormData
+): Promise<void> {
+  const email = formData.get("email") as string;
+  const supabase = await createSupabaseServerClient();
+
+  await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/nueva-contrasena`,
+  });
+
+  // Always redirect regardless of whether the email exists (avoid account enumeration)
+  redirect("/auth/reset-enviado");
 }
 
 export async function logout() {
