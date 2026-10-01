@@ -3,12 +3,16 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { OFERTAS_MOCK, CATEGORIAS_RUBROS } from "@/data/mock-ofertas";
 import { OfertaLaboral } from "@/types/oferta";
 import { JobCard } from "@/components/public/job-card";
 import { Search, Filter, X, LogIn, UserPlus, AlertCircle } from "lucide-react";
 
-export function JobDirectory() {
+interface JobDirectoryProps {
+  ofertas: OfertaLaboral[];
+  categorias: string[];
+}
+
+export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
   const router = useRouter();
 
   // Search and filter states
@@ -19,9 +23,11 @@ export function JobDirectory() {
   // Modal state when visitor clicks "Postularme" without session
   const [applyModalOferta, setApplyModalOferta] = useState<OfertaLaboral | null>(null);
 
+  const rubroOptions = ["Todos", ...categorias];
+
   // Filtered job list
   const filteredOfertas = useMemo(() => {
-    return OFERTAS_MOCK.filter((oferta) => {
+    return ofertas.filter((oferta) => {
       // Rubro filter
       const matchesRubro =
         selectedRubro === "Todos" || oferta.rubro.toLowerCase() === selectedRubro.toLowerCase();
@@ -42,7 +48,7 @@ export function JobDirectory() {
 
       return matchesRubro && matchesModalidad && matchesQuery;
     });
-  }, [searchQuery, selectedRubro, selectedModalidad]);
+  }, [ofertas, searchQuery, selectedRubro, selectedModalidad]);
 
   const hasActiveFilters =
     searchQuery.trim() !== "" || selectedRubro !== "Todos" || selectedModalidad !== "Todas";
@@ -131,7 +137,7 @@ export function JobDirectory() {
             )}
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1 text-xs no-scrollbar">
-            {CATEGORIAS_RUBROS.map((rubro) => {
+            {rubroOptions.map((rubro) => {
               const isSelected = selectedRubro === rubro;
               return (
                 <button

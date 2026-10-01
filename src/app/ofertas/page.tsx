@@ -1,18 +1,42 @@
-export default function OfertasPage() {
+import { Navbar } from "@/components/public/navbar";
+import { JobDirectory } from "@/components/public/job-directory";
+import { PublicFooter } from "@/components/public/public-footer";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { getOfertasActivas, getCategorias } from "@/lib/ofertas";
+
+export const metadata = {
+  title: "Ofertas laborales | Portal de Empleo Funes",
+  description:
+    "Explorá todas las vacantes activas de comercios, empresas e industrias de la Municipalidad de Funes.",
+};
+
+export default async function OfertasPage() {
+  const [supabase, ofertas, categorias] = await Promise.all([
+    createSupabaseServerClient(),
+    getOfertasActivas(),
+    getCategorias(),
+  ]);
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const session = user
+    ? {
+        nombre: (user.user_metadata?.nombre as string) ?? "",
+        apellido: (user.user_metadata?.apellido as string) ?? "",
+      }
+    : null;
+
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white rounded-2xl shadow-md px-10 py-8 flex flex-col items-center gap-3">
-        <span className="text-4xl">📋</span>
-        <p className="text-xs font-mono text-gray-400 uppercase tracking-widest">
-          Ofertas laborales
-        </p>
-        <h1 className="text-2xl font-semibold text-gray-800">
-          Listado de ofertas
-        </h1>
-        <span className="mt-2 text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-mono">
-          GET /ofertas
-        </span>
-      </div>
-    </main>
+    <div className="flex min-h-screen flex-col bg-[#f8f8f4] text-[#1b2926]">
+      <Navbar session={session} />
+
+      <main className="flex-1">
+        <JobDirectory ofertas={ofertas} categorias={categorias} />
+      </main>
+
+      <PublicFooter />
+    </div>
   );
 }
