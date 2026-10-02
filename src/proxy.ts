@@ -37,6 +37,26 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/ofertas") ||
     pathname.startsWith("/auth");
 
+  // Routes only accessible to guests — logged-in users are bounced to home
+  const AUTH_GUEST_ONLY = [
+    "/auth/login",
+    "/auth/registro",
+    "/auth/recuperar-contrasena",
+    "/auth/reset-enviado",
+  ];
+  const isGuestOnly = AUTH_GUEST_ONLY.some(
+    (p) => pathname === p || pathname.startsWith(p + "/")
+  );
+  // Don't redirect Server Action POSTs — a redirect there breaks the action
+  const isServerAction = request.headers.get("next-action") !== null;
+
+  if (user && isGuestOnly && !isServerAction) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
