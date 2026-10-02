@@ -8,7 +8,13 @@ import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle } from "lucide-react";
 import { RegisterModal } from "@/components/auth/register-modal";
 import { login } from "@/app/auth/actions";
 
-export function LoginForm({ confirmacionError }: { confirmacionError?: boolean }) {
+export function LoginForm({
+  confirmacionError,
+  redirect,
+}: {
+  confirmacionError?: boolean;
+  redirect?: string;
+}) {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,7 +26,7 @@ export function LoginForm({ confirmacionError }: { confirmacionError?: boolean }
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-    const result = await login({ email, password });
+    const result = await login({ email, password, redirectTo: redirect });
     if (result?.error) {
       setError(result.error);
       setIsLoading(false);

@@ -140,8 +140,10 @@ export function Navbar({ session = null }: NavbarProps) {
             </div>
           ) : (
             <div className="hidden items-center gap-2 lg:flex">
-              {/* Avatar + nombre/rol — display only, no link */}
-              <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
+              <Link
+                href="/perfil"
+                className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition hover:bg-surface-tinted focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
                 <Avatar
                   src={session.avatarUrl}
                   nombre={session.nombre}
@@ -156,7 +158,7 @@ export function Navbar({ session = null }: NavbarProps) {
                     {getRolLabel(session.rol)}
                   </p>
                 </div>
-              </div>
+              </Link>
 
               <div className="mx-1 h-6 w-px bg-border" />
 
@@ -223,7 +225,11 @@ export function Navbar({ session = null }: NavbarProps) {
               {/* User block or auth buttons */}
               {session ? (
                 <>
-                  <div className="flex items-center gap-3 rounded-lg px-3 py-3">
+                  <Link
+                    href="/perfil"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 transition hover:bg-surface-tinted focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
                     <Avatar
                       src={session.avatarUrl}
                       nombre={session.nombre}
@@ -238,7 +244,7 @@ export function Navbar({ session = null }: NavbarProps) {
                         {getRolLabel(session.rol)}
                       </p>
                     </div>
-                  </div>
+                  </Link>
 
                   <Link
                     href="/perfil"

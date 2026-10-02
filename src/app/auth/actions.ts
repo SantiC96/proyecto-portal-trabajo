@@ -5,11 +5,23 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { traducirErrorAuth } from "@/lib/auth-errors";
 
+function safeRedirect(to?: string): string {
+  if (to && to.startsWith("/") && !to.startsWith("//")) return to;
+  return "/";
+}
+
 export async function login(credentials: {
   email: string;
   password: string;
+  redirectTo?: string;
 }): Promise<{ error: string } | undefined> {
   const supabase = await createSupabaseServerClient();
+
+  const {
+    data: { user: existingUser },
+  } = await supabase.auth.getUser();
+  if (existingUser) redirect("/");
+
   const { error } = await supabase.auth.signInWithPassword({
     email: credentials.email,
     password: credentials.password,
@@ -19,7 +31,7 @@ export async function login(credentials: {
     return { error: traducirErrorAuth(error) };
   }
 
-  redirect("/perfil");
+  redirect(safeRedirect(credentials.redirectTo));
 }
 
 export async function registrarPostulante(data: {
@@ -32,6 +44,11 @@ export async function registrarPostulante(data: {
   password: string;
 }): Promise<{ error: string } | undefined> {
   const supabase = await createSupabaseServerClient();
+
+  const {
+    data: { user: existingUser },
+  } = await supabase.auth.getUser();
+  if (existingUser) redirect("/");
 
   const { data: authData, error: signUpError } = await supabase.auth.signUp({
     email: data.email,
