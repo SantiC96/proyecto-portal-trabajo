@@ -155,28 +155,43 @@ En espacios reducidos se permite utilizar solamente el escudo.
 
 # 5. Paleta
 
-La paleta parte de la identidad visual municipal utilizada como
-referencia.
+La paleta es la identidad visual implementada en producción. Los valores
+de esta sección son la fuente de verdad.
 
-## Brand
+## Acción principal
 
-  Token         Valor       Uso
-  ------------- ----------- ---------------------------
-  `brand-900`   `#06452B`   navegación, hover fuerte
-  `brand-800`   `#075A36`   primary
-  `brand-600`   `#307A52`   elementos secundarios
-  `brand-400`   `#69BD91`   acentos
-  `brand-100`   `#E3F2E9`   selección y fondos suaves
+  Token                    Valor       Uso
+  ------------------------ ----------- --------------------------------
+  `primary`                `#0F5B53`   botones, íconos, texto activo
+  `primary-hover`          `#093E39`   hover de botones y CTA
+  `primary-foreground`     `#FFFFFF`   texto sobre fondo primary
 
-## Neutrales
+## Superficies y neutrales
+
+  Token                         Valor       Uso
+  ----------------------------- ----------- --------------------------------
+  `background`                  `#F8F8F4`   fondo general de página
+  `surface`                     `#FFFFFF`   cards, formularios, paneles
+  `border`                      `#D8DDD7`   bordes y separadores
+  `foreground`                  `#1B2926`   texto principal
+  `muted-foreground`            `#6E7772`   texto secundario estándar
+  `muted-foreground-strong`     `#4F5A54`   labels, nav links inactivos
+  `muted-icon`                  `#9CA3A0`   íconos en inputs, indicadores
+  `placeholder`                 `#B0B8B4`   placeholder de inputs
+
+## Superficies tintadas
 
   Token                Valor       Uso
-  -------------------- ----------- -----------------------------
-  `background`         `#F5F8F6`   fondo general
-  `surface`            `#FFFFFF`   cards, formularios, paneles
-  `border`             `#DCE8E0`   bordes y separadores
-  `foreground`         `#202B26`   texto principal
-  `muted-foreground`   `#66756B`   texto secundario
+  -------------------- ----------- ----------------------------------------
+  `secondary`          `#E8F0E9`   fondo suave tintado principal
+  `secondary-hover`    `#E4ECE5`   hover discreto sobre fondos secondary
+  `surface-tinted`     `#F0F4F1`   superficies muy claras (badges, selects)
+
+## Decorativo
+
+  Token             Valor       Uso
+  ----------------- ----------- -----------------------------------------
+  `brand-subtle`    `#C7E1CD`   blobs y órbitas del panel login intro
 
 ## Colores semánticos
 
@@ -189,38 +204,51 @@ Definir tokens independientes:
 -   `danger`
 -   `info`
 
-No utilizar `brand` para representar errores o advertencias.
+No utilizar tokens de acción para representar errores o advertencias.
 
 ------------------------------------------------------------------------
 
 # 6. Tokens Tailwind / CSS
 
-Los componentes no deben contener colores HEX repetidos.
+Los componentes no deben contener colores HEX directamente.
 
-La fuente de verdad debe vivir en los tokens globales.
+La fuente de verdad vive en el bloque `@theme` de `src/app/globals.css`
+(Tailwind CSS v4). Cada `--color-*` genera automáticamente clases de
+utilidad: `bg-primary`, `text-foreground`, `border-border`, etc.
 
 ``` css
+@theme {
+  /* Acción principal */
+  --color-primary:            #0f5b53;
+  --color-primary-hover:      #093e39;
+  --color-primary-foreground: #ffffff;
+
+  /* Superficies y neutrales */
+  --color-background: #f8f8f4;
+  --color-surface:    #ffffff;
+  --color-border:     #d8ddd7;
+  --color-foreground: #1b2926;
+
+  /* Texto atenuado — 4 niveles */
+  --color-muted-foreground:        #6e7772;
+  --color-muted-foreground-strong: #4f5a54;
+  --color-muted-icon:              #9ca3a0;
+  --color-placeholder:             #b0b8b4;
+
+  /* Superficies tintadas verde */
+  --color-secondary:       #e8f0e9;
+  --color-secondary-hover: #e4ece5;
+  --color-surface-tinted:  #f0f4f1;
+
+  /* Decorativo (solo login intro) */
+  --color-brand-subtle: #c7e1cd;
+
+  /* Tipografía */
+  --font-sans:    "Trebuchet MS", "Segoe UI", sans-serif;
+  --font-display: Georgia, "Times New Roman", serif;
+}
+
 :root {
-  --brand-900: #06452b;
-  --brand-800: #075a36;
-  --brand-600: #307a52;
-  --brand-400: #69bd91;
-  --brand-100: #e3f2e9;
-
-  --background: #f5f8f6;
-  --surface: #ffffff;
-  --border: #dce8e0;
-
-  --foreground: #202b26;
-  --muted-foreground: #66756b;
-
-  --primary: #075a36;
-  --primary-hover: #06452b;
-  --primary-foreground: #ffffff;
-
-  --secondary: #e3f2e9;
-  --secondary-foreground: #075a36;
-
   --radius-sm: 0.5rem;
   --radius-md: 0.625rem;
   --radius-lg: 0.75rem;
@@ -228,23 +256,25 @@ La fuente de verdad debe vivir en los tokens globales.
 }
 ```
 
-Si el proyecto utiliza la configuración moderna de Tailwind/shadcn,
-estos tokens deben mapearse a sus variables semánticas en la capa global
-correspondiente.
+Los prefijos `--font-*` generan las clases `font-sans` y `font-display`.
 
 ------------------------------------------------------------------------
 
 # 7. Tipografía
 
-## Familia
+## Familias
 
-Preferencia:
+**Body (token `font-sans`):** `"Trebuchet MS", "Segoe UI", sans-serif`
 
-1.  `Geist`
-2.  `Inter`
-3.  `sans-serif`
+Usada en todo el portal: body, párrafos, labels, botones, inputs, nav.
 
-No mezclar múltiples familias tipográficas en la aplicación.
+**Display (token `font-display`):** `Georgia, "Times New Roman", serif`
+
+Excepción documentada: solo para los títulos grandes del panel izquierdo
+del login (`.intro-copy h1`, `.login-heading h2`). No usar en otros
+contextos ni en la interfaz autenticada.
+
+No introducir familias tipográficas adicionales.
 
 ## Escala recomendada
 

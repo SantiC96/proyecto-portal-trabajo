@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { NavbarSimple } from "@/components/public/navbar-simple";
 import { PublicFooter } from "@/components/public/public-footer";
 import { LoginForm } from "@/components/auth/login-form";
 
@@ -9,16 +8,23 @@ export const metadata: Metadata = {
     "Accedé a tu cuenta en el Portal de Empleo de la Municipalidad de Funes. Tanto Postulantes como Empresas usan este mismo acceso.",
 };
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; redirect?: string; motivo?: string }>;
+}) {
+  const { error, redirect, motivo } = await searchParams;
   return (
-    <div className="flex min-h-screen flex-col bg-[#f8f8f4] text-[#1b2926]">
-      <NavbarSimple />
-
+    <>
       <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
-        <LoginForm />
+        <LoginForm
+          confirmacionError={error === "confirmacion"}
+          inactividad={motivo === "inactividad"}
+          redirect={redirect}
+        />
       </main>
 
       <PublicFooter />
-    </div>
+    </>
   );
 }

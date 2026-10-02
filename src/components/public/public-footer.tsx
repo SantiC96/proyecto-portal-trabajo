@@ -20,7 +20,7 @@ export function PublicFooter() {
   };
 
   return (
-    <footer className="border-t border-[#d8ddd7] bg-white text-[#1b2926]">
+    <footer className="border-t border-border bg-white text-foreground">
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {/* Col 1: Brand & Municipal Info */}
@@ -34,7 +34,7 @@ export function PublicFooter() {
                 className="object-contain"
               />
             </div>
-            <p className="mt-1 text-xs text-[#6e7772] leading-relaxed">
+            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
               Plataforma pública de intermediación laboral para vincular el talento de Funes con las
               oportunidades laborales del comercio y la industria local.
             </p>
@@ -42,15 +42,15 @@ export function PublicFooter() {
 
           {/* Col 2: Navigation Links */}
           <div>
-            <h4 className="text-xs font-bold tracking-wider text-[#1b2926] uppercase">
+            <h4 className="text-xs font-bold tracking-wider text-foreground uppercase">
               Accesos rápidos
             </h4>
-            <ul className="mt-3 flex flex-col gap-2 text-xs text-[#4f5a54]">
+            <ul className="mt-3 flex flex-col gap-2 text-xs text-muted-foreground-strong">
               <li>
                 <Link
                   href="/#ofertas"
                   onClick={(e) => handleScrollTo(e, "ofertas")}
-                  className="hover:text-[#0f5b53] hover:underline"
+                  className="hover:text-primary hover:underline"
                 >
                   Ver ofertas vigentes
                 </Link>
@@ -59,23 +59,23 @@ export function PublicFooter() {
                 <Link
                   href="/#como-funciona"
                   onClick={(e) => handleScrollTo(e, "como-funciona")}
-                  className="hover:text-[#0f5b53] hover:underline"
+                  className="hover:text-primary hover:underline"
                 >
                   ¿Cómo funciona el portal?
                 </Link>
               </li>
               <li>
-                <Link href="/auth/login" className="hover:text-[#0f5b53] hover:underline">
+                <Link href="/auth/login" className="hover:text-primary hover:underline">
                   Iniciar sesión (Postulantes y Empresas)
                 </Link>
               </li>
               <li>
-                <Link href="/auth/registro" className="hover:text-[#0f5b53] hover:underline">
+                <Link href="/auth/registro" className="hover:text-primary hover:underline">
                   Registro para Postulantes
                 </Link>
               </li>
               <li>
-                <Link href="/auth/registro?tipo=empresa" className="hover:text-[#0f5b53] hover:underline">
+                <Link href="/auth/registro?tipo=empresa" className="hover:text-primary hover:underline">
                   Registro para Empresas
                 </Link>
               </li>
@@ -84,19 +84,19 @@ export function PublicFooter() {
 
           {/* Col 3: Attention Office & In-person Registration */}
           <div>
-            <h4 className="text-xs font-bold tracking-wider text-[#1b2926] uppercase">
+            <h4 className="text-xs font-bold tracking-wider text-foreground uppercase">
               Atención Presencial
             </h4>
-            <div className="mt-3 flex flex-col gap-2.5 text-xs text-[#4f5a54]">
+            <div className="mt-3 flex flex-col gap-2.5 text-xs text-muted-foreground-strong">
               <div className="flex items-start gap-2">
-                <Clock className="h-4 w-4 shrink-0 text-[#0f5b53] mt-0.5" />
+                <Clock className="h-4 w-4 shrink-0 text-primary mt-0.5" />
                 <span>Lunes a Viernes de 7:30 a 13:00 hs</span>
               </div>
               <div className="flex items-start gap-2">
-                <MapPin className="h-4 w-4 shrink-0 text-[#0f5b53] mt-0.5" />
+                <MapPin className="h-4 w-4 shrink-0 text-primary mt-0.5" />
                 <span>Oficina de Empleo, Municipalidad de Funes, Santa Fe</span>
               </div>
-              <p className="mt-1 text-[11px] text-[#6e7772]">
+              <p className="mt-1 text-[11px] text-muted-foreground">
                 ℹ️ Si no podés registrarte online, podés acercarte personalmente a la oficina con tu DNI y CV para que el equipo cargue tu postulación.
               </p>
             </div>
@@ -104,19 +104,19 @@ export function PublicFooter() {
 
           {/* Col 4: Contact */}
           <div>
-            <h4 className="text-xs font-bold tracking-wider text-[#1b2926] uppercase">
+            <h4 className="text-xs font-bold tracking-wider text-foreground uppercase">
               Contacto y Consultas
             </h4>
-            <div className="mt-3 flex flex-col gap-2 text-xs text-[#4f5a54]">
+            <div className="mt-3 flex flex-col gap-2 text-xs text-muted-foreground-strong">
               <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 shrink-0 text-[#0f5b53]" />
+                <Mail className="h-4 w-4 shrink-0 text-primary" />
                 <span>empleo@funes.gob.ar</span>
               </div>
               <div className="flex items-center gap-2">
-                <Phone className="h-4 w-4 shrink-0 text-[#0f5b53]" />
+                <Phone className="h-4 w-4 shrink-0 text-primary" />
                 <span>(0341) 493-6010</span>
               </div>
-              <div className="mt-2 rounded-lg bg-[#f8f8f4] p-2.5 text-[11px] text-[#6e7772]">
+              <div className="mt-2 rounded-lg bg-background p-2.5 text-[11px] text-muted-foreground">
                 Servicio gratuito regulado por la Secretaría de Desarrollo Económico y Productivo de Funes.
               </div>
             </div>
@@ -124,7 +124,7 @@ export function PublicFooter() {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-[#d8ddd7]/60 pt-6 text-center text-xs text-[#6e7772] sm:flex-row sm:text-left">
+        <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-border/60 pt-6 text-center text-xs text-muted-foreground sm:flex-row sm:text-left">
           <p>© {new Date().getFullYear()} Municipalidad de Funes. Todos los derechos reservados.</p>
           <p className="text-[11px]">Portal de Intermediación y Empleo Local</p>
         </div>

@@ -50,10 +50,19 @@ All source lives under `src/`. The path alias `@/*` resolves to `src/*`.
 
   `/ofertas/[id]`        `src/app/ofertas/[id]/page.tsx`            Job detail (dynamic)
 
-  `/saludo`              `src/app/saludo/page.tsx`                  Client component fetching
-                                                                     `/api/saludo`
+  `/auth/recuperar-contrasena` `src/app/auth/recuperar-contrasena/page.tsx` Password-reset
+                                                                     request (public)
 
-  `/api/saludo`          `src/app/api/saludo/route.ts`              Route Handler
+  `/auth/reset-enviado`  `src/app/auth/reset-enviado/page.tsx`      Reset-email sent confirmation
+
+  `/auth/nueva-contrasena` `src/app/auth/nueva-contrasena/route.ts` Route Handler — PKCE token
+                                                                     exchange
+
+  `/auth/nueva-contrasena/formulario` `src/app/auth/nueva-contrasena/formulario/page.tsx`
+                                                                     New-password form
+
+  `/auth/callback`       `src/app/auth/callback/route.ts`           Route Handler — PKCE code
+                                                                     exchange
   ------------------------------------------------------------------------------------------------
 
 ### Route groups
