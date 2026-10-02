@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { traducirErrorAuth } from "@/lib/auth-errors";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Actualizar datos personales + rubros de interés
@@ -134,6 +135,7 @@ export async function subirAvatar(
     .upload(nuevaRuta, buffer, { contentType: file.type });
 
   if (uploadError) {
+    console.error("subirAvatar: fallo upload a Storage:", uploadError);
     return { error: "Error al subir la imagen. Intentá de nuevo." };
   }
 
@@ -144,6 +146,7 @@ export async function subirAvatar(
     .eq("id", user.id);
 
   if (dbError) {
+    console.error("subirAvatar: fallo update en usuarios:", dbError);
     await supabaseAdmin.storage.from("avatares").remove([nuevaRuta]);
     return { error: "Error al guardar la foto. Intentá de nuevo." };
   }
@@ -211,6 +214,7 @@ export async function subirCV(
     .upload(ruta, buffer, { contentType: "application/pdf", upsert: true });
 
   if (uploadError) {
+    console.error("subirCV: fallo upload a Storage:", uploadError);
     return { error: "Error al subir el CV. Intentá de nuevo." };
   }
 
@@ -220,6 +224,7 @@ export async function subirCV(
     .eq("usuario_id", user.id);
 
   if (dbError) {
+    console.error("subirCV: fallo update en postulantes:", dbError);
     return { error: "Error al guardar la ruta del CV. Intentá de nuevo." };
   }
 
@@ -245,5 +250,47 @@ export async function eliminarCV(): Promise<{ error?: string }> {
   if (error) return { error: "Error al eliminar el CV. Intentá de nuevo." };
 
   revalidatePath("/perfil");
+  return {};
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cambiar contraseña (usuario autenticado)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function cambiarContrasena(
+  formData: FormData
+): Promise<{ error?: string }> {
+  const contrasenaActual = formData.get("contrasenaActual") as string;
+  const contrasenaNueva = formData.get("contrasenaNueva") as string;
+  const repetirContrasena = formData.get("repetirContrasena") as string;
+
+  if (!contrasenaActual || !contrasenaNueva || !repetirContrasena)
+    return { error: "Completá todos los campos." };
+  if (contrasenaNueva.length < 6)
+    return { error: "La contraseña nueva debe tener al menos 6 caracteres." };
+  if (contrasenaNueva !== repetirContrasena)
+    return { error: "Las contraseñas nuevas no coinciden." };
+  if (contrasenaNueva === contrasenaActual)
+    return { error: "La contraseña nueva debe ser distinta de la actual." };
+
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user?.email) return { error: "No autenticado." };
+
+  // Verificar contraseña actual con el cliente admin (no toca la sesión de cookies)
+  const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+    email: user.email,
+    password: contrasenaActual,
+  });
+  if (signInError) return { error: "La contraseña actual es incorrecta." };
+
+  const { error: updateError } = await supabase.auth.updateUser({
+    password: contrasenaNueva,
+  });
+  if (updateError) return { error: traducirErrorAuth(updateError) };
+
   return {};
 }

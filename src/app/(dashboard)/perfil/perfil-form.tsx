@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   User,
   Phone,
@@ -17,6 +16,8 @@ import {
   ExternalLink,
   KeyRound,
   Pencil,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import {
@@ -25,12 +26,16 @@ import {
   quitarAvatar,
   subirCV,
   eliminarCV,
+  cambiarContrasena,
 } from "./actions";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 const inputClass =
   "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60";
+
+const inputClassPassword =
+  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-10 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60";
 
 const inputReadonlyClass =
   "w-full rounded-lg border border-border bg-surface-tinted py-2.5 pl-10 pr-4 text-sm text-muted-foreground-strong outline-none cursor-default";
@@ -141,6 +146,18 @@ export function PerfilForm({
   const [errorCV, setErrorCV] = useState<string | null>(null);
   const [exitoCV, setExitoCV] = useState(false);
 
+  // Contraseña
+  const [mostrarFormContrasena, setMostrarFormContrasena] = useState(false);
+  const [contrasenaActual, setContrasenaActual] = useState("");
+  const [contrasenaNueva, setContrasenaNueva] = useState("");
+  const [repetirContrasena, setRepetirContrasena] = useState("");
+  const [mostrarActual, setMostrarActual] = useState(false);
+  const [mostrarNueva, setMostrarNueva] = useState(false);
+  const [mostrarRepetir, setMostrarRepetir] = useState(false);
+  const [cargandoContrasena, setCargandoContrasena] = useState(false);
+  const [errorContrasena, setErrorContrasena] = useState("");
+  const [exitoContrasena, setExitoContrasena] = useState("");
+
   // Limpiar blob URL al desmontar
   useEffect(() => {
     return () => {
@@ -191,14 +208,18 @@ export function PerfilForm({
     setErrorAvatar(null);
     const fd = new FormData();
     fd.append("avatar", avatarFile);
-    const result = await subirAvatar(fd);
-    if (result?.error) {
-      setErrorAvatar(result.error);
-    } else {
-      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-      setAvatarPreview(null);
-      setAvatarFile(null);
-      router.refresh();
+    try {
+      const result = await subirAvatar(fd);
+      if (result?.error) {
+        setErrorAvatar(result.error);
+      } else {
+        if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+        setAvatarPreview(null);
+        setAvatarFile(null);
+        router.refresh();
+      }
+    } catch {
+      setErrorAvatar("Ocurrió un error inesperado al subir la foto. Intentá de nuevo.");
     }
     setGuardandoAvatar(false);
   };
@@ -267,13 +288,17 @@ export function PerfilForm({
     setExitoCV(false);
     const fd = new FormData();
     fd.append("cv", cvFile);
-    const result = await subirCV(fd);
-    if (result?.error) {
-      setErrorCV(result.error);
-    } else {
-      setCvFile(null);
-      setExitoCV(true);
-      router.refresh();
+    try {
+      const result = await subirCV(fd);
+      if (result?.error) {
+        setErrorCV(result.error);
+      } else {
+        setCvFile(null);
+        setExitoCV(true);
+        router.refresh();
+      }
+    } catch {
+      setErrorCV("Ocurrió un error inesperado al subir el CV. Intentá de nuevo.");
     }
     setGuardandoCV(false);
   };
@@ -289,6 +314,37 @@ export function PerfilForm({
       router.refresh();
     }
     setGuardandoCV(false);
+  };
+
+  // ── contraseña handlers ─────────────────────────────────────────────────────
+
+  const handleCambiarContrasena = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCargandoContrasena(true);
+    setErrorContrasena("");
+    const fd = new FormData();
+    fd.append("contrasenaActual", contrasenaActual);
+    fd.append("contrasenaNueva", contrasenaNueva);
+    fd.append("repetirContrasena", repetirContrasena);
+    const res = await cambiarContrasena(fd);
+    setCargandoContrasena(false);
+    if (res.error) {
+      setErrorContrasena(res.error);
+    } else {
+      setExitoContrasena("Tu contraseña se actualizó correctamente.");
+      setMostrarFormContrasena(false);
+      setContrasenaActual("");
+      setContrasenaNueva("");
+      setRepetirContrasena("");
+    }
+  };
+
+  const handleCancelarContrasena = () => {
+    setMostrarFormContrasena(false);
+    setContrasenaActual("");
+    setContrasenaNueva("");
+    setRepetirContrasena("");
+    setErrorContrasena("");
   };
 
   // ── render ──────────────────────────────────────────────────────────────────
@@ -811,14 +867,133 @@ export function PerfilForm({
             <p className="text-sm font-medium text-foreground">Contraseña</p>
             <p className="text-xs text-muted-foreground">Cambiá tu contraseña de acceso.</p>
           </div>
-          <Link
-            href="/auth/recuperar-contrasena"
-            className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary"
-          >
-            <KeyRound className="h-4 w-4" />
-            Cambiar contraseña
-          </Link>
+          {!mostrarFormContrasena && (
+            <button
+              type="button"
+              onClick={() => { setMostrarFormContrasena(true); setExitoContrasena(""); }}
+              className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary"
+            >
+              <KeyRound className="h-4 w-4" />
+              Cambiar contraseña
+            </button>
+          )}
         </div>
+
+        {exitoContrasena && !mostrarFormContrasena && (
+          <div className="mt-4">
+            <MensajeExito texto={exitoContrasena} />
+          </div>
+        )}
+
+        {mostrarFormContrasena && (
+          <form onSubmit={handleCambiarContrasena} className="mt-5 flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="p-contrasena-actual" className="text-sm font-medium text-foreground">
+                Contraseña actual
+              </label>
+              <InputWrapper>
+                <FieldIcon icon={KeyRound} />
+                <input
+                  id="p-contrasena-actual"
+                  type={mostrarActual ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  value={contrasenaActual}
+                  onChange={(e) => setContrasenaActual(e.target.value)}
+                  placeholder="Tu contraseña actual"
+                  className={inputClassPassword}
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarActual((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-icon transition hover:text-foreground"
+                  aria-label={mostrarActual ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {mostrarActual ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </InputWrapper>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="p-contrasena-nueva" className="text-sm font-medium text-foreground">
+                Contraseña nueva
+              </label>
+              <InputWrapper>
+                <FieldIcon icon={KeyRound} />
+                <input
+                  id="p-contrasena-nueva"
+                  type={mostrarNueva ? "text" : "password"}
+                  autoComplete="new-password"
+                  required
+                  value={contrasenaNueva}
+                  onChange={(e) => setContrasenaNueva(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  className={inputClassPassword}
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarNueva((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-icon transition hover:text-foreground"
+                  aria-label={mostrarNueva ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {mostrarNueva ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </InputWrapper>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="p-repetir-contrasena" className="text-sm font-medium text-foreground">
+                Repetir contraseña nueva
+              </label>
+              <InputWrapper>
+                <FieldIcon icon={KeyRound} />
+                <input
+                  id="p-repetir-contrasena"
+                  type={mostrarRepetir ? "text" : "password"}
+                  autoComplete="new-password"
+                  required
+                  value={repetirContrasena}
+                  onChange={(e) => setRepetirContrasena(e.target.value)}
+                  placeholder="Repetí la contraseña nueva"
+                  className={inputClassPassword}
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarRepetir((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-icon transition hover:text-foreground"
+                  aria-label={mostrarRepetir ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {mostrarRepetir ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </InputWrapper>
+            </div>
+
+            {errorContrasena && <MensajeError texto={errorContrasena} />}
+
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="submit"
+                disabled={cargandoContrasena}
+                className="flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-6 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-60"
+              >
+                {cargandoContrasena ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+                {cargandoContrasena ? "Guardando…" : "Guardar"}
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelarContrasena}
+                disabled={cargandoContrasena}
+                className="flex h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-6 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        )}
       </div>
 
     </div>
