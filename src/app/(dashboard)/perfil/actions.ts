@@ -112,23 +112,11 @@ export async function subirAvatar(
     return { error: "La imagen no puede superar los 2 MB." };
   }
 
-  // Leer avatar_path actual para borrarlo
-  const { data: usuarioActual } = await supabaseAdmin
-    .from("usuarios")
-    .select("avatar_path")
-    .eq("id", user.id)
-    .single();
-
   const ext =
     file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : "webp";
   const nuevaRuta = `${user.id}/avatar-${Date.now()}.${ext}`;
 
-  // Borrar avatar anterior si existe
-  if (usuarioActual?.avatar_path) {
-    await supabaseAdmin.storage.from("avatares").remove([usuarioActual.avatar_path]);
-  }
-
-  // Subir nuevo avatar
+  // Subir al storage (nombre único, sin upsert)
   const buffer = await file.arrayBuffer();
   const { error: uploadError } = await supabaseAdmin.storage
     .from("avatares")
@@ -139,15 +127,17 @@ export async function subirAvatar(
     return { error: "Error al subir la imagen. Intentá de nuevo." };
   }
 
-  // Guardar ruta en DB
-  const { error: dbError } = await supabaseAdmin
-    .from("usuarios")
-    .update({ avatar_path: nuevaRuta })
-    .eq("id", user.id);
+  // Activar nuevo y desactivar anterior en una sola transacción
+  const { error: rpcError } = await supabaseAdmin.rpc("activar_archivo_usuario", {
+    p_usuario_id: user.id,
+    p_tipo: "avatar",
+    p_ruta: nuevaRuta,
+    p_nombre_original: file.name,
+    p_tamano: file.size,
+  });
 
-  if (dbError) {
-    console.error("subirAvatar: fallo update en usuarios:", dbError);
-    await supabaseAdmin.storage.from("avatares").remove([nuevaRuta]);
+  if (rpcError) {
+    console.error("subirAvatar: fallo RPC activar_archivo_usuario:", rpcError);
     return { error: "Error al guardar la foto. Intentá de nuevo." };
   }
 
@@ -162,20 +152,13 @@ export async function quitarAvatar(): Promise<{ error?: string }> {
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
 
-  const { data: usuarioActual } = await supabaseAdmin
-    .from("usuarios")
-    .select("avatar_path")
-    .eq("id", user.id)
-    .single();
-
-  if (usuarioActual?.avatar_path) {
-    await supabaseAdmin.storage.from("avatares").remove([usuarioActual.avatar_path]);
-  }
-
+  // Eliminación lógica: marcar el activo como inactivo, no borrar del bucket
   const { error } = await supabaseAdmin
-    .from("usuarios")
-    .update({ avatar_path: null })
-    .eq("id", user.id);
+    .from("archivos_usuario")
+    .update({ activo: false, desactivado_en: new Date().toISOString() })
+    .eq("usuario_id", user.id)
+    .eq("tipo", "avatar")
+    .eq("activo", true);
 
   if (error) return { error: "Error al quitar la foto. Intentá de nuevo." };
 
@@ -206,25 +189,30 @@ export async function subirCV(
     return { error: "El CV no puede superar los 5 MB." };
   }
 
-  const ruta = `${user.id}/cv.pdf`;
+  // Nombre único por timestamp para no sobrescribir archivos anteriores
+  const nuevaRuta = `${user.id}/cv-${Date.now()}.pdf`;
   const buffer = await file.arrayBuffer();
 
   const { error: uploadError } = await supabaseAdmin.storage
     .from("cvs")
-    .upload(ruta, buffer, { contentType: "application/pdf", upsert: true });
+    .upload(nuevaRuta, buffer, { contentType: "application/pdf" });
 
   if (uploadError) {
     console.error("subirCV: fallo upload a Storage:", uploadError);
     return { error: "Error al subir el CV. Intentá de nuevo." };
   }
 
-  const { error: dbError } = await supabaseAdmin
-    .from("postulantes")
-    .update({ cv_path: ruta })
-    .eq("usuario_id", user.id);
+  // Activar nuevo y desactivar anterior en una sola transacción
+  const { error: rpcError } = await supabaseAdmin.rpc("activar_archivo_usuario", {
+    p_usuario_id: user.id,
+    p_tipo: "cv",
+    p_ruta: nuevaRuta,
+    p_nombre_original: file.name,
+    p_tamano: file.size,
+  });
 
-  if (dbError) {
-    console.error("subirCV: fallo update en postulantes:", dbError);
+  if (rpcError) {
+    console.error("subirCV: fallo RPC activar_archivo_usuario:", rpcError);
     return { error: "Error al guardar la ruta del CV. Intentá de nuevo." };
   }
 
@@ -239,13 +227,13 @@ export async function eliminarCV(): Promise<{ error?: string }> {
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
 
-  const ruta = `${user.id}/cv.pdf`;
-  await supabaseAdmin.storage.from("cvs").remove([ruta]);
-
+  // Eliminación lógica: marcar el activo como inactivo, no borrar del bucket
   const { error } = await supabaseAdmin
-    .from("postulantes")
-    .update({ cv_path: null })
-    .eq("usuario_id", user.id);
+    .from("archivos_usuario")
+    .update({ activo: false, desactivado_en: new Date().toISOString() })
+    .eq("usuario_id", user.id)
+    .eq("tipo", "cv")
+    .eq("activo", true);
 
   if (error) return { error: "Error al eliminar el CV. Intentá de nuevo." };
 

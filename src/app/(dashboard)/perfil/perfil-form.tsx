@@ -91,15 +91,19 @@ interface PerfilFormProps {
     apellido: string;
     telefono: string;
     rol: string | null;
-    avatarPath: string | null;
-    avatarUrl: string | null;
+    avatarActivo: { ruta: string; url: string | null } | null;
   };
   postulante: {
     id: string;
     dni: string;
     domicilio: string;
-    cvPath: string | null;
-    cvUrl: string | null;
+    cvActivo: {
+      ruta: string;
+      nombreOriginal: string;
+      creadoEn: string;
+      tamano: number;
+      url: string | null;
+    } | null;
   };
   email: string;
   categorias: { id: string; nombre: string }[];
@@ -349,8 +353,8 @@ export function PerfilForm({
 
   // ── render ──────────────────────────────────────────────────────────────────
 
-  const avatarSrc = avatarPreview ?? usuario.avatarUrl ?? undefined;
-  const tieneAvatar = !!(usuario.avatarPath || avatarPreview);
+  const avatarSrc = avatarPreview ?? usuario.avatarActivo?.url ?? undefined;
+  const tieneAvatar = !!(usuario.avatarActivo || avatarPreview);
 
   return (
     <div className="flex flex-col gap-6">
@@ -430,6 +434,9 @@ export function PerfilForm({
             {errorAvatar && <MensajeError texto={errorAvatar} />}
           </div>
         </div>
+        <p className="mt-2 text-xs text-muted-icon">
+          Los archivos eliminados se conservan 90 días por seguridad y luego se borran definitivamente.
+        </p>
         <input
           ref={avatarInputRef}
           type="file"
@@ -686,7 +693,7 @@ export function PerfilForm({
       <div className="rounded-2xl border border-border bg-white px-6 py-6 shadow-sm">
         <SectionTitle>Curriculum Vitae</SectionTitle>
 
-        {!postulante.cvPath ? (
+        {!postulante.cvActivo ? (
           <div className="mt-4 flex flex-col gap-4">
             <div className="rounded-lg border border-border bg-secondary px-4 py-4">
               <p className="text-sm font-semibold text-foreground">
@@ -758,14 +765,26 @@ export function PerfilForm({
               <div className="flex items-center gap-3">
                 <FileText className="h-8 w-8 shrink-0 text-primary" />
                 <div>
-                  <p className="text-sm font-medium text-foreground">cv.pdf</p>
-                  <p className="text-xs text-muted-foreground">PDF · Ya subido</p>
+                  <p className="break-all text-sm font-medium text-foreground">
+                    {postulante.cvActivo.nombreOriginal}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {postulante.cvActivo.tamano > 0
+                      ? `${(postulante.cvActivo.tamano / 1024).toFixed(0)} KB · `
+                      : ""}
+                    PDF · Subido el{" "}
+                    {new Date(postulante.cvActivo.creadoEn).toLocaleDateString("es-AR", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {postulante.cvUrl && (
+                {postulante.cvActivo.url && (
                   <a
-                    href={postulante.cvUrl}
+                    href={postulante.cvActivo.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary"
@@ -847,6 +866,9 @@ export function PerfilForm({
           </div>
         )}
 
+        <p className="mt-2 text-xs text-muted-icon">
+          Los archivos eliminados se conservan 90 días por seguridad y luego se borran definitivamente.
+        </p>
         <input
           ref={cvInputRef}
           type="file"

@@ -15,18 +15,38 @@ export default async function PerfilPage() {
 
   if (!user) redirect("/auth/login");
 
-  const [usuarioResult, postulanteResult, categoriasResult] = await Promise.all([
+  const [
+    usuarioResult,
+    postulanteResult,
+    categoriasResult,
+    cvActivoResult,
+    avatarActivoResult,
+  ] = await Promise.all([
     supabase
       .from("usuarios")
-      .select("nombre, apellido, telefono, rol, avatar_path")
+      .select("nombre, apellido, telefono, rol")
       .eq("id", user.id)
       .single(),
     supabase
       .from("postulantes")
-      .select("id, dni, domicilio, cv_path, postulante_categorias(categoria_id)")
+      .select("id, dni, domicilio, postulante_categorias(categoria_id)")
       .eq("usuario_id", user.id)
       .single(),
     supabase.from("categorias").select("id, nombre").order("nombre"),
+    supabase
+      .from("archivos_usuario")
+      .select("ruta, nombre_original, creado_en, tamano")
+      .eq("usuario_id", user.id)
+      .eq("tipo", "cv")
+      .eq("activo", true)
+      .maybeSingle(),
+    supabase
+      .from("archivos_usuario")
+      .select("ruta, nombre_original")
+      .eq("usuario_id", user.id)
+      .eq("tipo", "avatar")
+      .eq("activo", true)
+      .maybeSingle(),
   ]);
 
   if (usuarioResult.error) {
@@ -63,20 +83,37 @@ export default async function PerfilPage() {
     ) ?? [];
 
   let avatarUrl: string | null = null;
-  if (usuario?.avatar_path) {
+  if (avatarActivoResult.data?.ruta) {
     const { data: signed } = await supabase.storage
       .from("avatares")
-      .createSignedUrl(usuario.avatar_path, 3600);
+      .createSignedUrl(avatarActivoResult.data.ruta, 3600);
     avatarUrl = signed?.signedUrl ?? null;
   }
 
   let cvUrl: string | null = null;
-  if (postulante?.cv_path) {
+  if (cvActivoResult.data?.ruta) {
     const { data: signed } = await supabase.storage
       .from("cvs")
-      .createSignedUrl(postulante.cv_path, 300);
+      .createSignedUrl(cvActivoResult.data.ruta, 300);
     cvUrl = signed?.signedUrl ?? null;
   }
+
+  const cvActivo = cvActivoResult.data
+    ? {
+        ruta: cvActivoResult.data.ruta,
+        nombreOriginal: cvActivoResult.data.nombre_original,
+        creadoEn: cvActivoResult.data.creado_en,
+        tamano: cvActivoResult.data.tamano,
+        url: cvUrl,
+      }
+    : null;
+
+  const avatarActivo = avatarActivoResult.data
+    ? {
+        ruta: avatarActivoResult.data.ruta,
+        url: avatarUrl,
+      }
+    : null;
 
   return (
     <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
@@ -89,15 +126,13 @@ export default async function PerfilPage() {
           apellido: usuario?.apellido ?? "",
           telefono: usuario?.telefono ?? "",
           rol: usuario?.rol ?? null,
-          avatarPath: usuario?.avatar_path ?? null,
-          avatarUrl,
+          avatarActivo,
         }}
         postulante={{
           id: postulante?.id ?? "",
           dni: postulante?.dni ?? "",
           domicilio: postulante?.domicilio ?? "",
-          cvPath: postulante?.cv_path ?? null,
-          cvUrl,
+          cvActivo,
         }}
         email={user.email ?? ""}
         categorias={categorias}
