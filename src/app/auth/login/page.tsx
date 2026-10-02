@@ -11,13 +11,17 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; redirect?: string }>;
+  searchParams: Promise<{ error?: string; redirect?: string; motivo?: string }>;
 }) {
-  const { error, redirect } = await searchParams;
+  const { error, redirect, motivo } = await searchParams;
   return (
     <>
       <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
-        <LoginForm confirmacionError={error === "confirmacion"} redirect={redirect} />
+        <LoginForm
+          confirmacionError={error === "confirmacion"}
+          inactividad={motivo === "inactividad"}
+          redirect={redirect}
+        />
       </main>
 
       <PublicFooter />

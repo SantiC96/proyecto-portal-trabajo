@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { Menu, X, LogIn, UserPlus, LogOut } from "lucide-react";
 import { RegisterModal } from "@/components/auth/register-modal";
 import { Avatar } from "@/components/ui/avatar";
@@ -39,6 +40,39 @@ export function Navbar({ session = null }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+    let cancelled = false;
+
+    // On each navigation, check if the server-rendered session matches the browser's.
+    // A mismatch means the layout is stale (e.g. inactivity signOut mid-navigation).
+    supabase.auth.getSession().then(({ data: { session: clientSession } }) => {
+      if (cancelled) return;
+      const clientHasSession = clientSession !== null;
+      const serverHasSession = session !== null;
+      if (clientHasSession !== serverHasSession) {
+        router.refresh();
+      }
+    });
+
+    // Also refresh when auth state changes in another tab (e.g. sign-out from another window)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, clientSession) => {
+      const clientHasSession = clientSession !== null;
+      const serverHasSession = session !== null;
+      if (clientHasSession !== serverHasSession) {
+        router.refresh();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [pathname, session, router]);
 
   function isActive(href: string): boolean {
     if (href === "/") return pathname === "/";

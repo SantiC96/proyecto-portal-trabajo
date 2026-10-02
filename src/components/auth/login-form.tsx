@@ -1,26 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle } from "lucide-react";
 import { RegisterModal } from "@/components/auth/register-modal";
 import { login } from "@/app/auth/actions";
 
 export function LoginForm({
   confirmacionError,
+  inactividad,
   redirect,
 }: {
   confirmacionError?: boolean;
+  inactividad?: boolean;
   redirect?: string;
 }) {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Belt-and-suspenders: force the root layout to re-render after an inactivity signOut
+  // so the navbar reflects the cleared session without needing a manual F5.
+  useEffect(() => {
+    if (inactividad) router.refresh();
+  }, [inactividad, router]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -65,6 +75,14 @@ export function LoginForm({
               No pudimos confirmar tu cuenta. El enlace puede haber vencido;
               intentá iniciar sesión o registrate de nuevo.
             </span>
+          </div>
+        )}
+
+        {/* Inactivity timeout banner */}
+        {inactividad && (
+          <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 mb-1">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>Tu sesión se cerró por inactividad. Iniciá sesión de nuevo.</span>
           </div>
         )}
 
