@@ -11,21 +11,30 @@ export async function SiteHeader() {
     return <Navbar />;
   }
 
-  const { data: u } = await supabase
-    .from("usuarios")
-    .select("nombre, apellido, rol, avatar_path")
-    .eq("id", user.id)
-    .single();
+  const [{ data: u }, { data: avatarActivo }] = await Promise.all([
+    supabase
+      .from("usuarios")
+      .select("nombre, apellido, rol")
+      .eq("id", user.id)
+      .single(),
+    supabase
+      .from("archivos_usuario")
+      .select("ruta")
+      .eq("usuario_id", user.id)
+      .eq("tipo", "avatar")
+      .eq("activo", true)
+      .maybeSingle(),
+  ]);
 
   const nombre = u?.nombre ?? (user.user_metadata?.nombre as string) ?? "";
   const apellido = u?.apellido ?? (user.user_metadata?.apellido as string) ?? "";
   const rol: string | null = u?.rol ?? null;
 
   let avatarUrl: string | null = null;
-  if (u?.avatar_path) {
+  if (avatarActivo?.ruta) {
     const { data: signed } = await supabase.storage
       .from("avatares")
-      .createSignedUrl(u.avatar_path, 3600);
+      .createSignedUrl(avatarActivo.ruta, 3600);
     avatarUrl = signed?.signedUrl ?? null;
   }
 
