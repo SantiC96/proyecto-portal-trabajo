@@ -57,7 +57,7 @@ Completar `.env.local` con los valores del proyecto en Supabase:
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Project Settings → API → Project URL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Project Settings → API → anon / public key |
-| `SUPABASE_SECRET_KEY` | Project Settings → API → service_role key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Project Settings → API → service_role key |
 | `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` en desarrollo local |
 
 ### 3. Migraciones
