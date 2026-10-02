@@ -1,9 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { traducirErrorAuth } from "@/lib/auth-errors";
+import { LAST_ACTIVITY_COOKIE } from "@/lib/session-config";
 
 function safeRedirect(to?: string): string {
   if (to && to.startsWith("/") && !to.startsWith("//")) return to;
@@ -104,5 +106,10 @@ export async function solicitarResetContrasena(
 export async function logout() {
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
+
+  // Remove activity cookie so a same-session re-login doesn't find a stale timestamp
+  const cookieStore = await cookies();
+  cookieStore.delete(LAST_ACTIVITY_COOKIE);
+
   redirect("/auth/login");
 }
