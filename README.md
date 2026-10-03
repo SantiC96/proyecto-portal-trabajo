@@ -111,8 +111,9 @@ npm run lint    # verificar errores de código
 | `/ofertas` | `src/app/ofertas/page.tsx` | Pública |
 | `/ofertas/[id]` | `src/app/ofertas/[id]/page.tsx` | Pública |
 | `/inicio` | `src/app/(dashboard)/inicio/page.tsx` | Requiere sesión |
-| `/empresa` | `src/app/empresa/page.tsx` | Pública (placeholder) |
-| `/admin` | `src/app/admin/page.tsx` | Pública (placeholder) |
+| `/empresa` | `src/app/empresa/page.tsx` | Solo rol `empresa` (aprobada) |
+| `/admin` | `src/app/admin/page.tsx` | Solo rol `municipalidad` |
+| `/admin/empresas` | `src/app/admin/empresas/page.tsx` | Solo rol `municipalidad` |
 
 > Los Route Handlers `/auth/callback` y `/auth/nueva-contrasena` son internos del flujo de autenticación y no son páginas navegables.
 
@@ -186,5 +187,6 @@ git push origin feat/nombre-tarea
 - [`CLAUDE.md`](CLAUDE.md) — convenciones de arquitectura, patrones y reglas del repositorio
 - [`docs/DESIGN_SYSTEM_Portal_Municipal_Empleo.md`](docs/DESIGN_SYSTEM_Portal_Municipal_Empleo.md) — tokens, colores, tipografía
 - [`docs/guias/`](docs/guias/) — guías técnicas (auth, emails, migraciones, RLS, variables de entorno…)
+- [`docs/guias/guia-usuarios-oficina.md`](docs/guias/guia-usuarios-oficina.md) — cómo crear un usuario con rol `municipalidad`
 - [`docs/guias/guia-nextjs-basico.md`](docs/guias/guia-nextjs-basico.md) — conceptos de Next.js 16, HTTP, hooks y Git
 - [`docs/decisiones/`](docs/decisiones/) — decisiones de arquitectura (ADRs)
