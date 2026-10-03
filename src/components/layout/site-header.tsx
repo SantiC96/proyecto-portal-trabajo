@@ -30,6 +30,11 @@ export async function SiteHeader() {
   const apellido = u?.apellido ?? (user.user_metadata?.apellido as string) ?? "";
   const rol: string | null = u?.rol ?? null;
 
+  const profileHref =
+    rol === "empresa" ? "/empresa" :
+    rol === "municipalidad" ? "/admin" :
+    "/perfil";
+
   let avatarUrl: string | null = null;
   if (avatarActivo?.ruta) {
     const { data: signed } = await supabase.storage
@@ -38,5 +43,5 @@ export async function SiteHeader() {
     avatarUrl = signed?.signedUrl ?? null;
   }
 
-  return <Navbar session={{ nombre, apellido, rol, avatarUrl }} />;
+  return <Navbar session={{ nombre, apellido, rol, avatarUrl, profileHref }} />;
 }
