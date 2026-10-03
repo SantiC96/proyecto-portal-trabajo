@@ -15,23 +15,33 @@ export default async function PerfilPage() {
 
   if (!user) redirect("/auth/login");
 
+  // Verify role FIRST — before querying any role-specific table.
+  // Next preloads navbar links, so /perfil executes for empresa/municipalidad users too.
+  // Querying postulantes before this check would generate spurious error logs.
+  const { data: usuario } = await supabase
+    .from("usuarios")
+    .select("nombre, apellido, telefono, rol")
+    .eq("id", user.id)
+    .single();
+
+  if (!usuario || usuario.rol !== "postulante") {
+    if (usuario?.rol === "empresa") redirect("/empresa");
+    if (usuario?.rol === "municipalidad") redirect("/admin");
+    redirect("/");
+  }
+
+  // Only postulantes reach here — run remaining queries in parallel
   const [
-    usuarioResult,
     postulanteResult,
     categoriasResult,
     cvActivoResult,
     avatarActivoResult,
   ] = await Promise.all([
     supabase
-      .from("usuarios")
-      .select("nombre, apellido, telefono, rol")
-      .eq("id", user.id)
-      .single(),
-    supabase
       .from("postulantes")
       .select("id, dni, domicilio, postulante_categorias(categoria_id)")
       .eq("usuario_id", user.id)
-      .single(),
+      .maybeSingle(),
     supabase.from("categorias").select("id, nombre").order("nombre"),
     supabase
       .from("archivos_usuario")
@@ -49,18 +59,10 @@ export default async function PerfilPage() {
       .maybeSingle(),
   ]);
 
-  if (usuarioResult.error) {
-    console.error("[perfil] Error al cargar datos del usuario:", usuarioResult.error);
-  }
-  if (postulanteResult.error) {
-    console.error("[perfil] Error al cargar datos del postulante:", postulanteResult.error);
-  }
-
-  const usuario = usuarioResult.data;
   const postulante = postulanteResult.data;
   const categorias = categoriasResult.data ?? [];
 
-  if (!usuario || !postulante) {
+  if (!postulante) {
     return (
       <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
         <h1 className="mb-8 text-2xl font-bold tracking-tight text-foreground">Mi perfil</h1>
@@ -78,7 +80,7 @@ export default async function PerfilPage() {
   }
 
   const categoriasSeleccionadas =
-    postulante?.postulante_categorias?.map(
+    postulante.postulante_categorias?.map(
       (r: { categoria_id: string }) => r.categoria_id
     ) ?? [];
 
@@ -122,16 +124,16 @@ export default async function PerfilPage() {
       </h1>
       <PerfilForm
         usuario={{
-          nombre: usuario?.nombre ?? "",
-          apellido: usuario?.apellido ?? "",
-          telefono: usuario?.telefono ?? "",
-          rol: usuario?.rol ?? null,
+          nombre: usuario.nombre ?? "",
+          apellido: usuario.apellido ?? "",
+          telefono: usuario.telefono ?? "",
+          rol: usuario.rol ?? null,
           avatarActivo,
         }}
         postulante={{
-          id: postulante?.id ?? "",
-          dni: postulante?.dni ?? "",
-          domicilio: postulante?.domicilio ?? "",
+          id: postulante.id ?? "",
+          dni: postulante.dni ?? "",
+          domicilio: postulante.domicilio ?? "",
           cvActivo,
         }}
         email={user.email ?? ""}

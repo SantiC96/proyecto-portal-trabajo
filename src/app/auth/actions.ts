@@ -89,6 +89,67 @@ export async function registrarPostulante(data: {
   redirect("/auth/verificar-email");
 }
 
+export async function registrarEmpresa(data: {
+  razonSocial: string;
+  cuit: string;
+  rubro: string;
+  descripcion: string;
+  nombre: string;
+  apellido: string;
+  telefono: string;
+  email: string;
+  password: string;
+}): Promise<{ error: string } | undefined> {
+  const supabase = await createSupabaseServerClient();
+
+  const {
+    data: { user: existingUser },
+  } = await supabase.auth.getUser();
+  if (existingUser) redirect("/");
+
+  const { data: authData, error: signUpError } = await supabase.auth.signUp({
+    email: data.email,
+    password: data.password,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+      data: {
+        nombre: data.nombre,
+        apellido: data.apellido,
+        telefono: data.telefono,
+        rol: "empresa",
+      },
+    },
+  });
+
+  if (signUpError) {
+    return { error: traducirErrorAuth(signUpError) };
+  }
+
+  if (!authData.user) {
+    return { error: "No se pudo crear el usuario. Intentá de nuevo." };
+  }
+
+  const { error: profileError } = await supabaseAdmin
+    .from("empresas")
+    .insert({
+      usuario_id: authData.user.id,
+      razon_social: data.razonSocial,
+      cuit: data.cuit,
+      rubro: data.rubro,
+      descripcion: data.descripcion || null,
+    });
+
+  if (profileError) {
+    await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+    if (profileError.code === "23505") {
+      return { error: "Ya existe una empresa registrada con ese CUIT." };
+    }
+    return { error: "Error al crear el perfil de empresa. Intentá de nuevo." };
+  }
+
+  redirect("/auth/verificar-email-empresa");
+}
+
 export async function solicitarResetContrasena(
   formData: FormData
 ): Promise<void> {
