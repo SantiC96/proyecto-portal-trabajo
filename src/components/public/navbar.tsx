@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { Menu, X, LogIn, UserPlus, LogOut } from "lucide-react";
 import { RegisterModal } from "@/components/auth/register-modal";
-import { Avatar } from "@/components/ui/avatar";
+import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { logout } from "@/app/auth/actions";
 
 type NavbarSession = {
@@ -15,6 +15,7 @@ type NavbarSession = {
   apellido: string;
   rol?: string | null;
   avatarUrl?: string | null;
+  ajuste?: { x: number; y: number; zoom: number } | null;
   profileHref: string;
 };
 
@@ -179,10 +180,10 @@ export function Navbar({ session = null }: NavbarProps) {
                 href={session.profileHref}
                 className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition hover:bg-surface-tinted focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
-                <Avatar
+                <AvatarAjustado
                   src={session.avatarUrl}
-                  nombre={session.nombre}
-                  apellido={session.apellido}
+                  alt={`Foto de ${session.nombre} ${session.apellido}`.trim()}
+                  ajuste={session.ajuste ?? undefined}
                   size="sm"
                 />
                 <div className="text-left leading-tight">
@@ -265,10 +266,10 @@ export function Navbar({ session = null }: NavbarProps) {
                     onClick={() => setMobileMenuOpen(false)}
                     className="flex items-center gap-3 rounded-lg px-3 py-3 transition hover:bg-surface-tinted focus:outline-none focus:ring-2 focus:ring-primary/30"
                   >
-                    <Avatar
+                    <AvatarAjustado
                       src={session.avatarUrl}
-                      nombre={session.nombre}
-                      apellido={session.apellido}
+                      alt={`Foto de ${session.nombre} ${session.apellido}`.trim()}
+                      ajuste={session.ajuste ?? undefined}
                       size="sm"
                     />
                     <div>

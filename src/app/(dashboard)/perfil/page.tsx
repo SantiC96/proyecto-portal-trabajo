@@ -52,7 +52,7 @@ export default async function PerfilPage() {
       .maybeSingle(),
     supabase
       .from("archivos_usuario")
-      .select("ruta, nombre_original")
+      .select("ruta, nombre_original, ajuste_x, ajuste_y, ajuste_zoom")
       .eq("usuario_id", user.id)
       .eq("tipo", "avatar")
       .eq("activo", true)
@@ -114,6 +114,11 @@ export default async function PerfilPage() {
     ? {
         ruta: avatarActivoResult.data.ruta,
         url: avatarUrl,
+        ajuste: {
+          x: Number(avatarActivoResult.data.ajuste_x ?? 50),
+          y: Number(avatarActivoResult.data.ajuste_y ?? 50),
+          zoom: Number(avatarActivoResult.data.ajuste_zoom ?? 1),
+        },
       }
     : null;
 

@@ -5,6 +5,7 @@ export type SesionData = {
   apellido: string;
   rol: string | null;
   avatarUrl: string | null;
+  ajuste: { x: number; y: number; zoom: number } | null;
   profileHref: string;
 };
 
@@ -24,7 +25,7 @@ export async function obtenerSesionActual(): Promise<SesionData | null> {
       .single(),
     supabase
       .from("archivos_usuario")
-      .select("ruta")
+      .select("ruta, ajuste_x, ajuste_y, ajuste_zoom")
       .eq("usuario_id", user.id)
       .eq("tipo", "avatar")
       .eq("activo", true)
@@ -48,5 +49,13 @@ export async function obtenerSesionActual(): Promise<SesionData | null> {
     avatarUrl = signed?.signedUrl ?? null;
   }
 
-  return { nombre, apellido, rol, avatarUrl, profileHref };
+  const ajuste = avatarActivo
+    ? {
+        x: Number(avatarActivo.ajuste_x ?? 50),
+        y: Number(avatarActivo.ajuste_y ?? 50),
+        zoom: Number(avatarActivo.ajuste_zoom ?? 1),
+      }
+    : null;
+
+  return { nombre, apellido, rol, avatarUrl, ajuste, profileHref };
 }

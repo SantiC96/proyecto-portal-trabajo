@@ -19,7 +19,8 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { Avatar } from "@/components/ui/avatar";
+import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
+import { FotoPerfilModal } from "@/components/ui/foto-perfil-modal";
 import { MultiCombobox } from "@/components/ui/multi-combobox";
 import {
   actualizarPerfil,
@@ -30,6 +31,8 @@ import {
   eliminarCV,
   cambiarContrasena,
 } from "./actions";
+
+type AjusteAvatar = { x: number; y: number; zoom: number };
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -93,7 +96,7 @@ interface PerfilFormProps {
     apellido: string;
     telefono: string;
     rol: string | null;
-    avatarActivo: { ruta: string; url: string | null } | null;
+    avatarActivo: { ruta: string; url: string | null; ajuste: AjusteAvatar } | null;
   };
   postulante: {
     id: string;
@@ -151,6 +154,15 @@ export function PerfilForm({
   const [guardandoAvatar, setGuardandoAvatar] = useState(false);
   const [errorAvatar, setErrorAvatar] = useState<string | null>(null);
 
+  // Modal foto
+  const [modalFotoAbierto, setModalFotoAbierto] = useState(false);
+  const [modalModo, setModalModo] = useState<"ver" | "ajustar">("ver");
+  const [ajusteActual, setAjusteActual] = useState<AjusteAvatar>(
+    usuario.avatarActivo?.ajuste ?? { x: 50, y: 50, zoom: 1 }
+  );
+  // Flag para abrir el editor automáticamente tras subir una foto nueva
+  const abrirEditorTrasRefresh = useRef(false);
+
   // CV
   const cvInputRef = useRef<HTMLInputElement>(null);
   const [cvFile, setCvFile] = useState<File | null>(null);
@@ -177,6 +189,16 @@ export function PerfilForm({
       if (avatarPreview) URL.revokeObjectURL(avatarPreview);
     };
   }, [avatarPreview]);
+
+  // Abrir editor de ajuste cuando llega el nuevo avatarActivo tras subir foto
+  useEffect(() => {
+    if (abrirEditorTrasRefresh.current && usuario.avatarActivo) {
+      abrirEditorTrasRefresh.current = false;
+      setAjusteActual({ x: 50, y: 50, zoom: 1 });
+      setModalModo("ajustar");
+      setModalFotoAbierto(true);
+    }
+  }, [usuario.avatarActivo]);
 
   // ── handlers datos personales ────────────────────────────────────────────────
 
@@ -232,6 +254,8 @@ export function PerfilForm({
         if (avatarPreview) URL.revokeObjectURL(avatarPreview);
         setAvatarPreview(null);
         setAvatarFile(null);
+        // El editor se abre cuando llega el nuevo avatarActivo tras el refresh
+        abrirEditorTrasRefresh.current = true;
         router.refresh();
       }
     } catch {
@@ -384,6 +408,7 @@ export function PerfilForm({
 
   const avatarSrc = avatarPreview ?? usuario.avatarActivo?.url ?? undefined;
   const tieneAvatar = !!(usuario.avatarActivo || avatarPreview);
+  const puedeVerFoto = !!(usuario.avatarActivo && !avatarPreview);
 
   return (
     <div className="flex flex-col gap-6">
@@ -393,12 +418,31 @@ export function PerfilForm({
         <SectionTitle>Foto de perfil</SectionTitle>
         <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
           <div className="shrink-0">
-            <Avatar
-              src={avatarSrc}
-              nombre={usuario.nombre}
-              apellido={usuario.apellido}
-              size="lg"
-            />
+            {puedeVerFoto ? (
+              <button
+                type="button"
+                className="cursor-zoom-in rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40"
+                aria-label="Ver foto de perfil"
+                onClick={() => {
+                  setModalModo("ver");
+                  setModalFotoAbierto(true);
+                }}
+              >
+                <AvatarAjustado
+                  src={avatarSrc}
+                  alt={`Foto de ${usuario.nombre} ${usuario.apellido}`.trim()}
+                  ajuste={ajusteActual}
+                  size="lg"
+                />
+              </button>
+            ) : (
+              <AvatarAjustado
+                src={avatarSrc}
+                alt={`Foto de ${usuario.nombre} ${usuario.apellido}`.trim()}
+                ajuste={ajusteActual}
+                size="lg"
+              />
+            )}
           </div>
           <div className="flex flex-1 flex-col gap-3">
             {avatarPreview ? (
@@ -871,6 +915,21 @@ export function PerfilForm({
           }}
         />
       </div>
+
+      {/* ── Modal foto de perfil ───────────────────────────────────────────── */}
+      {modalFotoAbierto && usuario.avatarActivo?.url && (
+        <FotoPerfilModal
+          src={usuario.avatarActivo.url}
+          nombre={usuario.nombre}
+          ajusteInicial={ajusteActual}
+          modoInicial={modalModo}
+          onClose={() => setModalFotoAbierto(false)}
+          onGuardado={(nuevoAjuste) => {
+            setAjusteActual(nuevoAjuste);
+            setModalFotoAbierto(false);
+          }}
+        />
+      )}
 
       {/* ── 5. Contraseña ──────────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-border bg-white px-6 py-5 shadow-sm">
