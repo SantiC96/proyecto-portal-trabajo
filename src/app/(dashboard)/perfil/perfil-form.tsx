@@ -134,6 +134,7 @@ export function PerfilForm({
   const [apellido, setApellido] = useState(usuario.apellido);
   const [telefono, setTelefono] = useState(usuario.telefono);
   const [domicilio, setDomicilio] = useState(postulante.domicilio);
+  const [dni, setDni] = useState(postulante.dni);
 
   // Modo edición — rubros de interés
   const [modoEdicionRubros, setModoEdicionRubros] = useState(false);
@@ -184,6 +185,7 @@ export function PerfilForm({
     setApellido(usuario.apellido);
     setTelefono(usuario.telefono);
     setDomicilio(postulante.domicilio);
+    setDni(postulante.dni);
     setErrorDatos(null);
     setExitoDatos(false);
     setModoEdicionDatos(false);
@@ -264,7 +266,7 @@ export function PerfilForm({
     setGuardandoDatos(true);
     setErrorDatos(null);
     setExitoDatos(false);
-    const result = await actualizarPerfil({ nombre, apellido, telefono, domicilio });
+    const result = await actualizarPerfil({ nombre, apellido, telefono, domicilio, dni });
     if (result?.error) {
       setErrorDatos(result.error);
     } else {
@@ -272,6 +274,7 @@ export function PerfilForm({
       setApellido(apellido.trim());
       setTelefono(telefono.trim());
       setDomicilio(domicilio.trim());
+      setDni(dni.replace(/\D/g, ""));
       setExitoDatos(true);
       setModoEdicionDatos(false);
       router.refresh();
@@ -500,7 +503,7 @@ export function PerfilForm({
               <CampoLectura label="Apellido" valor={apellido} />
               <CampoLectura label="Teléfono / Celular" valor={telefono} />
               <CampoLectura label="Domicilio" valor={domicilio} />
-              <CampoLectura label="DNI" valor={postulante.dni} />
+              <CampoLectura label="DNI" valor={dni} />
               <CampoLectura label="Email" valor={email} />
             </div>
           ) : (
@@ -583,17 +586,20 @@ export function PerfilForm({
 
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="p-dni" className="text-sm font-medium text-foreground">
-                  DNI <span className="ml-1 text-xs font-normal text-muted-icon">(no editable)</span>
+                  DNI <span className="text-red-500">*</span>
                 </label>
                 <InputWrapper>
                   <FieldIcon icon={CreditCard} />
                   <input
                     id="p-dni"
                     type="text"
-                    readOnly
-                    value={postulante.dni}
-                    className={inputReadonlyClass}
-                    tabIndex={-1}
+                    inputMode="numeric"
+                    autoComplete="off"
+                    required
+                    value={dni}
+                    onChange={(e) => setDni(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                    placeholder="12345678"
+                    className={inputClass}
                   />
                 </InputWrapper>
               </div>
