@@ -82,6 +82,10 @@ export function RegistroPostulanteForm() {
       );
       return;
     }
+    if (dni.length < 7 || dni.length > 8) {
+      setSubmitError("El DNI debe tener 7 u 8 números.");
+      return;
+    }
 
     setSubmitError(null);
     setIsLoading(true);

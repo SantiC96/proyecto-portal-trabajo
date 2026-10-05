@@ -59,6 +59,11 @@ export async function registrarPostulante(data: {
   } = await supabase.auth.getUser();
   if (existingUser) redirect("/");
 
+  const dniLimpio = data.dni.replace(/\D/g, "");
+  if (dniLimpio.length < 7 || dniLimpio.length > 8) {
+    return { error: "El DNI debe tener 7 u 8 números." };
+  }
+
   const { data: authData, error: signUpError } = await supabase.auth.signUp({
     email: data.email,
     password: data.password,
@@ -83,7 +88,7 @@ export async function registrarPostulante(data: {
 
   const { error: profileError } = await supabaseAdmin
     .from("postulantes")
-    .insert({ usuario_id: authData.user.id, dni: data.dni, domicilio: data.domicilio });
+    .insert({ usuario_id: authData.user.id, dni: dniLimpio, domicilio: data.domicilio });
 
   if (profileError) {
     await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
