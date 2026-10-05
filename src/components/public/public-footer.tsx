@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
+import { AuthLink } from "@/components/auth/auth-link";
 
 export function PublicFooter() {
   const pathname = usePathname();
@@ -65,19 +66,19 @@ export function PublicFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/auth/login" className="hover:text-primary hover:underline">
+                <AuthLink href="/auth/login" className="hover:text-primary hover:underline">
                   Iniciar sesión (Postulantes y Empresas)
-                </Link>
+                </AuthLink>
               </li>
               <li>
-                <Link href="/auth/registro" className="hover:text-primary hover:underline">
+                <AuthLink href="/auth/registro" className="hover:text-primary hover:underline">
                   Registro para Postulantes
-                </Link>
+                </AuthLink>
               </li>
               <li>
-                <Link href="/auth/registro?tipo=empresa" className="hover:text-primary hover:underline">
+                <AuthLink href="/auth/registro?tipo=empresa" className="hover:text-primary hover:underline">
                   Registro para Empresas
-                </Link>
+                </AuthLink>
               </li>
             </ul>
           </div>

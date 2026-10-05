@@ -2,10 +2,10 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { OfertaLaboral } from "@/types/oferta";
 import { JobCard } from "@/components/public/job-card";
 import { Search, Filter, X, LogIn, UserPlus, AlertCircle } from "lucide-react";
+import { AuthLink } from "@/components/auth/auth-link";
 
 interface JobDirectoryProps {
   ofertas: OfertaLaboral[];
@@ -256,14 +256,14 @@ export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
                 <span>Ir al formulario de Login</span>
               </button>
 
-              <Link
+              <AuthLink
                 href="/auth/registro"
                 onClick={() => setApplyModalOferta(null)}
                 className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white font-medium text-foreground transition hover:border-primary hover:text-primary"
               >
                 <UserPlus className="h-4 w-4" />
                 <span>¿No tenés cuenta? Registrate gratis</span>
-              </Link>
+              </AuthLink>
             </div>
           </div>
         </div>

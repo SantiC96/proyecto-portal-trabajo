@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { UserCheck, FileText, MessagesSquare, CheckCircle, Building2, ArrowRight } from "lucide-react";
+import { AuthLink } from "@/components/auth/auth-link";
 
 export function HowItWorks() {
   return (
@@ -91,19 +91,19 @@ export function HowItWorks() {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col shrink-0">
-              <Link
+              <AuthLink
                 href="/auth/registro?tipo=empresa"
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-primary-hover shadow-sm transition hover:bg-gray-100"
               >
                 <span>Registrar empresa</span>
                 <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
+              </AuthLink>
+              <AuthLink
                 href="/auth/login"
                 className="inline-flex h-12 items-center justify-center rounded-xl border border-white/30 px-5 text-sm font-semibold text-white transition hover:bg-white/10"
               >
                 Acceso a panel de empresa
-              </Link>
+              </AuthLink>
             </div>
           </div>
         </div>
