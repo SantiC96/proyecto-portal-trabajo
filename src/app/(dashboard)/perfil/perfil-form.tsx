@@ -20,8 +20,10 @@ import {
   EyeOff,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
+import { MultiCombobox } from "@/components/ui/multi-combobox";
 import {
   actualizarPerfil,
+  actualizarRubros,
   subirAvatar,
   quitarAvatar,
   subirCV,
@@ -121,20 +123,25 @@ export function PerfilForm({
 }: PerfilFormProps) {
   const router = useRouter();
 
-  // Modo edición
-  const [modoEdicion, setModoEdicion] = useState(false);
+  // Modo edición — datos personales
+  const [modoEdicionDatos, setModoEdicionDatos] = useState(false);
+  const [guardandoDatos, setGuardandoDatos] = useState(false);
+  const [errorDatos, setErrorDatos] = useState<string | null>(null);
+  const [exitoDatos, setExitoDatos] = useState(false);
 
   // Datos personales
   const [nombre, setNombre] = useState(usuario.nombre);
   const [apellido, setApellido] = useState(usuario.apellido);
   const [telefono, setTelefono] = useState(usuario.telefono);
   const [domicilio, setDomicilio] = useState(postulante.domicilio);
-  const [categoriaIds, setCategoriaIds] = useState<string[]>(categoriasIniciales);
 
-  // Guardar datos
-  const [guardandoPerfil, setGuardandoPerfil] = useState(false);
-  const [errorPerfil, setErrorPerfil] = useState<string | null>(null);
-  const [exitoPerfil, setExitoPerfil] = useState(false);
+  // Modo edición — rubros de interés
+  const [modoEdicionRubros, setModoEdicionRubros] = useState(false);
+  const [guardandoRubros, setGuardandoRubros] = useState(false);
+  const [errorRubros, setErrorRubros] = useState<string | null>(null);
+  const [exitoRubros, setExitoRubros] = useState(false);
+
+  const [categoriaIds, setCategoriaIds] = useState<string[]>(categoriasIniciales);
 
   // Avatar
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -169,23 +176,25 @@ export function PerfilForm({
     };
   }, [avatarPreview]);
 
-  // ── modo edición ────────────────────────────────────────────────────────────
+  // ── handlers datos personales ────────────────────────────────────────────────
 
-  const handleEditarDatos = () => {
-    setExitoPerfil(false);
-    setErrorPerfil(null);
-    setModoEdicion(true);
-  };
-
-  const handleCancelar = () => {
+  const handleCancelarDatos = () => {
     setNombre(usuario.nombre);
     setApellido(usuario.apellido);
     setTelefono(usuario.telefono);
     setDomicilio(postulante.domicilio);
+    setErrorDatos(null);
+    setExitoDatos(false);
+    setModoEdicionDatos(false);
+  };
+
+  // ── handlers rubros ──────────────────────────────────────────────────────────
+
+  const handleCancelarRubros = () => {
     setCategoriaIds(categoriasIniciales);
-    setErrorPerfil(null);
-    setExitoPerfil(false);
-    setModoEdicion(false);
+    setErrorRubros(null);
+    setExitoRubros(false);
+    setModoEdicionRubros(false);
   };
 
   // ── avatar handlers ─────────────────────────────────────────────────────────
@@ -247,27 +256,44 @@ export function PerfilForm({
     setGuardandoAvatar(false);
   };
 
-  // ── guardar perfil ──────────────────────────────────────────────────────────
+  // ── guardar datos personales ─────────────────────────────────────────────────
 
-  const handleGuardarPerfil = async (e: React.FormEvent) => {
+  const handleGuardarDatos = async (e: React.FormEvent) => {
     e.preventDefault();
-    setGuardandoPerfil(true);
-    setErrorPerfil(null);
-    setExitoPerfil(false);
-    const result = await actualizarPerfil({ nombre, apellido, telefono, domicilio, categoriaIds });
+    setGuardandoDatos(true);
+    setErrorDatos(null);
+    setExitoDatos(false);
+    const result = await actualizarPerfil({ nombre, apellido, telefono, domicilio });
     if (result?.error) {
-      setErrorPerfil(result.error);
+      setErrorDatos(result.error);
     } else {
-      // Normalizar estado con los valores guardados
       setNombre(nombre.trim());
       setApellido(apellido.trim());
       setTelefono(telefono.trim());
       setDomicilio(domicilio.trim());
-      setExitoPerfil(true);
-      setModoEdicion(false);
+      setExitoDatos(true);
+      setModoEdicionDatos(false);
       router.refresh();
     }
-    setGuardandoPerfil(false);
+    setGuardandoDatos(false);
+  };
+
+  // ── guardar rubros ───────────────────────────────────────────────────────────
+
+  const handleGuardarRubros = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGuardandoRubros(true);
+    setErrorRubros(null);
+    setExitoRubros(false);
+    const result = await actualizarRubros(categoriaIds);
+    if (result?.error) {
+      setErrorRubros(result.error);
+    } else {
+      setExitoRubros(true);
+      setModoEdicionRubros(false);
+      router.refresh();
+    }
+    setGuardandoRubros(false);
   };
 
   // ── cv handlers ─────────────────────────────────────────────────────────────
@@ -450,17 +476,15 @@ export function PerfilForm({
         />
       </div>
 
-      {/* ── 2-3. Datos personales + Rubros ─────────────────────────────────── */}
-      <form onSubmit={handleGuardarPerfil} className="flex flex-col gap-6">
-
-        {/* Datos personales */}
+      {/* ── 2. Datos personales ────────────────────────────────────────────── */}
+      <form onSubmit={handleGuardarDatos}>
         <div className="rounded-2xl border border-border bg-white px-6 py-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
             <SectionTitle>Datos personales</SectionTitle>
-            {!modoEdicion && (
+            {!modoEdicionDatos && (
               <button
                 type="button"
-                onClick={handleEditarDatos}
+                onClick={() => { setExitoDatos(false); setErrorDatos(null); setModoEdicionDatos(true); }}
                 className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-medium text-muted-foreground-strong transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <Pencil className="h-3.5 w-3.5" />
@@ -469,7 +493,7 @@ export function PerfilForm({
             )}
           </div>
 
-          {!modoEdicion ? (
+          {!modoEdicionDatos ? (
             /* ── Modo lectura ── */
             <div className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
               <CampoLectura label="Nombre" valor={nombre} />
@@ -592,15 +616,61 @@ export function PerfilForm({
               </div>
             </div>
           )}
+
+          {modoEdicionDatos && (
+            <div className="mt-6 flex flex-col gap-4">
+              {errorDatos && <MensajeError texto={errorDatos} />}
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="submit"
+                  disabled={guardandoDatos}
+                  className="flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-8 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {guardandoDatos ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
+                  {guardandoDatos ? "Guardando…" : "Guardar datos"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelarDatos}
+                  disabled={guardandoDatos}
+                  className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-8 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!modoEdicionDatos && exitoDatos && (
+            <MensajeExito texto="¡Datos actualizados correctamente!" />
+          )}
         </div>
+      </form>
 
-        {/* Rubros de interés */}
+      {/* ── 3. Rubros de interés ───────────────────────────────────────────── */}
+      <form onSubmit={handleGuardarRubros}>
         <div className="rounded-2xl border border-border bg-white px-6 py-6 shadow-sm">
-          <SectionTitle>Rubros de interés</SectionTitle>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <SectionTitle>Rubros de interés</SectionTitle>
+            {!modoEdicionRubros && (
+              <button
+                type="button"
+                onClick={() => { setExitoRubros(false); setErrorRubros(null); setModoEdicionRubros(true); }}
+                className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-medium text-muted-foreground-strong transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Editar rubros
+              </button>
+            )}
+          </div>
 
-          {!modoEdicion ? (
+          {!modoEdicionRubros ? (
             /* ── Modo lectura ── */
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               {categoriaIds.length > 0 ? (
                 categorias
                   .filter((c) => categoriaIds.includes(c.id))
@@ -624,69 +694,43 @@ export function PerfilForm({
               <p className="mb-4 mt-1 text-sm text-muted-foreground">
                 Seleccioná los rubros en los que te gustaría trabajar.
               </p>
-              <div className="flex flex-wrap gap-2">
-                {categorias.map((cat) => {
-                  const seleccionado = categoriaIds.includes(cat.id);
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() =>
-                        setCategoriaIds((prev) =>
-                          prev.includes(cat.id)
-                            ? prev.filter((c) => c !== cat.id)
-                            : [...prev, cat.id]
-                        )
-                      }
-                      className={`rounded-full border px-4 py-1.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-                        seleccionado
-                          ? "border-primary bg-primary text-white"
-                          : "border-border bg-background text-muted-foreground-strong hover:border-primary/50 hover:text-primary"
-                      }`}
-                    >
-                      {cat.nombre}
-                    </button>
-                  );
-                })}
+              <MultiCombobox
+                opciones={categorias}
+                seleccionados={categoriaIds}
+                onChange={setCategoriaIds}
+                placeholder="Buscá o elegí rubros…"
+                id="rubros-combobox"
+              />
+              {errorRubros && <MensajeError texto={errorRubros} />}
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="submit"
+                  disabled={guardandoRubros}
+                  className="flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-8 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {guardandoRubros ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
+                  {guardandoRubros ? "Guardando…" : "Guardar rubros"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelarRubros}
+                  disabled={guardandoRubros}
+                  className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-8 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
+                >
+                  Cancelar
+                </button>
               </div>
             </>
           )}
+
+          {!modoEdicionRubros && exitoRubros && (
+            <MensajeExito texto="¡Rubros actualizados correctamente!" />
+          )}
         </div>
-
-        {/* Mensajes y botones de acción — solo en modo edición */}
-        {modoEdicion && (
-          <>
-            {errorPerfil && <MensajeError texto={errorPerfil} />}
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="submit"
-                disabled={guardandoPerfil}
-                className="flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-8 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {guardandoPerfil ? (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                ) : (
-                  <CheckCircle2 className="h-4 w-4" />
-                )}
-                {guardandoPerfil ? "Guardando…" : "Guardar cambios"}
-              </button>
-              <button
-                type="button"
-                onClick={handleCancelar}
-                disabled={guardandoPerfil}
-                className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-8 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
-              >
-                Cancelar
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* Mensaje de éxito — solo en modo lectura, después de guardar */}
-        {!modoEdicion && exitoPerfil && (
-          <MensajeExito texto="¡Perfil actualizado correctamente!" />
-        )}
-
       </form>
 
       {/* ── 4. CV ──────────────────────────────────────────────────────────── */}

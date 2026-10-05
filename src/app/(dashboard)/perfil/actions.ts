@@ -6,7 +6,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { traducirErrorAuth } from "@/lib/auth-errors";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Actualizar datos personales + rubros de interés
+// Actualizar datos personales
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function actualizarPerfil(data: {
@@ -14,7 +14,6 @@ export async function actualizarPerfil(data: {
   apellido: string;
   telefono: string;
   domicilio: string;
-  categoriaIds: string[];
 }): Promise<{ error?: string; exito?: boolean }> {
   const supabase = await createSupabaseServerClient();
   const {
@@ -22,23 +21,10 @@ export async function actualizarPerfil(data: {
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
 
-  // Validación básica
   if (!data.nombre.trim() || !data.apellido.trim()) {
     return { error: "El nombre y el apellido son obligatorios." };
   }
 
-  // Obtener el id del postulante (nunca del cliente)
-  const { data: postulante, error: postulanteError } = await supabaseAdmin
-    .from("postulantes")
-    .select("id")
-    .eq("usuario_id", user.id)
-    .single();
-
-  if (postulanteError || !postulante) {
-    return { error: "No se encontró el perfil del postulante." };
-  }
-
-  // Actualizar usuarios y postulantes en paralelo
   const [usuariosResult, postulanteResult] = await Promise.all([
     supabaseAdmin
       .from("usuarios")
@@ -61,7 +47,46 @@ export async function actualizarPerfil(data: {
     return { error: "Error al guardar el domicilio. Intentá de nuevo." };
   }
 
-  // Actualizar rubros: borrar los anteriores e insertar los nuevos
+  revalidatePath("/perfil");
+  return { exito: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Actualizar rubros de interés
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function actualizarRubros(
+  categoriaIds: string[]
+): Promise<{ error?: string; exito?: boolean }> {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado." };
+
+  const ids = [...new Set(categoriaIds)];
+
+  const { data: postulante, error: postulanteError } = await supabaseAdmin
+    .from("postulantes")
+    .select("id")
+    .eq("usuario_id", user.id)
+    .single();
+
+  if (postulanteError || !postulante) {
+    return { error: "No se encontró el perfil del postulante." };
+  }
+
+  if (ids.length > 0) {
+    const { data: categoriasExistentes } = await supabaseAdmin
+      .from("categorias")
+      .select("id")
+      .in("id", ids);
+
+    if (!categoriasExistentes || categoriasExistentes.length !== ids.length) {
+      return { error: "Algunas categorías no son válidas." };
+    }
+  }
+
   const { error: deleteError } = await supabaseAdmin
     .from("postulante_categorias")
     .delete()
@@ -71,8 +96,8 @@ export async function actualizarPerfil(data: {
     return { error: "Error al actualizar los rubros. Intentá de nuevo." };
   }
 
-  if (data.categoriaIds.length > 0) {
-    const filas = data.categoriaIds.map((cid) => ({
+  if (ids.length > 0) {
+    const filas = ids.map((cid) => ({
       postulante_id: postulante.id,
       categoria_id: cid,
     }));
