@@ -107,7 +107,7 @@ npm run lint    # verificar errores de código
 | `/auth/verificar-email` | `src/app/auth/verificar-email/page.tsx` | Pública |
 | `/auth/recuperar-contrasena` | `src/app/auth/recuperar-contrasena/page.tsx` | Pública |
 | `/auth/reset-enviado` | `src/app/auth/reset-enviado/page.tsx` | Pública |
-| `/auth/nueva-contrasena/formulario` | `src/app/auth/nueva-contrasena/formulario/page.tsx` | Pública (token en URL) |
+| `/auth/nueva-contrasena` | `src/app/auth/nueva-contrasena/page.tsx` | Pública (token en URL o cookie de reintento) |
 | `/ofertas` | `src/app/ofertas/page.tsx` | Pública |
 | `/ofertas/[id]` | `src/app/ofertas/[id]/page.tsx` | Pública |
 | `/inicio` | `src/app/(dashboard)/inicio/page.tsx` | Requiere sesión |
@@ -115,7 +115,7 @@ npm run lint    # verificar errores de código
 | `/admin` | `src/app/admin/page.tsx` | Solo rol `municipalidad` |
 | `/admin/empresas` | `src/app/admin/empresas/page.tsx` | Solo rol `municipalidad` |
 
-> Los Route Handlers `/auth/callback` y `/auth/nueva-contrasena` son internos del flujo de autenticación y no son páginas navegables.
+> El Route Handler `/auth/callback` es interno del flujo de autenticación y no es una página navegable. `/auth/nueva-contrasena` es una página pública accesible desde el link del email de recuperación.
 
 ---
 
