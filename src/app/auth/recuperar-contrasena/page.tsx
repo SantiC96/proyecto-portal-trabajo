@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Mail, AlertCircle } from "lucide-react";
+import { Mail, AlertCircle, Send } from "lucide-react";
 import { PublicFooter } from "@/components/public/public-footer";
 import { solicitarResetContrasena } from "@/app/auth/actions";
+import { SubmitButton } from "@/components/auth/submit-button";
 
 export const metadata: Metadata = {
   title: "Recuperar contraseña | Portal de Empleo Funes",
@@ -63,12 +64,9 @@ export default async function RecuperarContrasenaPage({
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
+            <SubmitButton pendingText="Enviando enlace…" icon={<Send className="h-4 w-4" />}>
               Enviar enlace
-            </button>
+            </SubmitButton>
           </form>
 
           <p className="mt-6 text-center text-xs text-muted-icon">
