@@ -153,7 +153,8 @@ export function PerfilForm({
   // CV
   const cvInputRef = useRef<HTMLInputElement>(null);
   const [cvFile, setCvFile] = useState<File | null>(null);
-  const [guardandoCV, setGuardandoCV] = useState(false);
+  const [subiendoCV, setSubiendoCV] = useState(false);
+  const [eliminandoCV, setEliminandoCV] = useState(false);
   const [errorCV, setErrorCV] = useState<string | null>(null);
   const [exitoCV, setExitoCV] = useState(false);
 
@@ -298,7 +299,9 @@ export function PerfilForm({
 
   // ── cv handlers ─────────────────────────────────────────────────────────────
 
-  const handleSeleccionarCV = (file: File) => {
+  const handleSeleccionarCV = async (file: File) => {
+    setErrorCV(null);
+    setExitoCV(false);
     if (file.type !== "application/pdf") {
       setErrorCV("El CV debe ser un archivo PDF.");
       return;
@@ -307,34 +310,31 @@ export function PerfilForm({
       setErrorCV("El CV no puede superar los 5 MB.");
       return;
     }
-    setErrorCV(null);
     setCvFile(file);
-  };
-
-  const handleSubirCV = async () => {
-    if (!cvFile) return;
-    setGuardandoCV(true);
-    setErrorCV(null);
-    setExitoCV(false);
+    setSubiendoCV(true);
     const fd = new FormData();
-    fd.append("cv", cvFile);
+    fd.append("cv", file);
     try {
       const result = await subirCV(fd);
       if (result?.error) {
         setErrorCV(result.error);
+        setCvFile(null);
       } else {
         setCvFile(null);
         setExitoCV(true);
         router.refresh();
+        setTimeout(() => setExitoCV(false), 4000);
       }
     } catch {
       setErrorCV("Ocurrió un error inesperado al subir el CV. Intentá de nuevo.");
+      setCvFile(null);
+    } finally {
+      setSubiendoCV(false);
     }
-    setGuardandoCV(false);
   };
 
   const handleEliminarCV = async () => {
-    setGuardandoCV(true);
+    setEliminandoCV(true);
     setErrorCV(null);
     setExitoCV(false);
     const result = await eliminarCV();
@@ -343,7 +343,7 @@ export function PerfilForm({
     } else {
       router.refresh();
     }
-    setGuardandoCV(false);
+    setEliminandoCV(false);
   };
 
   // ── contraseña handlers ─────────────────────────────────────────────────────
@@ -748,25 +748,16 @@ export function PerfilForm({
               </p>
             </div>
 
-            {cvFile ? (
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-tinted px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <FileText className="h-8 w-8 shrink-0 text-primary" />
-                  <div>
-                    <p className="break-all text-sm font-medium text-foreground">{cvFile.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {(cvFile.size / 1024).toFixed(0)} KB · PDF
-                    </p>
-                  </div>
+            {subiendoCV ? (
+              <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-surface-tinted px-4 py-3">
+                <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <div className="min-w-0 flex-1">
+                  <p className="break-all text-sm font-medium text-foreground">{cvFile?.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {cvFile ? `${(cvFile.size / 1024).toFixed(0)} KB · PDF` : ""}
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => { setCvFile(null); setErrorCV(null); }}
-                  className="shrink-0 rounded-full p-1 text-muted-foreground transition hover:bg-red-50 hover:text-red-500"
-                  aria-label="Quitar archivo"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                <span className="shrink-0 text-sm text-primary">Subiendo CV…</span>
               </div>
             ) : (
               <button
@@ -777,31 +768,17 @@ export function PerfilForm({
                 <Upload className="h-8 w-8 text-muted-icon" />
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    Hacé clic para seleccionar tu CV
+                    Hacé clic para seleccionar tu CV. Se sube automáticamente.
                   </p>
                   <p className="mt-1 text-xs text-muted-icon">Solo PDF · Máximo 5 MB</p>
                 </div>
               </button>
             )}
 
-            {errorCV && <MensajeError texto={errorCV} />}
-            {exitoCV && <MensajeExito texto="¡CV subido correctamente!" />}
-
-            {cvFile && (
-              <button
-                type="button"
-                onClick={handleSubirCV}
-                disabled={guardandoCV}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover disabled:opacity-60 sm:w-auto sm:px-8 sm:self-start"
-              >
-                {guardandoCV ? (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                ) : (
-                  <Upload className="h-4 w-4" />
-                )}
-                {guardandoCV ? "Subiendo…" : "Subir CV"}
-              </button>
-            )}
+            <div aria-live="polite">
+              {errorCV && <MensajeError texto={errorCV} />}
+              {exitoCV && <MensajeExito texto="¡CV subido correctamente!" />}
+            </div>
           </div>
         ) : (
           <div className="mt-4 flex flex-col gap-4">
@@ -828,10 +805,12 @@ export function PerfilForm({
               <div className="flex items-center gap-2">
                 {postulante.cvActivo.url && (
                   <a
-                    href={postulante.cvActivo.url}
+                    href={subiendoCV ? undefined : postulante.cvActivo.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary"
+                    aria-disabled={subiendoCV}
+                    tabIndex={subiendoCV ? -1 : undefined}
+                    className={`flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary${subiendoCV ? " pointer-events-none opacity-60" : ""}`}
                   >
                     <ExternalLink className="h-4 w-4" />
                     Ver CV
@@ -840,11 +819,11 @@ export function PerfilForm({
                 <button
                   type="button"
                   onClick={handleEliminarCV}
-                  disabled={guardandoCV}
+                  disabled={subiendoCV || eliminandoCV}
                   className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-sm font-medium text-muted-foreground transition hover:border-red-300 hover:text-red-500 disabled:opacity-60"
                   aria-label="Eliminar CV"
                 >
-                  {guardandoCV ? (
+                  {eliminandoCV ? (
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   ) : (
                     <X className="h-4 w-4" />
@@ -853,66 +832,27 @@ export function PerfilForm({
               </div>
             </div>
 
-            {cvFile ? (
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-surface-tinted px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-6 w-6 shrink-0 text-primary" />
-                    <div>
-                      <p className="break-all text-sm font-medium text-foreground">{cvFile.name}</p>
-                      <p className="text-xs text-muted-foreground">{(cvFile.size / 1024).toFixed(0)} KB</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { setCvFile(null); setErrorCV(null); }}
-                    className="shrink-0 rounded-full p-1 text-muted-foreground hover:text-red-500"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSubirCV}
-                    disabled={guardandoCV}
-                    className="flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-60"
-                  >
-                    {guardandoCV ? (
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    ) : null}
-                    {guardandoCV ? "Subiendo…" : "Reemplazar"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setCvFile(null); setErrorCV(null); }}
-                    disabled={guardandoCV}
-                    className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => cvInputRef.current?.click()}
-                disabled={guardandoCV}
-                className="flex h-9 w-fit items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
-              >
+            <button
+              type="button"
+              onClick={() => cvInputRef.current?.click()}
+              disabled={subiendoCV || eliminandoCV}
+              className="flex h-9 w-fit items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
+            >
+              {subiendoCV ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : (
                 <Upload className="h-4 w-4" />
-                Reemplazar CV
-              </button>
-            )}
+              )}
+              {subiendoCV ? "Subiendo…" : "Reemplazar CV"}
+            </button>
 
-            {errorCV && <MensajeError texto={errorCV} />}
-            {exitoCV && <MensajeExito texto="¡CV actualizado correctamente!" />}
+            <div aria-live="polite">
+              {errorCV && <MensajeError texto={errorCV} />}
+              {exitoCV && <MensajeExito texto="¡CV actualizado correctamente!" />}
+            </div>
           </div>
         )}
 
-        <p className="mt-2 text-xs text-muted-icon">
-          Los archivos eliminados se conservan 90 días por seguridad y luego se borran definitivamente.
-        </p>
         <input
           ref={cvInputRef}
           type="file"
