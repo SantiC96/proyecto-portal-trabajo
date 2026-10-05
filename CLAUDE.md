@@ -55,11 +55,8 @@ All source lives under `src/`. The path alias `@/*` resolves to `src/*`.
 
   `/auth/reset-enviado`  `src/app/auth/reset-enviado/page.tsx`      Reset-email sent confirmation
 
-  `/auth/nueva-contrasena` `src/app/auth/nueva-contrasena/route.ts` Route Handler — PKCE token
-                                                                     exchange
-
-  `/auth/nueva-contrasena/formulario` `src/app/auth/nueva-contrasena/formulario/page.tsx`
-                                                                     New-password form
+  `/auth/nueva-contrasena` `src/app/auth/nueva-contrasena/page.tsx` Password-reset form (public;
+                                                                     token consumed in Server Action)
 
   `/auth/callback`       `src/app/auth/callback/route.ts`           Route Handler — PKCE code
                                                                      exchange

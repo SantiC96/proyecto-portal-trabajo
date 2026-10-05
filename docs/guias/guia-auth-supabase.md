@@ -576,6 +576,13 @@ LOGIN
   → Middleware permite acceso a rutas protegidas
   → Server Components leen el rol desde public.usuarios
   → RLS aplica las restricciones correspondientes en la base de datos
+
+RECUPERACIÓN DE CONTRASEÑA
+  → resetPasswordForEmail() envía el link con token_hash
+  → Server Action restablecerContrasena() usa un cliente efímero (persistSession: false)
+    que verifica el OTP y actualiza la contraseña sin crear sesión en el sitio
+  → Cookie ftl_recovery permite reintentar si Supabase rechaza la contraseña
+  → Ver guia-emails-supabase.md para el flujo detallado
 ```
 
 ---
