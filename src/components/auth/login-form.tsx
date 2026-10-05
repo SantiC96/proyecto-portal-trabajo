@@ -5,17 +5,19 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle, CheckCircle } from "lucide-react";
 import { RegisterModal } from "@/components/auth/register-modal";
 import { login } from "@/app/auth/actions";
 
 export function LoginForm({
   confirmacionError,
   inactividad,
+  contrasenaActualizada,
   redirect,
 }: {
   confirmacionError?: boolean;
   inactividad?: boolean;
+  contrasenaActualizada?: boolean;
   redirect?: string;
 }) {
   const router = useRouter();
@@ -83,6 +85,14 @@ export function LoginForm({
           <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 mb-1">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>Tu sesión se cerró por inactividad. Iniciá sesión de nuevo.</span>
+          </div>
+        )}
+
+        {/* Password updated banner */}
+        {contrasenaActualizada && (
+          <div className="flex items-start gap-2.5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 mb-1">
+            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>Tu contraseña se actualizó. Iniciá sesión con la nueva.</span>
           </div>
         )}
 

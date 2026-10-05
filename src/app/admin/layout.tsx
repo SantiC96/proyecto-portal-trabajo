@@ -1,7 +1,12 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { PublicFooter } from "@/components/public/public-footer";
 
-export default async function InicioPage() {
+export default async function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -15,7 +20,12 @@ export default async function InicioPage() {
     .eq("id", user.id)
     .single();
 
-  if (usuario?.rol === "empresa") redirect("/empresa");
-  if (usuario?.rol === "municipalidad") redirect("/admin");
-  redirect("/perfil");
+  if (!usuario || usuario.rol !== "municipalidad") redirect("/");
+
+  return (
+    <>
+      <main className="flex-1">{children}</main>
+      <PublicFooter />
+    </>
+  );
 }

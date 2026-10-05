@@ -15,6 +15,7 @@ type NavbarSession = {
   apellido: string;
   rol?: string | null;
   avatarUrl?: string | null;
+  profileHref: string;
 };
 
 interface NavbarProps {
@@ -175,7 +176,7 @@ export function Navbar({ session = null }: NavbarProps) {
           ) : (
             <div className="hidden items-center gap-2 lg:flex">
               <Link
-                href="/perfil"
+                href={session.profileHref}
                 className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition hover:bg-surface-tinted focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <Avatar
@@ -197,7 +198,7 @@ export function Navbar({ session = null }: NavbarProps) {
               <div className="mx-1 h-6 w-px bg-border" />
 
               <Link
-                href="/perfil"
+                href={session.profileHref}
                 className="inline-flex h-9 items-center justify-center rounded-lg border border-border bg-white px-3.5 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 Mi perfil
@@ -260,7 +261,7 @@ export function Navbar({ session = null }: NavbarProps) {
               {session ? (
                 <>
                   <Link
-                    href="/perfil"
+                    href={session.profileHref}
                     onClick={() => setMobileMenuOpen(false)}
                     className="flex items-center gap-3 rounded-lg px-3 py-3 transition hover:bg-surface-tinted focus:outline-none focus:ring-2 focus:ring-primary/30"
                   >
@@ -281,7 +282,7 @@ export function Navbar({ session = null }: NavbarProps) {
                   </Link>
 
                   <Link
-                    href="/perfil"
+                    href={session.profileHref}
                     onClick={() => setMobileMenuOpen(false)}
                     className={`${mobileLinkBase} ${mobileLinkInactive}`}
                   >

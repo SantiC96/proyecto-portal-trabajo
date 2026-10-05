@@ -171,139 +171,68 @@ export default function VerificarEmailPage() {
 
 ## Flujo de recuperación de contraseña
 
+### Plantilla de email
+
+La plantilla "Reset Password" en Supabase debe enviar el link así:
+
+```
+{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery
+```
+
+Esto pasa `token_hash` como parámetro de URL en lugar del flujo PKCE con `?code=`. El token no se consume hasta que el usuario hace submit del formulario, por lo que los pre-fetchers de correo no lo gastan.
+
 ### Paso 1 — El usuario pide el reset
 
 ```ts
 // src/app/auth/actions.ts
 export async function solicitarResetContrasena(formData: FormData) {
   const email = formData.get('email') as string
-
   const supabase = await createSupabaseServerClient()
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/nueva-contrasena`,
   })
 
-  // Siempre redirigir al mismo lugar, independientemente de si el email existe
-  // (no revelar si una cuenta existe o no)
+  // Siempre redirigir, sin revelar si el email existe
   redirect('/auth/reset-enviado')
 }
 ```
 
-```tsx
-// src/app/auth/recuperar/page.tsx
-import { solicitarResetContrasena } from '../actions'
+### Paso 2 — El usuario abre el link del email
 
-export default function RecuperarContrasenaPage() {
-  return (
-    <main className="min-h-screen flex items-center justify-center">
-      <form action={solicitarResetContrasena} className="flex flex-col gap-4 w-80">
-        <h1 className="text-xl font-semibold">Recuperar contraseña</h1>
-        <p className="text-sm text-gray-500">
-          Ingresá tu email y te enviamos un link para crear una nueva contraseña.
-        </p>
+El link llega a `/auth/nueva-contrasena?token_hash=…&type=recovery`.
 
-        <input
-          name="email"
-          type="email"
-          placeholder="Email"
-          required
-          className="border rounded-lg px-3 py-2 text-sm"
-        />
-        <button
-          type="submit"
-          className="bg-teal-600 text-white rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          Enviar link
-        </button>
-      </form>
-    </main>
-  )
-}
-```
-
-### Paso 2 — El callback procesa el token de reset
-
-El link del email lleva al usuario a `/auth/nueva-contrasena` con un `code` en la URL. Hay que intercambiarlo por una sesión antes de mostrar el formulario.
-
-```ts
-// src/app/auth/nueva-contrasena/route.ts
-// Este archivo maneja la redirección inicial del link del email
-import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { NextResponse, type NextRequest } from 'next/server'
-
-export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url)
-  const code = searchParams.get('code')
-
-  if (code) {
-    const supabase = await createSupabaseServerClient()
-    await supabase.auth.exchangeCodeForSession(code)
-  }
-
-  return NextResponse.redirect(`${origin}/auth/nueva-contrasena/formulario`)
-}
-```
+El Server Component (`src/app/auth/nueva-contrasena/page.tsx`) solo verifica si hay `token_hash` o la cookie de reintento `ftl_recovery` — **no llama a `verifyOtp`**. Si ninguno está presente, redirige a `/auth/recuperar-contrasena?error=link-vencido`. Si hay alguno, renderiza el formulario.
 
 ### Paso 3 — El usuario elige su nueva contraseña
 
-```tsx
-// src/app/auth/nueva-contrasena/formulario/page.tsx
-'use client'
+El formulario (`src/app/auth/nueva-contrasena/form.tsx`) presenta dos campos de contraseña con validación en vivo y usa `useActionState` con la Server Action `restablecerContrasena`.
 
-import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
+La Server Action (`src/app/auth/actions.ts`):
 
-export default function NuevaContrasenaPage() {
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const router = useRouter()
+1. Valida que la contraseña tenga ≥ 6 caracteres y que las dos coincidan.
+2. Obtiene una sesión efímera (usando `createSupabaseEphemeralClient` de `src/lib/supabase-ephemeral.ts`, que tiene `persistSession: false`):
+   - Si existe la cookie `ftl_recovery` → intenta `refreshSession({ refresh_token })`.
+   - Si no hay sesión todavía y llegó `token_hash` → llama a `verifyOtp({ token_hash, type: "recovery" })`.
+   - Si no puede obtener sesión → devuelve error `linkVencido`.
+3. Llama a `client.auth.updateUser({ password })`.
+   - Si Supabase rechaza (misma contraseña, débil) → guarda el `refresh_token` actual en `ftl_recovery` (con `maxAge` de 15 minutos) para que el usuario pueda reintentar sin pedir un nuevo link.
+   - Si sale bien → `signOut({ scope: "local" })`, borra `ftl_recovery` y `ftl_last_activity`, y redirige a `/auth/login?motivo=contrasena-actualizada`.
+4. En ningún paso se escriben las cookies de sesión del sitio.
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
+#### Cookie `ftl_recovery`
 
-    const { error } = await supabase.auth.updateUser({ password })
+| Propiedad | Valor |
+|---|---|
+| Nombre | `ftl_recovery` |
+| `httpOnly` | sí |
+| `secure` | sí (en producción) |
+| `sameSite` | `strict` |
+| `path` | `/auth/nueva-contrasena` |
+| `maxAge` | 15 minutos |
+| Contenido | `refresh_token` de la sesión efímera de recuperación |
 
-    if (error) {
-      setError(error.message)
-      return
-    }
-
-    router.push('/?reset=ok')
-  }
-
-  return (
-    <main className="min-h-screen flex items-center justify-center">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-80">
-        <h1 className="text-xl font-semibold">Nueva contraseña</h1>
-
-        <input
-          type="password"
-          placeholder="Nueva contraseña (mín. 6 caracteres)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={6}
-          className="border rounded-lg px-3 py-2 text-sm"
-        />
-
-        {error && <p className="text-sm text-red-500">{error}</p>}
-
-        <button
-          type="submit"
-          className="bg-teal-600 text-white rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          Guardar contraseña
-        </button>
-      </form>
-    </main>
-  )
-}
-```
-
-> Este formulario usa el cliente browser porque `updateUser()` requiere que haya una sesión activa en el navegador, que se estableció al procesar el `code` en el paso anterior.
+Esta cookie permite que el usuario corrija errores (misma contraseña, contraseña débil) sin necesitar un nuevo link. Se borra en cuanto la contraseña se actualiza con éxito o el refresh falla.
 
 ---
 
@@ -374,11 +303,13 @@ RECUPERACIÓN DE CONTRASEÑA
   Usuario ingresa su email → resetPasswordForEmail() con redirectTo
   → Supabase envía email vía Gmail SMTP
   → Usuario hace click en el link
-  → Aterriza en /auth/nueva-contrasena?code=...
-  → exchangeCodeForSession(code) establece sesión temporal
-  → Redirige a /auth/nueva-contrasena/formulario
-  → Usuario elige nueva contraseña → updateUser({ password })
-  → Redirige a /
+  → Aterriza en /auth/nueva-contrasena?token_hash=...&type=recovery
+  → Server Component verifica token_hash (sin consumirlo)
+  → Renderiza formulario de doble contraseña
+  → Usuario completa el form → Server Action restablecerContrasena()
+  → verifyOtp() consume el token en el servidor (cliente efímero, sin sesión en el sitio)
+  → updateUser({ password }) actualiza la contraseña
+  → Redirige a /auth/login?motivo=contrasena-actualizada
 ```
 
 ---
