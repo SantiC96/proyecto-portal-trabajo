@@ -14,6 +14,7 @@ export async function actualizarPerfil(data: {
   apellido: string;
   telefono: string;
   domicilio: string;
+  dni: string;
 }): Promise<{ error?: string; exito?: boolean }> {
   const supabase = await createSupabaseServerClient();
   const {
@@ -23,6 +24,11 @@ export async function actualizarPerfil(data: {
 
   if (!data.nombre.trim() || !data.apellido.trim()) {
     return { error: "El nombre y el apellido son obligatorios." };
+  }
+
+  const dniLimpio = data.dni.replace(/\D/g, "");
+  if (dniLimpio.length < 7 || dniLimpio.length > 8) {
+    return { error: "El DNI debe tener 7 u 8 números." };
   }
 
   const [usuariosResult, postulanteResult] = await Promise.all([
@@ -36,7 +42,7 @@ export async function actualizarPerfil(data: {
       .eq("id", user.id),
     supabaseAdmin
       .from("postulantes")
-      .update({ domicilio: data.domicilio.trim() || null })
+      .update({ domicilio: data.domicilio.trim() || null, dni: dniLimpio })
       .eq("usuario_id", user.id),
   ]);
 
@@ -44,7 +50,10 @@ export async function actualizarPerfil(data: {
     return { error: "Error al guardar los datos. Intentá de nuevo." };
   }
   if (postulanteResult.error) {
-    return { error: "Error al guardar el domicilio. Intentá de nuevo." };
+    if (postulanteResult.error.code === "23505") {
+      return { error: "Ese DNI ya está registrado en otra cuenta." };
+    }
+    return { error: "Error al guardar el DNI. Intentá de nuevo." };
   }
 
   revalidatePath("/perfil");
