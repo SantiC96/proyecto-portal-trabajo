@@ -11,9 +11,11 @@ export function traducirErrorAuth(error: AuthError): string {
     case "email_exists":
       return "Ya existe una cuenta con ese email.";
     case "weak_password":
-      return "La contraseña es demasiado débil. Usá al menos 6 caracteres.";
+      return "La contraseña es demasiado débil. Probá con una más larga o que combine letras y números.";
     case "same_password":
-      return "La nueva contraseña no puede ser igual a la anterior.";
+      return "La nueva contraseña tiene que ser distinta de la anterior.";
+    case "otp_expired":
+      return "El link venció o ya fue usado. Pedí uno nuevo.";
     case "over_email_send_rate_limit":
     case "over_request_rate_limit":
       return "Demasiados intentos. Esperá unos minutos antes de volver a intentarlo.";

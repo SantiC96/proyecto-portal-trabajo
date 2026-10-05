@@ -2,10 +2,17 @@
 
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import type { Session } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { createSupabaseEphemeralClient } from "@/lib/supabase-ephemeral";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { traducirErrorAuth } from "@/lib/auth-errors";
-import { LAST_ACTIVITY_COOKIE } from "@/lib/session-config";
+import {
+  LAST_ACTIVITY_COOKIE,
+  RECOVERY_COOKIE,
+  RECOVERY_COOKIE_PATH,
+  recoveryCookieOptions,
+} from "@/lib/session-config";
 
 function safeRedirect(to?: string): string {
   if (to && to.startsWith("/") && !to.startsWith("//")) return to;
@@ -173,4 +180,90 @@ export async function logout() {
   cookieStore.delete(LAST_ACTIVITY_COOKIE);
 
   redirect("/auth/login");
+}
+
+export async function restablecerContrasena(
+  _prevState: { error: string; linkVencido?: boolean } | null,
+  formData: FormData
+): Promise<{ error: string; linkVencido?: boolean } | null> {
+  const password = formData.get("password") as string;
+  const confirmar = formData.get("confirmar") as string;
+  const tokenHash = formData.get("token_hash") as string;
+
+  // 1. Server-side validation — no OTP consumed yet
+  if (!password || password.length < 6) {
+    return { error: "La contraseña debe tener al menos 6 caracteres." };
+  }
+  if (password !== confirmar) {
+    return { error: "Las contraseñas no coinciden." };
+  }
+
+  const client = createSupabaseEphemeralClient();
+  const cookieStore = await cookies();
+  let latestSession: Session | null = null;
+
+  // 2a. Try recovery cookie (allows retry without a new link)
+  const cookieValue = cookieStore.get(RECOVERY_COOKIE)?.value;
+  if (cookieValue) {
+    const { data, error } = await client.auth.refreshSession({
+      refresh_token: cookieValue,
+    });
+    if (!error && data.session) {
+      latestSession = data.session;
+    } else {
+      cookieStore.set(RECOVERY_COOKIE, "", {
+        maxAge: 0,
+        path: RECOVERY_COOKIE_PATH,
+        httpOnly: true,
+      });
+    }
+  }
+
+  // 2b. Fall back to token_hash from the email link
+  if (!latestSession && tokenHash) {
+    const { data, error } = await client.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: "recovery",
+    });
+    if (!error && data.session) {
+      latestSession = data.session;
+    }
+  }
+
+  // 2c. Still no session → link expired or already used
+  if (!latestSession) {
+    cookieStore.set(RECOVERY_COOKIE, "", {
+      maxAge: 0,
+      path: RECOVERY_COOKIE_PATH,
+      httpOnly: true,
+    });
+    return {
+      error: "El link venció o ya fue usado. Pedí uno nuevo.",
+      linkVencido: true,
+    };
+  }
+
+  // 3. Update password
+  const { error: updateError } = await client.auth.updateUser({ password });
+
+  if (updateError) {
+    // Save refresh_token so the user can retry without a new link
+    cookieStore.set(
+      RECOVERY_COOKIE,
+      latestSession.refresh_token,
+      recoveryCookieOptions()
+    );
+    return { error: traducirErrorAuth(updateError) };
+  }
+
+  // 4. Success — sign out the ephemeral session and clean up
+  await client.auth.signOut({ scope: "local" });
+  cookieStore.set(RECOVERY_COOKIE, "", {
+    maxAge: 0,
+    path: RECOVERY_COOKIE_PATH,
+    httpOnly: true,
+  });
+  cookieStore.delete(LAST_ACTIVITY_COOKIE);
+
+  redirect("/auth/login?motivo=contrasena-actualizada");
 }
