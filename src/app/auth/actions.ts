@@ -171,7 +171,7 @@ export async function solicitarResetContrasena(
   redirect("/auth/reset-enviado");
 }
 
-export async function logout() {
+export async function logout(formData?: FormData) {
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
 
@@ -179,7 +179,10 @@ export async function logout() {
   const cookieStore = await cookies();
   cookieStore.delete(LAST_ACTIVITY_COOKIE);
 
-  redirect("/auth/login");
+  const rawTo = formData instanceof FormData
+    ? (formData.get("redirectTo") as string | null)
+    : null;
+  redirect(rawTo ? safeRedirect(rawTo) : "/auth/login");
 }
 
 export async function restablecerContrasena(

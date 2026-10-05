@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { X, UserPlus, User, Building2 } from "lucide-react";
+import { AuthLink } from "@/components/auth/auth-link";
 
 interface RegisterModalProps {
   onClose: () => void;
@@ -42,7 +42,7 @@ export function RegisterModal({ onClose }: RegisterModalProps) {
         </div>
 
         <div className="flex flex-col gap-3">
-          <Link
+          <AuthLink
             href="/auth/registro"
             onClick={onClose}
             className="group flex items-start gap-4 rounded-xl border border-border p-4 text-left transition hover:border-primary hover:bg-surface-tinted"
@@ -58,9 +58,9 @@ export function RegisterModal({ onClose }: RegisterModalProps) {
                 Buscás empleo en Funes, querés cargar tu CV y postularte a ofertas laborales del portal.
               </p>
             </div>
-          </Link>
+          </AuthLink>
 
-          <Link
+          <AuthLink
             href="/auth/registro?tipo=empresa"
             onClick={onClose}
             className="group flex items-start gap-4 rounded-xl border border-border p-4 text-left transition hover:border-primary hover:bg-surface-tinted"
@@ -76,19 +76,19 @@ export function RegisterModal({ onClose }: RegisterModalProps) {
                 Tenés un comercio o empresa en Funes o la región y querés publicar vacantes y recibir preselecciones de candidatos.
               </p>
             </div>
-          </Link>
+          </AuthLink>
         </div>
 
         <div className="mt-5 border-t border-border pt-4 text-center">
           <p className="text-xs text-muted-foreground">
             ¿Ya tenés una cuenta?{" "}
-            <Link
+            <AuthLink
               href="/auth/login"
               onClick={onClose}
               className="font-semibold text-primary hover:underline"
             >
               Iniciá sesión acá
-            </Link>
+            </AuthLink>
           </p>
         </div>
       </div>
