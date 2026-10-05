@@ -179,6 +179,36 @@ export async function subirAvatar(
   return {};
 }
 
+export async function ajustarAvatar(data: {
+  x: number;
+  y: number;
+  zoom: number;
+}): Promise<{ error?: string }> {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado." };
+
+  if (data.x < 0 || data.x > 100 || data.y < 0 || data.y > 100) {
+    return { error: "Posición fuera de rango." };
+  }
+  if (data.zoom < 1 || data.zoom > 3) {
+    return { error: "Zoom fuera de rango." };
+  }
+
+  const { error } = await supabaseAdmin
+    .from("archivos_usuario")
+    .update({ ajuste_x: data.x, ajuste_y: data.y, ajuste_zoom: data.zoom })
+    .eq("usuario_id", user.id)
+    .eq("tipo", "avatar")
+    .eq("activo", true);
+
+  if (error) return { error: "Error al guardar el ajuste. Intentá de nuevo." };
+
+  revalidatePath("/perfil");
+  revalidatePath("/", "layout");
+  return {};
+}
+
 export async function quitarAvatar(): Promise<{ error?: string }> {
   const supabase = await createSupabaseServerClient();
   const {
