@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 
@@ -19,7 +19,6 @@ export function SesionProvider({
   sesion: SesionContextValue;
   children: React.ReactNode;
 }) {
-  const [value, setValue] = useState<SesionContextValue>(sesion);
   const router = useRouter();
 
   useEffect(() => {
@@ -31,8 +30,11 @@ export function SesionProvider({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") {
-        setValue(null);
+      if (
+        event === "SIGNED_IN" ||
+        event === "SIGNED_OUT" ||
+        event === "USER_UPDATED"
+      ) {
         router.refresh();
       }
     });
@@ -41,7 +43,7 @@ export function SesionProvider({
   }, [router]);
 
   return (
-    <SesionContext.Provider value={value}>{children}</SesionContext.Provider>
+    <SesionContext.Provider value={sesion}>{children}</SesionContext.Provider>
   );
 }
 

@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { Menu, X, LogIn, UserPlus, LogOut } from "lucide-react";
+import {
+  Menu, X, LogIn, UserPlus, LogOut,
+  User, Briefcase, LayoutDashboard, ChevronDown,
+} from "lucide-react";
 import { RegisterModal } from "@/components/auth/register-modal";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { logout } from "@/app/auth/actions";
@@ -38,11 +41,42 @@ const NAV_LINKS: NavLink[] = [
   { label: "Para empresas", href: "/#empresas", anchor: "empresas" },
 ];
 
+type MenuItem = { label: string; href: string; Icon: React.ComponentType<{ className?: string }> };
+
+function getMenuItems(rol?: string | null): MenuItem[] {
+  if (rol === "postulante") {
+    return [
+      { label: "Mi perfil", href: "/perfil", Icon: User },
+      { label: "Mis postulaciones", href: "/mis-postulaciones", Icon: Briefcase },
+    ];
+  }
+  if (rol === "empresa") {
+    return [{ label: "Mi panel", href: "/empresa", Icon: LayoutDashboard }];
+  }
+  if (rol === "municipalidad") {
+    return [{ label: "Panel de la oficina", href: "/admin", Icon: LayoutDashboard }];
+  }
+  return [{ label: "Mi perfil", href: "/perfil", Icon: User }];
+}
+
 export function Navbar({ session = null }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
+  // Store the pathname at which the menu was opened; derived menuOpen is false when pathname changes
+  const [menuOpenForPath, setMenuOpenForPath] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuItemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+
+  const menuOpen = menuOpenForPath === pathname;
+
+  function openMenu() {
+    setMenuOpenForPath(pathname);
+  }
+  function closeMenu() {
+    setMenuOpenForPath(null);
+  }
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -76,6 +110,41 @@ export function Navbar({ session = null }: NavbarProps) {
     };
   }, [pathname, session, router]);
 
+  // Close dropdown on Escape and click outside
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        closeMenu();
+        return;
+      }
+      const items = menuItemRefs.current.filter(Boolean) as HTMLAnchorElement[];
+      const focused = document.activeElement;
+      const idx = items.indexOf(focused as HTMLAnchorElement);
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        items[(idx + 1) % items.length]?.focus();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        items[(idx - 1 + items.length) % items.length]?.focus();
+      }
+    }
+
+    function handleMouseDown(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        closeMenu();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleMouseDown);
+    };
+  }, [menuOpen]);
+
   function isActive(href: string): boolean {
     if (href === "/") return pathname === "/";
     if (href === "/ofertas") return pathname.startsWith("/ofertas");
@@ -107,6 +176,8 @@ export function Navbar({ session = null }: NavbarProps) {
     "flex h-11 items-center rounded-lg px-3 text-base font-medium transition hover:bg-secondary-hover focus:outline-none focus:ring-2 focus:ring-primary/30";
   const mobileLinkActive = "text-primary font-semibold border-l-2 border-primary pl-2.5";
   const mobileLinkInactive = "text-foreground";
+
+  const menuItems = getMenuItems(session?.rol);
 
   return (
     <>
@@ -176,34 +247,57 @@ export function Navbar({ session = null }: NavbarProps) {
             </div>
           ) : (
             <div className="hidden items-center gap-2 lg:flex">
-              <Link
-                href={session.profileHref}
-                className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition hover:bg-surface-tinted focus:outline-none focus:ring-2 focus:ring-primary/30"
-              >
-                <AvatarAjustado
-                  src={session.avatarUrl}
-                  alt={`Foto de ${session.nombre} ${session.apellido}`.trim()}
-                  ajuste={session.ajuste ?? undefined}
-                  size="sm"
-                />
-                <div className="text-left leading-tight">
-                  <p className="text-sm font-medium text-foreground">
-                    {session.nombre} {session.apellido}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {getRolLabel(session.rol)}
-                  </p>
-                </div>
-              </Link>
+              {/* Avatar dropdown trigger */}
+              <div ref={menuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => (menuOpen ? closeMenu() : openMenu())}
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition hover:bg-surface-tinted focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  <AvatarAjustado
+                    src={session.avatarUrl}
+                    alt={`Foto de ${session.nombre} ${session.apellido}`.trim()}
+                    ajuste={session.ajuste ?? undefined}
+                    size="sm"
+                  />
+                  <div className="text-left leading-tight">
+                    <p className="text-sm font-medium text-foreground">
+                      {session.nombre} {session.apellido}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {getRolLabel(session.rol)}
+                    </p>
+                  </div>
+                  <ChevronDown
+                    className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${menuOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+
+                {menuOpen && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-full mt-1 w-52 rounded-xl border border-border bg-white shadow-md z-50 py-1"
+                  >
+                    {menuItems.map((item, i) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        role="menuitem"
+                        ref={(el) => { menuItemRefs.current[i] = el; }}
+                        onClick={closeMenu}
+                        className="flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-foreground rounded-lg mx-1 hover:bg-surface-tinted hover:text-primary focus:outline-none focus:bg-surface-tinted focus:text-primary"
+                      >
+                        <item.Icon className="h-4 w-4 shrink-0" />
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <div className="mx-1 h-6 w-px bg-border" />
-
-              <Link
-                href={session.profileHref}
-                className="inline-flex h-9 items-center justify-center rounded-lg border border-border bg-white px-3.5 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-              >
-                Mi perfil
-              </Link>
 
               <form action={logout}>
                 <button
@@ -289,6 +383,16 @@ export function Navbar({ session = null }: NavbarProps) {
                   >
                     Mi perfil
                   </Link>
+
+                  {session.rol === "postulante" && (
+                    <Link
+                      href="/mis-postulaciones"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`${mobileLinkBase} ${mobileLinkInactive}`}
+                    >
+                      Mis postulaciones
+                    </Link>
+                  )}
 
                   <form action={logout}>
                     <button

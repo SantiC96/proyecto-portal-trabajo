@@ -13,5 +13,4 @@ export interface OfertaLaboral {
   requisitos: string[];
   beneficios?: string[];
   fechaPublicacion: string; // ISO o formato fecha
-  destacada?: boolean;
 }

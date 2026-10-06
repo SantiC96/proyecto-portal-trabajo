@@ -12,7 +12,6 @@ type DbOfertaRow = {
   jornada: string;
   requisitos: string[];
   beneficios: string[];
-  destacada: boolean;
   oferta_categorias: Array<{ categorias: { nombre: string } | null }>;
 };
 
@@ -27,7 +26,6 @@ const OFERTA_SELECT = `
   jornada,
   requisitos,
   beneficios,
-  destacada,
   oferta_categorias(categorias(nombre))
 ` as const;
 
@@ -45,7 +43,6 @@ function mapRow(row: DbOfertaRow): OfertaLaboral {
     requisitos: row.requisitos ?? [],
     beneficios: row.beneficios ?? [],
     fechaPublicacion: row.created_at.split("T")[0],
-    destacada: row.destacada,
   };
 }
 

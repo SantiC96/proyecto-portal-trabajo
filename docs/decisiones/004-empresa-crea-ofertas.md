@@ -37,3 +37,15 @@ Con `empresa_id` disponible, las políticas de RLS pueden restringir a cada empr
 ## Estado
 
 Pendiente de implementación. Requiere una nueva migración y actualización de Server Actions y vistas.
+
+---
+
+## Eliminación del campo `destacada` (migración 016)
+
+El campo `destacada` (agregado en `migration_007`) fue eliminado del código en la rama `feat/postulaciones`:
+- Removido del tipo `OfertaLaboral` (`src/types/oferta.ts`).
+- Removido del select, `DbOfertaRow` y `mapRow` en `src/lib/ofertas.ts`.
+- Removido del badge visual en `job-card.tsx` y `src/app/ofertas/[id]/page.tsx`.
+- Removido de los inserts en `seed_ofertas.sql`.
+
+La columna física se elimina con `migration_016_quitar_destacada.sql`, que debe ejecutarse **después** de que el código sin `destacada` esté publicado en producción (Vercel). Ejecutarla antes rompe el listado de ofertas.
