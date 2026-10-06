@@ -4,16 +4,14 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { abrirFicha } from "./actions";
 import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
+import {
+  BADGE_CONFIG,
+  type EstadoPostulacion,
+} from "@/lib/admin/postulacion-estados";
 
 export const metadata: Metadata = {
   title: "Postulaciones | Panel municipal | Portal de Empleo Funes",
 };
-
-type EstadoPostulacion =
-  | "recibida"
-  | "en_revision"
-  | "derivada"
-  | "rechazada_municipalidad";
 
 type EstadoFiltro = "pendiente" | "derivada" | "rechazada_municipalidad";
 
@@ -27,23 +25,6 @@ const LABEL_FILTRO: Record<EstadoFiltro, string> = {
   pendiente: "Pendientes",
   derivada: "Derivadas",
   rechazada_municipalidad: "No seleccionadas",
-};
-
-const BADGE_CONFIG: Record<
-  EstadoPostulacion,
-  { label: string; variant: "secondary" | "outline" | "default" | "destructive"; className?: string }
-> = {
-  recibida: { label: "Recibida", variant: "secondary" },
-  en_revision: {
-    label: "En revisión",
-    variant: "outline",
-    className: "text-blue-700",
-  },
-  derivada: { label: "Derivada", variant: "default" },
-  rechazada_municipalidad: {
-    label: "No seleccionada",
-    variant: "destructive",
-  },
 };
 
 type PostulacionRow = {
