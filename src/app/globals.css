@@ -38,6 +38,22 @@
   --radius-xl: 1rem;
 }
 
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+}
+
+@layer components {
+  .btn-secundario {
+    @apply rounded-lg border border-border bg-white text-foreground transition
+           hover:border-primary/50 hover:bg-surface-tinted hover:text-primary
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30
+           disabled:opacity-60;
+  }
+}
+
 * { box-sizing:border-box; }
 html { scroll-behavior: smooth; }
 html,body { min-height:100%; }
