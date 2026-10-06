@@ -409,7 +409,7 @@ export function Navbar({ session = null }: NavbarProps) {
                   <Link
                     href="/auth/login"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-border bg-white font-medium text-foreground"
+                    className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-border bg-white font-medium text-foreground transition hover:border-primary hover:text-primary"
                   >
                     <LogIn className="h-4 w-4" />
                     Iniciar sesión
