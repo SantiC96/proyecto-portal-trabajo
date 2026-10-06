@@ -169,7 +169,7 @@ export function PerfilForm({
   const [subiendoCV, setSubiendoCV] = useState(false);
   const [eliminandoCV, setEliminandoCV] = useState(false);
   const [errorCV, setErrorCV] = useState<string | null>(null);
-  const [exitoCV, setExitoCV] = useState(false);
+  const [mensajeCV, setMensajeCV] = useState<string | null>(null);
 
   // Contraseña
   const [mostrarFormContrasena, setMostrarFormContrasena] = useState(false);
@@ -328,7 +328,7 @@ export function PerfilForm({
 
   const handleSeleccionarCV = async (file: File) => {
     setErrorCV(null);
-    setExitoCV(false);
+    setMensajeCV(null);
     if (file.type !== "application/pdf") {
       setErrorCV("El CV debe ser un archivo PDF.");
       return;
@@ -348,9 +348,9 @@ export function PerfilForm({
         setCvFile(null);
       } else {
         setCvFile(null);
-        setExitoCV(true);
+        setMensajeCV(postulante.cvActivo ? "¡CV reemplazado correctamente!" : "¡CV subido correctamente!");
         router.refresh();
-        setTimeout(() => setExitoCV(false), 4000);
+        setTimeout(() => setMensajeCV(null), 4000);
       }
     } catch {
       setErrorCV("Ocurrió un error inesperado al subir el CV. Intentá de nuevo.");
@@ -363,7 +363,7 @@ export function PerfilForm({
   const handleEliminarCV = async () => {
     setEliminandoCV(true);
     setErrorCV(null);
-    setExitoCV(false);
+    setMensajeCV(null);
     const result = await eliminarCV();
     if (result?.error) {
       setErrorCV(result.error);
@@ -827,7 +827,6 @@ export function PerfilForm({
 
             <div aria-live="polite">
               {errorCV && <MensajeError texto={errorCV} />}
-              {exitoCV && <MensajeExito texto="¡CV subido correctamente!" />}
             </div>
           </div>
         ) : (
@@ -898,8 +897,13 @@ export function PerfilForm({
 
             <div aria-live="polite">
               {errorCV && <MensajeError texto={errorCV} />}
-              {exitoCV && <MensajeExito texto="¡CV actualizado correctamente!" />}
             </div>
+          </div>
+        )}
+
+        {mensajeCV && (
+          <div aria-live="polite">
+            <MensajeExito texto={mensajeCV} />
           </div>
         )}
 

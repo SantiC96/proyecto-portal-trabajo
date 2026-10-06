@@ -18,6 +18,7 @@ interface MultiComboboxProps {
   placeholder?: string
   id?: string
   vacioTexto?: string
+  campoClassName?: string
 }
 
 function normalizar(texto: string): string {
@@ -34,6 +35,7 @@ export function MultiCombobox({
   placeholder = "Buscá o elegí...",
   id,
   vacioTexto = "No hay rubros que coincidan",
+  campoClassName,
 }: MultiComboboxProps) {
   const [inputValue, setInputValue] = useState("")
   const [open, setOpen] = useState(false)
@@ -68,6 +70,7 @@ export function MultiCombobox({
         className={cn(
           "flex min-h-[2.75rem] cursor-text items-start gap-2 rounded-lg border border-border bg-background px-3 py-2 transition",
           "focus-within:border-primary focus-within:bg-white focus-within:ring-2 focus-within:ring-primary/20",
+          campoClassName,
         )}
         onClick={() => inputRef.current?.focus()}
       >

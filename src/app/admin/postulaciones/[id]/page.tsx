@@ -5,34 +5,13 @@ import { ExternalLink } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
+import { DatosCandidato } from "@/components/admin/datos-candidato";
+import { obtenerCandidato } from "@/lib/admin/candidato";
+import { BADGE_CONFIG, type EstadoPostulacion } from "@/lib/admin/postulacion-estados";
 import { FichaAcciones } from "./ficha-acciones";
 
 export const metadata: Metadata = {
   title: "Ficha | Postulaciones | Panel municipal | Portal de Empleo Funes",
-};
-
-type EstadoPostulacion =
-  | "recibida"
-  | "en_revision"
-  | "derivada"
-  | "rechazada_municipalidad";
-
-const BADGE_CONFIG: Record<
-  EstadoPostulacion,
-  {
-    label: string;
-    variant: "secondary" | "outline" | "default" | "destructive";
-    className?: string;
-  }
-> = {
-  recibida: { label: "Recibida", variant: "secondary" },
-  en_revision: {
-    label: "En revisión",
-    variant: "outline",
-    className: "text-blue-700",
-  },
-  derivada: { label: "Derivada", variant: "default" },
-  rechazada_municipalidad: { label: "No seleccionada", variant: "destructive" },
 };
 
 function formatearFecha(iso: string) {
@@ -51,11 +30,6 @@ function formatearFechaHora(iso: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-async function getEmail(userId: string): Promise<string | null> {
-  const { data } = await supabaseAdmin.auth.admin.getUserById(userId);
-  return data.user?.email ?? null;
 }
 
 export default async function PostulacionFichaPage({
@@ -77,13 +51,7 @@ export default async function PostulacionFichaPage({
       revisado_por,
       postulante_id,
       oferta_id,
-      postulantes!postulante_id(
-        id,
-        usuario_id,
-        dni,
-        domicilio,
-        usuarios!usuario_id(id, nombre, apellido, telefono)
-      ),
+      postulantes!postulante_id(id, usuario_id),
       ofertas!oferta_id(id, titulo, empresa_nombre, modalidad, jornada, estado)
     `
     )
@@ -99,18 +67,7 @@ export default async function PostulacionFichaPage({
     updated_at: string | null;
     nota_oficina: string | null;
     revisado_por: string | null;
-    postulantes: {
-      id: string;
-      usuario_id: string;
-      dni: string | null;
-      domicilio: string | null;
-      usuarios: {
-        id: string;
-        nombre: string;
-        apellido: string;
-        telefono: string;
-      } | null;
-    } | null;
+    postulantes: { id: string; usuario_id: string } | null;
     ofertas: {
       id: string;
       titulo: string;
@@ -122,61 +79,27 @@ export default async function PostulacionFichaPage({
   };
 
   const postulacion = raw as unknown as PostulacionDetalle;
-  const postulante = postulacion.postulantes;
-  const usuario = postulante?.usuarios;
+  const postulanteId = postulacion.postulantes?.id ?? null;
   const oferta = postulacion.ofertas;
-  const postulanteUsuarioId = postulante?.usuario_id ?? null;
-  const postulanteId = postulante?.id ?? null;
 
-  // Queries secundarias en paralelo
-  const [archivosResult, categoriasResult, emailValue, derivacionResult, revisorResult] =
-    await Promise.all([
-      postulanteUsuarioId
-        ? supabaseAdmin
-            .from("archivos_usuario")
-            .select("tipo, ruta, ajuste_x, ajuste_y, ajuste_zoom")
-            .eq("usuario_id", postulanteUsuarioId)
-            .eq("activo", true)
-        : Promise.resolve({ data: null }),
-      postulanteId
-        ? supabaseAdmin
-            .from("postulante_categorias")
-            .select("categorias!categoria_id(nombre)")
-            .eq("postulante_id", postulanteId)
-        : Promise.resolve({ data: null }),
-      postulanteUsuarioId ? getEmail(postulanteUsuarioId) : Promise.resolve(null),
-      postulacion.estado === "derivada"
-        ? supabaseAdmin
-            .from("derivaciones")
-            .select("nota_municipalidad, created_at")
-            .eq("postulacion_id", postulacion.id)
-            .maybeSingle()
-        : Promise.resolve({ data: null }),
-      postulacion.revisado_por
-        ? supabaseAdmin
-            .from("usuarios")
-            .select("nombre, apellido")
-            .eq("id", postulacion.revisado_por)
-            .single()
-        : Promise.resolve({ data: null }),
-    ]);
+  const [candidato, derivacionResult, revisorResult] = await Promise.all([
+    postulanteId ? obtenerCandidato(postulanteId) : Promise.resolve(null),
+    postulacion.estado === "derivada"
+      ? supabaseAdmin
+          .from("derivaciones")
+          .select("nota_municipalidad, created_at")
+          .eq("postulacion_id", postulacion.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    postulacion.revisado_por
+      ? supabaseAdmin
+          .from("usuarios")
+          .select("nombre, apellido")
+          .eq("id", postulacion.revisado_por)
+          .single()
+      : Promise.resolve({ data: null }),
+  ]);
 
-  const archivos = archivosResult.data as
-    | {
-        tipo: string;
-        ruta: string;
-        ajuste_x: number;
-        ajuste_y: number;
-        ajuste_zoom: number;
-      }[]
-    | null;
-
-  type CategoriaRow = { categorias: { nombre: string } | null };
-  const categorias = ((categoriasResult.data ?? []) as unknown as CategoriaRow[])
-    .map((r) => r.categorias?.nombre)
-    .filter((n): n is string => Boolean(n));
-
-  const email = emailValue;
   const derivacion = derivacionResult.data as {
     nota_municipalidad: string | null;
     created_at: string;
@@ -185,24 +108,6 @@ export default async function PostulacionFichaPage({
     nombre: string;
     apellido: string;
   } | null;
-
-  const cvArchivo = archivos?.find((a) => a.tipo === "cv") ?? null;
-  const avatarArchivo = archivos?.find((a) => a.tipo === "avatar") ?? null;
-
-  // URLs firmadas
-  const [cvUrlResult, avatarUrlResult] = await Promise.all([
-    cvArchivo
-      ? supabaseAdmin.storage.from("cvs").createSignedUrl(cvArchivo.ruta, 600)
-      : Promise.resolve({ data: null }),
-    avatarArchivo
-      ? supabaseAdmin.storage
-          .from("avatares")
-          .createSignedUrl(avatarArchivo.ruta, 600)
-      : Promise.resolve({ data: null }),
-  ]);
-
-  const cvUrl = cvUrlResult.data?.signedUrl ?? null;
-  const avatarUrl = avatarUrlResult.data?.signedUrl ?? null;
 
   const badge = BADGE_CONFIG[postulacion.estado];
 
@@ -224,23 +129,19 @@ export default async function PostulacionFichaPage({
       {/* Cabecera */}
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <AvatarAjustado
-          src={avatarUrl}
-          alt={usuario ? `${usuario.nombre} ${usuario.apellido}` : "Candidato"}
-          ajuste={
-            avatarArchivo
-              ? {
-                  x: Number(avatarArchivo.ajuste_x),
-                  y: Number(avatarArchivo.ajuste_y),
-                  zoom: Number(avatarArchivo.ajuste_zoom),
-                }
-              : undefined
+          src={candidato?.avatar.url ?? null}
+          alt={
+            candidato
+              ? `${candidato.usuario.nombre} ${candidato.usuario.apellido}`
+              : "Candidato"
           }
+          ajuste={candidato?.avatar.ajuste}
           size="lg"
         />
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            {usuario
-              ? `${usuario.nombre} ${usuario.apellido}`
+            {candidato
+              ? `${candidato.usuario.nombre} ${candidato.usuario.apellido}`
               : "Candidato desconocido"}
           </h1>
           <div className="mt-1">
@@ -254,73 +155,20 @@ export default async function PostulacionFichaPage({
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Columna principal */}
         <div className="space-y-6 lg:col-span-2">
-          {/* Datos del candidato */}
-          <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
-            <h2 className="font-semibold text-foreground">Datos del candidato</h2>
-            <dl className="mt-4 grid grid-cols-1 gap-y-3 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-muted-foreground">DNI</dt>
-                <dd className="mt-0.5 font-mono font-medium text-foreground">
-                  {postulante?.dni ?? "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Teléfono</dt>
-                <dd className="mt-0.5 text-foreground">
-                  {usuario?.telefono || "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Email</dt>
-                <dd className="mt-0.5 break-all text-foreground">
-                  {email ?? "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Domicilio</dt>
-                <dd className="mt-0.5 text-foreground">
-                  {postulante?.domicilio || "—"}
-                </dd>
-              </div>
-              {categorias.length > 0 && (
-                <div className="sm:col-span-2">
-                  <dt className="text-muted-foreground">Rubros</dt>
-                  <dd className="mt-1 flex flex-wrap gap-1.5">
-                    {categorias.map((c) => (
-                      <span
-                        key={c}
-                        className="inline-flex items-center rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-foreground"
-                      >
-                        {c}
-                      </span>
-                    ))}
-                  </dd>
-                </div>
-              )}
-            </dl>
-          </div>
-
-          {/* CV */}
-          <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
-            <h2 className="font-semibold text-foreground">Currículum vitae</h2>
-            <div className="mt-3">
-              {cvUrl ? (
-                <a
-                  href={cvUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
-                >
-                  Ver CV
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  El candidato retiró o eliminó su CV.
-                </p>
-              )}
-            </div>
-          </div>
+          {candidato ? (
+            <DatosCandidato
+              email={candidato.email}
+              dni={candidato.postulante.dni}
+              domicilio={candidato.postulante.domicilio}
+              telefono={candidato.usuario.telefono}
+              categorias={candidato.categorias}
+              cvUrl={candidato.cvUrl}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Candidato no encontrado.
+            </p>
+          )}
 
           {/* Oferta */}
           <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
