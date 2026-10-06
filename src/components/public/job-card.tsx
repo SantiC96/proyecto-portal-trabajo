@@ -1,110 +1,104 @@
 import Link from "next/link";
 import { OfertaLaboral } from "@/types/oferta";
-import { MapPin, Building, Clock, Briefcase, Sparkles, ArrowRight } from "lucide-react";
+import { MapPin, Building, Clock, Briefcase, ArrowRight } from "lucide-react";
 
 interface JobCardProps {
   oferta: OfertaLaboral;
-  onApply: (oferta: OfertaLaboral) => void;
 }
 
-export function JobCard({ oferta, onApply }: JobCardProps) {
-  // Format publication date
+export function JobCard({ oferta }: JobCardProps) {
   const formattedDate = new Date(oferta.fechaPublicacion).toLocaleDateString("es-AR", {
     day: "numeric",
     month: "short",
   });
 
   return (
-    <article className="group flex flex-col justify-between rounded-2xl border border-border bg-white p-5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md">
-      <div>
-        {/* Top Badges */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-            <Briefcase className="h-3 w-3" />
-            {oferta.rubro}
+    <Link
+      href={`/ofertas/${oferta.id}`}
+      aria-label={`${oferta.titulo} — ${oferta.empresa}`}
+      className="group block h-full rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+    >
+      <article className="flex h-full flex-col rounded-2xl border border-border bg-white p-5 shadow-xs transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+
+        {/* Rubro (truncable) + fecha (sin corte) — una sola línea */}
+        <div className="flex items-center justify-between gap-2 overflow-hidden">
+          <span
+            className="inline-flex min-w-0 shrink items-center gap-1 overflow-hidden rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"
+            title={oferta.rubro}
+          >
+            <Briefcase className="h-3 w-3 shrink-0" />
+            <span className="truncate">{oferta.rubro}</span>
           </span>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
             <Clock className="h-3.5 w-3.5" />
             <span>Publicado el {formattedDate}</span>
           </div>
         </div>
 
-        {/* Title & Company */}
-        <div className="mt-3">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
-              <Link href={`/ofertas/${oferta.id}`}>{oferta.titulo}</Link>
-            </h3>
-            {oferta.destacada && (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-                <Sparkles className="h-3 w-3 fill-amber-500 text-amber-500" />
-                Destacada
-              </span>
-            )}
-          </div>
-          <div className="mt-1 flex items-center gap-1.5 text-sm font-medium text-muted-foreground-strong">
-            <Building className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span>{oferta.empresa}</span>
-          </div>
+        {/* Título */}
+        <h3
+          className="mt-3 line-clamp-2 text-lg font-bold text-foreground transition-colors group-hover:text-primary"
+          title={oferta.titulo}
+        >
+          {oferta.titulo}
+        </h3>
+
+        {/* Empresa — una línea con truncado */}
+        <div className="mt-1 flex items-center gap-1.5 overflow-hidden text-sm font-medium text-muted-foreground-strong">
+          <Building className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="truncate" title={oferta.empresa}>{oferta.empresa}</span>
         </div>
 
-        {/* Location & Modality Pills */}
-        <div className="mt-3 flex flex-wrap gap-2 text-xs">
-          <span className="inline-flex items-center gap-1 rounded-md bg-surface-tinted px-2.5 py-1 font-medium text-foreground">
-            <MapPin className="h-3.5 w-3.5 text-primary" />
-            {oferta.ubicacion}
+        {/* Pastillas: ubicación truncable, modalidad y jornada sin corte — fila única */}
+        <div className="mt-3 flex flex-nowrap gap-2 overflow-hidden text-xs">
+          <span
+            className="inline-flex min-w-0 shrink items-center gap-1 overflow-hidden rounded-md bg-surface-tinted px-2.5 py-1 font-medium text-foreground"
+            title={oferta.ubicacion}
+          >
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
+            <span className="truncate">{oferta.ubicacion}</span>
           </span>
-          <span className="rounded-md bg-gray-100 px-2.5 py-1 font-medium text-muted-foreground-strong">
+          <span className="shrink-0 whitespace-nowrap rounded-md bg-gray-100 px-2.5 py-1 font-medium text-muted-foreground-strong">
             {oferta.modalidad}
           </span>
-          <span className="rounded-md bg-gray-100 px-2.5 py-1 font-medium text-muted-foreground-strong">
+          <span className="shrink-0 whitespace-nowrap rounded-md bg-gray-100 px-2.5 py-1 font-medium text-muted-foreground-strong">
             {oferta.jornada}
           </span>
         </div>
 
-        {/* Description Excerpt */}
-        <p className="mt-3 line-clamp-2 text-sm text-muted-foreground leading-relaxed">
+        {/* Descripción */}
+        <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
           {oferta.descripcion}
         </p>
 
-        {/* Key Requirements preview */}
+        {/* Requisitos — solo se muestra si hay al menos uno */}
         {oferta.requisitos.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1.5">
+          <div className="mt-4 flex flex-nowrap items-center gap-1.5 overflow-hidden">
             {oferta.requisitos.slice(0, 2).map((req, i) => (
               <span
                 key={i}
-                className="inline-block max-w-full truncate rounded-md border border-border/80 bg-background px-2 py-0.5 text-[11px] text-muted-foreground-strong"
+                className="inline-flex max-w-[8rem] shrink-0 items-center overflow-hidden rounded-md border border-border/80 bg-background px-2 py-0.5 text-[11px] text-muted-foreground-strong"
                 title={req}
               >
-                • {req}
+                <span className="truncate">• {req}</span>
               </span>
             ))}
             {oferta.requisitos.length > 2 && (
-              <span className="rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground">
+              <span className="shrink-0 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground">
                 +{oferta.requisitos.length - 2} más
               </span>
             )}
           </div>
         )}
-      </div>
 
-      {/* Action Buttons */}
-      <div className="mt-6 flex flex-col gap-2 pt-4 border-t border-border/60 sm:flex-row sm:items-center sm:justify-between">
-        <Link
-          href={`/ofertas/${oferta.id}`}
-          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border px-3.5 text-xs font-semibold text-foreground transition hover:border-primary hover:text-primary active:bg-surface-tinted"
-        >
-          <span>Ver detalle</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
-        <button
-          type="button"
-          onClick={() => onApply(oferta)}
-          className="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-xs font-semibold text-white shadow-xs transition hover:bg-primary-hover active:translate-y-px"
-        >
-          Postularme
-        </button>
-      </div>
-    </article>
+        {/* Footer — pegado al fondo, con separación mínima garantizada */}
+        <div className="mt-auto pt-5">
+          <div className="flex items-center justify-end gap-1 border-t border-border/60 pt-4">
+            <span className="text-sm font-medium text-primary">Ver oferta</span>
+            <ArrowRight className="h-4 w-4 text-primary" />
+          </div>
+        </div>
+      </article>
+    </Link>
   );
 }
