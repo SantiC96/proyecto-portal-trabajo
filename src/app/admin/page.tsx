@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Building2, ChevronRight, ClipboardList } from "lucide-react";
+import { Building2, ChevronRight, ClipboardList, Users } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export const metadata: Metadata = {
@@ -13,6 +13,8 @@ export default async function AdminDashboardPage() {
     { count: aprobadas },
     { count: rechazadas },
     { count: postulacionesPendientes },
+    { count: totalPostulantes },
+    { count: postulantesConCv },
   ] = await Promise.all([
     supabaseAdmin
       .from("empresas")
@@ -30,6 +32,14 @@ export default async function AdminDashboardPage() {
       .from("postulaciones")
       .select("*", { count: "exact", head: true })
       .in("estado", ["recibida", "en_revision"]),
+    supabaseAdmin
+      .from("postulantes")
+      .select("*", { count: "exact", head: true }),
+    supabaseAdmin
+      .from("archivos_usuario")
+      .select("*", { count: "exact", head: true })
+      .eq("tipo", "cv")
+      .eq("activo", true),
   ]);
 
   return (
@@ -38,7 +48,7 @@ export default async function AdminDashboardPage() {
         Panel de la Oficina de Empleo
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Revisá empresas y postulaciones.
+        Revisá empresas, postulaciones y postulantes.
       </p>
 
       <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -97,6 +107,28 @@ export default async function AdminDashboardPage() {
                       postulacionesPendientes === 1 ? "" : "s"
                     } de revisión`
                   : "Revisá candidatos y gestioná derivaciones"}
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 flex-shrink-0 text-muted-icon" />
+        </Link>
+
+        <Link
+          href="/admin/postulantes"
+          className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-colors hover:bg-surface-tinted"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-primary">
+              <Users className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Postulantes</p>
+              <p className="text-sm text-muted-foreground">
+                {(totalPostulantes ?? 0) === 0
+                  ? "Buscá candidatos por rubro y revisá sus CVs"
+                  : `${totalPostulantes ?? 0} registrado${
+                      totalPostulantes === 1 ? "" : "s"
+                    } · ${postulantesConCv ?? 0} con CV`}
               </p>
             </div>
           </div>
