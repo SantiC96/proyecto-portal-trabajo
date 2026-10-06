@@ -16,12 +16,7 @@ import {
   descartarPostulacion,
   derivarPostulacion,
 } from "../actions";
-
-type EstadoPostulacion =
-  | "recibida"
-  | "en_revision"
-  | "derivada"
-  | "rechazada_municipalidad";
+import { type EstadoPostulacion } from "@/lib/admin/postulacion-estados";
 
 type Props = {
   postulacionId: string;
@@ -134,7 +129,7 @@ export function FichaAcciones({ postulacionId, estado, derivacion }: Props) {
               type="button"
               onClick={() => { setError(null); setAbrirDescartar(true); }}
               disabled={isPending}
-              className="btn-secundario min-h-11 px-4 text-sm font-medium"
+              className="btn-secundario inline-flex items-center justify-center whitespace-nowrap min-h-11 px-4 text-sm font-medium"
             >
               No seleccionar
             </button>
@@ -146,7 +141,7 @@ export function FichaAcciones({ postulacionId, estado, derivacion }: Props) {
             type="button"
             onClick={() => { setError(null); setAbrirReconsiderar(true); }}
             disabled={isPending}
-            className="btn-secundario min-h-11 px-4 text-sm font-medium"
+            className="btn-secundario inline-flex items-center justify-center whitespace-nowrap min-h-11 px-4 text-sm font-medium"
           >
             Reconsiderar
           </button>
@@ -197,7 +192,7 @@ export function FichaAcciones({ postulacionId, estado, derivacion }: Props) {
               type="button"
               onClick={() => { setAbrirDescartar(false); setNotaDescartar(""); setError(null); }}
               disabled={isPending}
-              className="btn-secundario h-9 px-4 text-sm font-medium"
+              className="btn-secundario inline-flex items-center justify-center whitespace-nowrap h-9 px-4 text-sm font-medium"
             >
               Cancelar
             </button>
@@ -249,7 +244,7 @@ export function FichaAcciones({ postulacionId, estado, derivacion }: Props) {
               type="button"
               onClick={() => { setAbrirDerivar(false); setNotaDerivar(""); setError(null); }}
               disabled={isPending}
-              className="btn-secundario h-9 px-4 text-sm font-medium"
+              className="btn-secundario inline-flex items-center justify-center whitespace-nowrap h-9 px-4 text-sm font-medium"
             >
               Cancelar
             </button>
@@ -283,7 +278,7 @@ export function FichaAcciones({ postulacionId, estado, derivacion }: Props) {
               type="button"
               onClick={() => { setAbrirReconsiderar(false); setError(null); }}
               disabled={isPending}
-              className="btn-secundario h-9 px-4 text-sm font-medium"
+              className="btn-secundario inline-flex items-center justify-center whitespace-nowrap h-9 px-4 text-sm font-medium"
             >
               Cancelar
             </button>
