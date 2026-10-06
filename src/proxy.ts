@@ -44,8 +44,6 @@ export async function proxy(request: NextRequest) {
 
   // Routes only accessible to guests — logged-in users are bounced to home
   const AUTH_GUEST_ONLY = [
-    "/auth/login",
-    "/auth/registro",
     "/auth/recuperar-contrasena",
     "/auth/reset-enviado",
   ];
@@ -78,6 +76,21 @@ export async function proxy(request: NextRequest) {
         // signOut updates supabaseResponse with auth cookie deletions (maxAge: 0)
         await supabase.auth.signOut();
 
+        // For the session-check API, return JSON instead of redirecting so the
+        // client can handle the expired state without a full page navigation.
+        if (pathname === "/api/sesion") {
+          const jsonResponse = NextResponse.json({ activa: false });
+          supabaseResponse.cookies.getAll().forEach(({ name, value, ...opts }) => {
+            jsonResponse.cookies.set(name, value, opts);
+          });
+          jsonResponse.cookies.set(LAST_ACTIVITY_COOKIE, "", {
+            maxAge: 0,
+            path: "/",
+            httpOnly: true,
+          });
+          return jsonResponse;
+        }
+
         const timeoutUrl = request.nextUrl.clone();
         timeoutUrl.pathname = "/auth/login";
         timeoutUrl.searchParams.set("motivo", "inactividad");
@@ -107,6 +120,23 @@ export async function proxy(request: NextRequest) {
     });
   }
   // ─────────────────────────────────────────────────────────────────────────
+
+  if (user && pathname === "/auth/registro" && !isServerAction) {
+    const redirectTo = encodeURIComponent("/auth/registro" + request.nextUrl.search);
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    url.search = `?aviso=sesion-activa&accion=registro&redirectTo=${redirectTo}`;
+    return NextResponse.redirect(url);
+  }
+
+  if (user && pathname === "/auth/login" && !isServerAction) {
+    const loginWithQuery = "/auth/login" + (request.nextUrl.search || "");
+    const redirectTo = encodeURIComponent(loginWithQuery);
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    url.search = `?aviso=sesion-activa&accion=login&redirectTo=${redirectTo}`;
+    return NextResponse.redirect(url);
+  }
 
   if (user && isGuestOnly && !isServerAction) {
     const url = request.nextUrl.clone();

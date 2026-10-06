@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { ArrowDown, CheckCircle2, ShieldCheck, Users } from "lucide-react";
+import { AuthLink } from "@/components/auth/auth-link";
 
 export function Hero() {
   const handleScrollToOfertas = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -53,12 +53,12 @@ export function Hero() {
               <span>Ver ofertas disponibles</span>
               <ArrowDown className="h-4 w-4" />
             </a>
-            <Link
+            <AuthLink
               href="/auth/login"
               className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white px-6 text-sm font-semibold text-foreground shadow-xs transition hover:border-primary hover:text-primary sm:w-auto"
             >
               <span>Acceso usuarios y empresas</span>
-            </Link>
+            </AuthLink>
           </div>
 
           {/* Highlights */}

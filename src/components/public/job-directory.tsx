@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { OfertaLaboral } from "@/types/oferta";
 import { JobCard } from "@/components/public/job-card";
-import { Search, Filter, X, LogIn, UserPlus, AlertCircle } from "lucide-react";
+import { Search, Filter, X } from "lucide-react";
 
 interface JobDirectoryProps {
   ofertas: OfertaLaboral[];
@@ -13,30 +11,20 @@ interface JobDirectoryProps {
 }
 
 export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
-  const router = useRouter();
-
-  // Search and filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRubro, setSelectedRubro] = useState<string>("Todos");
   const [selectedModalidad, setSelectedModalidad] = useState<string>("Todas");
 
-  // Modal state when visitor clicks "Postularme" without session
-  const [applyModalOferta, setApplyModalOferta] = useState<OfertaLaboral | null>(null);
-
   const rubroOptions = ["Todos", ...categorias];
 
-  // Filtered job list
   const filteredOfertas = useMemo(() => {
     return ofertas.filter((oferta) => {
-      // Rubro filter
       const matchesRubro =
         selectedRubro === "Todos" || oferta.rubro.toLowerCase() === selectedRubro.toLowerCase();
 
-      // Modalidad filter
       const matchesModalidad =
         selectedModalidad === "Todas" || oferta.modalidad === selectedModalidad;
 
-      // Search query filter (matches title, description, company, or requirements)
       const query = searchQuery.trim().toLowerCase();
       const matchesQuery =
         !query ||
@@ -57,20 +45,6 @@ export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
     setSearchQuery("");
     setSelectedRubro("Todos");
     setSelectedModalidad("Todas");
-  };
-
-  const handleApplyClick = (oferta: OfertaLaboral) => {
-    // Show the login-redirect modal so the visitor understands and can choose login or register
-    setApplyModalOferta(oferta);
-  };
-
-  const handleConfirmLoginRedirect = () => {
-    if (applyModalOferta) {
-      const redirectTarget = `/ofertas/${applyModalOferta.id}?accion=postular`;
-      router.push(`/auth/login?redirect=${encodeURIComponent(redirectTarget)}`);
-    } else {
-      router.push("/auth/login");
-    }
   };
 
   return (
@@ -182,9 +156,9 @@ export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
 
       {/* Job Cards Grid */}
       {filteredOfertas.length > 0 ? (
-        <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
+        <div className="mt-6 grid auto-rows-fr grid-cols-1 gap-5 md:grid-cols-2">
           {filteredOfertas.map((oferta) => (
-            <JobCard key={oferta.id} oferta={oferta} onApply={handleApplyClick} />
+            <JobCard key={oferta.id} oferta={oferta} />
           ))}
         </div>
       ) : (
@@ -205,67 +179,6 @@ export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
           >
             Ver todas las ofertas
           </button>
-        </div>
-      )}
-
-      {/* Visitor Apply / Login Redirect Modal */}
-      {applyModalOferta && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="apply-modal-title"
-        >
-          <div className="relative w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-xl">
-            <button
-              type="button"
-              onClick={() => setApplyModalOferta(null)}
-              className="absolute top-4 right-4 rounded-full p-1.5 text-muted-foreground transition hover:bg-gray-100 hover:text-foreground"
-              aria-label="Cerrar ventana"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            <div className="mb-4">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-700">
-                <AlertCircle className="h-6 w-6" />
-              </div>
-              <h3 id="apply-modal-title" className="text-lg font-bold text-foreground">
-                Iniciá sesión para postularte
-              </h3>
-              <p className="mt-2 text-sm text-muted-foreground-strong">
-                Para postularte a la búsqueda de{" "}
-                <strong className="text-foreground">&ldquo;{applyModalOferta.titulo}&rdquo;</strong> en{" "}
-                <span className="font-semibold text-foreground">{applyModalOferta.empresa}</span>, es
-                necesario ingresar con tu cuenta de Postulante.
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-background p-3 text-xs text-muted-foreground">
-              💡 Las postulaciones son revisadas por el equipo de intermediación laboral municipal antes
-              de ser presentadas a la empresa.
-            </div>
-
-            <div className="mt-6 flex flex-col gap-2.5">
-              <button
-                type="button"
-                onClick={handleConfirmLoginRedirect}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary font-semibold text-white shadow-xs transition hover:bg-primary-hover"
-              >
-                <LogIn className="h-4 w-4" />
-                <span>Ir al formulario de Login</span>
-              </button>
-
-              <Link
-                href="/auth/registro"
-                onClick={() => setApplyModalOferta(null)}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white font-medium text-foreground transition hover:border-primary hover:text-primary"
-              >
-                <UserPlus className="h-4 w-4" />
-                <span>¿No tenés cuenta? Registrate gratis</span>
-              </Link>
-            </div>
-          </div>
         </div>
       )}
     </section>

@@ -1,18 +1,87 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building, MapPin, Clock, Briefcase, Sparkles, LogIn } from "lucide-react";
+import { ArrowLeft, Building, MapPin, Clock, Briefcase } from "lucide-react";
 import { PublicFooter } from "@/components/public/public-footer";
 import { getOfertaById } from "@/lib/ofertas";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import { PostularseCta } from "./postularse-cta";
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function OfertaDetallePage({ params }: Props) {
-  const { id } = await params;
-  const oferta = await getOfertaById(id);
+export default async function OfertaDetallePage({ params, searchParams }: Props) {
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
 
+  const oferta = await getOfertaById(id);
   if (!oferta) notFound();
+
+  // Determine who is viewing and build the CTA props
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const loginHref = `/auth/login?redirect=${encodeURIComponent(`/ofertas/${oferta.id}?accion=postular`)}`;
+
+  let ctaVariant: "sin-sesion" | "puede-postularse" | "sin-cv" | "ya-postulado" | "otro-rol" =
+    "sin-sesion";
+  let cvNombre: string | undefined;
+  let postulacion: { id: string; estado: string; created_at: string } | undefined;
+  let autoOpen = false;
+
+  if (user) {
+    const { data: usuario } = await supabaseAdmin
+      .from("usuarios")
+      .select("rol")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const rol = usuario?.rol ?? null;
+
+    if (rol === "empresa" || rol === "municipalidad") {
+      ctaVariant = "otro-rol";
+    } else if (rol === "postulante") {
+      // Get postulante record
+      const { data: postulante } = await supabaseAdmin
+        .from("postulantes")
+        .select("id")
+        .eq("usuario_id", user.id)
+        .maybeSingle();
+
+      if (postulante) {
+        // Parallel: check existing application, check CV
+        const [postulacionResult, cvResult] = await Promise.all([
+          supabaseAdmin
+            .from("postulaciones")
+            .select("id, estado, created_at")
+            .eq("oferta_id", oferta.id)
+            .eq("postulante_id", postulante.id)
+            .maybeSingle(),
+          supabaseAdmin
+            .from("archivos_usuario")
+            .select("nombre_original")
+            .eq("usuario_id", user.id)
+            .eq("tipo", "cv")
+            .eq("activo", true)
+            .maybeSingle(),
+        ]);
+
+        if (postulacionResult.data) {
+          ctaVariant = "ya-postulado";
+          postulacion = postulacionResult.data;
+        } else if (!cvResult.data) {
+          ctaVariant = "sin-cv";
+        } else {
+          ctaVariant = "puede-postularse";
+          cvNombre = cvResult.data.nombre_original;
+          autoOpen = sp.accion === "postular";
+        }
+      }
+    }
+  }
 
   const formattedDate = new Date(oferta.fechaPublicacion).toLocaleDateString("es-AR", {
     day: "numeric",
@@ -41,12 +110,6 @@ export default async function OfertaDetallePage({ params }: Props) {
                 <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
                   <Briefcase className="h-3 w-3" />
                   {oferta.rubro}
-                </span>
-              )}
-              {oferta.destacada && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-                  <Sparkles className="h-3 w-3 fill-amber-500 text-amber-500" />
-                  Destacada
                 </span>
               )}
               <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
@@ -133,13 +196,16 @@ export default async function OfertaDetallePage({ params }: Props) {
               <p className="text-xs text-muted-foreground">
                 Las postulaciones son revisadas por el equipo de intermediación laboral municipal.
               </p>
-              <Link
-                href={`/auth/login?redirect=${encodeURIComponent(`/ofertas/${oferta.id}?accion=postular`)}`}
-                className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white shadow-xs transition hover:bg-primary-hover"
-              >
-                <LogIn className="h-4 w-4" />
-                Postularme
-              </Link>
+              <PostularseCta
+                variant={ctaVariant}
+                ofertaId={oferta.id}
+                ofertaTitulo={oferta.titulo}
+                ofertaEmpresa={oferta.empresa}
+                loginHref={loginHref}
+                cvNombre={cvNombre}
+                postulacion={postulacion}
+                autoOpen={autoOpen}
+              />
             </div>
           </article>
         </div>

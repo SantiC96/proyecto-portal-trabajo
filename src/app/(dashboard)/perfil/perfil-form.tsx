@@ -19,15 +19,20 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { Avatar } from "@/components/ui/avatar";
+import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
+import { FotoPerfilModal } from "@/components/ui/foto-perfil-modal";
+import { MultiCombobox } from "@/components/ui/multi-combobox";
 import {
   actualizarPerfil,
+  actualizarRubros,
   subirAvatar,
   quitarAvatar,
   subirCV,
   eliminarCV,
   cambiarContrasena,
 } from "./actions";
+
+type AjusteAvatar = { x: number; y: number; zoom: number };
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -91,7 +96,7 @@ interface PerfilFormProps {
     apellido: string;
     telefono: string;
     rol: string | null;
-    avatarActivo: { ruta: string; url: string | null } | null;
+    avatarActivo: { ruta: string; url: string | null; ajuste: AjusteAvatar } | null;
   };
   postulante: {
     id: string;
@@ -121,20 +126,26 @@ export function PerfilForm({
 }: PerfilFormProps) {
   const router = useRouter();
 
-  // Modo edición
-  const [modoEdicion, setModoEdicion] = useState(false);
+  // Modo edición — datos personales
+  const [modoEdicionDatos, setModoEdicionDatos] = useState(false);
+  const [guardandoDatos, setGuardandoDatos] = useState(false);
+  const [errorDatos, setErrorDatos] = useState<string | null>(null);
+  const [exitoDatos, setExitoDatos] = useState(false);
 
   // Datos personales
   const [nombre, setNombre] = useState(usuario.nombre);
   const [apellido, setApellido] = useState(usuario.apellido);
   const [telefono, setTelefono] = useState(usuario.telefono);
   const [domicilio, setDomicilio] = useState(postulante.domicilio);
-  const [categoriaIds, setCategoriaIds] = useState<string[]>(categoriasIniciales);
+  const [dni, setDni] = useState(postulante.dni);
 
-  // Guardar datos
-  const [guardandoPerfil, setGuardandoPerfil] = useState(false);
-  const [errorPerfil, setErrorPerfil] = useState<string | null>(null);
-  const [exitoPerfil, setExitoPerfil] = useState(false);
+  // Modo edición — rubros de interés
+  const [modoEdicionRubros, setModoEdicionRubros] = useState(false);
+  const [guardandoRubros, setGuardandoRubros] = useState(false);
+  const [errorRubros, setErrorRubros] = useState<string | null>(null);
+  const [exitoRubros, setExitoRubros] = useState(false);
+
+  const [categoriaIds, setCategoriaIds] = useState<string[]>(categoriasIniciales);
 
   // Avatar
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -143,10 +154,20 @@ export function PerfilForm({
   const [guardandoAvatar, setGuardandoAvatar] = useState(false);
   const [errorAvatar, setErrorAvatar] = useState<string | null>(null);
 
+  // Modal foto
+  const [modalFotoAbierto, setModalFotoAbierto] = useState(false);
+  const [modalModo, setModalModo] = useState<"ver" | "ajustar">("ver");
+  const [ajusteActual, setAjusteActual] = useState<AjusteAvatar>(
+    usuario.avatarActivo?.ajuste ?? { x: 50, y: 50, zoom: 1 }
+  );
+  // Flag para abrir el editor automáticamente tras subir una foto nueva
+  const abrirEditorTrasRefresh = useRef(false);
+
   // CV
   const cvInputRef = useRef<HTMLInputElement>(null);
   const [cvFile, setCvFile] = useState<File | null>(null);
-  const [guardandoCV, setGuardandoCV] = useState(false);
+  const [subiendoCV, setSubiendoCV] = useState(false);
+  const [eliminandoCV, setEliminandoCV] = useState(false);
   const [errorCV, setErrorCV] = useState<string | null>(null);
   const [exitoCV, setExitoCV] = useState(false);
 
@@ -169,23 +190,36 @@ export function PerfilForm({
     };
   }, [avatarPreview]);
 
-  // ── modo edición ────────────────────────────────────────────────────────────
+  // Abrir editor de ajuste cuando llega el nuevo avatarActivo tras subir foto
+  useEffect(() => {
+    if (abrirEditorTrasRefresh.current && usuario.avatarActivo) {
+      abrirEditorTrasRefresh.current = false;
+      setAjusteActual({ x: 50, y: 50, zoom: 1 });
+      setModalModo("ajustar");
+      setModalFotoAbierto(true);
+    }
+  }, [usuario.avatarActivo]);
 
-  const handleEditarDatos = () => {
-    setExitoPerfil(false);
-    setErrorPerfil(null);
-    setModoEdicion(true);
-  };
+  // ── handlers datos personales ────────────────────────────────────────────────
 
-  const handleCancelar = () => {
+  const handleCancelarDatos = () => {
     setNombre(usuario.nombre);
     setApellido(usuario.apellido);
     setTelefono(usuario.telefono);
     setDomicilio(postulante.domicilio);
+    setDni(postulante.dni);
+    setErrorDatos(null);
+    setExitoDatos(false);
+    setModoEdicionDatos(false);
+  };
+
+  // ── handlers rubros ──────────────────────────────────────────────────────────
+
+  const handleCancelarRubros = () => {
     setCategoriaIds(categoriasIniciales);
-    setErrorPerfil(null);
-    setExitoPerfil(false);
-    setModoEdicion(false);
+    setErrorRubros(null);
+    setExitoRubros(false);
+    setModoEdicionRubros(false);
   };
 
   // ── avatar handlers ─────────────────────────────────────────────────────────
@@ -220,6 +254,8 @@ export function PerfilForm({
         if (avatarPreview) URL.revokeObjectURL(avatarPreview);
         setAvatarPreview(null);
         setAvatarFile(null);
+        // El editor se abre cuando llega el nuevo avatarActivo tras el refresh
+        abrirEditorTrasRefresh.current = true;
         router.refresh();
       }
     } catch {
@@ -247,32 +283,52 @@ export function PerfilForm({
     setGuardandoAvatar(false);
   };
 
-  // ── guardar perfil ──────────────────────────────────────────────────────────
+  // ── guardar datos personales ─────────────────────────────────────────────────
 
-  const handleGuardarPerfil = async (e: React.FormEvent) => {
+  const handleGuardarDatos = async (e: React.FormEvent) => {
     e.preventDefault();
-    setGuardandoPerfil(true);
-    setErrorPerfil(null);
-    setExitoPerfil(false);
-    const result = await actualizarPerfil({ nombre, apellido, telefono, domicilio, categoriaIds });
+    setGuardandoDatos(true);
+    setErrorDatos(null);
+    setExitoDatos(false);
+    const result = await actualizarPerfil({ nombre, apellido, telefono, domicilio, dni });
     if (result?.error) {
-      setErrorPerfil(result.error);
+      setErrorDatos(result.error);
     } else {
-      // Normalizar estado con los valores guardados
       setNombre(nombre.trim());
       setApellido(apellido.trim());
       setTelefono(telefono.trim());
       setDomicilio(domicilio.trim());
-      setExitoPerfil(true);
-      setModoEdicion(false);
+      setDni(dni.replace(/\D/g, ""));
+      setExitoDatos(true);
+      setModoEdicionDatos(false);
       router.refresh();
     }
-    setGuardandoPerfil(false);
+    setGuardandoDatos(false);
+  };
+
+  // ── guardar rubros ───────────────────────────────────────────────────────────
+
+  const handleGuardarRubros = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGuardandoRubros(true);
+    setErrorRubros(null);
+    setExitoRubros(false);
+    const result = await actualizarRubros(categoriaIds);
+    if (result?.error) {
+      setErrorRubros(result.error);
+    } else {
+      setExitoRubros(true);
+      setModoEdicionRubros(false);
+      router.refresh();
+    }
+    setGuardandoRubros(false);
   };
 
   // ── cv handlers ─────────────────────────────────────────────────────────────
 
-  const handleSeleccionarCV = (file: File) => {
+  const handleSeleccionarCV = async (file: File) => {
+    setErrorCV(null);
+    setExitoCV(false);
     if (file.type !== "application/pdf") {
       setErrorCV("El CV debe ser un archivo PDF.");
       return;
@@ -281,34 +337,31 @@ export function PerfilForm({
       setErrorCV("El CV no puede superar los 5 MB.");
       return;
     }
-    setErrorCV(null);
     setCvFile(file);
-  };
-
-  const handleSubirCV = async () => {
-    if (!cvFile) return;
-    setGuardandoCV(true);
-    setErrorCV(null);
-    setExitoCV(false);
+    setSubiendoCV(true);
     const fd = new FormData();
-    fd.append("cv", cvFile);
+    fd.append("cv", file);
     try {
       const result = await subirCV(fd);
       if (result?.error) {
         setErrorCV(result.error);
+        setCvFile(null);
       } else {
         setCvFile(null);
         setExitoCV(true);
         router.refresh();
+        setTimeout(() => setExitoCV(false), 4000);
       }
     } catch {
       setErrorCV("Ocurrió un error inesperado al subir el CV. Intentá de nuevo.");
+      setCvFile(null);
+    } finally {
+      setSubiendoCV(false);
     }
-    setGuardandoCV(false);
   };
 
   const handleEliminarCV = async () => {
-    setGuardandoCV(true);
+    setEliminandoCV(true);
     setErrorCV(null);
     setExitoCV(false);
     const result = await eliminarCV();
@@ -317,7 +370,7 @@ export function PerfilForm({
     } else {
       router.refresh();
     }
-    setGuardandoCV(false);
+    setEliminandoCV(false);
   };
 
   // ── contraseña handlers ─────────────────────────────────────────────────────
@@ -355,6 +408,7 @@ export function PerfilForm({
 
   const avatarSrc = avatarPreview ?? usuario.avatarActivo?.url ?? undefined;
   const tieneAvatar = !!(usuario.avatarActivo || avatarPreview);
+  const puedeVerFoto = !!(usuario.avatarActivo && !avatarPreview);
 
   return (
     <div className="flex flex-col gap-6">
@@ -364,12 +418,31 @@ export function PerfilForm({
         <SectionTitle>Foto de perfil</SectionTitle>
         <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
           <div className="shrink-0">
-            <Avatar
-              src={avatarSrc}
-              nombre={usuario.nombre}
-              apellido={usuario.apellido}
-              size="lg"
-            />
+            {puedeVerFoto ? (
+              <button
+                type="button"
+                className="cursor-zoom-in rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40"
+                aria-label="Ver foto de perfil"
+                onClick={() => {
+                  setModalModo("ver");
+                  setModalFotoAbierto(true);
+                }}
+              >
+                <AvatarAjustado
+                  src={avatarSrc}
+                  alt={`Foto de ${usuario.nombre} ${usuario.apellido}`.trim()}
+                  ajuste={ajusteActual}
+                  size="lg"
+                />
+              </button>
+            ) : (
+              <AvatarAjustado
+                src={avatarSrc}
+                alt={`Foto de ${usuario.nombre} ${usuario.apellido}`.trim()}
+                ajuste={ajusteActual}
+                size="lg"
+              />
+            )}
           </div>
           <div className="flex flex-1 flex-col gap-3">
             {avatarPreview ? (
@@ -450,17 +523,15 @@ export function PerfilForm({
         />
       </div>
 
-      {/* ── 2-3. Datos personales + Rubros ─────────────────────────────────── */}
-      <form onSubmit={handleGuardarPerfil} className="flex flex-col gap-6">
-
-        {/* Datos personales */}
+      {/* ── 2. Datos personales ────────────────────────────────────────────── */}
+      <form onSubmit={handleGuardarDatos}>
         <div className="rounded-2xl border border-border bg-white px-6 py-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
             <SectionTitle>Datos personales</SectionTitle>
-            {!modoEdicion && (
+            {!modoEdicionDatos && (
               <button
                 type="button"
-                onClick={handleEditarDatos}
+                onClick={() => { setExitoDatos(false); setErrorDatos(null); setModoEdicionDatos(true); }}
                 className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-medium text-muted-foreground-strong transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <Pencil className="h-3.5 w-3.5" />
@@ -469,14 +540,14 @@ export function PerfilForm({
             )}
           </div>
 
-          {!modoEdicion ? (
+          {!modoEdicionDatos ? (
             /* ── Modo lectura ── */
             <div className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
               <CampoLectura label="Nombre" valor={nombre} />
               <CampoLectura label="Apellido" valor={apellido} />
               <CampoLectura label="Teléfono / Celular" valor={telefono} />
               <CampoLectura label="Domicilio" valor={domicilio} />
-              <CampoLectura label="DNI" valor={postulante.dni} />
+              <CampoLectura label="DNI" valor={dni} />
               <CampoLectura label="Email" valor={email} />
             </div>
           ) : (
@@ -559,17 +630,20 @@ export function PerfilForm({
 
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="p-dni" className="text-sm font-medium text-foreground">
-                  DNI <span className="ml-1 text-xs font-normal text-muted-icon">(no editable)</span>
+                  DNI <span className="text-red-500">*</span>
                 </label>
                 <InputWrapper>
                   <FieldIcon icon={CreditCard} />
                   <input
                     id="p-dni"
                     type="text"
-                    readOnly
-                    value={postulante.dni}
-                    className={inputReadonlyClass}
-                    tabIndex={-1}
+                    inputMode="numeric"
+                    autoComplete="off"
+                    required
+                    value={dni}
+                    onChange={(e) => setDni(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                    placeholder="12345678"
+                    className={inputClass}
                   />
                 </InputWrapper>
               </div>
@@ -592,15 +666,61 @@ export function PerfilForm({
               </div>
             </div>
           )}
+
+          {modoEdicionDatos && (
+            <div className="mt-6 flex flex-col gap-4">
+              {errorDatos && <MensajeError texto={errorDatos} />}
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="submit"
+                  disabled={guardandoDatos}
+                  className="flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-8 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {guardandoDatos ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
+                  {guardandoDatos ? "Guardando…" : "Guardar datos"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelarDatos}
+                  disabled={guardandoDatos}
+                  className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-8 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!modoEdicionDatos && exitoDatos && (
+            <MensajeExito texto="¡Datos actualizados correctamente!" />
+          )}
         </div>
+      </form>
 
-        {/* Rubros de interés */}
+      {/* ── 3. Rubros de interés ───────────────────────────────────────────── */}
+      <form onSubmit={handleGuardarRubros}>
         <div className="rounded-2xl border border-border bg-white px-6 py-6 shadow-sm">
-          <SectionTitle>Rubros de interés</SectionTitle>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <SectionTitle>Rubros de interés</SectionTitle>
+            {!modoEdicionRubros && (
+              <button
+                type="button"
+                onClick={() => { setExitoRubros(false); setErrorRubros(null); setModoEdicionRubros(true); }}
+                className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-medium text-muted-foreground-strong transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Editar rubros
+              </button>
+            )}
+          </div>
 
-          {!modoEdicion ? (
+          {!modoEdicionRubros ? (
             /* ── Modo lectura ── */
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               {categoriaIds.length > 0 ? (
                 categorias
                   .filter((c) => categoriaIds.includes(c.id))
@@ -624,69 +744,43 @@ export function PerfilForm({
               <p className="mb-4 mt-1 text-sm text-muted-foreground">
                 Seleccioná los rubros en los que te gustaría trabajar.
               </p>
-              <div className="flex flex-wrap gap-2">
-                {categorias.map((cat) => {
-                  const seleccionado = categoriaIds.includes(cat.id);
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() =>
-                        setCategoriaIds((prev) =>
-                          prev.includes(cat.id)
-                            ? prev.filter((c) => c !== cat.id)
-                            : [...prev, cat.id]
-                        )
-                      }
-                      className={`rounded-full border px-4 py-1.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-                        seleccionado
-                          ? "border-primary bg-primary text-white"
-                          : "border-border bg-background text-muted-foreground-strong hover:border-primary/50 hover:text-primary"
-                      }`}
-                    >
-                      {cat.nombre}
-                    </button>
-                  );
-                })}
+              <MultiCombobox
+                opciones={categorias}
+                seleccionados={categoriaIds}
+                onChange={setCategoriaIds}
+                placeholder="Buscá o elegí rubros…"
+                id="rubros-combobox"
+              />
+              {errorRubros && <MensajeError texto={errorRubros} />}
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="submit"
+                  disabled={guardandoRubros}
+                  className="flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-8 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {guardandoRubros ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
+                  {guardandoRubros ? "Guardando…" : "Guardar rubros"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelarRubros}
+                  disabled={guardandoRubros}
+                  className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-8 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
+                >
+                  Cancelar
+                </button>
               </div>
             </>
           )}
+
+          {!modoEdicionRubros && exitoRubros && (
+            <MensajeExito texto="¡Rubros actualizados correctamente!" />
+          )}
         </div>
-
-        {/* Mensajes y botones de acción — solo en modo edición */}
-        {modoEdicion && (
-          <>
-            {errorPerfil && <MensajeError texto={errorPerfil} />}
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="submit"
-                disabled={guardandoPerfil}
-                className="flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-8 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {guardandoPerfil ? (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                ) : (
-                  <CheckCircle2 className="h-4 w-4" />
-                )}
-                {guardandoPerfil ? "Guardando…" : "Guardar cambios"}
-              </button>
-              <button
-                type="button"
-                onClick={handleCancelar}
-                disabled={guardandoPerfil}
-                className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-8 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
-              >
-                Cancelar
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* Mensaje de éxito — solo en modo lectura, después de guardar */}
-        {!modoEdicion && exitoPerfil && (
-          <MensajeExito texto="¡Perfil actualizado correctamente!" />
-        )}
-
       </form>
 
       {/* ── 4. CV ──────────────────────────────────────────────────────────── */}
@@ -704,25 +798,16 @@ export function PerfilForm({
               </p>
             </div>
 
-            {cvFile ? (
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-tinted px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <FileText className="h-8 w-8 shrink-0 text-primary" />
-                  <div>
-                    <p className="break-all text-sm font-medium text-foreground">{cvFile.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {(cvFile.size / 1024).toFixed(0)} KB · PDF
-                    </p>
-                  </div>
+            {subiendoCV ? (
+              <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-surface-tinted px-4 py-3">
+                <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <div className="min-w-0 flex-1">
+                  <p className="break-all text-sm font-medium text-foreground">{cvFile?.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {cvFile ? `${(cvFile.size / 1024).toFixed(0)} KB · PDF` : ""}
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => { setCvFile(null); setErrorCV(null); }}
-                  className="shrink-0 rounded-full p-1 text-muted-foreground transition hover:bg-red-50 hover:text-red-500"
-                  aria-label="Quitar archivo"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                <span className="shrink-0 text-sm text-primary">Subiendo CV…</span>
               </div>
             ) : (
               <button
@@ -733,31 +818,17 @@ export function PerfilForm({
                 <Upload className="h-8 w-8 text-muted-icon" />
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    Hacé clic para seleccionar tu CV
+                    Hacé clic para seleccionar tu CV. Se sube automáticamente.
                   </p>
                   <p className="mt-1 text-xs text-muted-icon">Solo PDF · Máximo 5 MB</p>
                 </div>
               </button>
             )}
 
-            {errorCV && <MensajeError texto={errorCV} />}
-            {exitoCV && <MensajeExito texto="¡CV subido correctamente!" />}
-
-            {cvFile && (
-              <button
-                type="button"
-                onClick={handleSubirCV}
-                disabled={guardandoCV}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover disabled:opacity-60 sm:w-auto sm:px-8 sm:self-start"
-              >
-                {guardandoCV ? (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                ) : (
-                  <Upload className="h-4 w-4" />
-                )}
-                {guardandoCV ? "Subiendo…" : "Subir CV"}
-              </button>
-            )}
+            <div aria-live="polite">
+              {errorCV && <MensajeError texto={errorCV} />}
+              {exitoCV && <MensajeExito texto="¡CV subido correctamente!" />}
+            </div>
           </div>
         ) : (
           <div className="mt-4 flex flex-col gap-4">
@@ -784,10 +855,12 @@ export function PerfilForm({
               <div className="flex items-center gap-2">
                 {postulante.cvActivo.url && (
                   <a
-                    href={postulante.cvActivo.url}
+                    href={subiendoCV ? undefined : postulante.cvActivo.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary"
+                    aria-disabled={subiendoCV}
+                    tabIndex={subiendoCV ? -1 : undefined}
+                    className={`flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary${subiendoCV ? " pointer-events-none opacity-60" : ""}`}
                   >
                     <ExternalLink className="h-4 w-4" />
                     Ver CV
@@ -796,11 +869,11 @@ export function PerfilForm({
                 <button
                   type="button"
                   onClick={handleEliminarCV}
-                  disabled={guardandoCV}
+                  disabled={subiendoCV || eliminandoCV}
                   className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-sm font-medium text-muted-foreground transition hover:border-red-300 hover:text-red-500 disabled:opacity-60"
                   aria-label="Eliminar CV"
                 >
-                  {guardandoCV ? (
+                  {eliminandoCV ? (
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   ) : (
                     <X className="h-4 w-4" />
@@ -809,66 +882,27 @@ export function PerfilForm({
               </div>
             </div>
 
-            {cvFile ? (
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-surface-tinted px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-6 w-6 shrink-0 text-primary" />
-                    <div>
-                      <p className="break-all text-sm font-medium text-foreground">{cvFile.name}</p>
-                      <p className="text-xs text-muted-foreground">{(cvFile.size / 1024).toFixed(0)} KB</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { setCvFile(null); setErrorCV(null); }}
-                    className="shrink-0 rounded-full p-1 text-muted-foreground hover:text-red-500"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSubirCV}
-                    disabled={guardandoCV}
-                    className="flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-60"
-                  >
-                    {guardandoCV ? (
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    ) : null}
-                    {guardandoCV ? "Subiendo…" : "Reemplazar"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setCvFile(null); setErrorCV(null); }}
-                    disabled={guardandoCV}
-                    className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => cvInputRef.current?.click()}
-                disabled={guardandoCV}
-                className="flex h-9 w-fit items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
-              >
+            <button
+              type="button"
+              onClick={() => cvInputRef.current?.click()}
+              disabled={subiendoCV || eliminandoCV}
+              className="flex h-9 w-fit items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
+            >
+              {subiendoCV ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : (
                 <Upload className="h-4 w-4" />
-                Reemplazar CV
-              </button>
-            )}
+              )}
+              {subiendoCV ? "Subiendo…" : "Reemplazar CV"}
+            </button>
 
-            {errorCV && <MensajeError texto={errorCV} />}
-            {exitoCV && <MensajeExito texto="¡CV actualizado correctamente!" />}
+            <div aria-live="polite">
+              {errorCV && <MensajeError texto={errorCV} />}
+              {exitoCV && <MensajeExito texto="¡CV actualizado correctamente!" />}
+            </div>
           </div>
         )}
 
-        <p className="mt-2 text-xs text-muted-icon">
-          Los archivos eliminados se conservan 90 días por seguridad y luego se borran definitivamente.
-        </p>
         <input
           ref={cvInputRef}
           type="file"
@@ -881,6 +915,21 @@ export function PerfilForm({
           }}
         />
       </div>
+
+      {/* ── Modal foto de perfil ───────────────────────────────────────────── */}
+      {modalFotoAbierto && usuario.avatarActivo?.url && (
+        <FotoPerfilModal
+          src={usuario.avatarActivo.url}
+          nombre={usuario.nombre}
+          ajusteInicial={ajusteActual}
+          modoInicial={modalModo}
+          onClose={() => setModalFotoAbierto(false)}
+          onGuardado={(nuevoAjuste) => {
+            setAjusteActual(nuevoAjuste);
+            setModalFotoAbierto(false);
+          }}
+        />
+      )}
 
       {/* ── 5. Contraseña ──────────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-border bg-white px-6 py-5 shadow-sm">

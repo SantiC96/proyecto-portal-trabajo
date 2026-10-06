@@ -59,6 +59,11 @@ export async function registrarPostulante(data: {
   } = await supabase.auth.getUser();
   if (existingUser) redirect("/");
 
+  const dniLimpio = data.dni.replace(/\D/g, "");
+  if (dniLimpio.length < 7 || dniLimpio.length > 8) {
+    return { error: "El DNI debe tener 7 u 8 números." };
+  }
+
   const { data: authData, error: signUpError } = await supabase.auth.signUp({
     email: data.email,
     password: data.password,
@@ -83,7 +88,7 @@ export async function registrarPostulante(data: {
 
   const { error: profileError } = await supabaseAdmin
     .from("postulantes")
-    .insert({ usuario_id: authData.user.id, dni: data.dni, domicilio: data.domicilio });
+    .insert({ usuario_id: authData.user.id, dni: dniLimpio, domicilio: data.domicilio });
 
   if (profileError) {
     await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
@@ -171,7 +176,7 @@ export async function solicitarResetContrasena(
   redirect("/auth/reset-enviado");
 }
 
-export async function logout() {
+export async function logout(formData?: FormData) {
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
 
@@ -179,7 +184,10 @@ export async function logout() {
   const cookieStore = await cookies();
   cookieStore.delete(LAST_ACTIVITY_COOKIE);
 
-  redirect("/auth/login");
+  const rawTo = formData instanceof FormData
+    ? (formData.get("redirectTo") as string | null)
+    : null;
+  redirect(rawTo ? safeRedirect(rawTo) : "/auth/login");
 }
 
 export async function restablecerContrasena(

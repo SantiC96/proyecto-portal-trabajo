@@ -6,7 +6,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { traducirErrorAuth } from "@/lib/auth-errors";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Actualizar datos personales + rubros de interés
+// Actualizar datos personales
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function actualizarPerfil(data: {
@@ -14,7 +14,7 @@ export async function actualizarPerfil(data: {
   apellido: string;
   telefono: string;
   domicilio: string;
-  categoriaIds: string[];
+  dni: string;
 }): Promise<{ error?: string; exito?: boolean }> {
   const supabase = await createSupabaseServerClient();
   const {
@@ -22,23 +22,15 @@ export async function actualizarPerfil(data: {
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
 
-  // Validación básica
   if (!data.nombre.trim() || !data.apellido.trim()) {
     return { error: "El nombre y el apellido son obligatorios." };
   }
 
-  // Obtener el id del postulante (nunca del cliente)
-  const { data: postulante, error: postulanteError } = await supabaseAdmin
-    .from("postulantes")
-    .select("id")
-    .eq("usuario_id", user.id)
-    .single();
-
-  if (postulanteError || !postulante) {
-    return { error: "No se encontró el perfil del postulante." };
+  const dniLimpio = data.dni.replace(/\D/g, "");
+  if (dniLimpio.length < 7 || dniLimpio.length > 8) {
+    return { error: "El DNI debe tener 7 u 8 números." };
   }
 
-  // Actualizar usuarios y postulantes en paralelo
   const [usuariosResult, postulanteResult] = await Promise.all([
     supabaseAdmin
       .from("usuarios")
@@ -50,7 +42,7 @@ export async function actualizarPerfil(data: {
       .eq("id", user.id),
     supabaseAdmin
       .from("postulantes")
-      .update({ domicilio: data.domicilio.trim() || null })
+      .update({ domicilio: data.domicilio.trim() || null, dni: dniLimpio })
       .eq("usuario_id", user.id),
   ]);
 
@@ -58,10 +50,52 @@ export async function actualizarPerfil(data: {
     return { error: "Error al guardar los datos. Intentá de nuevo." };
   }
   if (postulanteResult.error) {
-    return { error: "Error al guardar el domicilio. Intentá de nuevo." };
+    if (postulanteResult.error.code === "23505") {
+      return { error: "Ese DNI ya está registrado en otra cuenta." };
+    }
+    return { error: "Error al guardar el DNI. Intentá de nuevo." };
   }
 
-  // Actualizar rubros: borrar los anteriores e insertar los nuevos
+  revalidatePath("/perfil");
+  return { exito: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Actualizar rubros de interés
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function actualizarRubros(
+  categoriaIds: string[]
+): Promise<{ error?: string; exito?: boolean }> {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado." };
+
+  const ids = [...new Set(categoriaIds)];
+
+  const { data: postulante, error: postulanteError } = await supabaseAdmin
+    .from("postulantes")
+    .select("id")
+    .eq("usuario_id", user.id)
+    .single();
+
+  if (postulanteError || !postulante) {
+    return { error: "No se encontró el perfil del postulante." };
+  }
+
+  if (ids.length > 0) {
+    const { data: categoriasExistentes } = await supabaseAdmin
+      .from("categorias")
+      .select("id")
+      .in("id", ids);
+
+    if (!categoriasExistentes || categoriasExistentes.length !== ids.length) {
+      return { error: "Algunas categorías no son válidas." };
+    }
+  }
+
   const { error: deleteError } = await supabaseAdmin
     .from("postulante_categorias")
     .delete()
@@ -71,8 +105,8 @@ export async function actualizarPerfil(data: {
     return { error: "Error al actualizar los rubros. Intentá de nuevo." };
   }
 
-  if (data.categoriaIds.length > 0) {
-    const filas = data.categoriaIds.map((cid) => ({
+  if (ids.length > 0) {
+    const filas = ids.map((cid) => ({
       postulante_id: postulante.id,
       categoria_id: cid,
     }));
@@ -142,6 +176,36 @@ export async function subirAvatar(
   }
 
   revalidatePath("/perfil");
+  return {};
+}
+
+export async function ajustarAvatar(data: {
+  x: number;
+  y: number;
+  zoom: number;
+}): Promise<{ error?: string }> {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado." };
+
+  if (data.x < 0 || data.x > 100 || data.y < 0 || data.y > 100) {
+    return { error: "Posición fuera de rango." };
+  }
+  if (data.zoom < 1 || data.zoom > 3) {
+    return { error: "Zoom fuera de rango." };
+  }
+
+  const { error } = await supabaseAdmin
+    .from("archivos_usuario")
+    .update({ ajuste_x: data.x, ajuste_y: data.y, ajuste_zoom: data.zoom })
+    .eq("usuario_id", user.id)
+    .eq("tipo", "avatar")
+    .eq("activo", true);
+
+  if (error) return { error: "Error al guardar el ajuste. Intentá de nuevo." };
+
+  revalidatePath("/perfil");
+  revalidatePath("/", "layout");
   return {};
 }
 
