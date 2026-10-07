@@ -242,11 +242,13 @@ export default async function PostulacionFichaPage({
                     </dd>
                   </div>
                 )}
-              {revisor && (
+              {postulacion.revisado_por && (
                 <div>
                   <dt className="text-muted-foreground">Revisada por</dt>
                   <dd className="mt-0.5 text-foreground">
-                    {revisor.nombre} {revisor.apellido}
+                    {revisor
+                      ? `${revisor.nombre} ${revisor.apellido}`
+                      : "Usuario eliminado"}
                   </dd>
                 </div>
               )}
