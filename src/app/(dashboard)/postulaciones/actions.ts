@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function postularme(
   ofertaId: string,
@@ -14,7 +13,7 @@ export async function postularme(
 
   if (!user) return { error: "No autenticado." };
 
-  const { data: postulante } = await supabaseAdmin
+  const { data: postulante } = await supabase
     .from("postulantes")
     .select("id")
     .eq("usuario_id", user.id)
@@ -22,7 +21,7 @@ export async function postularme(
 
   if (!postulante) return { error: "Solo los postulantes pueden postularse." };
 
-  const { data: oferta } = await supabaseAdmin
+  const { data: oferta } = await supabase
     .from("ofertas")
     .select("id, estado")
     .eq("id", ofertaId)
@@ -32,7 +31,7 @@ export async function postularme(
     return { error: "Esta oferta no está disponible." };
   }
 
-  const { data: cv } = await supabaseAdmin
+  const { data: cv } = await supabase
     .from("archivos_usuario")
     .select("id")
     .eq("usuario_id", user.id)
@@ -47,10 +46,10 @@ export async function postularme(
     };
   }
 
-  const { error } = await supabaseAdmin.from("postulaciones").insert({
+  // estado omitido: el DEFAULT de la columna lo fija en 'recibida' (migration_018)
+  const { error } = await supabase.from("postulaciones").insert({
     oferta_id: ofertaId,
     postulante_id: postulante.id,
-    estado: "recibida",
   });
 
   if (error) {
@@ -73,7 +72,7 @@ export async function retirarPostulacion(
 
   if (!user) return { error: "No autenticado." };
 
-  const { data: postulante } = await supabaseAdmin
+  const { data: postulante } = await supabase
     .from("postulantes")
     .select("id")
     .eq("usuario_id", user.id)
@@ -81,7 +80,7 @@ export async function retirarPostulacion(
 
   if (!postulante) return { error: "No autorizado." };
 
-  const { data: postulacion } = await supabaseAdmin
+  const { data: postulacion } = await supabase
     .from("postulaciones")
     .select("id, estado, postulante_id, oferta_id")
     .eq("id", postulacionId)
@@ -95,12 +94,17 @@ export async function retirarPostulacion(
     };
   }
 
-  const { error } = await supabaseAdmin
+  const { data: deleted, error } = await supabase
     .from("postulaciones")
     .delete()
-    .eq("id", postulacionId);
+    .eq("id", postulacionId)
+    .select("id");
 
   if (error) return { error: "Error al retirar la postulación. Intentá de nuevo." };
+  if (!deleted || deleted.length === 0) {
+    console.error("[retirarPostulacion] delete no afectó ninguna fila", { postulacionId });
+    return { error: "No se pudo completar la acción." };
+  }
 
   revalidatePath(`/ofertas/${postulacion.oferta_id}`);
   revalidatePath("/mis-postulaciones");
