@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { DatosCandidato } from "@/components/admin/datos-candidato";
@@ -42,9 +42,10 @@ export default async function PostulanteFichaPage({
       ? rawVolver
       : "/admin/postulantes";
 
+  const supabase = await createSupabaseServerClient();
   const [candidato, postulacionesResult] = await Promise.all([
     obtenerCandidato(postulanteId),
-    supabaseAdmin
+    supabase
       .from("postulaciones")
       .select(
         "id, estado, created_at, ofertas!oferta_id(id, titulo, empresa_nombre)"

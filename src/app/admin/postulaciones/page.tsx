@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { abrirFicha } from "./actions";
 import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
@@ -95,6 +95,8 @@ export default async function PostulacionesPage({
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
+  const supabase = await createSupabaseServerClient();
+
   // Contadores por estado
   const [
     { count: cRecibidas },
@@ -102,33 +104,33 @@ export default async function PostulacionesPage({
     { count: cDerivadas },
     { count: cRechazadas },
   ] = await Promise.all([
-    supabaseAdmin
+    supabase
       .from("postulaciones")
       .select("*", { count: "exact", head: true })
       .eq("estado", "recibida"),
-    supabaseAdmin
+    supabase
       .from("postulaciones")
       .select("*", { count: "exact", head: true })
       .eq("estado", "en_revision"),
-    supabaseAdmin
+    supabase
       .from("postulaciones")
       .select("*", { count: "exact", head: true })
       .eq("estado", "derivada"),
-    supabaseAdmin
+    supabase
       .from("postulaciones")
       .select("*", { count: "exact", head: true })
       .eq("estado", "rechazada_municipalidad"),
   ]);
 
   // Ofertas que tienen al menos una postulación (para el selector de filtro)
-  const { data: ofertaIdsData } = await supabaseAdmin
+  const { data: ofertaIdsData } = await supabase
     .from("postulaciones")
     .select("oferta_id");
   const ofertaIdsUnicos = [
     ...new Set((ofertaIdsData ?? []).map((r) => r.oferta_id)),
   ];
   const { data: ofertasDisponibles } = ofertaIdsUnicos.length > 0
-    ? await supabaseAdmin
+    ? await supabase
         .from("ofertas")
         .select("id, titulo, empresa_nombre")
         .in("id", ofertaIdsUnicos)
@@ -140,11 +142,11 @@ export default async function PostulacionesPage({
   if (q) {
     const [{ data: usuariosMatch }, { data: postulantesMatch }] =
       await Promise.all([
-        supabaseAdmin
+        supabase
           .from("usuarios")
           .select("id")
           .or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%`),
-        supabaseAdmin
+        supabase
           .from("postulantes")
           .select("id")
           .ilike("dni", `%${q}%`),
@@ -155,7 +157,7 @@ export default async function PostulacionesPage({
 
     // Agregar postulantes cuyo usuario_id coincide con un nombre/apellido
     if (idsFromNombre.length > 0) {
-      const { data: postulantesPorUsuario } = await supabaseAdmin
+      const { data: postulantesPorUsuario } = await supabase
         .from("postulantes")
         .select("id")
         .in("usuario_id", idsFromNombre);
@@ -167,7 +169,7 @@ export default async function PostulacionesPage({
   }
 
   // Query principal
-  let query = supabaseAdmin
+  let query = supabase
     .from("postulaciones")
     .select(
       `
@@ -224,7 +226,7 @@ export default async function PostulacionesPage({
   >();
 
   if (usuarioIds.length > 0) {
-    const { data: avatarArchivos } = await supabaseAdmin
+    const { data: avatarArchivos } = await supabase
       .from("archivos_usuario")
       .select("usuario_id, ruta, ajuste_x, ajuste_y, ajuste_zoom")
       .in("usuario_id", usuarioIds)
@@ -233,7 +235,7 @@ export default async function PostulacionesPage({
 
     if (avatarArchivos && avatarArchivos.length > 0) {
       const paths = avatarArchivos.map((a) => a.ruta);
-      const { data: signedUrls } = await supabaseAdmin.storage
+      const { data: signedUrls } = await supabase.storage
         .from("avatares")
         .createSignedUrls(paths, 600);
 
@@ -344,12 +346,12 @@ export default async function PostulacionesPage({
           name="q"
           defaultValue={q}
           placeholder="Nombre, apellido o DNI…"
-          className="h-9 flex-1 min-w-[180px] rounded-lg border border-input bg-surface px-3 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="h-9 flex-1 min-w-[180px] rounded-lg border border-border bg-surface px-3 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
         <select
           name="oferta_id"
           defaultValue={ofertaId}
-          className="h-9 rounded-lg border border-input bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="h-9 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
         >
           <option value="">Todas las ofertas</option>
           {(ofertasDisponibles ?? []).map(

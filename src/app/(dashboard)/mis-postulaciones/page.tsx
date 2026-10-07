@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Briefcase } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
 import { MisPostulacionesLista } from "./mis-postulaciones-lista";
 
 export const metadata: Metadata = {
@@ -19,7 +18,7 @@ type DbPostulacion = {
     titulo: string;
     empresa_nombre: string;
     estado: string;
-  };
+  } | null;
 };
 
 export default async function MisPostulacionesPage() {
@@ -42,7 +41,7 @@ export default async function MisPostulacionesPage() {
     redirect("/");
   }
 
-  const { data: postulante } = await supabaseAdmin
+  const { data: postulante } = await supabase
     .from("postulantes")
     .select("id")
     .eq("usuario_id", user.id)
@@ -50,11 +49,12 @@ export default async function MisPostulacionesPage() {
 
   if (!postulante) redirect("/");
 
-  // supabaseAdmin to see offers regardless of their estado (closed offers
-  // are not visible to postulante sessions via RLS)
-  const { data: rows } = await supabaseAdmin
+  // LEFT JOIN a ofertas: las ofertas cerradas no son visibles al postulante vía RLS
+  // (no se puede agregar política porque migration_014 las reserva).
+  // La UI muestra "Oferta no disponible" cuando oferta es null.
+  const { data: rows } = await supabase
     .from("postulaciones")
-    .select("id, estado, created_at, ofertas!inner(id, titulo, empresa_nombre, estado)")
+    .select("id, estado, created_at, ofertas(id, titulo, empresa_nombre, estado)")
     .eq("postulante_id", postulante.id)
     .order("created_at", { ascending: false });
 

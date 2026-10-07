@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FileText, Users } from "lucide-react";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { FiltrosPostulantes } from "./filtros-postulantes";
 
@@ -48,8 +48,10 @@ export default async function PostulantesPage({
   const offset = (pagina - 1) * PAGE_SIZE;
   const hayFiltros = rubroIds.length > 0 || conCv || q.length > 0;
 
+  const supabase = await createSupabaseServerClient();
+
   // Categorías para el MultiCombobox
-  const { data: categoriasOpciones } = await supabaseAdmin
+  const { data: categoriasOpciones } = await supabase
     .from("categorias")
     .select("id, nombre")
     .order("nombre");
@@ -59,13 +61,13 @@ export default async function PostulantesPage({
   // Pre-filtros paralelos
   const [rubroPreResult, cvPreResult] = await Promise.all([
     rubroIds.length > 0
-      ? supabaseAdmin
+      ? supabase
           .from("postulante_categorias")
           .select("postulante_id")
           .in("categoria_id", rubroIds)
       : Promise.resolve({ data: null }),
     conCv
-      ? supabaseAdmin
+      ? supabase
           .from("archivos_usuario")
           .select("usuario_id")
           .eq("tipo", "cv")
@@ -92,11 +94,11 @@ export default async function PostulantesPage({
     type PRow = { id: string };
 
     const [usersRes, dniRes] = await Promise.all([
-      supabaseAdmin
+      supabase
         .from("usuarios")
         .select("id")
         .or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%`),
-      supabaseAdmin
+      supabase
         .from("postulantes")
         .select("id")
         .ilike("dni", `%${q}%`),
@@ -107,7 +109,7 @@ export default async function PostulantesPage({
 
     let idsByName: string[] = [];
     if (usuarioIds.length > 0) {
-      const { data: byName } = await supabaseAdmin
+      const { data: byName } = await supabase
         .from("postulantes")
         .select("id")
         .in("usuario_id", usuarioIds);
@@ -149,7 +151,7 @@ export default async function PostulantesPage({
     } | null;
   };
 
-  let query = supabaseAdmin
+  let query = supabase
     .from("postulantes")
     .select(
       "id, usuario_id, dni, created_at, usuarios!usuario_id(nombre, apellido, telefono)",
@@ -200,23 +202,23 @@ export default async function PostulantesPage({
   type PostulacionCountRow = { postulante_id: string };
 
   const [avatarRes, catRes, cvStatusRes, postulacionesRes] = await Promise.all([
-    supabaseAdmin
+    supabase
       .from("archivos_usuario")
       .select("usuario_id, ruta, ajuste_x, ajuste_y, ajuste_zoom")
       .in("usuario_id", usuarioIds)
       .eq("tipo", "avatar")
       .eq("activo", true),
-    supabaseAdmin
+    supabase
       .from("postulante_categorias")
       .select("postulante_id, categorias!categoria_id(id, nombre)")
       .in("postulante_id", postulanteIds),
-    supabaseAdmin
+    supabase
       .from("archivos_usuario")
       .select("usuario_id")
       .in("usuario_id", usuarioIds)
       .eq("tipo", "cv")
       .eq("activo", true),
-    supabaseAdmin
+    supabase
       .from("postulaciones")
       .select("postulante_id")
       .in("postulante_id", postulanteIds),
@@ -226,7 +228,7 @@ export default async function PostulantesPage({
   const avatarPaths = avatarRows.map((r) => r.ruta).filter(Boolean);
   let signedUrls: { path: string; signedUrl: string }[] = [];
   if (avatarPaths.length > 0) {
-    const { data: urls } = await supabaseAdmin.storage
+    const { data: urls } = await supabase.storage
       .from("avatares")
       .createSignedUrls(avatarPaths, 600);
     signedUrls = (urls ?? []) as { path: string; signedUrl: string }[];

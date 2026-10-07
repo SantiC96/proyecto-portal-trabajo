@@ -3,7 +3,6 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
 
 async function verificarMunicipalidad(): Promise<{ error: string } | { userId: string }> {
   const supabase = await createSupabaseServerClient();
@@ -39,14 +38,15 @@ export async function abrirFicha(postulacionId: string): Promise<void> {
     redirect(`/admin/postulaciones/${postulacionId}`);
   }
 
-  const { data: postulacion } = await supabaseAdmin
+  const supabase = await createSupabaseServerClient();
+  const { data: postulacion } = await supabase
     .from("postulaciones")
     .select("estado")
     .eq("id", postulacionId)
     .single();
 
   if (postulacion?.estado === "recibida") {
-    const { error } = await supabaseAdmin
+    const { error } = await supabase
       .from("postulaciones")
       .update({
         estado: "en_revision",
@@ -71,7 +71,8 @@ export async function marcarEnRevision(
   const auth = await verificarMunicipalidad();
   if ("error" in auth) return auth;
 
-  const { data: postulacion } = await supabaseAdmin
+  const supabase = await createSupabaseServerClient();
+  const { data: postulacion } = await supabase
     .from("postulaciones")
     .select("estado")
     .eq("id", postulacionId)
@@ -89,18 +90,23 @@ export async function marcarEnRevision(
     };
   }
 
-  const { error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from("postulaciones")
     .update({
       estado: "en_revision",
       revisado_por: auth.userId,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", postulacionId);
+    .eq("id", postulacionId)
+    .select("id");
 
   if (error) {
     console.error("[marcarEnRevision]", error);
     return { error: "Error al actualizar la postulación. Intentá de nuevo." };
+  }
+  if (!data || data.length === 0) {
+    console.error("[marcarEnRevision] update no afectó ninguna fila", { postulacionId });
+    return { error: "No se pudo completar la acción." };
   }
 
   revalidarVistas(postulacionId);
@@ -114,7 +120,8 @@ export async function descartarPostulacion(
   const auth = await verificarMunicipalidad();
   if ("error" in auth) return auth;
 
-  const { data: postulacion } = await supabaseAdmin
+  const supabase = await createSupabaseServerClient();
+  const { data: postulacion } = await supabase
     .from("postulaciones")
     .select("estado")
     .eq("id", postulacionId)
@@ -131,7 +138,7 @@ export async function descartarPostulacion(
     };
   }
 
-  const { error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from("postulaciones")
     .update({
       estado: "rechazada_municipalidad",
@@ -139,11 +146,16 @@ export async function descartarPostulacion(
       revisado_por: auth.userId,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", postulacionId);
+    .eq("id", postulacionId)
+    .select("id");
 
   if (error) {
     console.error("[descartarPostulacion]", error);
     return { error: "Error al descartar la postulación. Intentá de nuevo." };
+  }
+  if (!data || data.length === 0) {
+    console.error("[descartarPostulacion] update no afectó ninguna fila", { postulacionId });
+    return { error: "No se pudo completar la acción." };
   }
 
   revalidarVistas(postulacionId);
@@ -157,7 +169,8 @@ export async function derivarPostulacion(
   const auth = await verificarMunicipalidad();
   if ("error" in auth) return auth;
 
-  const { data: postulacion } = await supabaseAdmin
+  const supabase = await createSupabaseServerClient();
+  const { data: postulacion } = await supabase
     .from("postulaciones")
     .select("estado, ofertas!oferta_id(estado)")
     .eq("id", postulacionId)
@@ -179,7 +192,7 @@ export async function derivarPostulacion(
     };
   }
 
-  const { error: insertError } = await supabaseAdmin
+  const { error: insertError } = await supabase
     .from("derivaciones")
     .insert({
       postulacion_id: postulacionId,
@@ -195,17 +208,25 @@ export async function derivarPostulacion(
     return { error: "Error al derivar la postulación. Intentá de nuevo." };
   }
 
-  const { error: updateError } = await supabaseAdmin
+  const { data, error: updateError } = await supabase
     .from("postulaciones")
     .update({
       estado: "derivada",
       revisado_por: auth.userId,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", postulacionId);
+    .eq("id", postulacionId)
+    .select("id");
 
   if (updateError) {
     console.error("[derivarPostulacion] update estado", updateError);
+    return {
+      error:
+        "La derivación se registró pero no se pudo actualizar el estado. Contactá a soporte.",
+    };
+  }
+  if (!data || data.length === 0) {
+    console.error("[derivarPostulacion] update no afectó ninguna fila", { postulacionId });
     return {
       error:
         "La derivación se registró pero no se pudo actualizar el estado. Contactá a soporte.",

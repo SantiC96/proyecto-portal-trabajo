@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
 
 async function verificarMunicipalidad(): Promise<{ error: string } | { userId: string }> {
   const supabase = await createSupabaseServerClient();
@@ -31,18 +30,24 @@ export async function aprobarEmpresa(
   const auth = await verificarMunicipalidad();
   if ("error" in auth) return auth;
 
-  const { error } = await supabaseAdmin
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
     .from("empresas")
     .update({
       estado_aprobacion: "aprobada",
       fecha_decision: new Date().toISOString(),
       motivo_rechazo: null,
     })
-    .eq("id", empresaId);
+    .eq("id", empresaId)
+    .select("id");
 
   if (error) {
     console.error("[aprobarEmpresa]", error);
     return { error: "Error al aprobar la empresa. Intentá de nuevo." };
+  }
+  if (!data || data.length === 0) {
+    console.error("[aprobarEmpresa] update no afectó ninguna fila", { empresaId });
+    return { error: "No se pudo completar la acción." };
   }
 
   revalidatePath("/admin/empresas");
@@ -61,18 +66,24 @@ export async function rechazarEmpresa(
     return { error: "El motivo de rechazo es obligatorio." };
   }
 
-  const { error } = await supabaseAdmin
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
     .from("empresas")
     .update({
       estado_aprobacion: "rechazada",
       fecha_decision: new Date().toISOString(),
       motivo_rechazo: motivo.trim(),
     })
-    .eq("id", empresaId);
+    .eq("id", empresaId)
+    .select("id");
 
   if (error) {
     console.error("[rechazarEmpresa]", error);
     return { error: "Error al rechazar la empresa. Intentá de nuevo." };
+  }
+  if (!data || data.length === 0) {
+    console.error("[rechazarEmpresa] update no afectó ninguna fila", { empresaId });
+    return { error: "No se pudo completar la acción." };
   }
 
   revalidatePath("/admin/empresas");
