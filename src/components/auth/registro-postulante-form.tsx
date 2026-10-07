@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { registrarPostulante } from "@/app/auth/actions";
+import { validarDNI } from "@/lib/validaciones";
 import Link from "next/link";
 import {
   User,
@@ -82,8 +83,9 @@ export function RegistroPostulanteForm() {
       );
       return;
     }
-    if (dni.length < 7 || dni.length > 8) {
-      setSubmitError("El DNI debe tener 7 u 8 números.");
+    const dniError = validarDNI(dni);
+    if (dniError) {
+      setSubmitError(dniError);
       return;
     }
 
@@ -288,7 +290,7 @@ export function RegistroPostulanteForm() {
                   type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
                   required
-                  minLength={8}
+                  minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Mínimo 8 caracteres"

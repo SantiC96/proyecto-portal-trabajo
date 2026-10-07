@@ -31,6 +31,7 @@ import {
   eliminarCV,
   cambiarContrasena,
 } from "./actions";
+import { validarNombre, validarDNI, validarTelefono } from "@/lib/validaciones";
 
 type AjusteAvatar = { x: number; y: number; zoom: number };
 
@@ -287,6 +288,14 @@ export function PerfilForm({
 
   const handleGuardarDatos = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errorNombre = validarNombre(nombre) ?? validarNombre(apellido);
+    const errorDni = validarDNI(dni);
+    const errorTel = validarTelefono(telefono);
+    const clientError = errorNombre ?? errorDni ?? errorTel;
+    if (clientError) {
+      setErrorDatos(clientError);
+      return;
+    }
     setGuardandoDatos(true);
     setErrorDatos(null);
     setExitoDatos(false);

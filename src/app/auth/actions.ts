@@ -7,6 +7,15 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { createSupabaseEphemeralClient } from "@/lib/supabase-ephemeral";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { traducirErrorAuth } from "@/lib/auth-errors";
+import { formatearCUIT } from "@/lib/cuit";
+import {
+  validarDNI,
+  validarTelefono,
+  validarEmail,
+  validarNombre,
+  validarPassword,
+  validarCuitConMensaje,
+} from "@/lib/validaciones";
 import {
   LAST_ACTIVITY_COOKIE,
   RECOVERY_COOKIE,
@@ -59,10 +68,20 @@ export async function registrarPostulante(data: {
   } = await supabase.auth.getUser();
   if (existingUser) redirect("/");
 
+  const errNombre = validarNombre(data.nombre);
+  if (errNombre) return { error: errNombre };
+  const errApellido = validarNombre(data.apellido);
+  if (errApellido) return { error: errApellido };
+  const errDni = validarDNI(data.dni);
+  if (errDni) return { error: errDni };
+  const errTelefono = validarTelefono(data.telefono);
+  if (errTelefono) return { error: errTelefono };
+  const errEmail = validarEmail(data.email);
+  if (errEmail) return { error: errEmail };
+  const errPassword = validarPassword(data.password);
+  if (errPassword) return { error: errPassword };
+
   const dniLimpio = data.dni.replace(/\D/g, "");
-  if (dniLimpio.length < 7 || dniLimpio.length > 8) {
-    return { error: "El DNI debe tener 7 u 8 números." };
-  }
 
   const { data: authData, error: signUpError } = await supabase.auth.signUp({
     email: data.email,
@@ -119,6 +138,23 @@ export async function registrarEmpresa(data: {
   } = await supabase.auth.getUser();
   if (existingUser) redirect("/");
 
+  const errRazonSocial = validarNombre(data.razonSocial);
+  if (errRazonSocial) return { error: errRazonSocial };
+  const errCuit = validarCuitConMensaje(data.cuit);
+  if (errCuit) return { error: errCuit };
+  const errNombreEmp = validarNombre(data.nombre);
+  if (errNombreEmp) return { error: errNombreEmp };
+  const errApellidoEmp = validarNombre(data.apellido);
+  if (errApellidoEmp) return { error: errApellidoEmp };
+  const errTelefonoEmp = validarTelefono(data.telefono);
+  if (errTelefonoEmp) return { error: errTelefonoEmp };
+  const errEmailEmp = validarEmail(data.email);
+  if (errEmailEmp) return { error: errEmailEmp };
+  const errPasswordEmp = validarPassword(data.password);
+  if (errPasswordEmp) return { error: errPasswordEmp };
+
+  const cuitNormalizado = formatearCUIT(data.cuit);
+
   const { data: authData, error: signUpError } = await supabase.auth.signUp({
     email: data.email,
     password: data.password,
@@ -146,7 +182,7 @@ export async function registrarEmpresa(data: {
     .insert({
       usuario_id: authData.user.id,
       razon_social: data.razonSocial,
-      cuit: data.cuit,
+      cuit: cuitNormalizado,
       rubro: data.rubro,
       descripcion: data.descripcion || null,
     });
@@ -199,9 +235,8 @@ export async function restablecerContrasena(
   const tokenHash = formData.get("token_hash") as string;
 
   // 1. Server-side validation — no OTP consumed yet
-  if (!password || password.length < 6) {
-    return { error: "La contraseña debe tener al menos 6 caracteres." };
-  }
+  const errPwd = validarPassword(password);
+  if (errPwd) return { error: errPwd };
   if (password !== confirmar) {
     return { error: "Las contraseñas no coinciden." };
   }

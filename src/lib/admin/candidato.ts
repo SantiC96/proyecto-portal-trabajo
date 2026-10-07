@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export type DatosCandidatoResult = {
   postulante: {
@@ -25,6 +25,8 @@ export type DatosCandidatoResult = {
 export async function obtenerCandidato(
   postulanteId: string
 ): Promise<DatosCandidatoResult | null> {
+  const supabase = await createSupabaseServerClient();
+
   type PostulanteRow = {
     id: string;
     usuario_id: string;
@@ -38,7 +40,7 @@ export async function obtenerCandidato(
     } | null;
   };
 
-  const { data: raw } = await supabaseAdmin
+  const { data: raw } = await supabase
     .from("postulantes")
     .select(
       "id, usuario_id, dni, domicilio, usuarios!usuario_id(id, nombre, apellido, telefono)"
@@ -63,17 +65,17 @@ export async function obtenerCandidato(
     ajuste_zoom: number;
   };
 
-  const [categoriasResult, archivosResult, authResult] = await Promise.all([
-    supabaseAdmin
+  const [categoriasResult, archivosResult, emailResult] = await Promise.all([
+    supabase
       .from("postulante_categorias")
       .select("categorias!categoria_id(id, nombre)")
       .eq("postulante_id", postulanteId),
-    supabaseAdmin
+    supabase
       .from("archivos_usuario")
       .select("tipo, ruta, ajuste_x, ajuste_y, ajuste_zoom")
       .eq("usuario_id", usuarioId)
       .eq("activo", true),
-    supabaseAdmin.auth.admin.getUserById(usuarioId),
+    supabase.rpc("emails_de_usuarios", { ids: [usuarioId] }),
   ]);
 
   const categorias = (
@@ -86,12 +88,15 @@ export async function obtenerCandidato(
   const cvArchivo = archivos.find((a) => a.tipo === "cv") ?? null;
   const avatarArchivo = archivos.find((a) => a.tipo === "avatar") ?? null;
 
+  const emailRows = (emailResult.data ?? []) as { id: string; email: string }[];
+  const email = emailRows[0]?.email ?? null;
+
   const [cvUrlResult, avatarUrlResult] = await Promise.all([
     cvArchivo
-      ? supabaseAdmin.storage.from("cvs").createSignedUrl(cvArchivo.ruta, 600)
+      ? supabase.storage.from("cvs").createSignedUrl(cvArchivo.ruta, 600)
       : Promise.resolve({ data: null }),
     avatarArchivo
-      ? supabaseAdmin.storage
+      ? supabase.storage
           .from("avatares")
           .createSignedUrl(avatarArchivo.ruta, 600)
       : Promise.resolve({ data: null }),
@@ -110,7 +115,7 @@ export async function obtenerCandidato(
       apellido: usuario.apellido,
       telefono: usuario.telefono,
     },
-    email: authResult.data.user?.email ?? null,
+    email,
     categorias,
     avatar: {
       url: avatarUrlResult.data?.signedUrl ?? null,

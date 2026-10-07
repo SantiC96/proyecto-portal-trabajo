@@ -4,7 +4,6 @@ import { ArrowLeft, Building, MapPin, Clock, Briefcase } from "lucide-react";
 import { PublicFooter } from "@/components/public/public-footer";
 import { getOfertaById } from "@/lib/ofertas";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
 import { PostularseCta } from "./postularse-cta";
 
 interface Props {
@@ -33,7 +32,7 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
   let autoOpen = false;
 
   if (user) {
-    const { data: usuario } = await supabaseAdmin
+    const { data: usuario } = await supabase
       .from("usuarios")
       .select("rol")
       .eq("id", user.id)
@@ -45,7 +44,7 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
       ctaVariant = "otro-rol";
     } else if (rol === "postulante") {
       // Get postulante record
-      const { data: postulante } = await supabaseAdmin
+      const { data: postulante } = await supabase
         .from("postulantes")
         .select("id")
         .eq("usuario_id", user.id)
@@ -54,13 +53,13 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
       if (postulante) {
         // Parallel: check existing application, check CV
         const [postulacionResult, cvResult] = await Promise.all([
-          supabaseAdmin
+          supabase
             .from("postulaciones")
             .select("id, estado, created_at")
             .eq("oferta_id", oferta.id)
             .eq("postulante_id", postulante.id)
             .maybeSingle(),
-          supabaseAdmin
+          supabase
             .from("archivos_usuario")
             .select("nombre_original")
             .eq("usuario_id", user.id)

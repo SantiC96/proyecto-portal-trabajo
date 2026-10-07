@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Building2, ChevronRight, ClipboardList, Users } from "lucide-react";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const metadata: Metadata = {
   title: "Panel municipal | Portal de Empleo Funes",
 };
 
 export default async function AdminDashboardPage() {
+  const supabase = await createSupabaseServerClient();
+
   const [
     { count: pendientes },
     { count: aprobadas },
@@ -16,26 +18,26 @@ export default async function AdminDashboardPage() {
     { count: totalPostulantes },
     { count: postulantesConCv },
   ] = await Promise.all([
-    supabaseAdmin
+    supabase
       .from("empresas")
       .select("*", { count: "exact", head: true })
       .eq("estado_aprobacion", "pendiente"),
-    supabaseAdmin
+    supabase
       .from("empresas")
       .select("*", { count: "exact", head: true })
       .eq("estado_aprobacion", "aprobada"),
-    supabaseAdmin
+    supabase
       .from("empresas")
       .select("*", { count: "exact", head: true })
       .eq("estado_aprobacion", "rechazada"),
-    supabaseAdmin
+    supabase
       .from("postulaciones")
       .select("*", { count: "exact", head: true })
       .in("estado", ["recibida", "en_revision"]),
-    supabaseAdmin
+    supabase
       .from("postulantes")
       .select("*", { count: "exact", head: true }),
-    supabaseAdmin
+    supabase
       .from("archivos_usuario")
       .select("*", { count: "exact", head: true })
       .eq("tipo", "cv")

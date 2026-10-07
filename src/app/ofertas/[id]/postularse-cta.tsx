@@ -205,7 +205,7 @@ export function PostularseCta({
                   <button
                     type="button"
                     onClick={() => setOpen(false)}
-                    className="flex h-11 w-full items-center justify-center rounded-xl border border-border bg-white text-sm font-medium text-foreground transition hover:bg-muted"
+                    className="flex h-11 w-full items-center justify-center rounded-xl border border-border bg-white text-sm font-medium text-foreground transition hover:bg-surface-tinted"
                   >
                     Cancelar
                   </button>
@@ -310,7 +310,7 @@ export function PostularseCta({
                     }
                   }}
                   disabled={isPending}
-                  className="flex h-11 w-full items-center justify-center rounded-xl border border-border bg-white text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-40"
+                  className="flex h-11 w-full items-center justify-center rounded-xl border border-border bg-white text-sm font-medium text-foreground transition hover:bg-surface-tinted disabled:opacity-40"
                 >
                   Cancelar
                 </button>

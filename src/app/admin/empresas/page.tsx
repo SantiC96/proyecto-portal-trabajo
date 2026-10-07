@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { formatearCUIT } from "@/lib/cuit";
 import { Badge } from "@/components/ui/badge";
 import { EmpresaAcciones } from "./acciones";
@@ -52,22 +52,25 @@ export default async function AdminEmpresasPage({
     ? (raw as EstadoAprobacion)
     : "pendiente";
 
-  const [{ data: empresasData }, { data: authData }] = await Promise.all([
-    supabaseAdmin
-      .from("empresas")
-      .select(
-        "id, razon_social, cuit, rubro, created_at, usuario_id, usuarios(nombre, apellido, telefono)"
-      )
-      .eq("estado_aprobacion", estado)
-      .order("created_at", { ascending: estado === "pendiente" }),
-    supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
-  ]);
+  const supabase = await createSupabaseServerClient();
+
+  const { data: empresasData } = await supabase
+    .from("empresas")
+    .select(
+      "id, razon_social, cuit, rubro, created_at, usuario_id, usuarios(nombre, apellido, telefono)"
+    )
+    .eq("estado_aprobacion", estado)
+    .order("created_at", { ascending: estado === "pendiente" });
 
   const empresas = (empresasData ?? []) as unknown as EmpresaRow[];
+
+  // emails_de_usuarios: solo consulta los IDs de la página actual, sin límite de 1000
+  const usuarioIds = empresas.map((e) => e.usuario_id);
+  const { data: emailRows } = usuarioIds.length > 0
+    ? await supabase.rpc("emails_de_usuarios", { ids: usuarioIds })
+    : { data: [] };
   const emailMap = new Map<string, string>(
-    ((authData as { users?: { id: string; email?: string }[] })?.users ?? []).map(
-      (u) => [u.id, u.email ?? ""]
-    )
+    ((emailRows ?? []) as { id: string; email: string }[]).map((r) => [r.id, r.email])
   );
 
   return (

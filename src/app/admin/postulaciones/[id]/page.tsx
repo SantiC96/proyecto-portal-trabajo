@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { DatosCandidato } from "@/components/admin/datos-candidato";
@@ -39,7 +39,8 @@ export default async function PostulacionFichaPage({
 }) {
   const { id: postulacionId } = await params;
 
-  const { data: raw } = await supabaseAdmin
+  const supabase = await createSupabaseServerClient();
+  const { data: raw } = await supabase
     .from("postulaciones")
     .select(
       `
@@ -85,14 +86,14 @@ export default async function PostulacionFichaPage({
   const [candidato, derivacionResult, revisorResult] = await Promise.all([
     postulanteId ? obtenerCandidato(postulanteId) : Promise.resolve(null),
     postulacion.estado === "derivada"
-      ? supabaseAdmin
+      ? supabase
           .from("derivaciones")
           .select("nota_municipalidad, created_at")
           .eq("postulacion_id", postulacion.id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
     postulacion.revisado_por
-      ? supabaseAdmin
+      ? supabase
           .from("usuarios")
           .select("nombre, apellido")
           .eq("id", postulacion.revisado_por)
