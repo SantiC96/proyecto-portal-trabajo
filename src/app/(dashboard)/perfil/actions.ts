@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { traducirErrorAuth } from "@/lib/auth-errors";
+import { validarNombre, validarDNI, validarTelefono, validarPassword } from "@/lib/validaciones";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Actualizar datos personales
@@ -22,38 +23,50 @@ export async function actualizarPerfil(data: {
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
 
-  if (!data.nombre.trim() || !data.apellido.trim()) {
-    return { error: "El nombre y el apellido son obligatorios." };
-  }
+  const errNombre = validarNombre(data.nombre);
+  if (errNombre) return { error: errNombre };
+  const errApellido = validarNombre(data.apellido);
+  if (errApellido) return { error: errApellido };
+  const errDni = validarDNI(data.dni);
+  if (errDni) return { error: errDni };
+  const errTelefono = validarTelefono(data.telefono);
+  if (errTelefono) return { error: errTelefono };
 
   const dniLimpio = data.dni.replace(/\D/g, "");
-  if (dniLimpio.length < 7 || dniLimpio.length > 8) {
-    return { error: "El DNI debe tener 7 u 8 números." };
-  }
 
   const [usuariosResult, postulanteResult] = await Promise.all([
-    supabaseAdmin
+    supabase
       .from("usuarios")
       .update({
         nombre: data.nombre.trim(),
         apellido: data.apellido.trim(),
         telefono: data.telefono.trim(),
       })
-      .eq("id", user.id),
-    supabaseAdmin
+      .eq("id", user.id)
+      .select("id"),
+    supabase
       .from("postulantes")
       .update({ domicilio: data.domicilio.trim() || null, dni: dniLimpio })
-      .eq("usuario_id", user.id),
+      .eq("usuario_id", user.id)
+      .select("id"),
   ]);
 
   if (usuariosResult.error) {
     return { error: "Error al guardar los datos. Intentá de nuevo." };
+  }
+  if (!usuariosResult.data || usuariosResult.data.length === 0) {
+    console.error("[actualizarPerfil] usuarios update no afectó ninguna fila", { userId: user.id });
+    return { error: "No se pudo completar la acción." };
   }
   if (postulanteResult.error) {
     if (postulanteResult.error.code === "23505") {
       return { error: "Ese DNI ya está registrado en otra cuenta." };
     }
     return { error: "Error al guardar el DNI. Intentá de nuevo." };
+  }
+  if (!postulanteResult.data || postulanteResult.data.length === 0) {
+    console.error("[actualizarPerfil] postulantes update no afectó ninguna fila", { userId: user.id });
+    return { error: "No se pudo completar la acción." };
   }
 
   revalidatePath("/perfil");
@@ -75,7 +88,7 @@ export async function actualizarRubros(
 
   const ids = [...new Set(categoriaIds)];
 
-  const { data: postulante, error: postulanteError } = await supabaseAdmin
+  const { data: postulante, error: postulanteError } = await supabase
     .from("postulantes")
     .select("id")
     .eq("usuario_id", user.id)
@@ -86,7 +99,7 @@ export async function actualizarRubros(
   }
 
   if (ids.length > 0) {
-    const { data: categoriasExistentes } = await supabaseAdmin
+    const { data: categoriasExistentes } = await supabase
       .from("categorias")
       .select("id")
       .in("id", ids);
@@ -96,7 +109,7 @@ export async function actualizarRubros(
     }
   }
 
-  const { error: deleteError } = await supabaseAdmin
+  const { error: deleteError } = await supabase
     .from("postulante_categorias")
     .delete()
     .eq("postulante_id", postulante.id);
@@ -110,7 +123,7 @@ export async function actualizarRubros(
       postulante_id: postulante.id,
       categoria_id: cid,
     }));
-    const { error: insertError } = await supabaseAdmin
+    const { error: insertError } = await supabase
       .from("postulante_categorias")
       .insert(filas);
     if (insertError) {
@@ -318,8 +331,8 @@ export async function cambiarContrasena(
 
   if (!contrasenaActual || !contrasenaNueva || !repetirContrasena)
     return { error: "Completá todos los campos." };
-  if (contrasenaNueva.length < 6)
-    return { error: "La contraseña nueva debe tener al menos 6 caracteres." };
+  const errPwd = validarPassword(contrasenaNueva);
+  if (errPwd) return { error: errPwd };
   if (contrasenaNueva !== repetirContrasena)
     return { error: "Las contraseñas nuevas no coinciden." };
   if (contrasenaNueva === contrasenaActual)

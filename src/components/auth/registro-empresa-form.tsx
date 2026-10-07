@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { registrarEmpresa } from "@/app/auth/actions";
-import { validarCUIT, formatearCUIT } from "@/lib/cuit";
+import { formatearCUIT } from "@/lib/cuit";
+import { validarCuitConMensaje } from "@/lib/validaciones";
 import Link from "next/link";
 import {
   Building2,
@@ -75,8 +76,8 @@ export function RegistroEmpresaForm({ categorias }: Props) {
   const passwordRepeatError =
     passwordRepeat !== "" && password !== passwordRepeat;
   const cuitCompleto = cuit.length === 11;
-  const cuitError = cuitCompleto && !validarCUIT(cuit);
-  const cuitValido = cuitCompleto && validarCUIT(cuit);
+  const cuitError = cuitCompleto && validarCuitConMensaje(cuit) !== null;
+  const cuitValido = cuitCompleto && validarCuitConMensaje(cuit) === null;
 
   // ── handlers ───────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -86,8 +87,9 @@ export function RegistroEmpresaForm({ categorias }: Props) {
       setSubmitError("Las contraseñas no coinciden.");
       return;
     }
-    if (!validarCUIT(cuit)) {
-      setSubmitError("El CUIT ingresado no es válido. Verificá el número.");
+    const cuitErrMsg = validarCuitConMensaje(cuit);
+    if (cuitErrMsg) {
+      setSubmitError(cuitErrMsg);
       return;
     }
 
@@ -364,7 +366,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                   type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
                   required
-                  minLength={8}
+                  minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Mínimo 8 caracteres"
