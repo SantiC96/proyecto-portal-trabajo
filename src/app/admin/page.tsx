@@ -84,9 +84,18 @@ export default async function AdminDashboardPage() {
               <Building2 className="h-5 w-5" />
             </div>
             <div>
-              <p className="font-semibold text-foreground">Empresas</p>
+              <p className="flex items-center gap-1.5 font-semibold text-foreground">
+                Empresas
+                {(pendientes ?? 0) > 0 && (
+                  <span className="bg-primary text-white text-xs font-semibold rounded-full min-w-5 h-5 px-1.5 inline-flex items-center justify-center">
+                    {pendientes}
+                  </span>
+                )}
+              </p>
               <p className="text-sm text-muted-foreground">
-                Revisá solicitudes pendientes y el historial de decisiones
+                {(pendientes ?? 0) > 0
+                  ? `${pendientes} empresa${pendientes === 1 ? "" : "s"} pendiente${pendientes === 1 ? "" : "s"} de revisión`
+                  : "Revisá solicitudes pendientes y el historial de decisiones"}
               </p>
             </div>
           </div>
@@ -102,7 +111,14 @@ export default async function AdminDashboardPage() {
               <ClipboardList className="h-5 w-5" />
             </div>
             <div>
-              <p className="font-semibold text-foreground">Postulaciones</p>
+              <p className="flex items-center gap-1.5 font-semibold text-foreground">
+                Postulaciones
+                {(postulacionesPendientes ?? 0) > 0 && (
+                  <span className="bg-primary text-white text-xs font-semibold rounded-full min-w-5 h-5 px-1.5 inline-flex items-center justify-center">
+                    {postulacionesPendientes}
+                  </span>
+                )}
+              </p>
               <p className="text-sm text-muted-foreground">
                 {(postulacionesPendientes ?? 0) > 0
                   ? `${postulacionesPendientes} pendiente${
