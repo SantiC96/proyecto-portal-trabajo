@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -104,7 +105,7 @@ export function EmpresaAcciones({ empresaId, razonSocial, estadoActual }: Props)
             </DialogDescription>
           </DialogHeader>
           {error && (
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="text-sm text-red-600">{error}</p>
           )}
           <DialogFooter>
             <Button
@@ -149,7 +150,7 @@ export function EmpresaAcciones({ empresaId, razonSocial, estadoActual }: Props)
             />
           </div>
           {error && (
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="text-sm text-red-600">{error}</p>
           )}
           <DialogFooter>
             <Button
@@ -164,6 +165,7 @@ export function EmpresaAcciones({ empresaId, razonSocial, estadoActual }: Props)
               onClick={handleRechazar}
               disabled={isPending}
             >
+              {isPending && <Loader2 className="animate-spin" />}
               {isPending ? "Rechazando..." : "Rechazar empresa"}
             </Button>
           </DialogFooter>

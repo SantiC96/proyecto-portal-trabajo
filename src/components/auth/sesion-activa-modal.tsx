@@ -85,7 +85,7 @@ export function SesionActivaModal({ nombre, rol, redirectTo, accion, profileHref
           {accion === "login" && profileHref && (
             <a
               href={profileHref}
-              className="flex h-11 w-full items-center justify-center rounded-xl border border-border bg-white text-sm font-medium text-foreground transition hover:bg-muted"
+              className="flex h-11 w-full items-center justify-center rounded-xl border border-border bg-white text-sm font-medium text-foreground transition hover:bg-surface-tinted"
             >
               Ir a mi perfil
             </a>
@@ -95,7 +95,7 @@ export function SesionActivaModal({ nombre, rol, redirectTo, accion, profileHref
             ref={cancelRef}
             type="button"
             onClick={onClose}
-            className="flex h-11 w-full items-center justify-center rounded-xl border border-border bg-white text-sm font-medium text-foreground transition hover:bg-muted"
+            className="flex h-11 w-full items-center justify-center rounded-xl border border-border bg-white text-sm font-medium text-foreground transition hover:bg-surface-tinted"
           >
             Cancelar
           </button>

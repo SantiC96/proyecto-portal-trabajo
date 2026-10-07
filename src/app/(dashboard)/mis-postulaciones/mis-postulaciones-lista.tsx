@@ -19,7 +19,7 @@ type Postulacion = {
     titulo: string;
     empresa_nombre: string;
     estado: string;
-  };
+  } | null;
 };
 
 function getBadgeEstado(estado: EstadoPostulacion) {
@@ -170,7 +170,7 @@ function RetirarBoton({
                     }
                   }}
                   disabled={isPending}
-                  className="flex h-11 w-full items-center justify-center rounded-xl border border-border bg-white text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-40"
+                  className="flex h-11 w-full items-center justify-center rounded-xl border border-border bg-white text-sm font-medium text-foreground transition hover:bg-surface-tinted disabled:opacity-40"
                 >
                   Cancelar
                 </button>
@@ -207,7 +207,8 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
 
       {postulaciones.map((p) => {
         const badge = getBadgeEstado(p.estado);
-        const ofertaActiva = p.oferta.estado === "activa";
+        const oferta = p.oferta;
+        const ofertaActiva = oferta?.estado === "activa";
         const fecha = new Date(p.created_at).toLocaleDateString("es-AR", {
           day: "numeric",
           month: "long",
@@ -221,23 +222,31 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                {ofertaActiva ? (
-                  <Link
-                    href={`/ofertas/${p.oferta.id}`}
-                    className="text-base font-semibold text-foreground underline-offset-2 hover:text-primary hover:underline"
-                  >
-                    {p.oferta.titulo}
-                  </Link>
+                {oferta ? (
+                  ofertaActiva ? (
+                    <Link
+                      href={`/ofertas/${oferta.id}`}
+                      className="text-base font-semibold text-foreground underline-offset-2 hover:text-primary hover:underline"
+                    >
+                      {oferta.titulo}
+                    </Link>
+                  ) : (
+                    <span className="text-base font-semibold text-muted-foreground-strong">
+                      {oferta.titulo}
+                    </span>
+                  )
                 ) : (
                   <span className="text-base font-semibold text-muted-foreground-strong">
-                    {p.oferta.titulo}
+                    Oferta no disponible
                   </span>
                 )}
-                <p className="mt-0.5 text-sm text-muted-foreground">{p.oferta.empresa_nombre}</p>
+                {oferta && (
+                  <p className="mt-0.5 text-sm text-muted-foreground">{oferta.empresa_nombre}</p>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                {!ofertaActiva && (
+                {(!ofertaActiva || !oferta) && (
                   <span className="rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-600">
                     Oferta cerrada
                   </span>
