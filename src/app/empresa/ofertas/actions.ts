@@ -116,7 +116,11 @@ export async function editarOferta(id: string, data: OfertaData): Promise<Action
   if (errorCats || !categoriasExistentes || categoriasExistentes.length !== data.categorias.length)
     return { error: "Una o más categorías no son válidas." };
 
-  // Actualizar la oferta (RLS verifica que sea propia y no esté cerrada)
+  // Actualizar la oferta (RLS verifica que sea propia y no esté cerrada).
+  // El trigger prevent_empresa_oferta_campos_fn (027) detecta el cambio de
+  // contenido y hace el reset de estado + limpieza de revisión en la DB;
+  // no enviamos esas columnas desde acá para evitar que el trigger las
+  // considere una modificación protegida.
   const { data: actualizada, error: errorUpdate } = await supabase
     .from("ofertas")
     .update({
@@ -127,8 +131,6 @@ export async function editarOferta(id: string, data: OfertaData): Promise<Action
       jornada: data.jornada,
       requisitos: data.requisitos.map((r) => r.trim()).filter(Boolean),
       beneficios: data.beneficios.map((b) => b.trim()).filter(Boolean),
-      estado: "pendiente_aprobacion",
-      motivo_rechazo: null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)

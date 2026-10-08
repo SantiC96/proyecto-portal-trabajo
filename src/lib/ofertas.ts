@@ -7,6 +7,7 @@ type DbOfertaRow = {
   titulo: string;
   descripcion: string;
   created_at: string;
+  publicado_en: string | null;
   ubicacion: string;
   modalidad: string;
   jornada: string;
@@ -21,6 +22,7 @@ const OFERTA_SELECT = `
   titulo,
   descripcion,
   created_at,
+  publicado_en,
   ubicacion,
   modalidad,
   jornada,
@@ -42,7 +44,8 @@ function mapRow(row: DbOfertaRow): OfertaLaboral {
     descripcion: row.descripcion,
     requisitos: row.requisitos ?? [],
     beneficios: row.beneficios ?? [],
-    fechaPublicacion: row.created_at,
+    // publicado_en se fija al aprobar; se cae a created_at para ofertas sin ese dato.
+    fechaPublicacion: row.publicado_en ?? row.created_at,
   };
 }
 
