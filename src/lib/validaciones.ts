@@ -40,3 +40,42 @@ export function validarCuitConMensaje(raw: string): string | null {
   if (!validarCUIT(raw)) return "El CUIT no es válido.";
   return null;
 }
+
+const MODALIDADES_VALIDAS = ["Presencial", "Híbrido", "Remoto"] as const;
+const JORNADAS_VALIDAS = ["Tiempo completo", "Part-time", "Pasantía", "Por proyecto"] as const;
+
+export type OfertaData = {
+  titulo: string;
+  descripcion: string;
+  categorias: string[];
+  modalidad: string;
+  jornada: string;
+  requisitos: string[];
+  beneficios: string[];
+};
+
+export function validarOferta(data: OfertaData): string | null {
+  if (!data.titulo || data.titulo.trim().length < 5 || data.titulo.trim().length > 120)
+    return "El título debe tener entre 5 y 120 caracteres.";
+  if (!data.descripcion || data.descripcion.trim().length < 30 || data.descripcion.trim().length > 4000)
+    return "La descripción debe tener entre 30 y 4000 caracteres.";
+  if (!data.categorias || data.categorias.length < 1 || data.categorias.length > 5)
+    return "Seleccioná entre 1 y 5 categorías.";
+  if (!MODALIDADES_VALIDAS.includes(data.modalidad as (typeof MODALIDADES_VALIDAS)[number]))
+    return "La modalidad no es válida.";
+  if (!JORNADAS_VALIDAS.includes(data.jornada as (typeof JORNADAS_VALIDAS)[number]))
+    return "La jornada no es válida.";
+  if (data.requisitos.length > 15)
+    return "Podés agregar hasta 15 requisitos.";
+  if (data.beneficios.length > 15)
+    return "Podés agregar hasta 15 beneficios.";
+  for (const req of data.requisitos) {
+    if (req.trim().length > 200)
+      return "Cada requisito puede tener hasta 200 caracteres.";
+  }
+  for (const ben of data.beneficios) {
+    if (ben.trim().length > 200)
+      return "Cada beneficio puede tener hasta 200 caracteres.";
+  }
+  return null;
+}

@@ -27,8 +27,17 @@ export async function postularme(
     .eq("id", ofertaId)
     .maybeSingle();
 
-  if (!oferta || oferta.estado !== "activa") {
+  if (!oferta) {
     return { error: "Esta oferta no está disponible." };
+  }
+  if (oferta.estado !== "activa") {
+    const mensajes: Record<string, string> = {
+      pendiente_aprobacion: "Esta oferta está en revisión y no acepta postulaciones por el momento.",
+      cerrada: "Esta oferta está cerrada y ya no acepta postulaciones.",
+    };
+    return {
+      error: mensajes[oferta.estado as string] ?? "Esta oferta no está disponible.",
+    };
   }
 
   const { data: cv } = await supabase
@@ -53,6 +62,12 @@ export async function postularme(
   });
 
   if (error) {
+    console.error("[postularme] error al insertar postulacion", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
     if (error.code === "23505") return { error: "Ya te postulaste a esta oferta." };
     return { error: "Error al procesar la postulación. Intentá de nuevo." };
   }

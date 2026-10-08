@@ -42,7 +42,7 @@ function mapRow(row: DbOfertaRow): OfertaLaboral {
     descripcion: row.descripcion,
     requisitos: row.requisitos ?? [],
     beneficios: row.beneficios ?? [],
-    fechaPublicacion: row.created_at.split("T")[0],
+    fechaPublicacion: row.created_at,
   };
 }
 
@@ -67,6 +67,17 @@ export async function getCategorias(): Promise<string[]> {
 
   if (error || !data) return [];
   return data.map((row) => row.nombre as string);
+}
+
+export async function getCategoriasConId(): Promise<{ id: string; nombre: string }[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("categorias")
+    .select("id, nombre")
+    .order("nombre");
+
+  if (error || !data) return [];
+  return data as { id: string; nombre: string }[];
 }
 
 export async function getOfertaById(id: string): Promise<OfertaLaboral | null> {

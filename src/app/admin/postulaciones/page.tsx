@@ -8,6 +8,7 @@ import {
   BADGE_CONFIG,
   type EstadoPostulacion,
 } from "@/lib/admin/postulacion-estados";
+import { formatFechaCorta } from "@/lib/fechas";
 
 export const metadata: Metadata = {
   title: "Postulaciones | Panel municipal | Portal de Empleo Funes",
@@ -58,13 +59,6 @@ function buildHref(params: {
   return `/admin/postulaciones${qs ? `?${qs}` : ""}`;
 }
 
-function formatearFecha(iso: string) {
-  return new Date(iso).toLocaleDateString("es-AR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 export default async function PostulacionesPage({
   searchParams,
@@ -459,7 +453,7 @@ export default async function PostulacionesPage({
                         {row.ofertas?.empresa_nombre ?? "—"}
                       </td>
                       <td className="py-4 pr-4 text-muted-foreground">
-                        {formatearFecha(row.created_at)}
+                        {formatFechaCorta(row.created_at)}
                       </td>
                       <td className="py-4 pr-4">
                         <Badge
@@ -550,7 +544,7 @@ export default async function PostulacionesPage({
                         Fecha
                       </dt>
                       <dd className="text-muted-foreground">
-                        {formatearFecha(row.created_at)}
+                        {formatFechaCorta(row.created_at)}
                       </dd>
                     </div>
                   </dl>

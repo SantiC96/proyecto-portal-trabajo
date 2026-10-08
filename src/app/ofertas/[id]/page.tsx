@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, Building, MapPin, Clock, Briefcase } from "lucide-react";
 import { PublicFooter } from "@/components/public/public-footer";
 import { getOfertaById } from "@/lib/ofertas";
+import { formatFecha } from "@/lib/fechas";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { PostularseCta } from "./postularse-cta";
 
@@ -82,11 +83,7 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
     }
   }
 
-  const formattedDate = new Date(oferta.fechaPublicacion).toLocaleDateString("es-AR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  const formattedDate = formatFecha(oferta.fechaPublicacion);
 
   return (
     <>
