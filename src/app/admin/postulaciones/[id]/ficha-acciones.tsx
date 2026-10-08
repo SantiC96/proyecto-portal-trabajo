@@ -17,27 +17,20 @@ import {
   derivarPostulacion,
 } from "../actions";
 import { type EstadoPostulacion } from "@/lib/admin/postulacion-estados";
+import { formatFechaHora } from "@/lib/fechas";
 
 type Props = {
   postulacionId: string;
   estado: EstadoPostulacion;
+  ofertaEstado?: string;
   derivacion?: {
     nota_municipalidad: string | null;
     created_at: string;
   } | null;
 };
 
-function formatearFecha(iso: string) {
-  return new Date(iso).toLocaleDateString("es-AR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-export function FichaAcciones({ postulacionId, estado, derivacion }: Props) {
+export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion }: Props) {
+  const ofertaEnRevision = ofertaEstado === "pendiente_aprobacion";
   const [abrirDescartar, setAbrirDescartar] = useState(false);
   const [abrirDerivar, setAbrirDerivar] = useState(false);
   const [abrirReconsiderar, setAbrirReconsiderar] = useState(false);
@@ -98,7 +91,7 @@ export function FichaAcciones({ postulacionId, estado, derivacion }: Props) {
         <p className="text-sm font-medium text-primary">Derivada a la empresa</p>
         {derivacion?.created_at && (
           <p className="mt-1 text-sm text-muted-foreground">
-            Derivada el {formatearFecha(derivacion.created_at)}
+            Derivada el {formatFechaHora(derivacion.created_at)}
           </p>
         )}
         {derivacion?.nota_municipalidad && (
@@ -113,6 +106,12 @@ export function FichaAcciones({ postulacionId, estado, derivacion }: Props) {
 
   return (
     <div className="space-y-3">
+      {ofertaEnRevision && (
+        <div className="rounded-[var(--radius-lg)] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          La oferta está en revisión: no se puede derivar ni rechazar hasta que se vuelva a aprobar.
+        </div>
+      )}
+
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="flex flex-wrap gap-2">
@@ -120,7 +119,7 @@ export function FichaAcciones({ postulacionId, estado, derivacion }: Props) {
           <>
             <Button
               onClick={() => { setError(null); setAbrirDerivar(true); }}
-              disabled={isPending}
+              disabled={isPending || ofertaEnRevision}
               className="min-h-11"
             >
               Derivar a la empresa
@@ -128,8 +127,8 @@ export function FichaAcciones({ postulacionId, estado, derivacion }: Props) {
             <button
               type="button"
               onClick={() => { setError(null); setAbrirDescartar(true); }}
-              disabled={isPending}
-              className="btn-secundario inline-flex items-center justify-center whitespace-nowrap min-h-11 px-4 text-sm font-medium"
+              disabled={isPending || ofertaEnRevision}
+              className="btn-secundario inline-flex items-center justify-center whitespace-nowrap min-h-11 px-4 text-sm font-medium disabled:opacity-60"
             >
               No seleccionar
             </button>

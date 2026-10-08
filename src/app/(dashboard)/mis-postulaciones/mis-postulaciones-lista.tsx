@@ -4,9 +4,11 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { X, AlertCircle, Briefcase, CheckCircle } from "lucide-react";
+import { X, AlertCircle, Briefcase, CheckCircle, AlertTriangle } from "lucide-react";
 import { useMounted } from "@/lib/use-mounted";
 import { retirarPostulacion } from "@/app/(dashboard)/postulaciones/actions";
+import { formatFecha } from "@/lib/fechas";
+import { getOfertaEstadoBadge } from "@/lib/oferta-estados";
 
 type EstadoPostulacion = "recibida" | "en_revision" | "derivada" | "rechazada_municipalidad";
 
@@ -19,6 +21,7 @@ type Postulacion = {
     titulo: string;
     empresa_nombre: string;
     estado: string;
+    contenido_editado_en: string | null;
   } | null;
 };
 
@@ -209,11 +212,13 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
         const badge = getBadgeEstado(p.estado);
         const oferta = p.oferta;
         const ofertaActiva = oferta?.estado === "activa";
-        const fecha = new Date(p.created_at).toLocaleDateString("es-AR", {
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        });
+        const ofertaBadge = getOfertaEstadoBadge(oferta?.estado);
+        const fecha = formatFecha(p.created_at);
+
+        // Indicador: la oferta fue editada DESPUÉS de que el postulante se postuló.
+        const modificada =
+          oferta?.contenido_editado_en != null &&
+          oferta.contenido_editado_en > p.created_at;
 
         return (
           <article
@@ -246,9 +251,11 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                {(!ofertaActiva || !oferta) && (
-                  <span className="rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-600">
-                    Oferta cerrada
+                {ofertaBadge && (
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${ofertaBadge.className}`}
+                  >
+                    {ofertaBadge.label}
                   </span>
                 )}
                 <span
@@ -259,7 +266,32 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
               </div>
             </div>
 
+            {ofertaBadge?.descripcion && (
+              <p className="mt-2 text-xs text-amber-700">{ofertaBadge.descripcion}</p>
+            )}
+
             <p className="mt-2 text-xs text-muted-foreground">Postulado el {fecha}</p>
+
+            {modificada && (
+              <div className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+                <span>
+                  Modificada después de tu postulación
+                  {" "}({formatFecha(oferta!.contenido_editado_en!)})
+                  {ofertaActiva && (
+                    <>
+                      {" — "}
+                      <Link
+                        href={`/ofertas/${oferta!.id}`}
+                        className="font-medium text-primary underline-offset-2 hover:underline"
+                      >
+                        Ver oferta actualizada
+                      </Link>
+                    </>
+                  )}
+                </span>
+              </div>
+            )}
 
             {p.estado === "recibida" && (
               <RetirarBoton

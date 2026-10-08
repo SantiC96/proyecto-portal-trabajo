@@ -123,7 +123,7 @@ export async function descartarPostulacion(
   const supabase = await createSupabaseServerClient();
   const { data: postulacion } = await supabase
     .from("postulaciones")
-    .select("estado")
+    .select("estado, ofertas!oferta_id(estado)")
     .eq("id", postulacionId)
     .single();
 
@@ -135,6 +135,13 @@ export async function descartarPostulacion(
   ) {
     return {
       error: "Solo se puede descartar desde 'recibida' o 'en revisión'.",
+    };
+  }
+
+  const oferta = postulacion.ofertas as unknown as { estado: string } | null;
+  if (!oferta || oferta.estado !== "activa") {
+    return {
+      error: "La oferta está en revisión y no se puede procesar la postulación hasta que vuelva a aprobarse.",
     };
   }
 
