@@ -1,5 +1,6 @@
 import { UserCheck, FileText, MessagesSquare, CheckCircle, Building2, ArrowRight } from "lucide-react";
 import { AuthLink } from "@/components/auth/auth-link";
+import { EmpresaPanelLink } from "@/components/public/empresa-panel-link";
 
 export function HowItWorks() {
   return (
@@ -98,12 +99,7 @@ export function HowItWorks() {
                 <span>Registrar empresa</span>
                 <ArrowRight className="h-4 w-4" />
               </AuthLink>
-              <AuthLink
-                href="/auth/login"
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-white/30 px-5 text-sm font-semibold text-white transition hover:bg-white/10"
-              >
-                Acceso a panel de empresa
-              </AuthLink>
+              <EmpresaPanelLink className="inline-flex h-12 items-center justify-center rounded-xl border border-white/30 px-5 text-sm font-semibold text-white transition hover:bg-white/10" />
             </div>
           </div>
         </div>

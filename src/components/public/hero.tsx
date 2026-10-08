@@ -1,9 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { ArrowDown, CheckCircle2, ShieldCheck, Users } from "lucide-react";
 import { AuthLink } from "@/components/auth/auth-link";
+import { useSesion } from "@/components/layout/sesion-provider";
 
 export function Hero() {
+  const sesion = useSesion();
+  const esEmpresa = sesion?.rol === "empresa";
+
   const handleScrollToOfertas = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     const element = document.getElementById("ofertas");
@@ -53,12 +58,21 @@ export function Hero() {
               <span>Ver ofertas disponibles</span>
               <ArrowDown className="h-4 w-4" />
             </a>
-            <AuthLink
-              href="/auth/login"
-              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white px-6 text-sm font-semibold text-foreground shadow-xs transition hover:border-primary hover:text-primary sm:w-auto"
-            >
-              <span>Acceso usuarios y empresas</span>
-            </AuthLink>
+            {esEmpresa ? (
+              <Link
+                href="/empresa"
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white px-6 text-sm font-semibold text-foreground shadow-xs transition hover:border-primary hover:text-primary sm:w-auto"
+              >
+                <span>Mi panel de empresa</span>
+              </Link>
+            ) : (
+              <AuthLink
+                href="/auth/login"
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white px-6 text-sm font-semibold text-foreground shadow-xs transition hover:border-primary hover:text-primary sm:w-auto"
+              >
+                <span>Acceso usuarios y empresas</span>
+              </AuthLink>
+            )}
           </div>
 
           {/* Highlights */}

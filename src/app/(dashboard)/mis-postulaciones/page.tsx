@@ -18,6 +18,7 @@ type DbPostulacion = {
     titulo: string;
     empresa_nombre: string;
     estado: string;
+    contenido_editado_en: string | null;
   } | null;
 };
 
@@ -54,7 +55,7 @@ export default async function MisPostulacionesPage() {
   // La UI muestra "Oferta no disponible" cuando oferta es null.
   const { data: rows } = await supabase
     .from("postulaciones")
-    .select("id, estado, created_at, ofertas(id, titulo, empresa_nombre, estado)")
+    .select("id, estado, created_at, ofertas(id, titulo, empresa_nombre, estado, contenido_editado_en)")
     .eq("postulante_id", postulante.id)
     .order("created_at", { ascending: false });
 

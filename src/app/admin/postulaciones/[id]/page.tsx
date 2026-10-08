@@ -8,29 +8,14 @@ import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { DatosCandidato } from "@/components/admin/datos-candidato";
 import { obtenerCandidato } from "@/lib/admin/candidato";
 import { BADGE_CONFIG, type EstadoPostulacion } from "@/lib/admin/postulacion-estados";
+import { getOfertaEstadoLabel } from "@/lib/oferta-estados";
 import { FichaAcciones } from "./ficha-acciones";
+import { formatFecha, formatFechaHora } from "@/lib/fechas";
 
 export const metadata: Metadata = {
   title: "Ficha | Postulaciones | Panel municipal | Portal de Empleo Funes",
 };
 
-function formatearFecha(iso: string) {
-  return new Date(iso).toLocaleDateString("es-AR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
-function formatearFechaHora(iso: string) {
-  return new Date(iso).toLocaleDateString("es-AR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default async function PostulacionFichaPage({
   params,
@@ -53,7 +38,7 @@ export default async function PostulacionFichaPage({
       postulante_id,
       oferta_id,
       postulantes!postulante_id(id, usuario_id),
-      ofertas!oferta_id(id, titulo, empresa_nombre, modalidad, jornada, estado)
+      ofertas!oferta_id(id, titulo, empresa_nombre, modalidad, jornada, estado, contenido_editado_en)
     `
     )
     .eq("id", postulacionId)
@@ -76,6 +61,7 @@ export default async function PostulacionFichaPage({
       modalidad: string;
       jornada: string;
       estado: string;
+      contenido_editado_en: string | null;
     } | null;
   };
 
@@ -198,10 +184,19 @@ export default async function PostulacionFichaPage({
                 </div>
                 <div>
                   <dt className="text-muted-foreground">Estado de la oferta</dt>
-                  <dd className="mt-0.5 text-foreground capitalize">
-                    {oferta.estado}
+                  <dd className="mt-0.5 text-foreground">
+                    {getOfertaEstadoLabel(oferta.estado)}
                   </dd>
                 </div>
+                {oferta.contenido_editado_en != null &&
+                  oferta.contenido_editado_en > postulacion.created_at && (
+                  <div className="sm:col-span-2">
+                    <dt className="text-muted-foreground">Modificada tras la postulación</dt>
+                    <dd className="mt-0.5 text-amber-700 font-medium">
+                      {formatFecha(oferta.contenido_editado_en)}
+                    </dd>
+                  </div>
+                )}
                 <div className="sm:col-span-2">
                   <Link
                     href={`/ofertas/${oferta.id}`}
@@ -228,7 +223,7 @@ export default async function PostulacionFichaPage({
               <div>
                 <dt className="text-muted-foreground">Fecha de postulación</dt>
                 <dd className="mt-0.5 text-foreground">
-                  {formatearFecha(postulacion.created_at)}
+                  {formatFecha(postulacion.created_at)}
                 </dd>
               </div>
               {postulacion.updated_at &&
@@ -238,15 +233,17 @@ export default async function PostulacionFichaPage({
                       Última actualización
                     </dt>
                     <dd className="mt-0.5 text-foreground">
-                      {formatearFechaHora(postulacion.updated_at)}
+                      {formatFechaHora(postulacion.updated_at)}
                     </dd>
                   </div>
                 )}
-              {revisor && (
+              {postulacion.revisado_por && (
                 <div>
                   <dt className="text-muted-foreground">Revisada por</dt>
                   <dd className="mt-0.5 text-foreground">
-                    {revisor.nombre} {revisor.apellido}
+                    {revisor
+                      ? `${revisor.nombre} ${revisor.apellido}`
+                      : "Usuario eliminado"}
                   </dd>
                 </div>
               )}
@@ -274,6 +271,7 @@ export default async function PostulacionFichaPage({
               <FichaAcciones
                 postulacionId={postulacion.id}
                 estado={postulacion.estado}
+                ofertaEstado={oferta?.estado}
                 derivacion={derivacion}
               />
             </div>
