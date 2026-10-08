@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Building2, ChevronRight, ClipboardList, Users } from "lucide-react";
+import { Briefcase, Building2, ChevronRight, ClipboardList, Users } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const metadata: Metadata = {
@@ -17,6 +17,7 @@ export default async function AdminDashboardPage() {
     { count: postulacionesPendientes },
     { count: totalPostulantes },
     { count: postulantesConCv },
+    { count: ofertasPendientes },
   ] = await Promise.all([
     supabase
       .from("empresas")
@@ -42,6 +43,10 @@ export default async function AdminDashboardPage() {
       .select("*", { count: "exact", head: true })
       .eq("tipo", "cv")
       .eq("activo", true),
+    supabase
+      .from("ofertas")
+      .select("*", { count: "exact", head: true })
+      .eq("estado", "pendiente_aprobacion"),
   ]);
 
   return (
@@ -75,6 +80,26 @@ export default async function AdminDashboardPage() {
       </div>
 
       <div className="mt-6 space-y-3">
+        <Link
+          href="/admin/ofertas"
+          className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-colors hover:bg-surface-tinted"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-primary">
+              <Briefcase className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Ofertas</p>
+              <p className="text-sm text-muted-foreground">
+                {(ofertasPendientes ?? 0) > 0
+                  ? `${ofertasPendientes} oferta${ofertasPendientes === 1 ? "" : "s"} pendiente${ofertasPendientes === 1 ? "" : "s"} de revisión`
+                  : "Revisá y publicá las ofertas enviadas por las empresas"}
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 flex-shrink-0 text-muted-icon" />
+        </Link>
+
         <Link
           href="/admin/empresas"
           className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-colors hover:bg-surface-tinted"
