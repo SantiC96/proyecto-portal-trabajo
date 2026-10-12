@@ -4,13 +4,19 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { X, AlertCircle, Briefcase, CheckCircle, AlertTriangle } from "lucide-react";
+import { X, AlertCircle, Briefcase, CheckCircle, AlertTriangle, CalendarClock } from "lucide-react";
 import { useMounted } from "@/lib/use-mounted";
 import { retirarPostulacion } from "@/app/(dashboard)/postulaciones/actions";
-import { formatFecha } from "@/lib/fechas";
+import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { getOfertaEstadoBadge } from "@/lib/oferta-estados";
 
 type EstadoPostulacion = "recibida" | "en_revision" | "derivada" | "rechazada_municipalidad";
+
+type DerivacionEstado = {
+  estado_empresa: string;
+  fecha_entrevista: string | null;
+  lugar_entrevista: string | null;
+};
 
 type Postulacion = {
   id: string;
@@ -23,6 +29,7 @@ type Postulacion = {
     estado: string;
     contenido_editado_en: string | null;
   } | null;
+  derivacion: DerivacionEstado | null;
 };
 
 function getBadgeEstado(estado: EstadoPostulacion) {
@@ -272,6 +279,48 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
 
             <p className="mt-2 text-xs text-muted-foreground">Postulado el {fecha}</p>
 
+            {/* Derivacion: estado de la empresa (nunca notas) */}
+            {p.estado === "derivada" && p.derivacion && (() => {
+              const d = p.derivacion;
+              if (d.estado_empresa === "contratado") {
+                return (
+                  <div className="mt-3 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
+                    <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                    <span className="font-medium">¡Fuiste seleccionado para este puesto!</span>
+                  </div>
+                );
+              }
+              if (d.estado_empresa === "rechazado") {
+                return (
+                  <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-600">
+                    No fuiste seleccionado para este puesto.
+                  </div>
+                );
+              }
+              if (d.estado_empresa === "en_proceso" && d.fecha_entrevista) {
+                return (
+                  <div className="mt-3 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm text-blue-800">
+                    <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                    <div>
+                      <span className="font-medium">Entrevista coordinada: </span>
+                      {formatFechaHora(d.fecha_entrevista)}
+                      {d.lugar_entrevista && (
+                        <span className="block mt-0.5 text-blue-700">
+                          {d.lugar_entrevista}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+              // estado_empresa === 'pendiente' — empresa aún no contactó
+              return (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Tu postulación fue derivada a la empresa.
+                </p>
+              );
+            })()}
+
             {modificada && (
               <div className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
@@ -319,7 +368,7 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
           </li>
           <li>
             <span className="font-medium text-blue-700">Enviada a la empresa</span>
-            {" — "}La Oficina de Empleo derivó tu postulación a la empresa.
+            {" — "}La Oficina de Empleo derivó tu postulación. La empresa te contactará para coordinar una entrevista.
           </li>
           <li>
             <span className="font-medium text-red-700">No seleccionada</span>

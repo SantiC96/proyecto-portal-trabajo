@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, Plus, List } from "lucide-react";
+import { Building2, Plus, List, BookmarkCheck } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const metadata: Metadata = {
@@ -104,6 +104,19 @@ export default async function EmpresaDashboardPage() {
           <div>
             <p className="font-semibold text-foreground">Publicar oferta</p>
             <p className="text-xs text-muted-foreground">Crear una nueva oferta laboral</p>
+          </div>
+        </Link>
+
+        <Link
+          href="/empresa/candidatos-guardados"
+          className="flex items-center gap-3 rounded-[var(--radius-lg)] border border-border bg-white p-5 shadow-xs transition hover:border-primary/40 hover:bg-surface-tinted"
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-primary">
+            <BookmarkCheck className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="font-semibold text-foreground">Candidatos guardados</p>
+            <p className="text-xs text-muted-foreground">Perfiles para futuras búsquedas</p>
           </div>
         </Link>
       </div>

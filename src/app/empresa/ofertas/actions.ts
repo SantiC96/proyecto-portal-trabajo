@@ -80,6 +80,17 @@ export async function crearOferta(data: OfertaData): Promise<ActionResult> {
     return { error: "No se pudieron guardar las categorías. Intentá de nuevo." };
   }
 
+  // Insertar vacantes
+  const { error: errorVacantes } = await supabase
+    .from("oferta_vacantes")
+    .insert({ oferta_id: oferta.id, cantidad: data.cantidadVacantes });
+
+  if (errorVacantes) {
+    console.error("[crearOferta] error al insertar vacantes", errorVacantes);
+    await supabase.from("ofertas").delete().eq("id", oferta.id);
+    return { error: "No se pudo guardar la cantidad de vacantes. Intentá de nuevo." };
+  }
+
   revalidatePath("/empresa/ofertas");
   revalidatePath("/ofertas");
   return { exito: true };
@@ -106,6 +117,17 @@ export async function editarOferta(id: string, data: OfertaData): Promise<Action
 
   const errorValidacion = validarOferta(data);
   if (errorValidacion) return { error: errorValidacion };
+
+  // Validar que la nueva cantidad de vacantes no sea menor que los ya seleccionados
+  const { data: contratadosData } = await supabase.rpc("contratados_en_oferta", {
+    p_oferta_id: id,
+  });
+  const contratadosActuales = (contratadosData as number | null) ?? 0;
+  if (contratadosActuales > 0 && data.cantidadVacantes < contratadosActuales) {
+    return {
+      error: `Ya tenés ${contratadosActuales} ${contratadosActuales === 1 ? "candidato seleccionado" : "candidatos seleccionados"}. La cantidad de vacantes debe ser al menos ${contratadosActuales}.`,
+    };
+  }
 
   // Verificar que todas las categorías existan
   const { data: categoriasExistentes, error: errorCats } = await supabase
@@ -153,6 +175,16 @@ export async function editarOferta(id: string, data: OfertaData): Promise<Action
   if (errorCatsInsert) {
     console.error("[editarOferta] error al actualizar categorías", errorCatsInsert);
     return { error: "La oferta se guardó pero no se pudieron actualizar las categorías." };
+  }
+
+  // Actualizar vacantes (no cambia el estado de la oferta, tabla separada)
+  const { error: errorVacantes } = await supabase
+    .from("oferta_vacantes")
+    .upsert({ oferta_id: id, cantidad: data.cantidadVacantes, updated_at: new Date().toISOString() });
+
+  if (errorVacantes) {
+    console.error("[editarOferta] error al actualizar vacantes", errorVacantes);
+    return { error: "La oferta se guardó pero no se pudo actualizar la cantidad de vacantes." };
   }
 
   revalidatePath("/empresa/ofertas");

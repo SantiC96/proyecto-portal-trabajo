@@ -59,11 +59,38 @@ export default async function MisPostulacionesPage() {
     .eq("postulante_id", postulante.id)
     .order("created_at", { ascending: false });
 
-  const postulaciones = ((rows ?? []) as unknown as DbPostulacion[]).map((r) => ({
+  const rawList = ((rows ?? []) as unknown as DbPostulacion[]);
+
+  // For derivada postulaciones, get the derivation state (without notes — uses SECURITY DEFINER)
+  const derivadasIds = rawList
+    .filter((r) => r.estado === "derivada")
+    .map((r) => r.id);
+
+  type EstadoDerivacionRow = {
+    estado_empresa: string;
+    fecha_entrevista: string | null;
+    lugar_entrevista: string | null;
+  };
+
+  const derivacionEstados: Record<string, EstadoDerivacionRow> = {};
+  if (derivadasIds.length > 0) {
+    const results = await Promise.all(
+      derivadasIds.map((pid) =>
+        supabase.rpc("estado_derivacion_postulante", { p_postulacion_id: pid })
+      )
+    );
+    derivadasIds.forEach((pid, i) => {
+      const row = (results[i].data as EstadoDerivacionRow[] | null)?.[0];
+      if (row) derivacionEstados[pid] = row;
+    });
+  }
+
+  const postulaciones = rawList.map((r) => ({
     id: r.id,
     estado: r.estado,
     created_at: r.created_at,
     oferta: r.ofertas,
+    derivacion: derivacionEstados[r.id] ?? null,
   }));
 
   return (
