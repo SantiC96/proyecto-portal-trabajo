@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 
 async function verificarMunicipalidad(): Promise<{ error: string } | { userId: string }> {
   const supabase = await createSupabaseServerClient();
@@ -238,6 +239,29 @@ export async function derivarPostulacion(
       error:
         "La derivación se registró pero no se pudo actualizar el estado. Contactá a soporte.",
     };
+  }
+
+  revalidarVistas(postulacionId);
+  return {};
+}
+
+export async function corregirEstadoDerivacion(
+  postulacionId: string,
+  derivacionId: string,
+  nuevoEstado: EstadoDerivacionEmpresa
+): Promise<{ error?: string }> {
+  const auth = await verificarMunicipalidad();
+  if ("error" in auth) return auth;
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("derivaciones")
+    .update({ estado_empresa: nuevoEstado })
+    .eq("id", derivacionId);
+
+  if (error) {
+    console.error("[corregirEstadoDerivacion]", error);
+    return { error: "No se pudo corregir el estado. Intentá de nuevo." };
   }
 
   revalidarVistas(postulacionId);

@@ -11,6 +11,11 @@ import { BADGE_CONFIG, type EstadoPostulacion } from "@/lib/admin/postulacion-es
 import { getOfertaEstadoLabel } from "@/lib/oferta-estados";
 import { FichaAcciones } from "./ficha-acciones";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
+import {
+  DERIVACION_ESTADO_LABEL,
+  DERIVACION_ESTADO_STYLE,
+  type EstadoDerivacionEmpresa,
+} from "@/lib/derivacion-estados";
 
 export const metadata: Metadata = {
   title: "Ficha | Postulaciones | Panel municipal | Portal de Empleo Funes",
@@ -74,7 +79,9 @@ export default async function PostulacionFichaPage({
     postulacion.estado === "derivada"
       ? supabase
           .from("derivaciones")
-          .select("nota_municipalidad, created_at")
+          .select(
+            "id, nota_municipalidad, created_at, estado_empresa, fecha_entrevista, lugar_entrevista, fecha_respuesta, nota_empresa"
+          )
           .eq("postulacion_id", postulacion.id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -88,8 +95,14 @@ export default async function PostulacionFichaPage({
   ]);
 
   const derivacion = derivacionResult.data as {
+    id: string;
     nota_municipalidad: string | null;
     created_at: string;
+    estado_empresa: EstadoDerivacionEmpresa;
+    fecha_entrevista: string | null;
+    lugar_entrevista: string | null;
+    fecha_respuesta: string | null;
+    nota_empresa: string | null;
   } | null;
   const revisor = revisorResult.data as {
     nombre: string;
@@ -259,6 +272,52 @@ export default async function PostulacionFichaPage({
               <p className="mt-2 text-sm text-foreground">
                 {postulacion.nota_oficina}
               </p>
+            </div>
+          )}
+
+          {/* Derivación: estado de la empresa */}
+          {derivacion && (
+            <div className="rounded-[var(--radius-lg)] border border-border bg-white p-5 shadow-xs">
+              <h2 className="font-semibold text-foreground">Estado de la empresa</h2>
+              <dl className="mt-4 space-y-3 text-sm">
+                <div>
+                  <dt className="text-muted-foreground">Estado</dt>
+                  <dd className="mt-0.5">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${DERIVACION_ESTADO_STYLE[derivacion.estado_empresa] ?? "bg-gray-100 text-gray-600"}`}
+                    >
+                      {DERIVACION_ESTADO_LABEL[derivacion.estado_empresa] ?? derivacion.estado_empresa}
+                    </span>
+                  </dd>
+                </div>
+                {derivacion.fecha_entrevista && (
+                  <div>
+                    <dt className="text-muted-foreground">Fecha de entrevista</dt>
+                    <dd className="mt-0.5 text-foreground">
+                      {formatFechaHora(derivacion.fecha_entrevista)}
+                      {derivacion.lugar_entrevista && (
+                        <span className="ml-1 text-muted-foreground">
+                          · {derivacion.lugar_entrevista}
+                        </span>
+                      )}
+                    </dd>
+                  </div>
+                )}
+                {derivacion.fecha_respuesta && (
+                  <div>
+                    <dt className="text-muted-foreground">Fecha de respuesta</dt>
+                    <dd className="mt-0.5 text-foreground">
+                      {formatFechaHora(derivacion.fecha_respuesta)}
+                    </dd>
+                  </div>
+                )}
+                {derivacion.estado_empresa === "rechazado" && derivacion.nota_empresa && (
+                  <div>
+                    <dt className="text-muted-foreground">Motivo (empresa)</dt>
+                    <dd className="mt-0.5 text-foreground">{derivacion.nota_empresa}</dd>
+                  </div>
+                )}
+              </dl>
             </div>
           )}
         </div>

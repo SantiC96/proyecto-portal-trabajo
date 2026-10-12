@@ -58,7 +58,7 @@ export default async function AdminOfertaDetallePage({
 
   const oferta = raw as unknown as OfertaDetalle;
 
-  const [empresaResult, revisorResult, postulacionesResult] = await Promise.all([
+  const [empresaResult, revisorResult, postulacionesResult, vacantesResult, contratadosResult] = await Promise.all([
     oferta.empresa_id
       ? supabase
           .from("empresas")
@@ -77,6 +77,12 @@ export default async function AdminOfertaDetallePage({
       .from("postulaciones")
       .select("*", { count: "exact", head: true })
       .eq("oferta_id", ofertaId),
+    supabase
+      .from("oferta_vacantes")
+      .select("cantidad")
+      .eq("oferta_id", ofertaId)
+      .maybeSingle(),
+    supabase.rpc("contratados_en_oferta", { p_oferta_id: ofertaId }),
   ]);
 
   const empresa = empresaResult.data as {
@@ -89,6 +95,8 @@ export default async function AdminOfertaDetallePage({
     apellido: string;
   } | null;
   const totalPostulaciones = postulacionesResult.count ?? 0;
+  const vacantes = (vacantesResult.data?.cantidad as number | null) ?? null;
+  const contratados = (contratadosResult.data as number | null) ?? 0;
 
   const categorias = oferta.oferta_categorias
     .map((oc) => oc.categorias?.nombre)
@@ -257,6 +265,14 @@ export default async function AdminOfertaDetallePage({
                   <dt className="text-muted-foreground">Postulaciones</dt>
                   <dd className="mt-0.5 text-foreground">
                     {totalPostulaciones}
+                  </dd>
+                </div>
+              )}
+              {vacantes !== null && (
+                <div>
+                  <dt className="text-muted-foreground">Vacantes</dt>
+                  <dd className="mt-0.5 text-foreground">
+                    {contratados} de {vacantes} {vacantes === 1 ? "cubierta" : "cubiertas"}
                   </dd>
                 </div>
               )}
