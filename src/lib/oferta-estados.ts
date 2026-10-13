@@ -40,19 +40,19 @@ export function getOfertaEstadoBadge(estado: string | undefined): OfertaEstadoBa
 export function accionesDisponibles(
   estado: string,
   cantidadPostulaciones: number
-): { mostrarEliminar: boolean; mostrarCerrar: boolean } {
+): { mostrarEliminar: boolean; mostrarCerrar: boolean; mostrarCandidatosPorContactar: boolean } {
   switch (estado) {
     case "pendiente_aprobacion":
       return cantidadPostulaciones === 0
-        ? { mostrarEliminar: true, mostrarCerrar: false }
-        : { mostrarEliminar: false, mostrarCerrar: true };
+        ? { mostrarEliminar: true, mostrarCerrar: false, mostrarCandidatosPorContactar: false }
+        : { mostrarEliminar: false, mostrarCerrar: true, mostrarCandidatosPorContactar: false };
     case "activa":
-      return { mostrarEliminar: false, mostrarCerrar: true };
+      return { mostrarEliminar: false, mostrarCerrar: true, mostrarCandidatosPorContactar: true };
     case "rechazada":
       // Rejected offers were never published and never received applications.
-      return { mostrarEliminar: true, mostrarCerrar: false };
+      return { mostrarEliminar: true, mostrarCerrar: false, mostrarCandidatosPorContactar: false };
     default: // cerrada y cualquier otro
-      return { mostrarEliminar: false, mostrarCerrar: false };
+      return { mostrarEliminar: false, mostrarCerrar: false, mostrarCandidatosPorContactar: false };
   }
 }
 

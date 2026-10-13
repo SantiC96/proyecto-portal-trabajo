@@ -88,6 +88,18 @@ export default async function MisOfertasPage({ searchParams }: Props) {
     }
   }
 
+  // Ofertas con candidatos "Por contactar" (estado_empresa = 'pendiente')
+  // Usamos la función SECURITY DEFINER para no requerir acceso a postulaciones.
+  const ofertasConPendientesSet = new Set<string>();
+  const { data: pendientesRows } = await supabase.rpc(
+    "ofertas_con_candidatos_pendientes"
+  );
+  if (pendientesRows) {
+    for (const row of pendientesRows as Array<{ oferta_id: string }>) {
+      ofertasConPendientesSet.add(row.oferta_id);
+    }
+  }
+
   return (
     <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -152,7 +164,9 @@ export default async function MisOfertasPage({ searchParams }: Props) {
             const fecha = formatFecha(oferta.created_at);
             const cantPost = postulacionesPorOferta[oferta.id] ?? 0;
             const puedeEditar = oferta.estado === "activa" || oferta.estado === "rechazada";
-            const { mostrarEliminar, mostrarCerrar } = accionesDisponibles(oferta.estado, cantPost);
+            const { mostrarEliminar, mostrarCerrar, mostrarCandidatosPorContactar } = accionesDisponibles(oferta.estado, cantPost);
+
+            const tienePendientes = mostrarCandidatosPorContactar && ofertasConPendientesSet.has(oferta.id);
 
             return (
               <li
@@ -168,6 +182,12 @@ export default async function MisOfertasPage({ searchParams }: Props) {
                       >
                         {ESTADO_LABEL[oferta.estado] ?? oferta.estado}
                       </span>
+                      {tienePendientes && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                          Candidatos por contactar
+                        </span>
+                      )}
                     </div>
 
                     <p className="mt-1 text-xs text-muted-foreground">Publicada el {fecha}</p>
@@ -195,6 +215,14 @@ export default async function MisOfertasPage({ searchParams }: Props) {
                   </div>
 
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    {oferta.estado === "activa" && (
+                      <Link
+                        href={`/empresa/ofertas/${oferta.id}`}
+                        className="btn-secundario inline-flex h-8 items-center px-3 text-xs font-medium"
+                      >
+                        Ver candidatos
+                      </Link>
+                    )}
                     {puedeEditar && (
                       <Link
                         href={`/empresa/ofertas/${oferta.id}/editar`}

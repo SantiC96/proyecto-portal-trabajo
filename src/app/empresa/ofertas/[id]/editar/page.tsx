@@ -34,7 +34,7 @@ export default async function EditarOfertaPage({ params }: Props) {
   const { data: oferta } = await supabase
     .from("ofertas")
     .select(
-      "id, titulo, descripcion, ubicacion, modalidad, jornada, requisitos, beneficios, estado, oferta_categorias(categoria_id)"
+      "id, titulo, descripcion, ubicacion, modalidad, jornada, requisitos, beneficios, estado, empresa_id, oferta_categorias(categoria_id)"
     )
     .eq("id", id)
     .eq("empresa_id", empresa.id)
@@ -44,7 +44,15 @@ export default async function EditarOfertaPage({ params }: Props) {
   if (oferta.estado === "cerrada") redirect("/empresa/ofertas");
   if (oferta.estado === "pendiente_aprobacion") redirect("/empresa/ofertas?aviso=pendiente");
 
-  const [categorias] = await Promise.all([getCategoriasConId()]);
+  const [categorias, vacantesResult, contratadosResult] = await Promise.all([
+    getCategoriasConId(),
+    supabase.from("oferta_vacantes").select("cantidad").eq("oferta_id", id).maybeSingle(),
+    supabase.rpc("contratados_en_oferta", { p_oferta_id: id }),
+  ]);
+
+  const cantidadVacantes = (vacantesResult.data?.cantidad as number | null) ?? 1;
+  const contratados = (contratadosResult.data as number | null) ?? 0;
+  const minimoVacantes = Math.max(1, contratados);
 
   const categoriasSeleccionadas = (
     oferta.oferta_categorias as Array<{ categoria_id: string }>
@@ -58,6 +66,7 @@ export default async function EditarOfertaPage({ params }: Props) {
     requisitos: (oferta.requisitos as string[]) ?? [],
     beneficios: (oferta.beneficios as string[]) ?? [],
     categorias: categoriasSeleccionadas,
+    cantidadVacantes,
   };
 
   return (
@@ -83,6 +92,7 @@ export default async function EditarOfertaPage({ params }: Props) {
           ofertaId={id}
           valorInicial={valorInicial}
           estaPublicada={oferta.estado === "activa"}
+          minimoVacantes={minimoVacantes}
         />
       </div>
     </section>

@@ -17,12 +17,13 @@ interface OfertaFormProps {
   ofertaId?: string;
   valorInicial?: Partial<OfertaData>;
   estaPublicada?: boolean;
+  minimoVacantes?: number;
 }
 
 const MODALIDADES = ["Presencial", "Híbrido", "Remoto"] as const;
 const JORNADAS = ["Tiempo completo", "Part-time", "Pasantía", "Por proyecto"] as const;
 
-export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada }: OfertaFormProps) {
+export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, minimoVacantes = 1 }: OfertaFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +40,9 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada }
   const [beneficios, setBeneficios] = useState<string[]>(valorInicial?.beneficios ?? []);
   const [nuevoRequisito, setNuevoRequisito] = useState("");
   const [nuevoBeneficio, setNuevoBeneficio] = useState("");
+  const [cantidadVacantes, setCantidadVacantes] = useState(
+    valorInicial?.cantidadVacantes ?? 1
+  );
 
   function agregarRequisito() {
     const val = nuevoRequisito.trim();
@@ -80,6 +84,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada }
       jornada,
       requisitos,
       beneficios,
+      cantidadVacantes,
     };
 
     const validationError = validarOferta(data);
@@ -204,6 +209,30 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada }
             ))}
           </select>
         </div>
+      </div>
+
+      {/* Vacantes */}
+      <div className="space-y-1.5">
+        <label htmlFor="vacantes" className="block text-sm font-semibold text-foreground">
+          Cantidad de personas a contratar <span className="text-red-500">*</span>
+        </label>
+        <input
+          id="vacantes"
+          type="number"
+          min={minimoVacantes}
+          value={cantidadVacantes}
+          onChange={(e) => {
+            const v = parseInt(e.target.value, 10);
+            if (!isNaN(v)) setCantidadVacantes(v);
+          }}
+          className="w-32 rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+        <p className="text-xs text-muted-foreground">No se muestra a los postulantes.</p>
+        {minimoVacantes > 1 && (
+          <p className="text-xs text-amber-700">
+            Ya tenés {minimoVacantes} {minimoVacantes === 1 ? "candidato seleccionado" : "candidatos seleccionados"}. La cantidad no puede ser menor.
+          </p>
+        )}
       </div>
 
       {/* Requisitos */}

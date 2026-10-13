@@ -52,6 +52,7 @@ export type OfertaData = {
   jornada: string;
   requisitos: string[];
   beneficios: string[];
+  cantidadVacantes: number;
 };
 
 export function validarOferta(data: OfertaData): string | null {
@@ -77,5 +78,7 @@ export function validarOferta(data: OfertaData): string | null {
     if (ben.trim().length > 200)
       return "Cada beneficio puede tener hasta 200 caracteres.";
   }
+  if (!Number.isInteger(data.cantidadVacantes) || data.cantidadVacantes < 1)
+    return "La cantidad de vacantes debe ser un número entero mayor o igual a 1.";
   return null;
 }
