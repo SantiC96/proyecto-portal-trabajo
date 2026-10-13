@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import {
   Menu, X, LogIn, UserPlus, LogOut,
-  User, Briefcase, LayoutDashboard, ChevronDown,
+  User, Briefcase, LayoutDashboard, ChevronDown, BookOpen,
 } from "lucide-react";
 import { RegisterModal } from "@/components/auth/register-modal";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
@@ -48,6 +48,7 @@ function getMenuItems(rol?: string | null): MenuItem[] {
     return [
       { label: "Mi perfil", href: "/perfil", Icon: User },
       { label: "Mis postulaciones", href: "/mis-postulaciones", Icon: Briefcase },
+      { label: "Mis cursos", href: "/mis-cursos", Icon: BookOpen },
     ];
   }
   if (rol === "empresa") {
@@ -385,13 +386,22 @@ export function Navbar({ session = null }: NavbarProps) {
                   </Link>
 
                   {session.rol === "postulante" && (
-                    <Link
-                      href="/mis-postulaciones"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`${mobileLinkBase} ${mobileLinkInactive}`}
-                    >
-                      Mis postulaciones
-                    </Link>
+                    <>
+                      <Link
+                        href="/mis-postulaciones"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`${mobileLinkBase} ${mobileLinkInactive}`}
+                      >
+                        Mis postulaciones
+                      </Link>
+                      <Link
+                        href="/mis-cursos"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`${mobileLinkBase} ${mobileLinkInactive}`}
+                      >
+                        Mis cursos
+                      </Link>
+                    </>
                   )}
 
                   <form action={logout}>

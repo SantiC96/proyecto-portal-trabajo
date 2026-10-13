@@ -10,17 +10,20 @@ type Props = {
   seleccionadosIniciales: string[];
   qInicial: string;
   conCvInicial: boolean;
+  esperandoCursoInicial: boolean;
 };
 
 function buildUrl(params: {
   q: string;
   rubros: string[];
   conCv: boolean;
+  esperandoCurso: boolean;
 }): string {
   const sp = new URLSearchParams();
   if (params.q.trim()) sp.set("q", params.q.trim());
   if (params.rubros.length > 0) sp.set("rubros", params.rubros.join(","));
   if (params.conCv) sp.set("con_cv", "1");
+  if (params.esperandoCurso) sp.set("esperando_curso", "1");
   const qs = sp.toString();
   return qs ? `/admin/postulantes?${qs}` : "/admin/postulantes";
 }
@@ -30,6 +33,7 @@ export function FiltrosPostulantes({
   seleccionadosIniciales,
   qInicial,
   conCvInicial,
+  esperandoCursoInicial,
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -37,17 +41,32 @@ export function FiltrosPostulantes({
   const [q, setQ] = useState(qInicial);
   const [rubros, setRubros] = useState<string[]>(seleccionadosIniciales);
   const [conCv, setConCv] = useState(conCvInicial);
+  const [esperandoCurso, setEsperandoCurso] = useState(esperandoCursoInicial);
 
   const tienesFiltros =
-    q.trim() !== "" || rubros.length > 0 || conCv;
+    q.trim() !== "" || rubros.length > 0 || conCv || esperandoCurso;
 
-  function pushUrl(overrides: Partial<{ q: string; rubros: string[]; conCv: boolean }> = {}) {
-    const url = buildUrl({ q, rubros, conCv, ...overrides });
+  function pushUrl(
+    overrides: Partial<{
+      q: string;
+      rubros: string[];
+      conCv: boolean;
+      esperandoCurso: boolean;
+    }> = {}
+  ) {
+    const url = buildUrl({ q, rubros, conCv, esperandoCurso, ...overrides });
     startTransition(() => router.push(url));
   }
 
-  function pushUrlReplace(overrides: Partial<{ q: string; rubros: string[]; conCv: boolean }> = {}) {
-    const url = buildUrl({ q, rubros, conCv, ...overrides });
+  function pushUrlReplace(
+    overrides: Partial<{
+      q: string;
+      rubros: string[];
+      conCv: boolean;
+      esperandoCurso: boolean;
+    }> = {}
+  ) {
+    const url = buildUrl({ q, rubros, conCv, esperandoCurso, ...overrides });
     startTransition(() => router.replace(url));
   }
 
@@ -59,6 +78,11 @@ export function FiltrosPostulantes({
   function handleConCvChange(checked: boolean) {
     setConCv(checked);
     pushUrl({ conCv: checked });
+  }
+
+  function handleEsperandoCursoChange(checked: boolean) {
+    setEsperandoCurso(checked);
+    pushUrl({ esperandoCurso: checked });
   }
 
   function handleQChange(value: string) {
@@ -79,6 +103,7 @@ export function FiltrosPostulantes({
     setQ("");
     setRubros([]);
     setConCv(false);
+    setEsperandoCurso(false);
     startTransition(() => router.push("/admin/postulantes"));
   }
 
@@ -110,19 +135,34 @@ export function FiltrosPostulantes({
             onChange={(e) => handleConCvChange(e.target.checked)}
             className="h-4 w-4 rounded border-border accent-primary"
           />
-          Solo con CV cargado
+          Solo con CV
         </label>
       </div>
 
-      {/* Rubros */}
-      <MultiCombobox
-        opciones={opciones}
-        seleccionados={rubros}
-        onChange={handleRubrosChange}
-        placeholder="Filtrar por rubro..."
-        vacioTexto="No hay rubros que coincidan"
-        campoClassName="bg-white"
-      />
+      <div className="flex flex-wrap gap-3">
+        {/* Rubros */}
+        <div className="flex-1 min-w-[200px]">
+          <MultiCombobox
+            opciones={opciones}
+            seleccionados={rubros}
+            onChange={handleRubrosChange}
+            placeholder="Filtrar por rubro..."
+            vacioTexto="No hay rubros que coincidan"
+            campoClassName="bg-white"
+          />
+        </div>
+
+        {/* Checkbox esperando curso */}
+        <label className="flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-amber-800 select-none">
+          <input
+            type="checkbox"
+            checked={esperandoCurso}
+            onChange={(e) => handleEsperandoCursoChange(e.target.checked)}
+            className="h-4 w-4 rounded border-amber-300 accent-amber-600"
+          />
+          Esperando curso
+        </label>
+      </div>
 
       {/* Limpiar filtros */}
       {tienesFiltros && (

@@ -1,11 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Briefcase, Building2, ChevronRight, ClipboardList, Users } from "lucide-react";
+import {
+  BookOpen,
+  Briefcase,
+  Building2,
+  ChevronRight,
+  ClipboardList,
+  Users,
+} from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const metadata: Metadata = {
   title: "Panel municipal | Portal de Empleo Funes",
 };
+
+function textoEstado(hayPendientes: boolean): string {
+  return hayPendientes
+    ? "text-sm font-medium text-amber-700 dark:text-amber-400"
+    : "text-sm text-muted-foreground";
+}
 
 export default async function AdminDashboardPage() {
   const supabase = await createSupabaseServerClient();
@@ -18,6 +31,8 @@ export default async function AdminDashboardPage() {
     { count: totalPostulantes },
     { count: postulantesConCv },
     { count: ofertasPendientes },
+    esperandoCursoRes,
+    { count: cursosActivos },
   ] = await Promise.all([
     supabase
       .from("empresas")
@@ -35,9 +50,7 @@ export default async function AdminDashboardPage() {
       .from("postulaciones")
       .select("*", { count: "exact", head: true })
       .in("estado", ["recibida", "en_revision"]),
-    supabase
-      .from("postulantes")
-      .select("*", { count: "exact", head: true }),
+    supabase.from("postulantes").select("*", { count: "exact", head: true }),
     supabase
       .from("archivos_usuario")
       .select("*", { count: "exact", head: true })
@@ -47,7 +60,16 @@ export default async function AdminDashboardPage() {
       .from("ofertas")
       .select("*", { count: "exact", head: true })
       .eq("estado", "pendiente_aprobacion"),
+    supabase.rpc("contar_postulantes_esperando_curso"),
+    supabase
+      .from("cursos")
+      .select("*", { count: "exact", head: true })
+      .eq("activo", true),
   ]);
+
+  if (esperandoCursoRes.error)
+    console.error("[contar_postulantes_esperando_curso]", esperandoCursoRes.error);
+  const postulantesEsperando = Number(esperandoCursoRes.data ?? 0);
 
   return (
     <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
@@ -60,7 +82,9 @@ export default async function AdminDashboardPage() {
 
       <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-6">
-          <p className="text-sm font-medium text-muted-foreground">Pendientes</p>
+          <p className="text-sm font-medium text-muted-foreground">
+            Pendientes
+          </p>
           <p className="mt-2 text-4xl font-bold text-foreground">
             {pendientes ?? 0}
           </p>
@@ -72,7 +96,9 @@ export default async function AdminDashboardPage() {
           </p>
         </div>
         <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-6">
-          <p className="text-sm font-medium text-muted-foreground">Rechazadas</p>
+          <p className="text-sm font-medium text-muted-foreground">
+            Rechazadas
+          </p>
           <p className="mt-2 text-4xl font-bold text-red-600">
             {rechazadas ?? 0}
           </p>
@@ -90,7 +116,7 @@ export default async function AdminDashboardPage() {
             </div>
             <div>
               <p className="font-semibold text-foreground">Ofertas</p>
-              <p className="text-sm text-muted-foreground">
+              <p className={textoEstado((ofertasPendientes ?? 0) > 0)}>
                 {(ofertasPendientes ?? 0) > 0
                   ? `${ofertasPendientes} oferta${ofertasPendientes === 1 ? "" : "s"} pendiente${ofertasPendientes === 1 ? "" : "s"} de revisión`
                   : "Revisá y publicá las ofertas enviadas por las empresas"}
@@ -110,7 +136,7 @@ export default async function AdminDashboardPage() {
             </div>
             <div>
               <p className="font-semibold text-foreground">Empresas</p>
-              <p className="text-sm text-muted-foreground">
+              <p className={textoEstado((pendientes ?? 0) > 0)}>
                 {(pendientes ?? 0) > 0
                   ? `${pendientes} empresa${pendientes === 1 ? "" : "s"} pendiente${pendientes === 1 ? "" : "s"} de revisión`
                   : "Revisá solicitudes pendientes y el historial de decisiones"}
@@ -130,7 +156,7 @@ export default async function AdminDashboardPage() {
             </div>
             <div>
               <p className="font-semibold text-foreground">Postulaciones</p>
-              <p className="text-sm text-muted-foreground">
+              <p className={textoEstado((postulacionesPendientes ?? 0) > 0)}>
                 {(postulacionesPendientes ?? 0) > 0
                   ? `${postulacionesPendientes} pendiente${
                       postulacionesPendientes === 1 ? "" : "s"
@@ -152,12 +178,34 @@ export default async function AdminDashboardPage() {
             </div>
             <div>
               <p className="font-semibold text-foreground">Postulantes</p>
+              <p className={textoEstado(postulantesEsperando > 0)}>
+                {postulantesEsperando > 0
+                  ? `${postulantesEsperando} postulante${postulantesEsperando === 1 ? "" : "s"} esperando curso`
+                  : (totalPostulantes ?? 0) === 0
+                    ? "Buscá candidatos por rubro y revisá sus CVs"
+                    : `${totalPostulantes ?? 0} registrado${
+                        totalPostulantes === 1 ? "" : "s"
+                      } · ${postulantesConCv ?? 0} con CV`}
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 flex-shrink-0 text-muted-icon" />
+        </Link>
+
+        <Link
+          href="/admin/cursos"
+          className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-colors hover:bg-surface-tinted"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-primary">
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Cursos</p>
               <p className="text-sm text-muted-foreground">
-                {(totalPostulantes ?? 0) === 0
-                  ? "Buscá candidatos por rubro y revisá sus CVs"
-                  : `${totalPostulantes ?? 0} registrado${
-                      totalPostulantes === 1 ? "" : "s"
-                    } · ${postulantesConCv ?? 0} con CV`}
+                {(cursosActivos ?? 0) > 0
+                  ? `${cursosActivos} curso${cursosActivos === 1 ? "" : "s"} activo${cursosActivos === 1 ? "" : "s"}`
+                  : "Gestioná los cursos de inserción laboral"}
               </p>
             </div>
           </div>
