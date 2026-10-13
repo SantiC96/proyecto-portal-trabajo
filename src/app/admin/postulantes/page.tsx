@@ -4,6 +4,7 @@ import { FileText, Users } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { FiltrosPostulantes } from "./filtros-postulantes";
+import { AsignarCursoDialog } from "./asignar-curso-dialog";
 
 export const metadata: Metadata = {
   title: "Postulantes | Panel municipal | Portal de Empleo Funes",
@@ -26,6 +27,7 @@ export default async function PostulantesPage({
     q?: string;
     rubros?: string;
     con_cv?: string;
+    esperando_curso?: string;
     pagina?: string;
   }>;
 }) {
@@ -33,6 +35,7 @@ export default async function PostulantesPage({
     q: rawQ = "",
     rubros: rawRubros = "",
     con_cv: rawConCv = "",
+    esperando_curso: rawEsperandoCurso = "",
     pagina: rawPagina = "1",
   } = await searchParams;
 
@@ -44,22 +47,32 @@ export default async function PostulantesPage({
         .filter(Boolean)
     : [];
   const conCv = rawConCv === "1";
+  const esperandoCurso = rawEsperandoCurso === "1";
   const pagina = Math.max(1, parseInt(rawPagina, 10) || 1);
   const offset = (pagina - 1) * PAGE_SIZE;
-  const hayFiltros = rubroIds.length > 0 || conCv || q.length > 0;
+  const hayFiltros = rubroIds.length > 0 || conCv || q.length > 0 || esperandoCurso;
 
   const supabase = await createSupabaseServerClient();
 
-  // Categorías para el MultiCombobox
-  const { data: categoriasOpciones } = await supabase
-    .from("categorias")
-    .select("id, nombre")
-    .order("nombre");
+  // Categorías para el MultiCombobox y cursos activos para el dialog
+  const [categoriasRes, cursosRes] = await Promise.all([
+    supabase.from("categorias").select("id, nombre").order("nombre"),
+    supabase
+      .from("cursos")
+      .select("id, nombre, descripcion")
+      .eq("activo", true)
+      .order("nombre"),
+  ]);
 
-  const opciones = (categoriasOpciones ?? []) as { id: string; nombre: string }[];
+  const opciones = (categoriasRes.data ?? []) as { id: string; nombre: string }[];
+  const cursosActivos = (cursosRes.data ?? []) as {
+    id: string;
+    nombre: string;
+    descripcion: string | null;
+  }[];
 
   // Pre-filtros paralelos
-  const [rubroPreResult, cvPreResult] = await Promise.all([
+  const [rubroPreResult, cvPreResult, esperandoPreResult] = await Promise.all([
     rubroIds.length > 0
       ? supabase
           .from("postulante_categorias")
@@ -73,18 +86,36 @@ export default async function PostulantesPage({
           .eq("tipo", "cv")
           .eq("activo", true)
       : Promise.resolve({ data: null }),
+    esperandoCurso
+      ? supabase.rpc("postulantes_esperando_curso_ids")
+      : Promise.resolve({ data: null }),
   ]);
 
   type RubroRow = { postulante_id: string };
   type CvRow = { usuario_id: string };
+  type EsperandoRow = { postulante_id: string };
 
   const rubroPrefilterId: string[] | undefined =
     rubroIds.length > 0
-      ? [...new Set(((rubroPreResult.data ?? []) as RubroRow[]).map((r) => r.postulante_id))]
+      ? [
+          ...new Set(
+            ((rubroPreResult.data ?? []) as RubroRow[]).map(
+              (r) => r.postulante_id
+            )
+          ),
+        ]
       : undefined;
 
   const cvUsuarioIds: string[] | undefined = conCv
     ? ((cvPreResult.data ?? []) as CvRow[]).map((r) => r.usuario_id)
+    : undefined;
+
+  if (esperandoCurso && "error" in esperandoPreResult && esperandoPreResult.error)
+    console.error("[postulantes_esperando_curso_ids]", esperandoPreResult.error);
+  const esperandoCursoFilterIds: string[] | undefined = esperandoCurso
+    ? ((esperandoPreResult.data ?? []) as EsperandoRow[]).map(
+        (r) => r.postulante_id
+      )
     : undefined;
 
   // Pre-filtro: búsqueda de texto
@@ -98,10 +129,7 @@ export default async function PostulantesPage({
         .from("usuarios")
         .select("id")
         .or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%`),
-      supabase
-        .from("postulantes")
-        .select("id")
-        .ilike("dni", `%${q}%`),
+      supabase.from("postulantes").select("id").ilike("dni", `%${q}%`),
     ]);
 
     const usuarioIds = ((usersRes.data ?? []) as UserRow[]).map((r) => r.id);
@@ -123,7 +151,9 @@ export default async function PostulantesPage({
   const emptyFilter =
     (rubroPrefilterId !== undefined && rubroPrefilterId.length === 0) ||
     (cvUsuarioIds !== undefined && cvUsuarioIds.length === 0) ||
-    (textFilterIds !== undefined && textFilterIds.length === 0);
+    (textFilterIds !== undefined && textFilterIds.length === 0) ||
+    (esperandoCursoFilterIds !== undefined &&
+      esperandoCursoFilterIds.length === 0);
 
   if (emptyFilter) {
     return (
@@ -132,13 +162,13 @@ export default async function PostulantesPage({
         rubroIds={rubroIds}
         q={q}
         conCv={conCv}
+        esperandoCurso={esperandoCurso}
       >
         <EstadoVacio hayFiltros={hayFiltros} />
       </PostulantesShell>
     );
   }
 
-  // Consulta principal
   type PostulanteRow = {
     id: string;
     usuario_id: string;
@@ -165,6 +195,8 @@ export default async function PostulantesPage({
   if (cvUsuarioIds !== undefined)
     query = query.in("usuario_id", cvUsuarioIds);
   if (textFilterIds !== undefined) query = query.in("id", textFilterIds);
+  if (esperandoCursoFilterIds !== undefined)
+    query = query.in("id", esperandoCursoFilterIds);
 
   const { data: rawPostulantes, count: total } = await query;
   const postulantes = (rawPostulantes ?? []) as unknown as PostulanteRow[];
@@ -177,6 +209,7 @@ export default async function PostulantesPage({
         rubroIds={rubroIds}
         q={q}
         conCv={conCv}
+        esperandoCurso={esperandoCurso}
       >
         <EstadoVacio hayFiltros={hayFiltros} />
       </PostulantesShell>
@@ -186,7 +219,6 @@ export default async function PostulantesPage({
   const postulanteIds = postulantes.map((p) => p.id);
   const usuarioIds = postulantes.map((p) => p.usuario_id);
 
-  // Batch secundario
   type AvatarRow = {
     usuario_id: string;
     ruta: string;
@@ -200,8 +232,15 @@ export default async function PostulantesPage({
   };
   type CvStatusRow = { usuario_id: string };
   type PostulacionCountRow = { postulante_id: string };
+  type RechazosRow = { postulante_id: string; rechazos: number };
 
-  const [avatarRes, catRes, cvStatusRes, postulacionesRes] = await Promise.all([
+  const [
+    avatarRes,
+    catRes,
+    cvStatusRes,
+    postulacionesRes,
+    rechazosRes,
+  ] = await Promise.all([
     supabase
       .from("archivos_usuario")
       .select("usuario_id, ruta, ajuste_x, ajuste_y, ajuste_zoom")
@@ -222,6 +261,9 @@ export default async function PostulantesPage({
       .from("postulaciones")
       .select("postulante_id")
       .in("postulante_id", postulanteIds),
+    supabase.rpc("rechazos_por_postulantes", {
+      p_postulante_ids: postulanteIds,
+    }),
   ]);
 
   const avatarRows = (avatarRes.data ?? []) as unknown as AvatarRow[];
@@ -260,24 +302,35 @@ export default async function PostulantesPage({
   }
 
   const usuariosConCv = new Set(
-    ((cvStatusRes.data ?? []) as unknown as CvStatusRow[]).map((r) => r.usuario_id)
+    (
+      (cvStatusRes.data ?? []) as unknown as CvStatusRow[]
+    ).map((r) => r.usuario_id)
   );
 
   const conteosMap = new Map<string, number>();
-  for (const row of (postulacionesRes.data ?? []) as unknown as PostulacionCountRow[]) {
+  for (const row of (
+    postulacionesRes.data ?? []
+  ) as unknown as PostulacionCountRow[]) {
     conteosMap.set(
       row.postulante_id,
       (conteosMap.get(row.postulante_id) ?? 0) + 1
     );
   }
 
+  if (rechazosRes.error)
+    console.error("[rechazos_por_postulantes]", rechazosRes.error);
+  const rechazosMap = new Map<string, number>();
+  for (const row of (rechazosRes.data ?? []) as unknown as RechazosRow[]) {
+    rechazosMap.set(row.postulante_id, Number(row.rechazos));
+  }
+
   const totalPaginas = Math.ceil(totalCount / PAGE_SIZE);
 
-  // URL base para preservar filtros en paginación
   const spActivos = new URLSearchParams();
   if (q) spActivos.set("q", q);
   if (rubroIds.length > 0) spActivos.set("rubros", rubroIds.join(","));
   if (conCv) spActivos.set("con_cv", "1");
+  if (esperandoCurso) spActivos.set("esperando_curso", "1");
 
   function paginaUrl(p: number): string {
     const sp2 = new URLSearchParams(spActivos);
@@ -293,6 +346,7 @@ export default async function PostulantesPage({
       rubroIds={rubroIds}
       q={q}
       conCv={conCv}
+      esperandoCurso={esperandoCurso}
     >
       <p className="text-sm text-muted-foreground">
         {totalCount === 1
@@ -326,7 +380,7 @@ export default async function PostulantesPage({
               <th className="px-4 py-3 font-medium text-muted-foreground">
                 Registrado
               </th>
-              <th className="px-4 py-3"></th>
+              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -336,6 +390,11 @@ export default async function PostulantesPage({
               const rubros = rubrosPorPostulante.get(p.id) ?? [];
               const tieneCv = usuariosConCv.has(p.usuario_id);
               const numPostulaciones = conteosMap.get(p.id) ?? 0;
+              const rechazos = rechazosMap.get(p.id) ?? 0;
+              const necesitaCurso = rechazos >= 3;
+              const nombreCompleto = usuario
+                ? `${usuario.nombre} ${usuario.apellido}`
+                : "—";
               const fichaUrl = `/admin/postulantes/${p.id}?volver=${encodeURIComponent(
                 paginaUrl(pagina)
               )}`;
@@ -349,19 +408,21 @@ export default async function PostulantesPage({
                     <div className="flex items-center gap-2.5">
                       <AvatarAjustado
                         src={avatar?.url ?? null}
-                        alt={
-                          usuario
-                            ? `${usuario.nombre} ${usuario.apellido}`
-                            : "Postulante"
-                        }
+                        alt={nombreCompleto}
                         ajuste={avatar?.ajuste}
                         size="sm"
                       />
-                      <span className="font-medium text-foreground">
-                        {usuario
-                          ? `${usuario.nombre} ${usuario.apellido}`
-                          : "—"}
-                      </span>
+                      <div className="min-w-0">
+                        <span className="font-medium text-foreground">
+                          {nombreCompleto}
+                        </span>
+                        {necesitaCurso && (
+                          <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 whitespace-nowrap">
+                            Necesita curso · {rechazos} rechazo
+                            {rechazos !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-4 py-3 font-mono text-foreground">
@@ -390,12 +451,21 @@ export default async function PostulantesPage({
                     {formatearFecha(p.created_at)}
                   </td>
                   <td className="px-4 py-3 w-px whitespace-nowrap">
-                    <Link
-                      href={fichaUrl}
-                      className="btn-secundario inline-flex items-center justify-center whitespace-nowrap px-3 py-1.5 text-xs"
-                    >
-                      Ver ficha
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      {necesitaCurso && (
+                        <AsignarCursoDialog
+                          postulanteId={p.id}
+                          postulanteNombre={nombreCompleto}
+                          cursosActivos={cursosActivos}
+                        />
+                      )}
+                      <Link
+                        href={fichaUrl}
+                        className="btn-secundario inline-flex items-center justify-center whitespace-nowrap px-3 py-1.5 text-xs"
+                      >
+                        Ver ficha
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               );
@@ -412,6 +482,11 @@ export default async function PostulantesPage({
           const rubros = rubrosPorPostulante.get(p.id) ?? [];
           const tieneCv = usuariosConCv.has(p.usuario_id);
           const numPostulaciones = conteosMap.get(p.id) ?? 0;
+          const rechazos = rechazosMap.get(p.id) ?? 0;
+          const necesitaCurso = rechazos >= 3;
+          const nombreCompleto = usuario
+            ? `${usuario.nombre} ${usuario.apellido}`
+            : "—";
           const fichaUrl = `/admin/postulantes/${p.id}?volver=${encodeURIComponent(
             paginaUrl(pagina)
           )}`;
@@ -424,20 +499,20 @@ export default async function PostulantesPage({
               <div className="flex items-center gap-3">
                 <AvatarAjustado
                   src={avatar?.url ?? null}
-                  alt={
-                    usuario
-                      ? `${usuario.nombre} ${usuario.apellido}`
-                      : "Postulante"
-                  }
+                  alt={nombreCompleto}
                   ajuste={avatar?.ajuste}
                   size="sm"
                 />
                 <div>
                   <p className="font-medium text-foreground">
-                    {usuario
-                      ? `${usuario.nombre} ${usuario.apellido}`
-                      : "—"}
+                    {nombreCompleto}
                   </p>
+                  {necesitaCurso && (
+                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                      Necesita curso · {rechazos} rechazo
+                      {rechazos !== 1 ? "s" : ""}
+                    </span>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     DNI: {p.dni ?? "—"}
                   </p>
@@ -469,7 +544,9 @@ export default async function PostulantesPage({
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Registrado</p>
-                  <p className="text-foreground">{formatearFecha(p.created_at)}</p>
+                  <p className="text-foreground">
+                    {formatearFecha(p.created_at)}
+                  </p>
                 </div>
               </div>
               {rubros.length > 0 && (
@@ -478,12 +555,21 @@ export default async function PostulantesPage({
                   <RubrosPills rubros={rubros} />
                 </div>
               )}
-              <Link
-                href={fichaUrl}
-                className="btn-secundario inline-flex items-center justify-center whitespace-nowrap px-3 py-2 text-sm"
-              >
-                Ver ficha
-              </Link>
+              <div className="flex flex-wrap gap-2">
+                {necesitaCurso && (
+                  <AsignarCursoDialog
+                    postulanteId={p.id}
+                    postulanteNombre={nombreCompleto}
+                    cursosActivos={cursosActivos}
+                  />
+                )}
+                <Link
+                  href={fichaUrl}
+                  className="btn-secundario inline-flex items-center justify-center whitespace-nowrap px-3 py-2 text-sm"
+                >
+                  Ver ficha
+                </Link>
+              </div>
             </div>
           );
         })}
@@ -581,12 +667,14 @@ function PostulantesShell({
   rubroIds,
   q,
   conCv,
+  esperandoCurso,
   children,
 }: {
   opciones: { id: string; nombre: string }[];
   rubroIds: string[];
   q: string;
   conCv: boolean;
+  esperandoCurso: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -608,11 +696,12 @@ function PostulantesShell({
 
       <div className="mt-6">
         <FiltrosPostulantes
-          key={`${q}|${rubroIds.join(",")}|${conCv ? "1" : "0"}`}
+          key={`${q}|${rubroIds.join(",")}|${conCv ? "1" : "0"}|${esperandoCurso ? "1" : "0"}`}
           opciones={opciones}
           seleccionadosIniciales={rubroIds}
           qInicial={q}
           conCvInicial={conCv}
+          esperandoCursoInicial={esperandoCurso}
         />
       </div>
 

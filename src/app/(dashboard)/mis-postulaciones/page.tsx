@@ -53,13 +53,15 @@ export default async function MisPostulacionesPage() {
   // LEFT JOIN a ofertas: las ofertas cerradas no son visibles al postulante vía RLS
   // (no se puede agregar política porque migration_014 las reserva).
   // La UI muestra "Oferta no disponible" cuando oferta es null.
-  const { data: rows } = await supabase
+  const postulacionesRes = await supabase
     .from("postulaciones")
-    .select("id, estado, created_at, ofertas(id, titulo, empresa_nombre, estado, contenido_editado_en)")
+    .select(
+      "id, estado, created_at, ofertas(id, titulo, empresa_nombre, estado, contenido_editado_en)"
+    )
     .eq("postulante_id", postulante.id)
     .order("created_at", { ascending: false });
 
-  const rawList = ((rows ?? []) as unknown as DbPostulacion[]);
+  const rawList = (postulacionesRes.data ?? []) as unknown as DbPostulacion[];
 
   // For derivada postulaciones, get the derivation state (without notes — uses SECURITY DEFINER)
   const derivadasIds = rawList
@@ -95,39 +97,43 @@ export default async function MisPostulacionesPage() {
 
   return (
     <main className="flex-1 px-4 py-8 sm:px-6 sm:py-12">
-      <div className="mx-auto max-w-3xl">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          Mis postulaciones
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Seguí el estado de cada postulación que enviaste.
-        </p>
+      <div className="mx-auto max-w-3xl space-y-10">
+        {/* Postulaciones */}
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Mis postulaciones
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Seguí el estado de cada postulación que enviaste.
+          </p>
 
-        <div className="mt-6">
-          {postulaciones.length === 0 ? (
-            <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-white py-12 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Briefcase className="h-7 w-7" />
+          <div className="mt-6">
+            {postulaciones.length === 0 ? (
+              <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-white py-12 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Briefcase className="h-7 w-7" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">
+                    Todavía no te postulaste a ninguna oferta
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Explorá las búsquedas activas y encontrá tu próximo trabajo.
+                  </p>
+                </div>
+                <Link
+                  href="/ofertas"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white shadow-xs transition hover:bg-primary-hover"
+                >
+                  Ver ofertas laborales
+                </Link>
               </div>
-              <div>
-                <p className="font-semibold text-foreground">
-                  Todavía no te postulaste a ninguna oferta
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Explorá las búsquedas activas y encontrá tu próximo trabajo.
-                </p>
-              </div>
-              <Link
-                href="/ofertas"
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white shadow-xs transition hover:bg-primary-hover"
-              >
-                Ver ofertas laborales
-              </Link>
-            </div>
-          ) : (
-            <MisPostulacionesLista postulaciones={postulaciones} />
-          )}
+            ) : (
+              <MisPostulacionesLista postulaciones={postulaciones} />
+            )}
+          </div>
         </div>
+
       </div>
     </main>
   );
