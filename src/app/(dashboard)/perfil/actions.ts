@@ -5,6 +5,14 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { traducirErrorAuth } from "@/lib/auth-errors";
 import { validarNombre, validarDNI, validarTelefono, validarPassword } from "@/lib/validaciones";
+import {
+  AVATAR_MAX_SIZE,
+  CV_MAX_SIZE,
+  ERRORES_ARCHIVO,
+  validarTipoAvatar,
+  validarTipoCV,
+  detectarMimeType,
+} from "@/lib/archivos";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Actualizar datos personales
@@ -149,25 +157,32 @@ export async function subirAvatar(
   if (!user) return { error: "No autenticado." };
 
   const file = formData.get("avatar") as File | null;
-  if (!file || file.size === 0) return { error: "No se recibió ningún archivo." };
+  if (!file || file.size === 0) return { error: ERRORES_ARCHIVO.vacio };
 
-  const tiposPermitidos = ["image/jpeg", "image/png", "image/webp"];
-  if (!tiposPermitidos.includes(file.type)) {
-    return { error: "Solo se aceptan imágenes JPG, PNG o WEBP." };
+  if (file.name.length > 200) return { error: ERRORES_ARCHIVO.nombreLargo };
+  const nombreLimpio = file.name.replace(/[\x00-\x1f\x7f]/g, "");
+
+  if (!validarTipoAvatar(file.type)) {
+    return { error: ERRORES_ARCHIVO.avatarTipo };
   }
-  if (file.size > 2 * 1024 * 1024) {
-    return { error: "La imagen no puede superar los 2 MB." };
+  if (file.size > AVATAR_MAX_SIZE) {
+    return { error: ERRORES_ARCHIVO.avatarTamano };
   }
 
-  const ext =
-    file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : "webp";
+  const buffer = await file.arrayBuffer();
+  const inicio = new Uint8Array(buffer, 0, Math.min(12, buffer.byteLength));
+  const tipoVerificado = detectarMimeType(inicio);
+
+  if (!tipoVerificado || !validarTipoAvatar(tipoVerificado)) {
+    return { error: ERRORES_ARCHIVO.avatarFirma };
+  }
+
+  const ext = tipoVerificado === "image/jpeg" ? "jpg" : tipoVerificado === "image/png" ? "png" : "webp";
   const nuevaRuta = `${user.id}/avatar-${Date.now()}.${ext}`;
 
-  // Subir al storage (nombre único, sin upsert)
-  const buffer = await file.arrayBuffer();
   const { error: uploadError } = await supabaseAdmin.storage
     .from("avatares")
-    .upload(nuevaRuta, buffer, { contentType: file.type });
+    .upload(nuevaRuta, buffer, { contentType: tipoVerificado });
 
   if (uploadError) {
     console.error("subirAvatar: fallo upload a Storage:", uploadError);
@@ -179,8 +194,9 @@ export async function subirAvatar(
     p_usuario_id: user.id,
     p_tipo: "avatar",
     p_ruta: nuevaRuta,
-    p_nombre_original: file.name,
+    p_nombre_original: nombreLimpio,
     p_tamano: file.size,
+    p_mime_type: tipoVerificado,
   });
 
   if (rpcError) {
@@ -257,22 +273,32 @@ export async function subirCV(
   if (!user) return { error: "No autenticado." };
 
   const file = formData.get("cv") as File | null;
-  if (!file || file.size === 0) return { error: "No se recibió ningún archivo." };
+  if (!file || file.size === 0) return { error: ERRORES_ARCHIVO.vacio };
 
-  if (file.type !== "application/pdf") {
-    return { error: "El CV debe ser un archivo PDF." };
+  if (file.name.length > 200) return { error: ERRORES_ARCHIVO.nombreLargo };
+  const nombreLimpio = file.name.replace(/[\x00-\x1f\x7f]/g, "");
+
+  if (!validarTipoCV(file.type)) {
+    return { error: ERRORES_ARCHIVO.cvTipo };
   }
-  if (file.size > 5 * 1024 * 1024) {
-    return { error: "El CV no puede superar los 5 MB." };
+  if (file.size > CV_MAX_SIZE) {
+    return { error: ERRORES_ARCHIVO.cvTamano };
+  }
+
+  const buffer = await file.arrayBuffer();
+  const inicio = new Uint8Array(buffer, 0, Math.min(12, buffer.byteLength));
+  const tipoVerificado = detectarMimeType(inicio);
+
+  if (tipoVerificado !== "application/pdf") {
+    return { error: ERRORES_ARCHIVO.cvFirma };
   }
 
   // Nombre único por timestamp para no sobrescribir archivos anteriores
   const nuevaRuta = `${user.id}/cv-${Date.now()}.pdf`;
-  const buffer = await file.arrayBuffer();
 
   const { error: uploadError } = await supabaseAdmin.storage
     .from("cvs")
-    .upload(nuevaRuta, buffer, { contentType: "application/pdf" });
+    .upload(nuevaRuta, buffer, { contentType: tipoVerificado });
 
   if (uploadError) {
     console.error("subirCV: fallo upload a Storage:", uploadError);
@@ -284,8 +310,9 @@ export async function subirCV(
     p_usuario_id: user.id,
     p_tipo: "cv",
     p_ruta: nuevaRuta,
-    p_nombre_original: file.name,
+    p_nombre_original: nombreLimpio,
     p_tamano: file.size,
+    p_mime_type: tipoVerificado,
   });
 
   if (rpcError) {
