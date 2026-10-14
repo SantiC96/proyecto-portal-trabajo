@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
-import { err, errConRef, ok, type Resultado, type ResultadoError } from "@/lib/resultado";
+import { err, errConRef, okMsg, type Resultado, type ResultadoError } from "@/lib/resultado";
 
 async function verificarMunicipalidad(): Promise<{ ok: true; userId: string } | ResultadoError> {
   const supabase = await createSupabaseServerClient();
@@ -75,7 +75,7 @@ export async function aprobarOferta(ofertaId: string): Promise<Resultado<void>> 
   }
 
   revalidarOfertas(ofertaId);
-  return ok();
+  return okMsg("Oferta aprobada.");
 }
 
 export async function rechazarOferta(
@@ -125,5 +125,5 @@ export async function rechazarOferta(
   }
 
   revalidarOfertas(ofertaId);
-  return ok();
+  return okMsg("Oferta rechazada.");
 }

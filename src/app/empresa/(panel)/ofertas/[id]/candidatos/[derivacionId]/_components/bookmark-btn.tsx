@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { guardarCandidato, quitarGuardado } from "@/app/empresa/(panel)/candidatos-guardados/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
 
 type Props = {
   postulanteId: string;
@@ -26,6 +27,7 @@ export function BookmarkBtn({ postulanteId, ofertaOrigenId, guardadoId }: Props)
     setError(null);
     startTransition(async () => {
       const result = await guardarCandidato(postulanteId, ofertaOrigenId, nota.trim() || null);
+      mostrarAviso(result);
       if (!result.ok) {
         setError(toErrorAccion(result));
       } else {
@@ -39,7 +41,8 @@ export function BookmarkBtn({ postulanteId, ofertaOrigenId, guardadoId }: Props)
   function handleQuitar() {
     if (!guardadoId) return;
     startTransition(async () => {
-      await quitarGuardado(guardadoId);
+      const result = await quitarGuardado(guardadoId);
+      mostrarAviso(result);
       router.refresh();
     });
   }

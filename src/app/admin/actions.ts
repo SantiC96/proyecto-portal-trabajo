@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
-import { err, errConRef, ok, type Resultado, type ResultadoError } from "@/lib/resultado";
+import { err, errConRef, okMsg, type Resultado, type ResultadoError } from "@/lib/resultado";
 
 async function verificarMunicipalidad(): Promise<{ ok: true; userId: string } | ResultadoError> {
   const supabase = await createSupabaseServerClient();
@@ -52,7 +52,7 @@ export async function aprobarEmpresa(
 
   revalidatePath("/admin/empresas");
   revalidatePath("/admin");
-  return ok();
+  return okMsg("Empresa aprobada.");
 }
 
 export async function rechazarEmpresa(
@@ -88,5 +88,5 @@ export async function rechazarEmpresa(
 
   revalidatePath("/admin/empresas");
   revalidatePath("/admin");
-  return ok();
+  return okMsg("Empresa rechazada.");
 }

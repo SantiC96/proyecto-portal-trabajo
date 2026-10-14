@@ -6,6 +6,7 @@ import { X, ZoomIn, ZoomOut } from "lucide-react";
 import { useMounted } from "@/lib/use-mounted";
 import { ajustarAvatar } from "@/app/(dashboard)/perfil/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
 
 interface FotoPerfilModalProps {
   src: string;
@@ -61,6 +62,7 @@ export function FotoPerfilModal({
     setError(null);
     const result = await ajustarAvatar(ajuste);
     setGuardando(false);
+    mostrarAviso(result);
     if (!result.ok) {
       setError(toErrorAccion(result));
     } else {

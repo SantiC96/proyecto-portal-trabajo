@@ -6,6 +6,7 @@ import { X, AlertCircle } from "lucide-react";
 import { useMounted } from "@/lib/use-mounted";
 import { cerrarOferta } from "@/app/empresa/(panel)/ofertas/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
 import { useRouter } from "next/navigation";
 
 interface Props {
@@ -24,6 +25,7 @@ export function CerrarOfertaBtn({ ofertaId, ofertaTitulo }: Props) {
     setError(null);
     startTransition(async () => {
       const result = await cerrarOferta(ofertaId);
+      mostrarAviso(result);
       if (!result.ok) {
         setError(toErrorAccion(result));
         return;

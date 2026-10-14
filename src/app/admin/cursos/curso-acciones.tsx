@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toggleActivoCurso, eliminarCurso } from "./actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
 
 type Props = {
   cursoId: string;
@@ -18,6 +19,7 @@ export function CursoAcciones({ cursoId, activo, tieneAsignaciones }: Props) {
     setError(null);
     startTransition(async () => {
       const res = await toggleActivoCurso(cursoId, !activo);
+      mostrarAviso(res);
       if (!res.ok) setError(toErrorAccion(res));
     });
   }
@@ -28,7 +30,10 @@ export function CursoAcciones({ cursoId, activo, tieneAsignaciones }: Props) {
     setError(null);
     startTransition(async () => {
       const res = await eliminarCurso(cursoId);
-      if (!res.ok) setError(toErrorAccion(res));
+      if (!res.ok) {
+        mostrarAviso(res);
+        setError(toErrorAccion(res));
+      }
     });
   }
 

@@ -42,6 +42,10 @@ export function ok<T>(data?: T): Resultado<T> {
   return data !== undefined ? { ok: true, data } : { ok: true };
 }
 
+export function okMsg(mensaje: string): Resultado<void> {
+  return { ok: true, mensaje };
+}
+
 export function err(codigo: CodigoError, mensaje?: string): ResultadoError {
   return {
     ok: false,

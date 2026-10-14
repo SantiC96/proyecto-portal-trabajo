@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
-import { err, errConRef, ok, type Resultado } from "@/lib/resultado";
+import { err, errConRef, okMsg, type Resultado } from "@/lib/resultado";
 import { formatearCUIT } from "@/lib/cuit";
 import {
   validarCuitConMensaje,
@@ -130,5 +130,5 @@ export async function reenviarSolicitudEmpresa(data: {
 
   revalidatePath("/empresa");
   revalidatePath("/empresa/solicitud");
-  return ok();
+  return okMsg("Solicitud reenviada. La Oficina de Empleo la revisará pronto.");
 }

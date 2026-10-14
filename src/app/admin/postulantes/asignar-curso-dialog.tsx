@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { asignarCurso } from "@/app/admin/cursos/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
 
 type Curso = { id: string; nombre: string; descripcion: string | null };
 
@@ -51,6 +52,7 @@ export function AsignarCursoDialog({
     }
     startTransition(async () => {
       const res = await asignarCurso(postulanteId, cursoId, nota);
+      mostrarAviso(res);
       if (!res.ok) {
         setError(toErrorAccion(res));
       } else {

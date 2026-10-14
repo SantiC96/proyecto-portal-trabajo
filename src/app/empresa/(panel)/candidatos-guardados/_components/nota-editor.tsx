@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Check, Pencil, X } from "lucide-react";
 import { actualizarNotaGuardado } from "@/app/empresa/(panel)/candidatos-guardados/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
 
 type Props = {
   guardadoId: string;
@@ -20,6 +21,7 @@ export function NotaGuardadoEditor({ guardadoId, notaInicial }: Props) {
     setError(null);
     startTransition(async () => {
       const result = await actualizarNotaGuardado(guardadoId, nota.trim() || null);
+      mostrarAviso(result);
       if (!result.ok) {
         setError(toErrorAccion(result));
       } else {

@@ -22,6 +22,7 @@ import {
 } from "@/app/empresa/(panel)/ofertas/[id]/actions";
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
 import { BookmarkBtn } from "./bookmark-btn";
 
 // Genera intervalos de 15 min de 08:00 a 20:00
@@ -132,6 +133,7 @@ function EntrevistaDialog({
     const action = modo === "coordinar" ? coordinarEntrevista : reprogramarEntrevista;
     startTransition(async () => {
       const result = await action(derivacionId, ofertaId, fechaISO, lugar.trim());
+      mostrarAviso(result);
       if (!result.ok) {
         setError(toErrorAccion(result));
       } else {
@@ -300,6 +302,7 @@ export function AccionesDerivacion({
     setError(null);
     startTransition(async () => {
       const result = await seleccionarCandidato(derivacionId, ofertaId);
+      mostrarAviso(result);
       if (!result.ok) {
         setError(toErrorAccion(result));
       } else {
@@ -317,6 +320,7 @@ export function AccionesDerivacion({
     setError(null);
     startTransition(async () => {
       const result = await rechazarCandidato(derivacionId, ofertaId, motivo);
+      mostrarAviso(result);
       if (!result.ok) {
         setError(toErrorAccion(result));
       } else {

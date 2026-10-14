@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
-import { err, errConRef, ok, type Resultado } from "@/lib/resultado";
+import { err, errConRef, okMsg, type Resultado } from "@/lib/resultado";
 
 export async function guardarCandidato(
   postulanteId: string,
@@ -38,7 +38,7 @@ export async function guardarCandidato(
   }
 
   revalidatePath("/empresa/candidatos-guardados");
-  return ok();
+  return okMsg("Candidato guardado.");
 }
 
 export async function quitarGuardado(guardadoId: string): Promise<Resultado<void>> {
@@ -66,7 +66,7 @@ export async function quitarGuardado(guardadoId: string): Promise<Resultado<void
   }
 
   revalidatePath("/empresa/candidatos-guardados");
-  return ok();
+  return okMsg("Candidato quitado de guardados.");
 }
 
 export async function actualizarNotaGuardado(
@@ -97,5 +97,5 @@ export async function actualizarNotaGuardado(
   }
 
   revalidatePath("/empresa/candidatos-guardados");
-  return ok();
+  return okMsg("Nota actualizada.");
 }

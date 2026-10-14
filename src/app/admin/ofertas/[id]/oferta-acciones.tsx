@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { aprobarOferta, rechazarOferta } from "../actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
 
 type Props = {
   ofertaId: string;
@@ -39,6 +40,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
     setError(null);
     startTransition(async () => {
       const res = await aprobarOferta(ofertaId);
+      mostrarAviso(res);
       if (!res.ok) {
         setError(toErrorAccion(res));
       } else {
@@ -56,6 +58,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
     setError(null);
     startTransition(async () => {
       const res = await rechazarOferta(ofertaId, motivo);
+      mostrarAviso(res);
       if (!res.ok) {
         setError(toErrorAccion(res));
       } else {

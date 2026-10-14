@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { X, AlertCircle } from "lucide-react";
 import { useMounted } from "@/lib/use-mounted";
 import { eliminarOferta } from "@/app/empresa/(panel)/ofertas/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
 
 interface Props {
   ofertaId: string;
@@ -14,16 +16,28 @@ interface Props {
 
 export function EliminarEnvioBtn({ ofertaId, ofertaTitulo }: Props) {
   const mounted = useMounted();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<ErrorAccion | null>(null);
   const [isPending, startTransition] = useTransition();
+  const needsRefresh = useRef(false);
+
+  useEffect(() => {
+    if (!isPending && needsRefresh.current) {
+      needsRefresh.current = false;
+      router.refresh();
+    }
+  }, [isPending, router]);
 
   function handleConfirm() {
     setError(null);
     startTransition(async () => {
       const result = await eliminarOferta(ofertaId);
-      // redirect() on success throws; only lands here on error
-      if (!result.ok) {
+      if (result.ok) {
+        mostrarAviso(result, "El envío fue eliminado.");
+        needsRefresh.current = true;
+        setOpen(false);
+      } else {
         setError(toErrorAccion(result));
       }
     });

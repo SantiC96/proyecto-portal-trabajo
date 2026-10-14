@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Plus, Briefcase } from "lucide-react";
+import { AvisoUrl } from "@/components/ui/aviso-url";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { CerrarOfertaBtn } from "./_components/cerrar-oferta-btn";
@@ -29,10 +31,6 @@ const ESTADO_STYLE: Record<string, string> = {
   borrador: "bg-gray-100 text-gray-500",
 };
 
-interface Props {
-  searchParams: Promise<{ aviso?: string }>;
-}
-
 type OfertaRow = {
   id: string;
   titulo: string;
@@ -42,8 +40,7 @@ type OfertaRow = {
   oferta_categorias: Array<{ categorias: { nombre: string } | null }>;
 };
 
-export default async function MisOfertasPage({ searchParams }: Props) {
-  const params = await searchParams;
+export default async function MisOfertasPage() {
   const supabase = await createSupabaseServerClient();
 
   const {
@@ -118,23 +115,9 @@ export default async function MisOfertasPage({ searchParams }: Props) {
         </Link>
       </div>
 
-      {params.aviso === "enviada" && (
-        <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          Tu oferta se envió a revisión. La Oficina de Empleo la revisará pronto.
-        </div>
-      )}
-
-      {params.aviso === "pendiente" && (
-        <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          La oferta está en revisión. Vas a poder editarla cuando la oficina responda.
-        </div>
-      )}
-
-      {params.aviso === "eliminada" && (
-        <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          El envío fue eliminado exitosamente.
-        </div>
-      )}
+      <Suspense>
+        <AvisoUrl />
+      </Suspense>
 
       {lista.length === 0 ? (
         <div className="mt-12 flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border py-16 text-center">

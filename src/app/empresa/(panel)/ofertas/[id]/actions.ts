@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
-import { err, errConRef, ok, type Resultado, type ResultadoError } from "@/lib/resultado";
+import { err, errConRef, okMsg, type Resultado, type ResultadoError } from "@/lib/resultado";
 
 async function verificarEmpresa(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
@@ -60,7 +60,7 @@ export async function coordinarEntrevista(
   }
 
   revalidarOferta(ofertaId);
-  return ok();
+  return okMsg("Entrevista coordinada.");
 }
 
 export async function reprogramarEntrevista(
@@ -94,7 +94,7 @@ export async function reprogramarEntrevista(
   }
 
   revalidarOferta(ofertaId);
-  return ok();
+  return okMsg("Entrevista reprogramada.");
 }
 
 export async function seleccionarCandidato(
@@ -123,7 +123,7 @@ export async function seleccionarCandidato(
     .maybeSingle();
 
   revalidarOferta(ofertaId);
-  return ok({ ofertaCerrada: ofertaData?.estado === "cerrada" });
+  return { ok: true, data: { ofertaCerrada: ofertaData?.estado === "cerrada" }, mensaje: "Candidato seleccionado." };
 }
 
 export async function rechazarCandidato(
@@ -148,5 +148,5 @@ export async function rechazarCandidato(
   }
 
   revalidarOferta(ofertaId);
-  return ok();
+  return okMsg("Decisión guardada.");
 }

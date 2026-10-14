@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
-import { err, errConRef, ok, type Resultado } from "@/lib/resultado";
+import { err, errConRef, okMsg, type Resultado } from "@/lib/resultado";
 
 export async function postularme(
   ofertaId: string,
@@ -67,7 +67,7 @@ export async function postularme(
 
   revalidatePath(`/ofertas/${ofertaId}`);
   revalidatePath("/mis-postulaciones");
-  return ok();
+  return okMsg("¡Te postulaste! Podés ver el estado en Mis postulaciones.");
 }
 
 export async function retirarPostulacion(
@@ -120,5 +120,5 @@ export async function retirarPostulacion(
 
   revalidatePath(`/ofertas/${postulacion.oferta_id}`);
   revalidatePath("/mis-postulaciones");
-  return ok();
+  return okMsg("Postulación retirada.");
 }
