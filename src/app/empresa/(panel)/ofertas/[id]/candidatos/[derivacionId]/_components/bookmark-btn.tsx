@@ -6,7 +6,7 @@ import { Bookmark, BookmarkCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { guardarCandidato, quitarGuardado } from "@/app/empresa/candidatos-guardados/actions";
+import { guardarCandidato, quitarGuardado } from "@/app/empresa/(panel)/candidatos-guardados/actions";
 
 type Props = {
   postulanteId: string;

@@ -66,6 +66,8 @@ export async function crearOferta(data: OfertaData): Promise<ActionResult> {
 
   if (errorOferta || !oferta) {
     console.error("[crearOferta] error al insertar oferta", errorOferta);
+    const msg = (errorOferta as { message?: string } | null)?.message ?? "";
+    if (msg.includes("al menos un requisito")) return { error: "Agregá al menos un requisito." };
     return { error: "No se pudo crear la oferta. Intentá de nuevo." };
   }
 
@@ -161,6 +163,8 @@ export async function editarOferta(id: string, data: OfertaData): Promise<Action
 
   if (errorUpdate) {
     console.error("[editarOferta] error al actualizar", errorUpdate);
+    const msg = (errorUpdate as { message?: string } | null)?.message ?? "";
+    if (msg.includes("al menos un requisito")) return { error: "Agregá al menos un requisito." };
     return { error: "No se pudo guardar la oferta. Intentá de nuevo." };
   }
   if (!actualizada || actualizada.length === 0)

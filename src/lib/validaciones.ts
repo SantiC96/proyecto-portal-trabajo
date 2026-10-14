@@ -66,9 +66,12 @@ export function validarOferta(data: OfertaData): string | null {
     return "La modalidad no es válida.";
   if (!JORNADAS_VALIDAS.includes(data.jornada as (typeof JORNADAS_VALIDAS)[number]))
     return "La jornada no es válida.";
-  if (data.requisitos.length > 15)
+  const reqLimpios = data.requisitos.filter((r) => r.trim().length > 0);
+  if (reqLimpios.length < 1)
+    return "Agregá al menos un requisito.";
+  if (reqLimpios.length > 15)
     return "Podés agregar hasta 15 requisitos.";
-  if (data.beneficios.length > 15)
+  if (data.beneficios.filter((b) => b.trim().length > 0).length > 15)
     return "Podés agregar hasta 15 beneficios.";
   for (const req of data.requisitos) {
     if (req.trim().length > 200)

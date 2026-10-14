@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { X, AlertCircle } from "lucide-react";
 import { useMounted } from "@/lib/use-mounted";
-import { cerrarOferta } from "@/app/empresa/ofertas/actions";
+import { cerrarOferta } from "@/app/empresa/(panel)/ofertas/actions";
 import { useRouter } from "next/navigation";
 
 interface Props {

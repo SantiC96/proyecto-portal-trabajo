@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { X, AlertCircle } from "lucide-react";
 import { useMounted } from "@/lib/use-mounted";
-import { eliminarOferta } from "@/app/empresa/ofertas/actions";
+import { eliminarOferta } from "@/app/empresa/(panel)/ofertas/actions";
 
 interface Props {
   ofertaId: string;

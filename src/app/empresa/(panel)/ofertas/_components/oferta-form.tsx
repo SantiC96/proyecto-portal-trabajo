@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, X, MapPin } from "lucide-react";
 import { MultiCombobox } from "@/components/ui/multi-combobox";
 import { validarOferta, type OfertaData } from "@/lib/validaciones";
-import { crearOferta, editarOferta } from "@/app/empresa/ofertas/actions";
+import { crearOferta, editarOferta } from "@/app/empresa/(panel)/ofertas/actions";
 
 interface Categoria {
   id: string;
@@ -27,6 +27,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [errorRequisitos, setErrorRequisitos] = useState<string | null>(null);
   const errorRef = useRef<HTMLDivElement>(null);
 
   const [titulo, setTitulo] = useState(valorInicial?.titulo ?? "");
@@ -75,6 +76,24 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
   function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault();
     setError(null);
+    setErrorRequisitos(null);
+
+    // Auto-add any text written in the inputs but not yet added to the list.
+    const reqFinal = [...requisitos];
+    const reqPendiente = nuevoRequisito.trim();
+    if (reqPendiente && !reqFinal.includes(reqPendiente) && reqFinal.length < 15) {
+      reqFinal.push(reqPendiente);
+      setRequisitos(reqFinal);
+      setNuevoRequisito("");
+    }
+
+    const benFinal = [...beneficios];
+    const benPendiente = nuevoBeneficio.trim();
+    if (benPendiente && !benFinal.includes(benPendiente) && benFinal.length < 15) {
+      benFinal.push(benPendiente);
+      setBeneficios(benFinal);
+      setNuevoBeneficio("");
+    }
 
     const data: OfertaData = {
       titulo,
@@ -82,13 +101,16 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
       categorias: categoriasSeleccionadas,
       modalidad,
       jornada,
-      requisitos,
-      beneficios,
+      requisitos: reqFinal,
+      beneficios: benFinal,
       cantidadVacantes,
     };
 
     const validationError = validarOferta(data);
     if (validationError) {
+      if (validationError === "Agregá al menos un requisito.") {
+        setErrorRequisitos(validationError);
+      }
       setError(validationError);
       setTimeout(() => errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
       return;
@@ -100,6 +122,9 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
         : await crearOferta(data);
 
       if (result.error) {
+        if (result.error === "Agregá al menos un requisito.") {
+          setErrorRequisitos(result.error);
+        }
         setError(result.error);
         return;
       }
@@ -238,7 +263,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
       {/* Requisitos */}
       <div className="space-y-1.5">
         <label className="block text-sm font-semibold text-foreground">
-          Requisitos
+          Requisitos <span className="text-red-500">*</span>
           <span className="ml-2 font-normal text-muted-foreground">(hasta 15)</span>
         </label>
         {requisitos.length > 0 && (
@@ -268,7 +293,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
               value={nuevoRequisito}
               onChange={(e) => setNuevoRequisito(e.target.value)}
               onKeyDown={handleKeyDownRequisito}
-              placeholder="Escribí un requisito y presioná Enter o +"
+              placeholder="Ej: Secundario completo, experiencia en ventas…"
               maxLength={200}
               className="flex-1 rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-foreground placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
@@ -283,13 +308,19 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
             </button>
           </div>
         )}
+        <p className="text-xs text-muted-foreground">
+          Escribí un requisito y tocá Agregar o presioná Enter. Podés cargar varios.
+        </p>
+        {errorRequisitos && (
+          <p className="text-xs text-red-600" role="alert">{errorRequisitos}</p>
+        )}
       </div>
 
       {/* Beneficios */}
       <div className="space-y-1.5">
         <label className="block text-sm font-semibold text-foreground">
           Beneficios
-          <span className="ml-2 font-normal text-muted-foreground">(hasta 15)</span>
+          <span className="ml-2 font-normal text-muted-foreground">(opcional, hasta 15)</span>
         </label>
         {beneficios.length > 0 && (
           <ul className="mb-2 space-y-1.5">
@@ -318,7 +349,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
               value={nuevoBeneficio}
               onChange={(e) => setNuevoBeneficio(e.target.value)}
               onKeyDown={handleKeyDownBeneficio}
-              placeholder="Escribí un beneficio y presioná Enter o +"
+              placeholder="Ej: Obra social, flexibilidad horaria, comedor…"
               maxLength={200}
               className="flex-1 rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-foreground placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
@@ -333,6 +364,9 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
             </button>
           </div>
         )}
+        <p className="text-xs text-muted-foreground">
+          Escribí un beneficio y tocá Agregar o presioná Enter. Podés cargar varios.
+        </p>
       </div>
 
       {/* Error de validación junto al botón */}

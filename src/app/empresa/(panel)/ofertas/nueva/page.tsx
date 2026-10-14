@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getCategoriasConId } from "@/lib/ofertas";
-import { OfertaForm } from "@/app/empresa/ofertas/_components/oferta-form";
+import { OfertaForm } from "@/app/empresa/(panel)/ofertas/_components/oferta-form";
 
 export const metadata: Metadata = {
   title: "Publicar oferta | Portal de Empleo Funes",

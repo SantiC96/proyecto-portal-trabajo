@@ -6,6 +6,7 @@ import { getOfertaById } from "@/lib/ofertas";
 import { formatFecha } from "@/lib/fechas";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { PostularseCta } from "./postularse-cta";
+import { RequisitosList, BeneficiosList } from "@/components/ofertas/requisitos-beneficios";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -102,12 +103,15 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
           <article className="mt-6 rounded-2xl border border-border bg-white p-6 shadow-xs sm:p-8">
             {/* Top badges row */}
             <div className="flex flex-wrap items-center gap-2">
-              {oferta.rubro && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+              {oferta.categorias.map((cat) => (
+                <span
+                  key={cat}
+                  className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"
+                >
                   <Briefcase className="h-3 w-3" />
-                  {oferta.rubro}
+                  {cat}
                 </span>
-              )}
+              ))}
               <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
                 <Clock className="h-3.5 w-3.5" />
                 Publicado el {formattedDate}
@@ -151,39 +155,8 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground-strong">{oferta.descripcion}</p>
             </section>
 
-            {/* Requirements */}
-            {oferta.requisitos.length > 0 && (
-              <section className="mt-6">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-primary">
-                  Requisitos
-                </h2>
-                <ul className="mt-3 flex flex-col gap-2">
-                  {oferta.requisitos.map((req, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground-strong">
-                      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                      {req}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {/* Benefits */}
-            {oferta.beneficios && oferta.beneficios.length > 0 && (
-              <section className="mt-6">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-primary">
-                  Beneficios
-                </h2>
-                <ul className="mt-3 flex flex-col gap-2">
-                  {oferta.beneficios.map((ben, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground-strong">
-                      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                      {ben}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
+            <RequisitosList items={oferta.requisitos} />
+            <BeneficiosList items={oferta.beneficios ?? []} />
 
             <hr className="my-6 border-border/60" />
 
