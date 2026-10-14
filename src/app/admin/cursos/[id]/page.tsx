@@ -6,18 +6,37 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { CursoForm } from "../curso-form";
 import { CursoAcciones } from "../curso-acciones";
 import { formatFechaCorta } from "@/lib/fechas";
+import { logError } from "@/lib/logger";
+import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
 import { AvisoUrl } from "@/components/ui/aviso-url";
+import { Paginacion } from "@/components/ui/paginacion";
+import { ErrorListado } from "@/components/ui/estado-listado";
+import { EsqueletoLista } from "@/components/ui/esqueleto";
 
 export const metadata: Metadata = {
   title: "Detalle del curso | Panel municipal | Portal de Empleo Funes",
 };
 
+type AsignacionRow = {
+  id: string;
+  created_at: string;
+  nota: string | null;
+  postulantes: {
+    id: string;
+    usuarios: { nombre: string; apellido: string } | null;
+  } | null;
+};
+
 export default async function CursoDetallePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ pagina?: string }>;
 }) {
   const { id: cursoId } = await params;
+  const sp = await searchParams;
+  const pagina = leerPagina(sp.pagina);
 
   const supabase = await createSupabaseServerClient();
 
@@ -31,17 +50,7 @@ export default async function CursoDetallePage({
     created_at: string;
   };
 
-  type AsignacionRow = {
-    id: string;
-    created_at: string;
-    nota: string | null;
-    postulantes: {
-      id: string;
-      usuarios: { nombre: string; apellido: string } | null;
-    } | null;
-  };
-
-  const [cursoRes, asignacionesRes] = await Promise.all([
+  const [cursoRes, conteoRes] = await Promise.all([
     supabase
       .from("cursos")
       .select("id, nombre, descripcion, link, indicaciones, activo, created_at")
@@ -49,20 +58,16 @@ export default async function CursoDetallePage({
       .single(),
     supabase
       .from("asignaciones_curso")
-      .select(
-        "id, created_at, nota, postulantes!postulante_id(id, usuarios!usuario_id(nombre, apellido))"
-      )
-      .eq("curso_id", cursoId)
-      .order("created_at", { ascending: false }),
+      .select("id", { count: "exact", head: true })
+      .eq("curso_id", cursoId),
   ]);
 
   if (!cursoRes.data) notFound();
 
   const curso = cursoRes.data as unknown as CursoRow;
-  const asignaciones = (
-    asignacionesRes.data ?? []
-  ) as unknown as AsignacionRow[];
-  const tieneAsignaciones = asignaciones.length > 0;
+  if (conteoRes.error) logError("admin_curso_conteo_asignaciones", conteoRes.error);
+  const totalAsignaciones = conteoRes.count ?? 0;
+  const tieneAsignaciones = totalAsignaciones > 0;
 
   return (
     <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
@@ -133,17 +138,73 @@ export default async function CursoDetallePage({
       </div>
 
       {/* Postulantes asignados */}
-      <div className="mt-8 rounded-[var(--radius-lg)] border border-border bg-surface p-5">
+      <div
+        id="asignados"
+        className="mt-8 scroll-mt-20 rounded-[var(--radius-lg)] border border-border bg-surface p-5"
+      >
         <h2 className="font-semibold text-foreground">
-          Postulantes asignados ({asignaciones.length})
+          Postulantes asignados ({totalAsignaciones})
         </h2>
 
-        {asignaciones.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            Todavía no se asignó este curso a ningún postulante.
-          </p>
-        ) : (
-          <>
+        <Suspense
+          key={pagina}
+          fallback={<EsqueletoLista filas={3} className="mt-4" />}
+        >
+          <ListadoAsignados cursoId={curso.id} pagina={pagina} searchParams={sp} />
+        </Suspense>
+      </div>
+    </section>
+  );
+}
+
+async function ListadoAsignados({
+  cursoId,
+  pagina,
+  searchParams,
+}: {
+  cursoId: string;
+  pagina: number;
+  searchParams: ParamsUrl;
+}) {
+  const supabase = await createSupabaseServerClient();
+
+  const resultado = await consultarPagina<AsignacionRow>(pagina, (desde, hasta) =>
+    supabase
+      .from("asignaciones_curso")
+      .select(
+        "id, created_at, nota, postulantes!postulante_id(id, usuarios!usuario_id(nombre, apellido))",
+        { count: "exact" }
+      )
+      .eq("curso_id", cursoId)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(desde, hasta)
+      .overrideTypes<AsignacionRow[], { merge: false }>()
+  );
+
+  if (!resultado.ok) {
+    const ref = logError("admin_curso_asignados", resultado.error);
+    return (
+      <ErrorListado
+        className="mt-4"
+        mensaje="No pudimos cargar los postulantes asignados."
+        refError={ref}
+      />
+    );
+  }
+
+  const asignaciones = resultado.filas;
+
+  if (asignaciones.length === 0) {
+    return (
+      <p className="mt-3 text-sm text-muted-foreground">
+        Todavía no se asignó este curso a ningún postulante.
+      </p>
+    );
+  }
+
+  return (
+    <>
             {/* Tabla md+ */}
             <div className="mt-4 hidden overflow-x-auto md:block">
               <table className="w-full text-sm">
@@ -227,9 +288,14 @@ export default async function CursoDetallePage({
                 );
               })}
             </div>
-          </>
-        )}
-      </div>
-    </section>
+            <Paginacion
+              className="mt-4"
+              ruta={`/admin/cursos/${cursoId}`}
+              searchParams={searchParams}
+              pagina={resultado.pagina}
+              total={resultado.total}
+              ancla="asignados"
+            />
+    </>
   );
 }

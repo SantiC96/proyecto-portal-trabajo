@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BookmarkCheck, User } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { logError } from "@/lib/logger";
 import { formatFecha } from "@/lib/fechas";
+import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
+import { Paginacion } from "@/components/ui/paginacion";
+import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
+import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { NotaGuardadoEditor } from "./_components/nota-editor";
 import { QuitarGuardadoBtn } from "./_components/quitar-guardado-btn";
 
@@ -28,7 +34,15 @@ type CandidatoData = {
   cv_ruta: string | null;
 };
 
-export default async function CandidatosGuardadosPage() {
+const RUTA = "/empresa/candidatos-guardados";
+
+export default async function CandidatosGuardadosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ pagina?: string }>;
+}) {
+  const sp = await searchParams;
+  const pagina = leerPagina(sp.pagina);
   const supabase = await createSupabaseServerClient();
 
   const {
@@ -43,12 +57,81 @@ export default async function CandidatosGuardadosPage() {
     .maybeSingle();
   if (!empresa) redirect("/empresa");
 
-  const { data: rows } = await supabase
-    .from("candidatos_guardados")
-    .select("id, postulante_id, nota, created_at, oferta_origen_id, ofertas!oferta_origen_id(titulo)")
-    .order("created_at", { ascending: false });
+  return (
+    <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+      <div className="flex items-center gap-3">
+        <BookmarkCheck className="h-6 w-6 text-primary" />
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Candidatos guardados
+          </h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Perfiles que guardaste para futuras búsquedas.
+          </p>
+        </div>
+      </div>
 
-  const guardados = (rows ?? []) as unknown as GuardadoRow[];
+      <Suspense
+        key={pagina}
+        fallback={<EsqueletoLista filas={3} className="mt-6" />}
+      >
+        <ListadoGuardados empresaId={empresa.id} pagina={pagina} searchParams={sp} />
+      </Suspense>
+    </section>
+  );
+}
+
+async function ListadoGuardados({
+  empresaId,
+  pagina,
+  searchParams,
+}: {
+  empresaId: string;
+  pagina: number;
+  searchParams: ParamsUrl;
+}) {
+  const supabase = await createSupabaseServerClient();
+
+  const resultado = await consultarPagina<GuardadoRow>(pagina, (desde, hasta) =>
+    supabase
+      .from("candidatos_guardados")
+      .select(
+        "id, postulante_id, nota, created_at, oferta_origen_id, ofertas!oferta_origen_id(titulo)",
+        { count: "exact" }
+      )
+      .eq("empresa_id", empresaId)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(desde, hasta)
+      .overrideTypes<GuardadoRow[], { merge: false }>()
+  );
+
+  if (!resultado.ok) {
+    const ref = logError("empresa_candidatos_guardados", resultado.error);
+    return <ErrorListado className="mt-6" refError={ref} />;
+  }
+
+  const guardados = resultado.filas;
+
+  if (guardados.length === 0) {
+    return (
+      <EstadoVacio
+        tipo="sin-registros"
+        className="mt-6"
+        icono={BookmarkCheck}
+        titulo="Todavía no guardaste ningún candidato"
+        descripcion="Desde la ficha de un candidato derivado podés guardarlo para futuras búsquedas."
+        accion={
+          <Link
+            href="/empresa/ofertas"
+            className="btn-primario inline-flex h-11 items-center gap-2 px-4 text-sm"
+          >
+            Ver mis ofertas
+          </Link>
+        }
+      />
+    );
+  }
 
   // Get candidato data for each saved candidate
   const candidatoMap: Record<string, CandidatoData> = {};
@@ -66,41 +149,7 @@ export default async function CandidatosGuardadosPage() {
   }
 
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
-      <div className="flex items-center gap-3">
-        <BookmarkCheck className="h-6 w-6 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Candidatos guardados
-          </h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Perfiles que guardaste para futuras búsquedas.
-          </p>
-        </div>
-      </div>
-
-      {guardados.length === 0 ? (
-        <div className="mt-12 flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border py-16 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary text-primary">
-            <BookmarkCheck className="h-7 w-7" />
-          </div>
-          <div>
-            <p className="font-semibold text-foreground">
-              Todavía no guardaste ningún candidato
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Desde la ficha de un candidato derivado podés guardarlo para
-              futuras búsquedas.
-            </p>
-          </div>
-          <Link
-            href="/empresa/ofertas"
-            className="btn-primario inline-flex h-10 items-center gap-2 px-4 text-sm"
-          >
-            Ver mis ofertas
-          </Link>
-        </div>
-      ) : (
+    <>
         <ul className="mt-6 space-y-4">
           {guardados.map((g) => {
             const candidato = candidatoMap[g.postulante_id];
@@ -152,7 +201,13 @@ export default async function CandidatosGuardadosPage() {
             );
           })}
         </ul>
-      )}
-    </section>
+      <Paginacion
+        className="mt-6"
+        ruta={RUTA}
+        searchParams={searchParams}
+        pagina={resultado.pagina}
+        total={resultado.total}
+      />
+    </>
   );
 }

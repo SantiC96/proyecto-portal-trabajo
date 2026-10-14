@@ -1,8 +1,22 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
+import { Building2 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { logError } from "@/lib/logger";
 import { formatearCUIT } from "@/lib/cuit";
+import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
+import {
+  consultarPagina,
+  hrefConParams,
+  leerPagina,
+  type ParamsUrl,
+} from "@/lib/paginacion";
 import { Badge } from "@/components/ui/badge";
+import { Buscador } from "@/components/ui/buscador";
+import { Paginacion } from "@/components/ui/paginacion";
+import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
+import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { EmpresaAcciones } from "./acciones";
 
 export const metadata: Metadata = {
@@ -50,27 +64,139 @@ function formatearFecha(iso: string) {
   });
 }
 
+const RUTA = "/admin/empresas";
+
 export default async function AdminEmpresasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ estado?: string }>;
+  searchParams: Promise<{ estado?: string; q?: string; pagina?: string }>;
 }) {
-  const { estado: raw } = await searchParams;
-  const estado: EstadoAprobacion = ESTADOS.includes(raw as EstadoAprobacion)
-    ? (raw as EstadoAprobacion)
+  const sp = await searchParams;
+  const estado: EstadoAprobacion = ESTADOS.includes(sp.estado as EstadoAprobacion)
+    ? (sp.estado as EstadoAprobacion)
     : "pendiente";
+  const q = limpiarBusqueda(sp.q);
+  const pagina = leerPagina(sp.pagina);
 
+  return (
+    <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Link href="/admin" className="hover:text-foreground">
+          Panel
+        </Link>
+        <span>/</span>
+        <span className="text-foreground">Empresas</span>
+      </div>
+
+      <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+        Empresas
+      </h1>
+
+      {/* Barra de pestañas */}
+      <div className="mt-6 flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
+        {ESTADOS.map((tab) => (
+          <Link
+            key={tab}
+            href={hrefConParams(RUTA, {}, { estado: tab, q: sp.q ?? null })}
+            className={
+              tab === estado
+                ? "flex-1 rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
+                : "flex-1 rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+            }
+          >
+            {LABELS[tab]}
+          </Link>
+        ))}
+      </div>
+
+      {/* Búsqueda */}
+      <Buscador className="mt-4" placeholder="Buscar por razón social o CUIT…" />
+
+      <Suspense
+        key={JSON.stringify({ estado, q, pagina })}
+        fallback={<EsqueletoLista filas={5} className="mt-4" />}
+      >
+        <ListadoEmpresas estado={estado} q={q} pagina={pagina} searchParams={sp} />
+      </Suspense>
+    </section>
+  );
+}
+
+async function ListadoEmpresas({
+  estado,
+  q,
+  pagina,
+  searchParams,
+}: {
+  estado: EstadoAprobacion;
+  q: string;
+  pagina: number;
+  searchParams: ParamsUrl;
+}) {
   const supabase = await createSupabaseServerClient();
+  const ascendente = estado === "pendiente";
 
-  const { data: empresasData } = await supabase
-    .from("empresas")
-    .select(
-      "id, razon_social, cuit, rubro, created_at, usuario_id, usuarios(nombre, apellido, telefono)"
-    )
-    .eq("estado_aprobacion", estado)
-    .order("created_at", { ascending: estado === "pendiente" });
+  const resultado = await consultarPagina<EmpresaRow>(pagina, (desde, hasta) => {
+    let query = supabase
+      .from("empresas")
+      .select(
+        "id, razon_social, cuit, rubro, created_at, usuario_id, usuarios(nombre, apellido, telefono)",
+        { count: "exact" }
+      )
+      .eq("estado_aprobacion", estado);
 
-  const empresas = (empresasData ?? []) as unknown as EmpresaRow[];
+    if (q) {
+      // El CUIT se guarda como XX-XXXXXXXX-X: además del texto tal cual se
+      // busca la versión con guiones de los dígitos ingresados.
+      const condiciones = [
+        `razon_social.ilike.${patronIlike(q)}`,
+        `cuit.ilike.${patronIlike(q)}`,
+      ];
+      const digitos = q.replace(/\D/g, "");
+      if (digitos.length >= 2) {
+        condiciones.push(`cuit.ilike.${patronIlike(formatearCUIT(digitos))}`);
+      }
+      query = query.or(condiciones.join(","));
+    }
+
+    return query
+      .order("created_at", { ascending: ascendente })
+      .order("id", { ascending: ascendente })
+      .range(desde, hasta)
+      .overrideTypes<EmpresaRow[], { merge: false }>();
+  });
+
+  if (!resultado.ok) {
+    const ref = logError("admin_empresas_listado", resultado.error, { estado });
+    return <ErrorListado className="mt-4" refError={ref} />;
+  }
+
+  const empresas = resultado.filas;
+
+  if (empresas.length === 0) {
+    return q ? (
+      <EstadoVacio
+        tipo="sin-resultados"
+        className="mt-4"
+        titulo="No se encontraron empresas con esa búsqueda"
+        hrefLimpiar={hrefConParams(RUTA, {}, { estado })}
+        textoLimpiar="Limpiar búsqueda"
+      />
+    ) : (
+      <EstadoVacio
+        tipo="sin-registros"
+        className="mt-4"
+        icono={Building2}
+        titulo={`No hay empresas ${
+          estado === "pendiente"
+            ? "pendientes de revisión"
+            : estado === "aprobada"
+              ? "aprobadas"
+              : "rechazadas"
+        } en este momento.`}
+      />
+    );
+  }
 
   const empresaIds = empresas.map((e) => e.id);
   const usuarioIds = empresas.map((e) => e.usuario_id);
@@ -115,48 +241,7 @@ export default async function AdminEmpresasPage({
   }
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/admin" className="hover:text-foreground">
-          Panel
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">Empresas</span>
-      </div>
-
-      <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-        Empresas
-      </h1>
-
-      {/* Barra de pestañas */}
-      <div className="mt-6 flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
-        {ESTADOS.map((tab) => (
-          <Link
-            key={tab}
-            href={`?estado=${tab}`}
-            className={
-              tab === estado
-                ? "flex-1 rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
-                : "flex-1 rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
-            }
-          >
-            {LABELS[tab]}
-          </Link>
-        ))}
-      </div>
-
-      {empresas.length === 0 ? (
-        <p className="py-16 text-center text-sm text-muted-foreground">
-          No hay empresas{" "}
-          {estado === "pendiente"
-            ? "pendientes de revisión"
-            : estado === "aprobada"
-              ? "aprobadas"
-              : "rechazadas"}{" "}
-          en este momento.
-        </p>
-      ) : (
-        <>
+    <>
           {/* Vista desktop: tabla */}
           <div className="mt-4 hidden overflow-x-auto md:block">
             <table className="w-full border-collapse text-sm">
@@ -314,8 +399,13 @@ export default async function AdminEmpresasPage({
               </div>
             ))}
           </div>
-        </>
-      )}
-    </section>
+          <Paginacion
+            className="mt-6"
+            ruta={RUTA}
+            searchParams={searchParams}
+            pagina={resultado.pagina}
+            total={resultado.total}
+          />
+    </>
   );
 }
