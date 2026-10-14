@@ -1,8 +1,22 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
+import { Briefcase } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { logError } from "@/lib/logger";
 import { formatFechaCorta } from "@/lib/fechas";
 import { getOfertaEstadoLabel } from "@/lib/oferta-estados";
+import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
+import {
+  consultarPagina,
+  hrefConParams,
+  leerPagina,
+  type ParamsUrl,
+} from "@/lib/paginacion";
+import { Buscador } from "@/components/ui/buscador";
+import { Paginacion } from "@/components/ui/paginacion";
+import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
+import { EsqueletoLista } from "@/components/ui/esqueleto";
 
 export const metadata: Metadata = {
   title: "Ofertas | Panel municipal | Portal de Empleo Funes",
@@ -40,42 +54,23 @@ type OfertaRow = {
   contenido_editado_en: string | null;
 };
 
-function buildHref(params: {
-  estado?: string;
-  q?: string;
-  page?: number;
-}) {
-  const url = new URLSearchParams();
-  if (params.estado) url.set("estado", params.estado);
-  if (params.q) url.set("q", params.q);
-  if (params.page && params.page > 1) url.set("page", String(params.page));
-  const qs = url.toString();
-  return `/admin/ofertas${qs ? `?${qs}` : ""}`;
-}
-
-const PAGE_SIZE = 20;
+const RUTA = "/admin/ofertas";
 
 export default async function AdminOfertasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ estado?: string; q?: string; page?: string }>;
+  searchParams: Promise<{ estado?: string; q?: string; pagina?: string }>;
 }) {
-  const {
-    estado: rawEstado,
-    q: rawQ = "",
-    page: rawPage = "1",
-  } = await searchParams;
+  const sp = await searchParams;
 
   const estado: EstadoFiltro = ESTADOS_FILTRO.includes(
-    rawEstado as EstadoFiltro
+    sp.estado as EstadoFiltro
   )
-    ? (rawEstado as EstadoFiltro)
+    ? (sp.estado as EstadoFiltro)
     : "pendiente_aprobacion";
 
-  const q = rawQ.trim();
-  const page = Math.max(1, parseInt(rawPage, 10) || 1);
-  const from = (page - 1) * PAGE_SIZE;
-  const to = from + PAGE_SIZE - 1;
+  const q = limpiarBusqueda(sp.q);
+  const pagina = leerPagina(sp.pagina);
 
   const supabase = await createSupabaseServerClient();
 
@@ -102,26 +97,6 @@ export default async function AdminOfertasPage({
       .select("*", { count: "exact", head: true })
       .eq("estado", "cerrada"),
   ]);
-
-  let query = supabase
-    .from("ofertas")
-    .select(
-      "id, titulo, empresa_nombre, created_at, estado, contenido_editado_en",
-      { count: "exact" }
-    )
-    .eq("estado", estado)
-    // Pendientes: de más vieja a más nueva (más urgentes primero)
-    .order("created_at", { ascending: estado === "pendiente_aprobacion" })
-    .range(from, to);
-
-  if (q) {
-    query = query.ilike("titulo", `%${q}%`);
-  }
-
-  const { data, count } = await query;
-  const rows = (data ?? []) as unknown as OfertaRow[];
-  const total = count ?? 0;
-  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
@@ -171,7 +146,7 @@ export default async function AdminOfertasPage({
         {ESTADOS_FILTRO.map((tab) => (
           <Link
             key={tab}
-            href={buildHref({ estado: tab, q: q || undefined })}
+            href={hrefConParams(RUTA, {}, { estado: tab, q: sp.q ?? null })}
             className={
               tab === estado
                 ? "flex-1 rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
@@ -184,44 +159,78 @@ export default async function AdminOfertasPage({
       </div>
 
       {/* Búsqueda */}
-      <form
-        method="GET"
-        action="/admin/ofertas"
-        className="mt-4 flex gap-3"
-      >
-        <input type="hidden" name="estado" value={estado} />
-        <input
-          type="search"
-          name="q"
-          defaultValue={q}
-          placeholder="Buscar por título…"
-          className="h-9 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
-        />
-        <button
-          type="submit"
-          className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
-        >
-          Buscar
-        </button>
-        {q && (
-          <Link
-            href={buildHref({ estado })}
-            className="flex h-9 items-center px-3 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Limpiar
-          </Link>
-        )}
-      </form>
+      <Buscador className="mt-4" placeholder="Buscar por título…" />
 
       {/* Resultados */}
-      {rows.length === 0 ? (
-        <p className="py-16 text-center text-sm text-muted-foreground">
-          {q
-            ? "No se encontraron ofertas con ese título."
-            : `No hay ofertas ${LABEL_FILTRO[estado].toLowerCase()} en este momento.`}
-        </p>
-      ) : (
-        <>
+      <Suspense
+        key={JSON.stringify({ estado, q, pagina })}
+        fallback={<EsqueletoLista filas={5} className="mt-4" />}
+      >
+        <ListadoOfertas estado={estado} q={q} pagina={pagina} searchParams={sp} />
+      </Suspense>
+    </section>
+  );
+}
+
+async function ListadoOfertas({
+  estado,
+  q,
+  pagina,
+  searchParams,
+}: {
+  estado: EstadoFiltro;
+  q: string;
+  pagina: number;
+  searchParams: ParamsUrl;
+}) {
+  const supabase = await createSupabaseServerClient();
+  // Pendientes: de más vieja a más nueva (más urgentes primero)
+  const ascendente = estado === "pendiente_aprobacion";
+
+  const resultado = await consultarPagina<OfertaRow>(pagina, (desde, hasta) => {
+    let query = supabase
+      .from("ofertas")
+      .select(
+        "id, titulo, empresa_nombre, created_at, estado, contenido_editado_en",
+        { count: "exact" }
+      )
+      .eq("estado", estado);
+    if (q) query = query.ilike("titulo", patronIlike(q));
+    return query
+      .order("created_at", { ascending: ascendente })
+      .order("id", { ascending: ascendente })
+      .range(desde, hasta)
+      .overrideTypes<OfertaRow[], { merge: false }>();
+  });
+
+  if (!resultado.ok) {
+    const ref = logError("admin_ofertas_listado", resultado.error, { estado });
+    return <ErrorListado className="mt-4" refError={ref} />;
+  }
+
+  const rows = resultado.filas;
+
+  if (rows.length === 0) {
+    return q ? (
+      <EstadoVacio
+        tipo="sin-resultados"
+        className="mt-4"
+        titulo="No se encontraron ofertas con ese título"
+        hrefLimpiar={hrefConParams(RUTA, {}, { estado })}
+        textoLimpiar="Limpiar búsqueda"
+      />
+    ) : (
+      <EstadoVacio
+        tipo="sin-registros"
+        className="mt-4"
+        icono={Briefcase}
+        titulo={`No hay ofertas ${LABEL_FILTRO[estado].toLowerCase()} en este momento.`}
+      />
+    );
+  }
+
+  return (
+    <>
           {/* Tabla desktop */}
           <div className="mt-4 hidden overflow-x-auto md:block">
             <table className="w-full border-collapse text-sm">
@@ -335,42 +344,13 @@ export default async function AdminOfertasPage({
             ))}
           </div>
 
-          {/* Paginación */}
-          {totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-between text-sm">
-              <p className="text-muted-foreground">
-                Mostrando {from + 1}–{Math.min(to + 1, total)} de {total}
-              </p>
-              <div className="flex gap-2">
-                {page > 1 && (
-                  <Link
-                    href={buildHref({
-                      estado,
-                      q: q || undefined,
-                      page: page - 1,
-                    })}
-                    className="inline-flex h-9 items-center rounded-lg border border-border px-4 text-foreground transition-colors hover:bg-surface-tinted"
-                  >
-                    Anterior
-                  </Link>
-                )}
-                {page < totalPages && (
-                  <Link
-                    href={buildHref({
-                      estado,
-                      q: q || undefined,
-                      page: page + 1,
-                    })}
-                    className="inline-flex h-9 items-center rounded-lg border border-border px-4 text-foreground transition-colors hover:bg-surface-tinted"
-                  >
-                    Siguiente
-                  </Link>
-                )}
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </section>
+          <Paginacion
+            className="mt-6"
+            ruta={RUTA}
+            searchParams={searchParams}
+            pagina={resultado.pagina}
+            total={resultado.total}
+          />
+    </>
   );
 }

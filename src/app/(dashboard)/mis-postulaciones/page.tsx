@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Briefcase } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { logError } from "@/lib/logger";
+import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
+import { Paginacion } from "@/components/ui/paginacion";
+import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
+import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { MisPostulacionesLista } from "./mis-postulaciones-lista";
 
 export const metadata: Metadata = {
@@ -22,7 +28,15 @@ type DbPostulacion = {
   } | null;
 };
 
-export default async function MisPostulacionesPage() {
+const RUTA = "/mis-postulaciones";
+
+export default async function MisPostulacionesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ pagina?: string }>;
+}) {
+  const sp = await searchParams;
+  const pagina = leerPagina(sp.pagina);
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -50,18 +64,95 @@ export default async function MisPostulacionesPage() {
 
   if (!postulante) redirect("/");
 
+  return (
+    <main className="flex-1 px-4 py-8 sm:px-6 sm:py-12">
+      <div className="mx-auto max-w-3xl space-y-10">
+        {/* Postulaciones */}
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Mis postulaciones
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Seguí el estado de cada postulación que enviaste.
+          </p>
+
+          <Suspense
+            key={pagina}
+            fallback={<EsqueletoLista filas={3} className="mt-6" />}
+          >
+            <ListadoMisPostulaciones
+              postulanteId={postulante.id}
+              pagina={pagina}
+              searchParams={sp}
+            />
+          </Suspense>
+        </div>
+
+      </div>
+    </main>
+  );
+}
+
+async function ListadoMisPostulaciones({
+  postulanteId,
+  pagina,
+  searchParams,
+}: {
+  postulanteId: string;
+  pagina: number;
+  searchParams: ParamsUrl;
+}) {
+  const supabase = await createSupabaseServerClient();
+
   // LEFT JOIN a ofertas: las ofertas cerradas no son visibles al postulante vía RLS
   // (no se puede agregar política porque migration_014 las reserva).
   // La UI muestra "Oferta no disponible" cuando oferta es null.
-  const postulacionesRes = await supabase
-    .from("postulaciones")
-    .select(
-      "id, estado, created_at, ofertas(id, titulo, empresa_nombre, estado, contenido_editado_en)"
-    )
-    .eq("postulante_id", postulante.id)
-    .order("created_at", { ascending: false });
+  const resultado = await consultarPagina<DbPostulacion>(pagina, (desde, hasta) =>
+    supabase
+      .from("postulaciones")
+      .select(
+        "id, estado, created_at, ofertas(id, titulo, empresa_nombre, estado, contenido_editado_en)",
+        { count: "exact" }
+      )
+      .eq("postulante_id", postulanteId)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(desde, hasta)
+      .overrideTypes<DbPostulacion[], { merge: false }>()
+  );
 
-  const rawList = (postulacionesRes.data ?? []) as unknown as DbPostulacion[];
+  if (!resultado.ok) {
+    const ref = logError("mis_postulaciones_listado", resultado.error);
+    return (
+      <ErrorListado
+        className="mt-6"
+        mensaje="No pudimos cargar tus postulaciones. Intentá de nuevo en unos minutos."
+        refError={ref}
+      />
+    );
+  }
+
+  const rawList = resultado.filas;
+
+  if (rawList.length === 0) {
+    return (
+      <EstadoVacio
+        tipo="sin-registros"
+        className="mt-6"
+        icono={Briefcase}
+        titulo="Todavía no te postulaste a ninguna oferta"
+        descripcion="Explorá las búsquedas activas y encontrá tu próximo trabajo."
+        accion={
+          <Link
+            href="/ofertas"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white shadow-xs transition hover:bg-primary-hover"
+          >
+            Ver ofertas laborales
+          </Link>
+        }
+      />
+    );
+  }
 
   // For derivada postulaciones, get the derivation state (without notes — uses SECURITY DEFINER)
   const derivadasIds = rawList
@@ -96,45 +187,14 @@ export default async function MisPostulacionesPage() {
   }));
 
   return (
-    <main className="flex-1 px-4 py-8 sm:px-6 sm:py-12">
-      <div className="mx-auto max-w-3xl space-y-10">
-        {/* Postulaciones */}
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Mis postulaciones
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Seguí el estado de cada postulación que enviaste.
-          </p>
-
-          <div className="mt-6">
-            {postulaciones.length === 0 ? (
-              <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-white py-12 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Briefcase className="h-7 w-7" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">
-                    Todavía no te postulaste a ninguna oferta
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Explorá las búsquedas activas y encontrá tu próximo trabajo.
-                  </p>
-                </div>
-                <Link
-                  href="/ofertas"
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white shadow-xs transition hover:bg-primary-hover"
-                >
-                  Ver ofertas laborales
-                </Link>
-              </div>
-            ) : (
-              <MisPostulacionesLista postulaciones={postulaciones} />
-            )}
-          </div>
-        </div>
-
-      </div>
-    </main>
+    <div className="mt-6 space-y-6">
+      <MisPostulacionesLista postulaciones={postulaciones} />
+      <Paginacion
+        ruta={RUTA}
+        searchParams={searchParams}
+        pagina={resultado.pagina}
+        total={resultado.total}
+      />
+    </div>
   );
 }

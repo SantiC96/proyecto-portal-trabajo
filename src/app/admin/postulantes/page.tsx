@@ -1,9 +1,20 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { FileText, Users } from "lucide-react";
 import { logError } from "@/lib/logger";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
+import {
+  consultarPagina,
+  hrefConParams,
+  leerPagina,
+  type ParamsUrl,
+} from "@/lib/paginacion";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
+import { Paginacion } from "@/components/ui/paginacion";
+import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
+import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { FiltrosPostulantes } from "./filtros-postulantes";
 import { AsignarCursoDialog } from "./asignar-curso-dialog";
 
@@ -11,7 +22,7 @@ export const metadata: Metadata = {
   title: "Postulantes | Panel municipal | Portal de Empleo Funes",
 };
 
-const PAGE_SIZE = 20;
+const RUTA = "/admin/postulantes";
 
 function formatearFecha(iso: string) {
   return new Date(iso).toLocaleDateString("es-AR", {
@@ -20,6 +31,14 @@ function formatearFecha(iso: string) {
     year: "numeric",
   });
 }
+
+type FiltrosListado = {
+  q: string;
+  rubroIds: string[];
+  conCv: boolean;
+  esperandoCurso: boolean;
+  pagina: number;
+};
 
 export default async function PostulantesPage({
   searchParams,
@@ -32,40 +51,67 @@ export default async function PostulantesPage({
     pagina?: string;
   }>;
 }) {
-  const {
-    q: rawQ = "",
-    rubros: rawRubros = "",
-    con_cv: rawConCv = "",
-    esperando_curso: rawEsperandoCurso = "",
-    pagina: rawPagina = "1",
-  } = await searchParams;
+  const sp = await searchParams;
 
-  const q = rawQ.trim();
-  const rubroIds = rawRubros
-    ? rawRubros
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : [];
-  const conCv = rawConCv === "1";
-  const esperandoCurso = rawEsperandoCurso === "1";
-  const pagina = Math.max(1, parseInt(rawPagina, 10) || 1);
-  const offset = (pagina - 1) * PAGE_SIZE;
+  const filtros: FiltrosListado = {
+    q: limpiarBusqueda(sp.q),
+    rubroIds: sp.rubros
+      ? sp.rubros
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [],
+    conCv: sp.con_cv === "1",
+    esperandoCurso: sp.esperando_curso === "1",
+    pagina: leerPagina(sp.pagina),
+  };
+
+  const supabase = await createSupabaseServerClient();
+
+  // Categorías para el MultiCombobox
+  const categoriasRes = await supabase
+    .from("categorias")
+    .select("id, nombre")
+    .order("nombre");
+  const opciones = (categoriasRes.data ?? []) as { id: string; nombre: string }[];
+
+  return (
+    <PostulantesShell
+      opciones={opciones}
+      rubroIds={filtros.rubroIds}
+      hayBusqueda={filtros.q.length > 0}
+      conCv={filtros.conCv}
+      esperandoCurso={filtros.esperandoCurso}
+    >
+      <Suspense
+        key={JSON.stringify(filtros)}
+        fallback={<EsqueletoLista filas={5} />}
+      >
+        <ListadoPostulantes filtros={filtros} searchParams={sp} />
+      </Suspense>
+    </PostulantesShell>
+  );
+}
+
+async function ListadoPostulantes({
+  filtros,
+  searchParams,
+}: {
+  filtros: FiltrosListado;
+  searchParams: ParamsUrl;
+}) {
+  const { q, rubroIds, conCv, esperandoCurso, pagina } = filtros;
   const hayFiltros = rubroIds.length > 0 || conCv || q.length > 0 || esperandoCurso;
 
   const supabase = await createSupabaseServerClient();
 
-  // Categorías para el MultiCombobox y cursos activos para el dialog
-  const [categoriasRes, cursosRes] = await Promise.all([
-    supabase.from("categorias").select("id, nombre").order("nombre"),
-    supabase
-      .from("cursos")
-      .select("id, nombre, descripcion")
-      .eq("activo", true)
-      .order("nombre"),
-  ]);
+  // Cursos activos para el dialog de asignación
+  const cursosRes = await supabase
+    .from("cursos")
+    .select("id, nombre, descripcion")
+    .eq("activo", true)
+    .order("nombre");
 
-  const opciones = (categoriasRes.data ?? []) as { id: string; nombre: string }[];
   const cursosActivos = (cursosRes.data ?? []) as {
     id: string;
     nombre: string;
@@ -124,14 +170,21 @@ export default async function PostulantesPage({
   if (q) {
     type UserRow = { id: string };
     type PRow = { id: string };
+    const patron = patronIlike(q);
 
     const [usersRes, dniRes] = await Promise.all([
       supabase
         .from("usuarios")
         .select("id")
-        .or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%`),
-      supabase.from("postulantes").select("id").ilike("dni", `%${q}%`),
+        .or(`nombre.ilike.${patron},apellido.ilike.${patron}`),
+      supabase.from("postulantes").select("id").ilike("dni", patron),
     ]);
+
+    const errorTexto = usersRes.error ?? dniRes.error;
+    if (errorTexto) {
+      const ref = logError("admin_postulantes_busqueda", errorTexto);
+      return <ErrorListado refError={ref} />;
+    }
 
     const usuarioIds = ((usersRes.data ?? []) as UserRow[]).map((r) => r.id);
     const idsByDni = ((dniRes.data ?? []) as PRow[]).map((r) => r.id);
@@ -148,6 +201,20 @@ export default async function PostulantesPage({
     textFilterIds = [...new Set([...idsByName, ...idsByDni])];
   }
 
+  const vacio = hayFiltros ? (
+    <EstadoVacio
+      tipo="sin-resultados"
+      titulo="No hay postulantes con esos filtros"
+      hrefLimpiar={RUTA}
+    />
+  ) : (
+    <EstadoVacio
+      tipo="sin-registros"
+      icono={Users}
+      titulo="Todavía no hay postulantes registrados"
+    />
+  );
+
   // Short-circuit si algún filtro no tiene resultados
   const emptyFilter =
     (rubroPrefilterId !== undefined && rubroPrefilterId.length === 0) ||
@@ -156,19 +223,7 @@ export default async function PostulantesPage({
     (esperandoCursoFilterIds !== undefined &&
       esperandoCursoFilterIds.length === 0);
 
-  if (emptyFilter) {
-    return (
-      <PostulantesShell
-        opciones={opciones}
-        rubroIds={rubroIds}
-        q={q}
-        conCv={conCv}
-        esperandoCurso={esperandoCurso}
-      >
-        <EstadoVacio hayFiltros={hayFiltros} />
-      </PostulantesShell>
-    );
-  }
+  if (emptyFilter) return vacio;
 
   type PostulanteRow = {
     id: string;
@@ -182,40 +237,38 @@ export default async function PostulantesPage({
     } | null;
   };
 
-  let query = supabase
-    .from("postulantes")
-    .select(
-      "id, usuario_id, dni, created_at, usuarios!usuario_id(nombre, apellido, telefono)",
-      { count: "exact" }
-    )
-    .order("created_at", { ascending: false })
-    .range(offset, offset + PAGE_SIZE - 1);
+  const resultado = await consultarPagina<PostulanteRow>(pagina, (desde, hasta) => {
+    let query = supabase
+      .from("postulantes")
+      .select(
+        "id, usuario_id, dni, created_at, usuarios!usuario_id(nombre, apellido, telefono)",
+        { count: "exact" }
+      );
 
-  if (rubroPrefilterId !== undefined)
-    query = query.in("id", rubroPrefilterId);
-  if (cvUsuarioIds !== undefined)
-    query = query.in("usuario_id", cvUsuarioIds);
-  if (textFilterIds !== undefined) query = query.in("id", textFilterIds);
-  if (esperandoCursoFilterIds !== undefined)
-    query = query.in("id", esperandoCursoFilterIds);
+    if (rubroPrefilterId !== undefined)
+      query = query.in("id", rubroPrefilterId);
+    if (cvUsuarioIds !== undefined)
+      query = query.in("usuario_id", cvUsuarioIds);
+    if (textFilterIds !== undefined) query = query.in("id", textFilterIds);
+    if (esperandoCursoFilterIds !== undefined)
+      query = query.in("id", esperandoCursoFilterIds);
 
-  const { data: rawPostulantes, count: total } = await query;
-  const postulantes = (rawPostulantes ?? []) as unknown as PostulanteRow[];
-  const totalCount = total ?? 0;
+    return query
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(desde, hasta)
+      .overrideTypes<PostulanteRow[], { merge: false }>();
+  });
 
-  if (postulantes.length === 0) {
-    return (
-      <PostulantesShell
-        opciones={opciones}
-        rubroIds={rubroIds}
-        q={q}
-        conCv={conCv}
-        esperandoCurso={esperandoCurso}
-      >
-        <EstadoVacio hayFiltros={hayFiltros} />
-      </PostulantesShell>
-    );
+  if (!resultado.ok) {
+    const ref = logError("admin_postulantes_listado", resultado.error);
+    return <ErrorListado refError={ref} />;
   }
+
+  const postulantes = resultado.filas;
+  const totalCount = resultado.total;
+
+  if (postulantes.length === 0) return vacio;
 
   const postulanteIds = postulantes.map((p) => p.id);
   const usuarioIds = postulantes.map((p) => p.usuario_id);
@@ -325,30 +378,12 @@ export default async function PostulantesPage({
     rechazosMap.set(row.postulante_id, Number(row.rechazos));
   }
 
-  const totalPaginas = Math.ceil(totalCount / PAGE_SIZE);
-
-  const spActivos = new URLSearchParams();
-  if (q) spActivos.set("q", q);
-  if (rubroIds.length > 0) spActivos.set("rubros", rubroIds.join(","));
-  if (conCv) spActivos.set("con_cv", "1");
-  if (esperandoCurso) spActivos.set("esperando_curso", "1");
-
-  function paginaUrl(p: number): string {
-    const sp2 = new URLSearchParams(spActivos);
-    if (p > 1) sp2.set("pagina", String(p));
-    else sp2.delete("pagina");
-    const qs = sp2.toString();
-    return `/admin/postulantes${qs ? `?${qs}` : ""}`;
-  }
+  const volverUrl = hrefConParams(RUTA, searchParams, {
+    pagina: resultado.pagina,
+  });
 
   return (
-    <PostulantesShell
-      opciones={opciones}
-      rubroIds={rubroIds}
-      q={q}
-      conCv={conCv}
-      esperandoCurso={esperandoCurso}
-    >
+    <>
       <p className="text-sm text-muted-foreground">
         {totalCount === 1
           ? "1 postulante encontrado"
@@ -397,7 +432,7 @@ export default async function PostulantesPage({
                 ? `${usuario.nombre} ${usuario.apellido}`
                 : "—";
               const fichaUrl = `/admin/postulantes/${p.id}?volver=${encodeURIComponent(
-                paginaUrl(pagina)
+                volverUrl
               )}`;
 
               return (
@@ -489,7 +524,7 @@ export default async function PostulantesPage({
             ? `${usuario.nombre} ${usuario.apellido}`
             : "—";
           const fichaUrl = `/admin/postulantes/${p.id}?volver=${encodeURIComponent(
-            paginaUrl(pagina)
+            volverUrl
           )}`;
 
           return (
@@ -576,33 +611,13 @@ export default async function PostulantesPage({
         })}
       </div>
 
-      {/* Paginación */}
-      {totalPaginas > 1 && (
-        <div className="flex items-center justify-between gap-4 text-sm">
-          <p className="text-muted-foreground">
-            Página {pagina} de {totalPaginas}
-          </p>
-          <div className="flex gap-2">
-            {pagina > 1 && (
-              <Link
-                href={paginaUrl(pagina - 1)}
-                className="btn-secundario inline-flex items-center whitespace-nowrap px-3 py-1.5 text-sm"
-              >
-                ← Anterior
-              </Link>
-            )}
-            {pagina < totalPaginas && (
-              <Link
-                href={paginaUrl(pagina + 1)}
-                className="btn-secundario inline-flex items-center whitespace-nowrap px-3 py-1.5 text-sm"
-              >
-                Siguiente →
-              </Link>
-            )}
-          </div>
-        </div>
-      )}
-    </PostulantesShell>
+      <Paginacion
+        ruta={RUTA}
+        searchParams={searchParams}
+        pagina={resultado.pagina}
+        total={totalCount}
+      />
+    </>
   );
 }
 
@@ -636,44 +651,17 @@ function RubrosPills({
   );
 }
 
-function EstadoVacio({ hayFiltros }: { hayFiltros: boolean }) {
-  if (hayFiltros) {
-    return (
-      <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-8 text-center">
-        <Users className="mx-auto h-10 w-10 text-muted-icon" />
-        <p className="mt-3 font-medium text-foreground">
-          No hay postulantes con esos filtros
-        </p>
-        <Link
-          href="/admin/postulantes"
-          className="btn-secundario mt-4 inline-flex px-4 py-2 text-sm"
-        >
-          Limpiar filtros
-        </Link>
-      </div>
-    );
-  }
-  return (
-    <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-8 text-center">
-      <Users className="mx-auto h-10 w-10 text-muted-icon" />
-      <p className="mt-3 font-medium text-foreground">
-        Todavía no hay postulantes registrados
-      </p>
-    </div>
-  );
-}
-
 function PostulantesShell({
   opciones,
   rubroIds,
-  q,
+  hayBusqueda,
   conCv,
   esperandoCurso,
   children,
 }: {
   opciones: { id: string; nombre: string }[];
   rubroIds: string[];
-  q: string;
+  hayBusqueda: boolean;
   conCv: boolean;
   esperandoCurso: boolean;
   children: React.ReactNode;
@@ -697,12 +685,11 @@ function PostulantesShell({
 
       <div className="mt-6">
         <FiltrosPostulantes
-          key={`${q}|${rubroIds.join(",")}|${conCv ? "1" : "0"}|${esperandoCurso ? "1" : "0"}`}
           opciones={opciones}
-          seleccionadosIniciales={rubroIds}
-          qInicial={q}
-          conCvInicial={conCv}
-          esperandoCursoInicial={esperandoCurso}
+          rubros={rubroIds}
+          hayBusqueda={hayBusqueda}
+          conCv={conCv}
+          esperandoCurso={esperandoCurso}
         />
       </div>
 

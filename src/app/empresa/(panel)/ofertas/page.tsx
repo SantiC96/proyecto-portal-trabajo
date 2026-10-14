@@ -4,8 +4,20 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Plus, Briefcase } from "lucide-react";
 import { AvisoUrl } from "@/components/ui/aviso-url";
+import { Buscador } from "@/components/ui/buscador";
+import { Paginacion } from "@/components/ui/paginacion";
+import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
+import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { logError } from "@/lib/logger";
+import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
+import {
+  consultarPagina,
+  hrefConParams,
+  leerPagina,
+  type ParamsUrl,
+} from "@/lib/paginacion";
 import { CerrarOfertaBtn } from "./_components/cerrar-oferta-btn";
 import { EliminarEnvioBtn } from "./_components/eliminar-envio-btn";
 import { formatFecha } from "@/lib/fechas";
@@ -40,7 +52,16 @@ type OfertaRow = {
   oferta_categorias: Array<{ categorias: { nombre: string } | null }>;
 };
 
-export default async function MisOfertasPage() {
+const RUTA = "/empresa/ofertas";
+
+export default async function MisOfertasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; pagina?: string }>;
+}) {
+  const sp = await searchParams;
+  const q = limpiarBusqueda(sp.q);
+  const pagina = leerPagina(sp.pagina);
   const supabase = await createSupabaseServerClient();
 
   const {
@@ -55,47 +76,6 @@ export default async function MisOfertasPage() {
     .maybeSingle();
 
   if (!empresa) redirect("/empresa");
-
-  const { data: ofertas } = await supabase
-    .from("ofertas")
-    .select(
-      "id, titulo, estado, motivo_rechazo, created_at, oferta_categorias(categorias(nombre))"
-    )
-    .eq("empresa_id", empresa.id)
-    .order("created_at", { ascending: false });
-
-  const lista = (ofertas ?? []) as unknown as OfertaRow[];
-
-  // Contar postulaciones de ofertas pendientes para mostrar/ocultar "Eliminar envío".
-  // Usar supabaseAdmin porque empresa no tiene SELECT en postulaciones.
-  const pendingIds = lista
-    .filter((o) => o.estado === "pendiente_aprobacion")
-    .map((o) => o.id);
-
-  const postulacionesPorOferta: Record<string, number> = {};
-  if (pendingIds.length > 0) {
-    const { data: rows } = await supabaseAdmin
-      .from("postulaciones")
-      .select("oferta_id")
-      .in("oferta_id", pendingIds);
-    if (rows) {
-      for (const row of rows) {
-        postulacionesPorOferta[row.oferta_id] = (postulacionesPorOferta[row.oferta_id] ?? 0) + 1;
-      }
-    }
-  }
-
-  // Ofertas con candidatos "Por contactar" (estado_empresa = 'pendiente')
-  // Usamos la función SECURITY DEFINER para no requerir acceso a postulaciones.
-  const ofertasConPendientesSet = new Set<string>();
-  const { data: pendientesRows } = await supabase.rpc(
-    "ofertas_con_candidatos_pendientes"
-  );
-  if (pendientesRows) {
-    for (const row of pendientesRows as Array<{ oferta_id: string }>) {
-      ofertasConPendientesSet.add(row.oferta_id);
-    }
-  }
 
   return (
     <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
@@ -119,26 +99,124 @@ export default async function MisOfertasPage() {
         <AvisoUrl />
       </Suspense>
 
-      {lista.length === 0 ? (
-        <div className="mt-12 flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border py-16 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary text-primary">
-            <Briefcase className="h-7 w-7" />
-          </div>
-          <div>
-            <p className="font-semibold text-foreground">Todavía no publicaste ofertas</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Publicá tu primera oferta para recibir postulaciones.
-            </p>
-          </div>
+      <Buscador className="mt-6" placeholder="Buscar por título…" />
+
+      <Suspense
+        key={JSON.stringify({ q, pagina })}
+        fallback={<EsqueletoLista filas={4} className="mt-6" />}
+      >
+        <ListadoMisOfertas
+          empresaId={empresa.id}
+          q={q}
+          pagina={pagina}
+          searchParams={sp}
+        />
+      </Suspense>
+    </section>
+  );
+}
+
+async function ListadoMisOfertas({
+  empresaId,
+  q,
+  pagina,
+  searchParams,
+}: {
+  empresaId: string;
+  q: string;
+  pagina: number;
+  searchParams: ParamsUrl;
+}) {
+  const supabase = await createSupabaseServerClient();
+
+  const resultado = await consultarPagina<OfertaRow>(pagina, (desde, hasta) => {
+    let query = supabase
+      .from("ofertas")
+      .select(
+        "id, titulo, estado, motivo_rechazo, created_at, oferta_categorias(categorias(nombre))",
+        { count: "exact" }
+      )
+      .eq("empresa_id", empresaId);
+    if (q) query = query.ilike("titulo", patronIlike(q));
+    return query
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(desde, hasta)
+      .overrideTypes<OfertaRow[], { merge: false }>();
+  });
+
+  if (!resultado.ok) {
+    const ref = logError("empresa_ofertas_listado", resultado.error);
+    return <ErrorListado className="mt-6" refError={ref} />;
+  }
+
+  const lista = resultado.filas;
+
+  if (lista.length === 0) {
+    return q ? (
+      <EstadoVacio
+        tipo="sin-resultados"
+        className="mt-6"
+        titulo="No encontramos ofertas con ese título"
+        hrefLimpiar={hrefConParams(RUTA, {})}
+        textoLimpiar="Limpiar búsqueda"
+      />
+    ) : (
+      <EstadoVacio
+        tipo="sin-registros"
+        className="mt-6"
+        icono={Briefcase}
+        titulo="Todavía no publicaste ofertas"
+        descripcion="Publicá tu primera oferta para recibir postulaciones."
+        accion={
           <Link
             href="/empresa/ofertas/nueva"
-            className="btn-primario inline-flex h-10 items-center gap-2 px-4 text-sm"
+            className="btn-primario inline-flex h-11 items-center gap-2 px-4 text-sm"
           >
             <Plus className="h-4 w-4" />
             Publicar oferta
           </Link>
-        </div>
-      ) : (
+        }
+      />
+    );
+  }
+
+  // Contar postulaciones de ofertas pendientes para mostrar/ocultar "Eliminar envío".
+  // Usar supabaseAdmin porque empresa no tiene SELECT en postulaciones.
+  const pendingIds = lista
+    .filter((o) => o.estado === "pendiente_aprobacion")
+    .map((o) => o.id);
+
+  const postulacionesPorOferta: Record<string, number> = {};
+  if (pendingIds.length > 0) {
+    const { data: rows } = await supabaseAdmin
+      .from("postulaciones")
+      .select("oferta_id")
+      .in("oferta_id", pendingIds);
+    if (rows) {
+      for (const row of rows) {
+        postulacionesPorOferta[row.oferta_id] = (postulacionesPorOferta[row.oferta_id] ?? 0) + 1;
+      }
+    }
+  }
+
+  // Ofertas con candidatos "Por contactar" (estado_empresa = 'pendiente')
+  // Usamos la función SECURITY DEFINER para no requerir acceso a postulaciones.
+  const ofertasConPendientesSet = new Set<string>();
+  const { data: pendientesRows } = await supabase
+    .rpc("ofertas_con_candidatos_pendientes")
+    .in(
+      "oferta_id",
+      lista.map((o) => o.id)
+    );
+  if (pendientesRows) {
+    for (const row of pendientesRows as Array<{ oferta_id: string }>) {
+      ofertasConPendientesSet.add(row.oferta_id);
+    }
+  }
+
+  return (
+    <>
         <ul className="mt-6 space-y-3">
           {lista.map((oferta) => {
             const categorias = oferta.oferta_categorias
@@ -232,7 +310,13 @@ export default async function MisOfertasPage() {
             );
           })}
         </ul>
-      )}
-    </section>
+      <Paginacion
+        className="mt-6"
+        ruta={RUTA}
+        searchParams={searchParams}
+        pagina={resultado.pagina}
+        total={resultado.total}
+      />
+    </>
   );
 }

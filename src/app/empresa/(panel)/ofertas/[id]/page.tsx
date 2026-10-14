@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Users } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { logError } from "@/lib/logger";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
+import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
+import { Paginacion } from "@/components/ui/paginacion";
+import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
+import { EsqueletoLista } from "@/components/ui/esqueleto";
 import {
   DERIVACION_ESTADO_LABEL,
   DERIVACION_ESTADO_STYLE,
@@ -32,10 +38,14 @@ type CandidatoDato = {
 
 export default async function OfertaDetallePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ pagina?: string }>;
 }) {
   const { id: ofertaId } = await params;
+  const sp = await searchParams;
+  const pagina = leerPagina(sp.pagina);
   const supabase = await createSupabaseServerClient();
 
   const {
@@ -59,30 +69,14 @@ export default async function OfertaDetallePage({
 
   if (!oferta) notFound();
 
-  const [derivacionesResult, vacantesResult] = await Promise.all([
-    supabase.rpc("derivaciones_de_oferta_empresa", { p_oferta_id: ofertaId }),
+  const [vacantesResult, contratadosResult] = await Promise.all([
     supabase.from("oferta_vacantes").select("cantidad").eq("oferta_id", ofertaId).maybeSingle(),
+    supabase.rpc("contratados_en_oferta", { p_oferta_id: ofertaId }),
   ]);
 
-  const derivaciones = ((derivacionesResult.data ?? []) as CandidatoRow[]);
   const vacantes = (vacantesResult.data?.cantidad as number | null) ?? null;
-  const contratados = derivaciones.filter((d) => d.estado_empresa === "contratado").length;
-
-  const nombresMap: Record<string, CandidatoDato> = {};
-  if (derivaciones.length > 0) {
-    const uniquePostulanteIds = [
-      ...new Set(derivaciones.map((d) => d.postulante_id)),
-    ];
-    const nombreResults = await Promise.all(
-      uniquePostulanteIds.map((pid) =>
-        supabase.rpc("candidato_para_empresa", { p_postulante_id: pid })
-      )
-    );
-    uniquePostulanteIds.forEach((pid, i) => {
-      const row = (nombreResults[i].data as CandidatoDato[] | null)?.[0];
-      if (row) nombresMap[pid] = row;
-    });
-  }
+  if (contratadosResult.error) logError("empresa_oferta_contratados", contratadosResult.error);
+  const contratados = (contratadosResult.data as number | null) ?? 0;
 
   return (
     <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
@@ -112,7 +106,7 @@ export default async function OfertaDetallePage({
       </div>
 
       {/* Candidatos derivados */}
-      <div className="mt-8">
+      <div id="candidatos" className="mt-8 scroll-mt-20">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
@@ -127,21 +121,81 @@ export default async function OfertaDetallePage({
           )}
         </div>
 
-        {derivaciones.length === 0 ? (
-          <div className="mt-4 flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border py-12 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary text-primary">
-              <Users className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground">
-                Todavía no hay candidatos derivados
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                La Oficina de Empleo te enviará perfiles cuando los tenga disponibles.
-              </p>
-            </div>
-          </div>
-        ) : (
+        <Suspense
+          key={pagina}
+          fallback={<EsqueletoLista filas={3} className="mt-4" />}
+        >
+          <ListadoDerivados ofertaId={ofertaId} pagina={pagina} searchParams={sp} />
+        </Suspense>
+      </div>
+    </section>
+  );
+}
+
+async function ListadoDerivados({
+  ofertaId,
+  pagina,
+  searchParams,
+}: {
+  ofertaId: string;
+  pagina: number;
+  searchParams: ParamsUrl;
+}) {
+  const supabase = await createSupabaseServerClient();
+
+  // derivaciones_de_oferta_empresa devuelve un conjunto de filas: PostgREST
+  // permite ordenarlo, contarlo y paginarlo como si fuera una tabla.
+  const resultado = await consultarPagina<CandidatoRow>(pagina, async (desde, hasta) => {
+    const respuesta = await supabase
+      .rpc("derivaciones_de_oferta_empresa", { p_oferta_id: ofertaId }, { count: "exact" })
+      .order("derivacion_created_at", { ascending: false })
+      .order("derivacion_id", { ascending: false })
+      .range(desde, hasta);
+    const data: CandidatoRow[] | null = respuesta.data;
+    return { data, count: respuesta.count, error: respuesta.error };
+  });
+
+  if (!resultado.ok) {
+    const ref = logError("empresa_oferta_derivados", resultado.error);
+    return (
+      <ErrorListado
+        className="mt-4"
+        mensaje="No pudimos cargar los candidatos derivados."
+        refError={ref}
+      />
+    );
+  }
+
+  const derivaciones = resultado.filas;
+
+  if (derivaciones.length === 0) {
+    return (
+      <EstadoVacio
+        tipo="sin-registros"
+        className="mt-4"
+        icono={Users}
+        titulo="Todavía no hay candidatos derivados"
+        descripcion="La Oficina de Empleo te enviará perfiles cuando los tenga disponibles."
+      />
+    );
+  }
+
+  const nombresMap: Record<string, CandidatoDato> = {};
+  const uniquePostulanteIds = [
+    ...new Set(derivaciones.map((d) => d.postulante_id)),
+  ];
+  const nombreResults = await Promise.all(
+    uniquePostulanteIds.map((pid) =>
+      supabase.rpc("candidato_para_empresa", { p_postulante_id: pid })
+    )
+  );
+  uniquePostulanteIds.forEach((pid, i) => {
+    const row = (nombreResults[i].data as CandidatoDato[] | null)?.[0];
+    if (row) nombresMap[pid] = row;
+  });
+
+  return (
+    <>
           <ul className="mt-4 space-y-3">
             {derivaciones.map((d) => {
               const candidato = nombresMap[d.postulante_id];
@@ -188,8 +242,14 @@ export default async function OfertaDetallePage({
               );
             })}
           </ul>
-        )}
-      </div>
-    </section>
+        <Paginacion
+          className="mt-6"
+          ruta={`/empresa/ofertas/${ofertaId}`}
+          searchParams={searchParams}
+          pagina={resultado.pagina}
+          total={resultado.total}
+          ancla="candidatos"
+        />
+    </>
   );
 }
