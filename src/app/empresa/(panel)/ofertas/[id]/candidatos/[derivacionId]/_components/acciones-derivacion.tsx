@@ -19,7 +19,7 @@ import {
   reprogramarEntrevista,
   seleccionarCandidato,
   rechazarCandidato,
-} from "@/app/empresa/ofertas/[id]/actions";
+} from "@/app/empresa/(panel)/ofertas/[id]/actions";
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 import { BookmarkBtn } from "./bookmark-btn";
 

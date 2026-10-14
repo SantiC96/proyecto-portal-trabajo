@@ -20,15 +20,20 @@ export function JobCard({ oferta }: JobCardProps) {
     >
       <article className="flex h-full flex-col rounded-2xl border border-border bg-white p-5 shadow-xs transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
 
-        {/* Rubro (truncable) + fecha (sin corte) — una sola línea */}
-        <div className="flex items-center justify-between gap-2 overflow-hidden">
-          <span
-            className="inline-flex min-w-0 shrink items-center gap-1 overflow-hidden rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"
-            title={oferta.rubro}
-          >
-            <Briefcase className="h-3 w-3 shrink-0" />
-            <span className="truncate">{oferta.rubro}</span>
-          </span>
+        {/* Categorías + fecha */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap gap-1.5">
+            {oferta.categorias.map((cat) => (
+              <span
+                key={cat}
+                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"
+                title={cat}
+              >
+                <Briefcase className="h-3 w-3 shrink-0" />
+                <span className="max-w-[120px] truncate">{cat}</span>
+              </span>
+            ))}
+          </div>
           <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
             <Clock className="h-3.5 w-3.5" />
             <span>Publicado el {formattedDate}</span>

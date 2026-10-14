@@ -32,12 +32,14 @@ const OFERTA_SELECT = `
 ` as const;
 
 function mapRow(row: DbOfertaRow): OfertaLaboral {
-  const rubro = row.oferta_categorias?.[0]?.categorias?.nombre ?? "";
+  const categorias = (row.oferta_categorias ?? [])
+    .map((oc) => oc.categorias?.nombre)
+    .filter((n): n is string => Boolean(n));
   return {
     id: row.id,
     titulo: row.titulo,
     empresa: row.empresa_nombre,
-    rubro,
+    categorias,
     ubicacion: row.ubicacion,
     modalidad: row.modalidad as OfertaLaboral["modalidad"],
     jornada: row.jornada as OfertaLaboral["jornada"],

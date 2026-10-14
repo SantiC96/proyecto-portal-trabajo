@@ -20,7 +20,8 @@ export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
   const filteredOfertas = useMemo(() => {
     return ofertas.filter((oferta) => {
       const matchesRubro =
-        selectedRubro === "Todos" || oferta.rubro.toLowerCase() === selectedRubro.toLowerCase();
+        selectedRubro === "Todos" ||
+        oferta.categorias.some((cat) => cat.toLowerCase() === selectedRubro.toLowerCase());
 
       const matchesModalidad =
         selectedModalidad === "Todas" || oferta.modalidad === selectedModalidad;
@@ -32,6 +33,7 @@ export function JobDirectory({ ofertas, categorias }: JobDirectoryProps) {
         oferta.empresa.toLowerCase().includes(query) ||
         oferta.descripcion.toLowerCase().includes(query) ||
         oferta.ubicacion.toLowerCase().includes(query) ||
+        oferta.categorias.some((cat) => cat.toLowerCase().includes(query)) ||
         oferta.requisitos.some((req) => req.toLowerCase().includes(query));
 
       return matchesRubro && matchesModalidad && matchesQuery;

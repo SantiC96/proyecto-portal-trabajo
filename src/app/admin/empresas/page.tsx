@@ -22,6 +22,14 @@ type EmpresaRow = {
   usuarios: { nombre: string; apellido: string; telefono: string } | null;
 };
 
+export type HistorialEntry = {
+  id: string;
+  empresa_id: string;
+  evento: "aprobada" | "rechazada" | "reenviada";
+  motivo: string | null;
+  created_at: string;
+};
+
 const LABELS: Record<EstadoAprobacion, string> = {
   pendiente: "Pendientes",
   aprobada: "Aprobadas",
@@ -64,14 +72,47 @@ export default async function AdminEmpresasPage({
 
   const empresas = (empresasData ?? []) as unknown as EmpresaRow[];
 
-  // emails_de_usuarios: solo consulta los IDs de la página actual, sin límite de 1000
+  const empresaIds = empresas.map((e) => e.id);
   const usuarioIds = empresas.map((e) => e.usuario_id);
-  const { data: emailRows } = usuarioIds.length > 0
-    ? await supabase.rpc("emails_de_usuarios", { ids: usuarioIds })
-    : { data: [] };
+
+  // Consultas paralelas: emails y historial de las empresas de la página actual.
+  const [{ data: emailRows }, { data: historialRows }] = await Promise.all([
+    usuarioIds.length > 0
+      ? supabase.rpc("emails_de_usuarios", { ids: usuarioIds })
+      : Promise.resolve({ data: [] }),
+    empresaIds.length > 0
+      ? supabase
+          .from("historial_aprobacion_empresa")
+          .select("id, empresa_id, evento, motivo, created_at")
+          .in("empresa_id", empresaIds)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
+  ]);
+
   const emailMap = new Map<string, string>(
-    ((emailRows ?? []) as { id: string; email: string }[]).map((r) => [r.id, r.email])
+    ((emailRows ?? []) as { id: string; email: string }[]).map((r) => [
+      r.id,
+      r.email,
+    ])
   );
+
+  // Agrupar historial por empresa (ya viene ordenado DESC por created_at).
+  const historialPorEmpresa = new Map<string, HistorialEntry[]>();
+  for (const entry of (historialRows ?? []) as HistorialEntry[]) {
+    const list = historialPorEmpresa.get(entry.empresa_id) ?? [];
+    list.push(entry);
+    historialPorEmpresa.set(entry.empresa_id, list);
+  }
+
+  // Para la pestaña pendiente: fecha del último reenvío de cada empresa.
+  const reenviadas = new Map<string, string>();
+  if (estado === "pendiente") {
+    for (const entry of (historialRows ?? []) as HistorialEntry[]) {
+      if (entry.evento === "reenviada" && !reenviadas.has(entry.empresa_id)) {
+        reenviadas.set(entry.empresa_id, entry.created_at);
+      }
+    }
+  }
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
@@ -181,6 +222,8 @@ export default async function AdminEmpresasPage({
                         empresaId={empresa.id}
                         razonSocial={empresa.razon_social}
                         estadoActual={estado}
+                        historial={historialPorEmpresa.get(empresa.id) ?? []}
+                        fechaReenvio={reenviadas.get(empresa.id)}
                       />
                     </td>
                   </tr>
@@ -200,7 +243,14 @@ export default async function AdminEmpresasPage({
                   <p className="font-semibold text-foreground">
                     {empresa.razon_social}
                   </p>
-                  <Badge variant={BADGE_VARIANT[estado]}>{LABELS[estado]}</Badge>
+                  <div className="flex flex-wrap justify-end gap-1">
+                    <Badge variant={BADGE_VARIANT[estado]}>{LABELS[estado]}</Badge>
+                    {estado === "pendiente" && reenviadas.has(empresa.id) && (
+                      <Badge variant="secondary" className="bg-amber-100 text-amber-700 border-amber-200">
+                        Reenviada
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <dl className="mt-3 space-y-1.5 text-sm">
                   <div className="flex gap-2">
@@ -257,6 +307,8 @@ export default async function AdminEmpresasPage({
                     empresaId={empresa.id}
                     razonSocial={empresa.razon_social}
                     estadoActual={estado}
+                    historial={historialPorEmpresa.get(empresa.id) ?? []}
+                    fechaReenvio={reenviadas.get(empresa.id)}
                   />
                 </div>
               </div>

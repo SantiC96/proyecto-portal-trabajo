@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { getCategoriasConId } from "@/lib/ofertas";
-import { OfertaForm } from "@/app/empresa/ofertas/_components/oferta-form";
+import { OfertaForm } from "@/app/empresa/(panel)/ofertas/_components/oferta-form";
 
 export const metadata: Metadata = {
   title: "Editar oferta | Portal de Empleo Funes",

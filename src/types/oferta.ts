@@ -5,7 +5,7 @@ export interface OfertaLaboral {
   id: string;
   titulo: string;
   empresa: string;
-  rubro: string;
+  categorias: string[];
   ubicacion: string;
   modalidad: Modalidad;
   jornada: Jornada;

@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { getOfertaEstadoLabel } from "@/lib/oferta-estados";
 import { OfertaAcciones } from "./oferta-acciones";
+import { RequisitosList, BeneficiosList } from "@/components/ofertas/requisitos-beneficios";
 
 export const metadata: Metadata = {
   title: "Oferta | Panel municipal | Portal de Empleo Funes",
@@ -178,43 +179,8 @@ export default async function AdminOfertaDetallePage({
               {oferta.descripcion}
             </p>
 
-            {oferta.requisitos.length > 0 && (
-              <section className="mt-6">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-primary">
-                  Requisitos
-                </h3>
-                <ul className="mt-3 flex flex-col gap-2">
-                  {oferta.requisitos.map((req, i) => (
-                    <li
-                      key={i}
-                      className="flex items-start gap-2 text-sm text-muted-foreground-strong"
-                    >
-                      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                      {req}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {oferta.beneficios && oferta.beneficios.length > 0 && (
-              <section className="mt-6">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-primary">
-                  Beneficios
-                </h3>
-                <ul className="mt-3 flex flex-col gap-2">
-                  {oferta.beneficios.map((ben, i) => (
-                    <li
-                      key={i}
-                      className="flex items-start gap-2 text-sm text-muted-foreground-strong"
-                    >
-                      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                      {ben}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
+            <RequisitosList items={oferta.requisitos} headingTag="h3" />
+            <BeneficiosList items={oferta.beneficios ?? []} headingTag="h3" />
           </div>
 
           {/* Empresa */}
