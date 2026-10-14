@@ -18,6 +18,7 @@ import {
   type EstadoDerivacionEmpresa,
 } from "@/lib/derivacion-estados";
 import { NotaGuardadoEditor } from "@/app/empresa/(panel)/candidatos-guardados/_components/nota-editor";
+import { FotoPrivada } from "@/components/ui/foto-privada";
 
 export const metadata: Metadata = {
   title: "Perfil de candidato | Portal de Empleo Funes",
@@ -125,8 +126,19 @@ export default async function PerfilCandidatoPage({
         <div className="flex items-center gap-4">
           {fotoUrl ? (
             <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full border border-border">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={fotoUrl} alt={nombreCompleto} className="h-full w-full object-cover" />
+              <FotoPrivada
+                src={fotoUrl}
+                alt={`Foto de ${nombreCompleto}`}
+                width={56}
+                height={56}
+                preload
+                className="h-full w-full object-cover"
+                fallback={
+                  <div className="flex h-full w-full items-center justify-center bg-surface-tinted text-muted-foreground">
+                    <User className="h-7 w-7" />
+                  </div>
+                }
+              />
             </div>
           ) : (
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-border bg-surface-tinted text-muted-foreground">

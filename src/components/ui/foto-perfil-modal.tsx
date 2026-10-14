@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, ZoomIn, ZoomOut } from "lucide-react";
+import { UserRound, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useMounted } from "@/lib/use-mounted";
+import { FotoPrivada } from "@/components/ui/foto-privada";
 import { ajustarAvatar } from "@/app/(dashboard)/perfil/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
@@ -119,12 +120,29 @@ export function FotoPerfilModal({
         {/* ── Vista: ver ─────────────────────────────────────────────────── */}
         {modo === "ver" && (
           <div className="flex flex-col items-center gap-5 p-6 pt-10">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            {/* width/height solo reservan espacio: el estilo "auto" mantiene el tamaño natural de la foto */}
+            <FotoPrivada
               src={src}
               alt={`Foto de ${nombre}`}
-              style={{ maxHeight: "80vh", maxWidth: "90vw", objectFit: "contain" }}
+              width={464}
+              height={464}
+              loading="eager"
+              style={{
+                width: "auto",
+                height: "auto",
+                maxHeight: "80vh",
+                maxWidth: "90vw",
+                objectFit: "contain",
+              }}
               className="rounded-xl"
+              fallback={
+                <div
+                  aria-label={`Foto de ${nombre}`}
+                  className="flex h-24 w-24 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                >
+                  <UserRound className="h-12 w-12" />
+                </div>
+              }
             />
             <div className="flex flex-wrap justify-center gap-3">
               <button
@@ -163,12 +181,19 @@ export function FotoPerfilModal({
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerUp}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <FotoPrivada
                 src={src}
                 alt=""
                 aria-hidden
+                width={PREVIEW_SIZE}
+                height={PREVIEW_SIZE}
+                loading="eager"
                 draggable={false}
+                fallback={
+                  <div className="flex h-full w-full items-center justify-center bg-primary text-primary-foreground">
+                    <UserRound className="h-24 w-24" />
+                  </div>
+                }
                 style={{
                   width: "100%",
                   height: "100%",
