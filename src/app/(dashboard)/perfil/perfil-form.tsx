@@ -32,6 +32,17 @@ import {
   cambiarContrasena,
 } from "./actions";
 import { validarNombre, validarDNI, validarTelefono } from "@/lib/validaciones";
+import {
+  AVATAR_ACCEPT,
+  AVATAR_HELP_TEXT,
+  AVATAR_MAX_SIZE,
+  CV_ACCEPT,
+  CV_HELP_TEXT,
+  CV_MAX_SIZE,
+  ERRORES_ARCHIVO,
+  validarTipoAvatar,
+  validarTipoCV,
+} from "@/lib/archivos";
 
 type AjusteAvatar = { x: number; y: number; zoom: number };
 
@@ -226,13 +237,12 @@ export function PerfilForm({
   // ── avatar handlers ─────────────────────────────────────────────────────────
 
   const handleAvatarSelect = (file: File) => {
-    const tipos = ["image/jpeg", "image/png", "image/webp"];
-    if (!tipos.includes(file.type)) {
-      setErrorAvatar("Solo se aceptan imágenes JPG, PNG o WEBP.");
+    if (!validarTipoAvatar(file.type)) {
+      setErrorAvatar(ERRORES_ARCHIVO.avatarTipo);
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      setErrorAvatar("La imagen no puede superar los 2 MB.");
+    if (file.size > AVATAR_MAX_SIZE) {
+      setErrorAvatar(ERRORES_ARCHIVO.avatarTamano);
       return;
     }
     setErrorAvatar(null);
@@ -338,12 +348,12 @@ export function PerfilForm({
   const handleSeleccionarCV = async (file: File) => {
     setErrorCV(null);
     setMensajeCV(null);
-    if (file.type !== "application/pdf") {
-      setErrorCV("El CV debe ser un archivo PDF.");
+    if (!validarTipoCV(file.type)) {
+      setErrorCV(ERRORES_ARCHIVO.cvTipo);
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorCV("El CV no puede superar los 5 MB.");
+    if (file.size > CV_MAX_SIZE) {
+      setErrorCV(ERRORES_ARCHIVO.cvTamano);
       return;
     }
     setCvFile(file);
@@ -512,7 +522,7 @@ export function PerfilForm({
                 )}
               </div>
             )}
-            <p className="text-xs text-muted-icon">JPG, PNG o WEBP · Máximo 2 MB</p>
+            <p className="text-xs text-muted-icon">{AVATAR_HELP_TEXT}</p>
             {errorAvatar && <MensajeError texto={errorAvatar} />}
           </div>
         </div>
@@ -522,7 +532,7 @@ export function PerfilForm({
         <input
           ref={avatarInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept={AVATAR_ACCEPT}
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
@@ -829,7 +839,7 @@ export function PerfilForm({
                   <p className="text-sm font-medium text-foreground">
                     Hacé clic para seleccionar tu CV. Se sube automáticamente.
                   </p>
-                  <p className="mt-1 text-xs text-muted-icon">Solo PDF · Máximo 5 MB</p>
+                  <p className="mt-1 text-xs text-muted-icon">{CV_HELP_TEXT}</p>
                 </div>
               </button>
             )}
@@ -890,19 +900,22 @@ export function PerfilForm({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => cvInputRef.current?.click()}
-              disabled={subiendoCV || eliminandoCV}
-              className="flex h-9 w-fit items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
-            >
-              {subiendoCV ? (
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              ) : (
-                <Upload className="h-4 w-4" />
-              )}
-              {subiendoCV ? "Subiendo…" : "Reemplazar CV"}
-            </button>
+            <div className="flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={() => cvInputRef.current?.click()}
+                disabled={subiendoCV || eliminandoCV}
+                className="flex h-9 w-fit items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
+              >
+                {subiendoCV ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                {subiendoCV ? "Subiendo…" : "Reemplazar CV"}
+              </button>
+              <p className="text-xs text-muted-icon">{CV_HELP_TEXT}</p>
+            </div>
 
             <div aria-live="polite">
               {errorCV && <MensajeError texto={errorCV} />}
@@ -919,7 +932,7 @@ export function PerfilForm({
         <input
           ref={cvInputRef}
           type="file"
-          accept="application/pdf"
+          accept={CV_ACCEPT}
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
