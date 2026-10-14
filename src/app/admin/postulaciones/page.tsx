@@ -1,6 +1,20 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
+import { ClipboardList } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { logError } from "@/lib/logger";
+import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
+import {
+  consultarPagina,
+  hrefConParams,
+  leerPagina,
+  type ParamsUrl,
+} from "@/lib/paginacion";
+import { Buscador } from "@/components/ui/buscador";
+import { Paginacion } from "@/components/ui/paginacion";
+import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
+import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { abrirFicha } from "./actions";
 import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
@@ -42,23 +56,7 @@ type PostulacionRow = {
   ofertas: { id: string; titulo: string; empresa_nombre: string } | null;
 };
 
-const PAGE_SIZE = 20;
-
-function buildHref(params: {
-  estado?: string;
-  oferta_id?: string;
-  q?: string;
-  page?: number;
-}) {
-  const url = new URLSearchParams();
-  if (params.estado) url.set("estado", params.estado);
-  if (params.oferta_id) url.set("oferta_id", params.oferta_id);
-  if (params.q) url.set("q", params.q);
-  if (params.page && params.page > 1) url.set("page", String(params.page));
-  const qs = url.toString();
-  return `/admin/postulaciones${qs ? `?${qs}` : ""}`;
-}
-
+const RUTA = "/admin/postulaciones";
 
 export default async function PostulacionesPage({
   searchParams,
@@ -67,27 +65,20 @@ export default async function PostulacionesPage({
     estado?: string;
     oferta_id?: string;
     q?: string;
-    page?: string;
+    pagina?: string;
   }>;
 }) {
-  const {
-    estado: rawEstado,
-    oferta_id: rawOfertaId = "",
-    q: rawQ = "",
-    page: rawPage = "1",
-  } = await searchParams;
+  const sp = await searchParams;
 
   const estado: EstadoFiltro = ESTADOS_FILTRO.includes(
-    rawEstado as EstadoFiltro
+    sp.estado as EstadoFiltro
   )
-    ? (rawEstado as EstadoFiltro)
+    ? (sp.estado as EstadoFiltro)
     : "pendiente";
 
-  const ofertaId = rawOfertaId.trim();
-  const q = rawQ.trim();
-  const page = Math.max(1, parseInt(rawPage, 10) || 1);
-  const from = (page - 1) * PAGE_SIZE;
-  const to = from + PAGE_SIZE - 1;
+  const ofertaId = (sp.oferta_id ?? "").trim();
+  const q = limpiarBusqueda(sp.q);
+  const pagina = leerPagina(sp.pagina);
 
   const supabase = await createSupabaseServerClient();
 
@@ -130,128 +121,6 @@ export default async function PostulacionesPage({
         .in("id", ofertaIdsUnicos)
         .order("titulo")
     : { data: [] };
-
-  // Pre-filtro por texto: buscar postulante_ids que coincidan
-  let filtroPostulanteIds: string[] | null = null;
-  if (q) {
-    const [{ data: usuariosMatch }, { data: postulantesMatch }] =
-      await Promise.all([
-        supabase
-          .from("usuarios")
-          .select("id")
-          .or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%`),
-        supabase
-          .from("postulantes")
-          .select("id")
-          .ilike("dni", `%${q}%`),
-      ]);
-
-    const idsFromNombre = usuariosMatch?.map((u) => u.id) ?? [];
-    let idsFromDni = postulantesMatch?.map((p) => p.id) ?? [];
-
-    // Agregar postulantes cuyo usuario_id coincide con un nombre/apellido
-    if (idsFromNombre.length > 0) {
-      const { data: postulantesPorUsuario } = await supabase
-        .from("postulantes")
-        .select("id")
-        .in("usuario_id", idsFromNombre);
-      const idsExtra = postulantesPorUsuario?.map((p) => p.id) ?? [];
-      idsFromDni = [...new Set([...idsFromDni, ...idsExtra])];
-    }
-
-    filtroPostulanteIds = idsFromDni;
-  }
-
-  // Query principal
-  let query = supabase
-    .from("postulaciones")
-    .select(
-      `
-      id,
-      estado,
-      created_at,
-      postulante_id,
-      postulantes!postulante_id(
-        id,
-        usuario_id,
-        dni,
-        usuarios!usuario_id(nombre, apellido)
-      ),
-      ofertas!oferta_id(id, titulo, empresa_nombre)
-    `,
-      { count: "exact" }
-    )
-    .order("created_at", { ascending: false })
-    .range(from, to);
-
-  // Filtro de estado
-  if (estado === "pendiente") {
-    query = query.in("estado", ["recibida", "en_revision"]);
-  } else {
-    query = query.eq("estado", estado);
-  }
-
-  if (ofertaId) {
-    query = query.eq("oferta_id", ofertaId);
-  }
-
-  if (filtroPostulanteIds !== null) {
-    // Si la búsqueda no encontró coincidencias, forzar resultado vacío
-    const ids =
-      filtroPostulanteIds.length > 0
-        ? filtroPostulanteIds
-        : ["00000000-0000-0000-0000-000000000000"];
-    query = query.in("postulante_id", ids);
-  }
-
-  const { data, count } = await query;
-  const rows = (data ?? []) as unknown as PostulacionRow[];
-  const total = count ?? 0;
-  const totalPages = Math.ceil(total / PAGE_SIZE);
-
-  // Avatares en batch
-  const usuarioIds = rows
-    .map((r) => r.postulantes?.usuario_id)
-    .filter((id): id is string => Boolean(id));
-
-  const avatarMap = new Map<
-    string,
-    { url: string; ajuste: { x: number; y: number; zoom: number } }
-  >();
-
-  if (usuarioIds.length > 0) {
-    const { data: avatarArchivos } = await supabase
-      .from("archivos_usuario")
-      .select("usuario_id, ruta, ajuste_x, ajuste_y, ajuste_zoom")
-      .in("usuario_id", usuarioIds)
-      .eq("tipo", "avatar")
-      .eq("activo", true);
-
-    if (avatarArchivos && avatarArchivos.length > 0) {
-      const paths = avatarArchivos.map((a) => a.ruta);
-      const { data: signedUrls } = await supabase.storage
-        .from("avatares")
-        .createSignedUrls(paths, 600);
-
-      if (signedUrls) {
-        for (const signed of signedUrls) {
-          if (signed.signedUrl) {
-            const archivo = avatarArchivos.find((a) => a.ruta === signed.path);
-            if (archivo) {
-              avatarMap.set(archivo.usuario_id, {
-                url: signed.signedUrl,
-                ajuste: {
-                  x: Number(archivo.ajuste_x),
-                  y: Number(archivo.ajuste_y),
-                  zoom: Number(archivo.ajuste_zoom),
-                },
-              });
-            }
-          }
-        }
-      }
-    }
-  }
 
   const pendientesTotal = (cRecibidas ?? 0) + (cRevision ?? 0);
 
@@ -307,10 +176,10 @@ export default async function PostulacionesPage({
         {ESTADOS_FILTRO.map((tab) => (
           <Link
             key={tab}
-            href={buildHref({
+            href={hrefConParams(RUTA, {}, {
               estado: tab,
-              oferta_id: ofertaId || undefined,
-              q: q || undefined,
+              oferta_id: ofertaId || null,
+              q: sp.q ?? null,
             })}
             className={
               tab === estado
@@ -329,64 +198,236 @@ export default async function PostulacionesPage({
       </div>
 
       {/* Filtros de búsqueda */}
-      <form
-        method="GET"
-        action="/admin/postulaciones"
-        className="mt-4 flex flex-wrap gap-3"
-      >
-        <input type="hidden" name="estado" value={estado} />
-        <input
-          type="search"
-          name="q"
-          defaultValue={q}
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+        <Buscador
+          className="flex-1 sm:min-w-[180px]"
           placeholder="Nombre, apellido o DNI…"
-          className="h-9 flex-1 min-w-[180px] rounded-lg border border-border bg-surface px-3 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
-        <select
-          name="oferta_id"
-          defaultValue={ofertaId}
-          className="h-9 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-        >
-          <option value="">Todas las ofertas</option>
-          {(ofertasDisponibles ?? []).map(
-            (o: { id: string; titulo: string; empresa_nombre: string }) => (
-              <option key={o.id} value={o.id}>
-                {o.titulo} — {o.empresa_nombre}
-              </option>
-            )
-          )}
-        </select>
-        <button
-          type="submit"
-          className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
-        >
-          Buscar
-        </button>
-        {(q || ofertaId) && (
-          <Link
-            href={buildHref({ estado })}
-            className="flex h-9 items-center px-3 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        <form method="GET" action={RUTA} className="flex gap-3">
+          <input type="hidden" name="estado" value={estado} />
+          {sp.q && <input type="hidden" name="q" value={sp.q} />}
+          <select
+            name="oferta_id"
+            defaultValue={ofertaId}
+            aria-label="Filtrar por oferta"
+            className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 sm:max-w-xs"
           >
-            Limpiar
-          </Link>
-        )}
-      </form>
+            <option value="">Todas las ofertas</option>
+            {(ofertasDisponibles ?? []).map(
+              (o: { id: string; titulo: string; empresa_nombre: string }) => (
+                <option key={o.id} value={o.id}>
+                  {o.titulo} — {o.empresa_nombre}
+                </option>
+              )
+            )}
+          </select>
+          <button
+            type="submit"
+            className="h-11 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+          >
+            Filtrar
+          </button>
+        </form>
+      </div>
+      {(q || ofertaId) && (
+        <Link
+          href={hrefConParams(RUTA, {}, { estado })}
+          className="mt-2 inline-flex min-h-11 items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          Limpiar filtros
+        </Link>
+      )}
 
       {/* Resultados */}
-      {rows.length === 0 ? (
-        <p className="py-16 text-center text-sm text-muted-foreground">
-          {q || ofertaId
-            ? "No se encontraron postulaciones con los filtros aplicados."
-            : `No hay postulaciones ${
-                estado === "pendiente"
-                  ? "pendientes de revisión"
-                  : estado === "derivada"
-                    ? "derivadas"
-                    : "no seleccionadas"
-              } en este momento.`}
-        </p>
-      ) : (
-        <>
+      <Suspense
+        key={JSON.stringify({ estado, ofertaId, q, pagina })}
+        fallback={<EsqueletoLista filas={5} className="mt-4" />}
+      >
+        <ListadoPostulaciones
+          estado={estado}
+          ofertaId={ofertaId}
+          q={q}
+          pagina={pagina}
+          searchParams={sp}
+        />
+      </Suspense>
+    </section>
+  );
+}
+
+async function ListadoPostulaciones({
+  estado,
+  ofertaId,
+  q,
+  pagina,
+  searchParams,
+}: {
+  estado: EstadoFiltro;
+  ofertaId: string;
+  q: string;
+  pagina: number;
+  searchParams: ParamsUrl;
+}) {
+  const supabase = await createSupabaseServerClient();
+
+  // Pre-filtro por texto: buscar postulante_ids que coincidan
+  let filtroPostulanteIds: string[] | null = null;
+  if (q) {
+    const patron = patronIlike(q);
+    const [usuariosRes, postulantesRes] = await Promise.all([
+      supabase
+        .from("usuarios")
+        .select("id")
+        .or(`nombre.ilike.${patron},apellido.ilike.${patron}`),
+      supabase.from("postulantes").select("id").ilike("dni", patron),
+    ]);
+
+    const errorPrefiltro = usuariosRes.error ?? postulantesRes.error;
+    if (errorPrefiltro) {
+      const ref = logError("admin_postulaciones_busqueda", errorPrefiltro);
+      return <ErrorListado className="mt-4" refError={ref} />;
+    }
+
+    const idsFromNombre = usuariosRes.data?.map((u) => u.id) ?? [];
+    let idsFromDni = postulantesRes.data?.map((p) => p.id) ?? [];
+
+    // Agregar postulantes cuyo usuario_id coincide con un nombre/apellido
+    if (idsFromNombre.length > 0) {
+      const { data: postulantesPorUsuario } = await supabase
+        .from("postulantes")
+        .select("id")
+        .in("usuario_id", idsFromNombre);
+      const idsExtra = postulantesPorUsuario?.map((p) => p.id) ?? [];
+      idsFromDni = [...new Set([...idsFromDni, ...idsExtra])];
+    }
+
+    filtroPostulanteIds = idsFromDni;
+  }
+
+  const resultado = await consultarPagina<PostulacionRow>(pagina, (desde, hasta) => {
+    let query = supabase
+      .from("postulaciones")
+      .select(
+        `
+        id,
+        estado,
+        created_at,
+        postulante_id,
+        postulantes!postulante_id(
+          id,
+          usuario_id,
+          dni,
+          usuarios!usuario_id(nombre, apellido)
+        ),
+        ofertas!oferta_id(id, titulo, empresa_nombre)
+      `,
+        { count: "exact" }
+      );
+
+    // Filtro de estado
+    if (estado === "pendiente") {
+      query = query.in("estado", ["recibida", "en_revision"]);
+    } else {
+      query = query.eq("estado", estado);
+    }
+
+    if (ofertaId) {
+      query = query.eq("oferta_id", ofertaId);
+    }
+
+    if (filtroPostulanteIds !== null) {
+      // Si la búsqueda no encontró coincidencias, forzar resultado vacío
+      const ids =
+        filtroPostulanteIds.length > 0
+          ? filtroPostulanteIds
+          : ["00000000-0000-0000-0000-000000000000"];
+      query = query.in("postulante_id", ids);
+    }
+
+    return query
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(desde, hasta)
+      .overrideTypes<PostulacionRow[], { merge: false }>();
+  });
+
+  if (!resultado.ok) {
+    const ref = logError("admin_postulaciones_listado", resultado.error, { estado });
+    return <ErrorListado className="mt-4" refError={ref} />;
+  }
+
+  const rows = resultado.filas;
+
+  if (rows.length === 0) {
+    return q || ofertaId ? (
+      <EstadoVacio
+        tipo="sin-resultados"
+        className="mt-4"
+        titulo="No se encontraron postulaciones con los filtros aplicados"
+        hrefLimpiar={hrefConParams(RUTA, {}, { estado })}
+      />
+    ) : (
+      <EstadoVacio
+        tipo="sin-registros"
+        className="mt-4"
+        icono={ClipboardList}
+        titulo={`No hay postulaciones ${
+          estado === "pendiente"
+            ? "pendientes de revisión"
+            : estado === "derivada"
+              ? "derivadas"
+              : "no seleccionadas"
+        } en este momento.`}
+      />
+    );
+  }
+
+  // Avatares en batch
+  const usuarioIds = rows
+    .map((r) => r.postulantes?.usuario_id)
+    .filter((id): id is string => Boolean(id));
+
+  const avatarMap = new Map<
+    string,
+    { url: string; ajuste: { x: number; y: number; zoom: number } }
+  >();
+
+  if (usuarioIds.length > 0) {
+    const { data: avatarArchivos } = await supabase
+      .from("archivos_usuario")
+      .select("usuario_id, ruta, ajuste_x, ajuste_y, ajuste_zoom")
+      .in("usuario_id", usuarioIds)
+      .eq("tipo", "avatar")
+      .eq("activo", true);
+
+    if (avatarArchivos && avatarArchivos.length > 0) {
+      const paths = avatarArchivos.map((a) => a.ruta);
+      const { data: signedUrls } = await supabase.storage
+        .from("avatares")
+        .createSignedUrls(paths, 600);
+
+      if (signedUrls) {
+        for (const signed of signedUrls) {
+          if (signed.signedUrl) {
+            const archivo = avatarArchivos.find((a) => a.ruta === signed.path);
+            if (archivo) {
+              avatarMap.set(archivo.usuario_id, {
+                url: signed.signedUrl,
+                ajuste: {
+                  x: Number(archivo.ajuste_x),
+                  y: Number(archivo.ajuste_y),
+                  zoom: Number(archivo.ajuste_zoom),
+                },
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return (
+    <>
           {/* Tabla desktop */}
           <div className="mt-4 hidden overflow-x-auto md:block">
             <table className="w-full border-collapse text-sm">
@@ -563,44 +604,13 @@ export default async function PostulacionesPage({
             })}
           </div>
 
-          {/* Paginación */}
-          {totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-between text-sm">
-              <p className="text-muted-foreground">
-                Mostrando {from + 1}–{Math.min(to + 1, total)} de {total}
-              </p>
-              <div className="flex gap-2">
-                {page > 1 && (
-                  <Link
-                    href={buildHref({
-                      estado,
-                      oferta_id: ofertaId || undefined,
-                      q: q || undefined,
-                      page: page - 1,
-                    })}
-                    className="inline-flex h-9 items-center rounded-lg border border-border px-4 text-foreground transition-colors hover:bg-surface-tinted"
-                  >
-                    Anterior
-                  </Link>
-                )}
-                {page < totalPages && (
-                  <Link
-                    href={buildHref({
-                      estado,
-                      oferta_id: ofertaId || undefined,
-                      q: q || undefined,
-                      page: page + 1,
-                    })}
-                    className="inline-flex h-9 items-center rounded-lg border border-border px-4 text-foreground transition-colors hover:bg-surface-tinted"
-                  >
-                    Siguiente
-                  </Link>
-                )}
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </section>
+          <Paginacion
+            className="mt-6"
+            ruta={RUTA}
+            searchParams={searchParams}
+            pagina={resultado.pagina}
+            total={resultado.total}
+          />
+    </>
   );
 }
