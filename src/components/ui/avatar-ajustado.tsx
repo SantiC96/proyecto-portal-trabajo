@@ -1,10 +1,11 @@
 import { UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FotoPrivada } from "@/components/ui/foto-privada";
 
 const sizeMap = {
-  sm: { wrapper: "h-8 w-8",   icon: "h-4 w-4" },
-  md: { wrapper: "h-14 w-14", icon: "h-7 w-7" },
-  lg: { wrapper: "h-24 w-24", icon: "h-12 w-12" },
+  sm: { wrapper: "h-8 w-8",   icon: "h-4 w-4",   px: 32 },
+  md: { wrapper: "h-14 w-14", icon: "h-7 w-7",   px: 56 },
+  lg: { wrapper: "h-24 w-24", icon: "h-12 w-12", px: 96 },
 };
 
 const DEFAULT_AJUSTE = { x: 50, y: 50, zoom: 1 };
@@ -24,7 +25,7 @@ export function AvatarAjustado({
   size = "md",
   className,
 }: AvatarAjustadoProps) {
-  const { wrapper, icon } = sizeMap[size];
+  const { wrapper, icon, px } = sizeMap[size];
   const { x, y, zoom } = ajuste ?? DEFAULT_AJUSTE;
 
   if (src) {
@@ -32,10 +33,11 @@ export function AvatarAjustado({
       <div
         className={cn("shrink-0 rounded-full overflow-hidden", wrapper, className)}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <FotoPrivada
           src={src}
           alt={alt}
+          width={px}
+          height={px}
           style={{
             width: "100%",
             height: "100%",
@@ -44,6 +46,14 @@ export function AvatarAjustado({
             transform: `scale(${zoom})`,
             transformOrigin: `${x}% ${y}%`,
           }}
+          fallback={
+            <div
+              aria-label={alt}
+              className="flex h-full w-full items-center justify-center bg-primary text-primary-foreground"
+            >
+              <UserRound className={icon} />
+            </div>
+          }
         />
       </div>
     );
