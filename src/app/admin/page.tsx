@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { logError } from "@/lib/logger";
 import Link from "next/link";
 import {
   BookOpen,
@@ -68,7 +69,7 @@ export default async function AdminDashboardPage() {
   ]);
 
   if (esperandoCursoRes.error)
-    console.error("[contar_postulantes_esperando_curso]", esperandoCursoRes.error);
+    logError("contar_postulantes_esperando_curso", esperandoCursoRes.error);
   const postulantesEsperando = Number(esperandoCursoRes.data ?? 0);
 
   return (

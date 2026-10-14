@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { asignarCurso } from "@/app/admin/cursos/actions";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 
 type Curso = { id: string; nombre: string; descripcion: string | null };
 
@@ -32,7 +33,7 @@ export function AsignarCursoDialog({
   const [open, setOpen] = useState(false);
   const [cursoId, setCursoId] = useState(cursosActivos[0]?.id ?? "");
   const [nota, setNota] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorAccion | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleOpen() {
@@ -45,13 +46,13 @@ export function AsignarCursoDialog({
   function handleAsignar() {
     setError(null);
     if (!cursoId) {
-      setError("Seleccioná un curso.");
+      setError({ mensaje: "Seleccioná un curso." });
       return;
     }
     startTransition(async () => {
       const res = await asignarCurso(postulanteId, cursoId, nota);
-      if (res.error) {
-        setError(res.error);
+      if (!res.ok) {
+        setError(toErrorAccion(res));
       } else {
         setOpen(false);
         setNota("");
@@ -142,7 +143,16 @@ export function AsignarCursoDialog({
             </div>
           )}
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && (
+            <div>
+              <p className="text-sm text-red-600">{error.mensaje}</p>
+              {error.ref && (
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                </p>
+              )}
+            </div>
+          )}
 
           <DialogFooter>
             <button

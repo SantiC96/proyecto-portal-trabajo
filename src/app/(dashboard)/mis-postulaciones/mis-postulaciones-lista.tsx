@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { X, AlertCircle, Briefcase, CheckCircle, AlertTriangle, CalendarClock } from "lucide-react";
 import { useMounted } from "@/lib/use-mounted";
 import { retirarPostulacion } from "@/app/(dashboard)/postulaciones/actions";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { getOfertaEstadoBadge } from "@/lib/oferta-estados";
 
@@ -55,7 +56,7 @@ function RetirarBoton({
   const mounted = useMounted();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorAccion | null>(null);
   const [isPending, startTransition] = useTransition();
   const confirmRef = useRef<HTMLButtonElement>(null);
 
@@ -81,8 +82,8 @@ function RetirarBoton({
     setError(null);
     startTransition(async () => {
       const result = await retirarPostulacion(postulacionId);
-      if (result.error) {
-        setError(result.error);
+      if (!result.ok) {
+        setError(toErrorAccion(result));
       } else {
         setOpen(false);
         router.refresh();
@@ -148,9 +149,16 @@ function RetirarBoton({
               </div>
 
               {error && (
-                <div className="mb-4 flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-600">
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                  {error}
+                <div className="mb-4 flex flex-col gap-1 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-600">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    {error.mensaje}
+                  </div>
+                  {error.ref && (
+                    <p className="ml-6 text-xs text-gray-500">
+                      Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                    </p>
+                  )}
                 </div>
               )}
 

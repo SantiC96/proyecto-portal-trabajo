@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { X, ZoomIn, ZoomOut } from "lucide-react";
 import { useMounted } from "@/lib/use-mounted";
 import { ajustarAvatar } from "@/app/(dashboard)/perfil/actions";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 
 interface FotoPerfilModalProps {
   src: string;
@@ -30,7 +31,7 @@ export function FotoPerfilModal({
   const [modo, setModo] = useState<"ver" | "ajustar">(modoInicial);
   const [ajuste, setAjuste] = useState(ajusteInicial);
   const [guardando, setGuardando] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorAccion | null>(null);
 
   const previewRef = useRef<HTMLDivElement>(null);
   const dragStart = useRef<{ px: number; py: number; ax: number; ay: number } | null>(null);
@@ -60,8 +61,8 @@ export function FotoPerfilModal({
     setError(null);
     const result = await ajustarAvatar(ajuste);
     setGuardando(false);
-    if (result?.error) {
-      setError(result.error);
+    if (!result.ok) {
+      setError(toErrorAccion(result));
     } else {
       onGuardado(ajuste);
     }
@@ -222,9 +223,14 @@ export function FotoPerfilModal({
             </div>
 
             {error && (
-              <p className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-center text-sm text-red-600">
-                {error}
-              </p>
+              <div className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-center text-sm text-red-600">
+                <p>{error.mensaje}</p>
+                {error.ref && (
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                  </p>
+                )}
+              </div>
             )}
 
             <div className="flex flex-wrap justify-center gap-3">

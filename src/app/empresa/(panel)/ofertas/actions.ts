@@ -4,15 +4,17 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { logError } from "@/lib/logger";
+import { err, errConRef, fromSupabaseError, ok, type Resultado, type ResultadoError } from "@/lib/resultado";
 import { validarOferta, type OfertaData } from "@/lib/validaciones";
 
-type ActionResult = { error?: string; exito?: boolean };
-
-async function getEmpresaAprobada(supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>) {
+async function getEmpresaAprobada(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+): Promise<{ ok: true; empresa: { id: string; razon_social: string } } | ResultadoError> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado." as string };
+  if (!user) return err("NO_AUTENTICADO");
 
   const { data: empresa } = await supabase
     .from("empresas")
@@ -20,22 +22,22 @@ async function getEmpresaAprobada(supabase: Awaited<ReturnType<typeof createSupa
     .eq("usuario_id", user.id)
     .maybeSingle();
 
-  if (!empresa) return { error: "No se encontró la empresa." as string };
+  if (!empresa) return err("SIN_PERMISO");
   if (empresa.estado_aprobacion !== "aprobada")
-    return { error: "Tu empresa no está aprobada para publicar ofertas." as string };
+    return err("SIN_PERMISO", "Tu empresa no está aprobada para publicar ofertas.");
 
-  return { empresa };
+  return { ok: true, empresa: { id: empresa.id, razon_social: empresa.razon_social } };
 }
 
-export async function crearOferta(data: OfertaData): Promise<ActionResult> {
+export async function crearOferta(data: OfertaData): Promise<Resultado<void>> {
   const supabase = await createSupabaseServerClient();
 
   const empresaResult = await getEmpresaAprobada(supabase);
-  if (empresaResult.error) return { error: empresaResult.error };
+  if (!empresaResult.ok) return empresaResult;
   const { empresa } = empresaResult;
 
   const errorValidacion = validarOferta(data);
-  if (errorValidacion) return { error: errorValidacion };
+  if (errorValidacion) return err("DATOS_INVALIDOS", errorValidacion);
 
   // Verificar que todas las categorías existan
   const { data: categoriasExistentes, error: errorCats } = await supabase
@@ -44,7 +46,7 @@ export async function crearOferta(data: OfertaData): Promise<ActionResult> {
     .in("id", data.categorias);
 
   if (errorCats || !categoriasExistentes || categoriasExistentes.length !== data.categorias.length)
-    return { error: "Una o más categorías no son válidas." };
+    return err("DATOS_INVALIDOS", "Una o más categorías no son válidas.");
 
   // Insertar la oferta
   const { data: oferta, error: errorOferta } = await supabase
@@ -57,18 +59,18 @@ export async function crearOferta(data: OfertaData): Promise<ActionResult> {
       jornada: data.jornada,
       requisitos: data.requisitos.map((r) => r.trim()).filter(Boolean),
       beneficios: data.beneficios.map((b) => b.trim()).filter(Boolean),
-      empresa_id: empresa!.id,
-      empresa_nombre: empresa!.razon_social,
+      empresa_id: empresa.id,
+      empresa_nombre: empresa.razon_social,
       estado: "pendiente_aprobacion",
     })
     .select("id")
     .single();
 
   if (errorOferta || !oferta) {
-    console.error("[crearOferta] error al insertar oferta", errorOferta);
-    const msg = (errorOferta as { message?: string } | null)?.message ?? "";
-    if (msg.includes("al menos un requisito")) return { error: "Agregá al menos un requisito." };
-    return { error: "No se pudo crear la oferta. Intentá de nuevo." };
+    // P0001: message from trigger is user-friendly
+    if (errorOferta?.code === "P0001") return fromSupabaseError(errorOferta);
+    const ref = logError("crearOferta:insert", errorOferta, { empresaId: empresa.id });
+    return errConRef("ERROR_INTERNO", "No se pudo crear la oferta. Intentá de nuevo.", ref);
   }
 
   // Insertar categorías; si falla, limpiar la oferta recién creada
@@ -77,9 +79,9 @@ export async function crearOferta(data: OfertaData): Promise<ActionResult> {
     .insert(data.categorias.map((catId) => ({ oferta_id: oferta.id, categoria_id: catId })));
 
   if (errorCatsInsert) {
-    console.error("[crearOferta] error al insertar categorías, revirtiendo oferta", errorCatsInsert);
     await supabase.from("ofertas").delete().eq("id", oferta.id);
-    return { error: "No se pudieron guardar las categorías. Intentá de nuevo." };
+    const ref = logError("crearOferta:categorias", errorCatsInsert, { ofertaId: oferta.id });
+    return errConRef("ERROR_INTERNO", "No se pudieron guardar las categorías. Intentá de nuevo.", ref);
   }
 
   // Insertar vacantes
@@ -88,21 +90,21 @@ export async function crearOferta(data: OfertaData): Promise<ActionResult> {
     .insert({ oferta_id: oferta.id, cantidad: data.cantidadVacantes });
 
   if (errorVacantes) {
-    console.error("[crearOferta] error al insertar vacantes", errorVacantes);
     await supabase.from("ofertas").delete().eq("id", oferta.id);
-    return { error: "No se pudo guardar la cantidad de vacantes. Intentá de nuevo." };
+    const ref = logError("crearOferta:vacantes", errorVacantes, { ofertaId: oferta.id });
+    return errConRef("ERROR_INTERNO", "No se pudo guardar la cantidad de vacantes. Intentá de nuevo.", ref);
   }
 
   revalidatePath("/empresa/ofertas");
   revalidatePath("/ofertas");
-  return { exito: true };
+  return ok();
 }
 
-export async function editarOferta(id: string, data: OfertaData): Promise<ActionResult> {
+export async function editarOferta(id: string, data: OfertaData): Promise<Resultado<void>> {
   const supabase = await createSupabaseServerClient();
 
   const empresaResult = await getEmpresaAprobada(supabase);
-  if (empresaResult.error) return { error: empresaResult.error };
+  if (!empresaResult.ok) return empresaResult;
   const { empresa } = empresaResult;
 
   // Bloquear edición si la oferta está pendiente de revisión
@@ -110,15 +112,15 @@ export async function editarOferta(id: string, data: OfertaData): Promise<Action
     .from("ofertas")
     .select("id, estado")
     .eq("id", id)
-    .eq("empresa_id", empresa!.id)
+    .eq("empresa_id", empresa.id)
     .maybeSingle();
 
-  if (!ofertaActual) return { error: "No se encontró la oferta o no tenés permiso para editarla." };
+  if (!ofertaActual) return err("NO_ENCONTRADO", "No se encontró la oferta o no tenés permiso para editarla.");
   if (ofertaActual.estado === "pendiente_aprobacion")
-    return { error: "No podés editar una oferta que está pendiente de revisión." };
+    return err("ESTADO_INVALIDO", "No podés editar una oferta que está pendiente de revisión.");
 
   const errorValidacion = validarOferta(data);
-  if (errorValidacion) return { error: errorValidacion };
+  if (errorValidacion) return err("DATOS_INVALIDOS", errorValidacion);
 
   // Validar que la nueva cantidad de vacantes no sea menor que los ya seleccionados
   const { data: contratadosData } = await supabase.rpc("contratados_en_oferta", {
@@ -126,9 +128,10 @@ export async function editarOferta(id: string, data: OfertaData): Promise<Action
   });
   const contratadosActuales = (contratadosData as number | null) ?? 0;
   if (contratadosActuales > 0 && data.cantidadVacantes < contratadosActuales) {
-    return {
-      error: `Ya tenés ${contratadosActuales} ${contratadosActuales === 1 ? "candidato seleccionado" : "candidatos seleccionados"}. La cantidad de vacantes debe ser al menos ${contratadosActuales}.`,
-    };
+    return err(
+      "REGLA_DE_NEGOCIO",
+      `Ya tenés ${contratadosActuales} ${contratadosActuales === 1 ? "candidato seleccionado" : "candidatos seleccionados"}. La cantidad de vacantes debe ser al menos ${contratadosActuales}.`,
+    );
   }
 
   // Verificar que todas las categorías existan
@@ -138,7 +141,7 @@ export async function editarOferta(id: string, data: OfertaData): Promise<Action
     .in("id", data.categorias);
 
   if (errorCats || !categoriasExistentes || categoriasExistentes.length !== data.categorias.length)
-    return { error: "Una o más categorías no son válidas." };
+    return err("DATOS_INVALIDOS", "Una o más categorías no son válidas.");
 
   // Actualizar la oferta (RLS verifica que sea propia y no esté cerrada).
   // El trigger prevent_empresa_oferta_campos_fn (027) detecta el cambio de
@@ -158,17 +161,16 @@ export async function editarOferta(id: string, data: OfertaData): Promise<Action
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
-    .eq("empresa_id", empresa!.id)
+    .eq("empresa_id", empresa.id)
     .select("id");
 
   if (errorUpdate) {
-    console.error("[editarOferta] error al actualizar", errorUpdate);
-    const msg = (errorUpdate as { message?: string } | null)?.message ?? "";
-    if (msg.includes("al menos un requisito")) return { error: "Agregá al menos un requisito." };
-    return { error: "No se pudo guardar la oferta. Intentá de nuevo." };
+    if (errorUpdate.code === "P0001") return fromSupabaseError(errorUpdate);
+    const ref = logError("editarOferta:update", errorUpdate, { ofertaId: id });
+    return errConRef("ERROR_INTERNO", "No se pudo guardar la oferta. Intentá de nuevo.", ref);
   }
   if (!actualizada || actualizada.length === 0)
-    return { error: "No se encontró la oferta o no tenés permiso para editarla." };
+    return err("NO_ENCONTRADO", "No se encontró la oferta o no tenés permiso para editarla.");
 
   // Reemplazar categorías
   await supabase.from("oferta_categorias").delete().eq("oferta_id", id);
@@ -177,8 +179,8 @@ export async function editarOferta(id: string, data: OfertaData): Promise<Action
     .insert(data.categorias.map((catId) => ({ oferta_id: id, categoria_id: catId })));
 
   if (errorCatsInsert) {
-    console.error("[editarOferta] error al actualizar categorías", errorCatsInsert);
-    return { error: "La oferta se guardó pero no se pudieron actualizar las categorías." };
+    const ref = logError("editarOferta:categorias", errorCatsInsert, { ofertaId: id });
+    return errConRef("ERROR_INTERNO", "La oferta se guardó pero no se pudieron actualizar las categorías.", ref);
   }
 
   // Actualizar vacantes (no cambia el estado de la oferta, tabla separada)
@@ -187,33 +189,33 @@ export async function editarOferta(id: string, data: OfertaData): Promise<Action
     .upsert({ oferta_id: id, cantidad: data.cantidadVacantes, updated_at: new Date().toISOString() });
 
   if (errorVacantes) {
-    console.error("[editarOferta] error al actualizar vacantes", errorVacantes);
-    return { error: "La oferta se guardó pero no se pudo actualizar la cantidad de vacantes." };
+    const ref = logError("editarOferta:vacantes", errorVacantes, { ofertaId: id });
+    return errConRef("ERROR_INTERNO", "La oferta se guardó pero no se pudo actualizar la cantidad de vacantes.", ref);
   }
 
   revalidatePath("/empresa/ofertas");
   revalidatePath(`/empresa/ofertas/${id}/editar`);
   revalidatePath("/ofertas");
-  return { exito: true };
+  return ok();
 }
 
-export async function eliminarOferta(id: string): Promise<ActionResult> {
+export async function eliminarOferta(id: string): Promise<Resultado<void>> {
   const supabase = await createSupabaseServerClient();
 
   const empresaResult = await getEmpresaAprobada(supabase);
-  if (empresaResult.error) return { error: empresaResult.error };
+  if (!empresaResult.ok) return empresaResult;
   const { empresa } = empresaResult;
 
   const { data: oferta } = await supabase
     .from("ofertas")
     .select("id, estado")
     .eq("id", id)
-    .eq("empresa_id", empresa!.id)
+    .eq("empresa_id", empresa.id)
     .maybeSingle();
 
-  if (!oferta) return { error: "No se encontró la oferta o no tenés permiso para eliminarla." };
+  if (!oferta) return err("NO_ENCONTRADO", "No se encontró la oferta o no tenés permiso para eliminarla.");
   if (oferta.estado !== "pendiente_aprobacion" && oferta.estado !== "rechazada")
-    return { error: "Solo podés eliminar una oferta pendiente de revisión o rechazada." };
+    return err("ESTADO_INVALIDO", "Solo podés eliminar una oferta pendiente de revisión o rechazada.");
 
   // Usar supabaseAdmin porque empresa no tiene SELECT en postulaciones
   const { count } = await supabaseAdmin
@@ -222,17 +224,17 @@ export async function eliminarOferta(id: string): Promise<ActionResult> {
     .eq("oferta_id", id);
 
   if (count && count > 0)
-    return { error: "Esta oferta ya tiene postulaciones y no se puede eliminar." };
+    return err("ESTADO_INVALIDO", "Esta oferta ya tiene postulaciones y no se puede eliminar.");
 
   const { error: errorDelete } = await supabase
     .from("ofertas")
     .delete()
     .eq("id", id)
-    .eq("empresa_id", empresa!.id);
+    .eq("empresa_id", empresa.id);
 
   if (errorDelete) {
-    console.error("[eliminarOferta] error al eliminar", errorDelete);
-    return { error: "No se pudo eliminar la oferta. Intentá de nuevo." };
+    const ref = logError("eliminarOferta", errorDelete, { ofertaId: id });
+    return errConRef("ERROR_INTERNO", "No se pudo eliminar la oferta. Intentá de nuevo.", ref);
   }
 
   revalidatePath("/empresa/ofertas");
@@ -240,25 +242,25 @@ export async function eliminarOferta(id: string): Promise<ActionResult> {
   redirect("/empresa/ofertas?aviso=eliminada");
 }
 
-export async function cerrarOferta(id: string): Promise<ActionResult> {
+export async function cerrarOferta(id: string): Promise<Resultado<void>> {
   const supabase = await createSupabaseServerClient();
 
   const empresaResult = await getEmpresaAprobada(supabase);
-  if (empresaResult.error) return { error: empresaResult.error };
+  if (!empresaResult.ok) return empresaResult;
   const { empresa } = empresaResult;
 
   const { data: oferta } = await supabase
     .from("ofertas")
     .select("id, estado")
     .eq("id", id)
-    .eq("empresa_id", empresa!.id)
+    .eq("empresa_id", empresa.id)
     .maybeSingle();
 
-  if (!oferta) return { error: "No se encontró la oferta o no tenés permiso para cerrarla." };
-  if (oferta.estado === "cerrada") return { error: "La oferta ya está cerrada." };
-  if (oferta.estado === "rechazada") return { error: "No podés cerrar una oferta rechazada." };
+  if (!oferta) return err("NO_ENCONTRADO", "No se encontró la oferta o no tenés permiso para cerrarla.");
+  if (oferta.estado === "cerrada") return err("ESTADO_INVALIDO", "La oferta ya está cerrada.");
+  if (oferta.estado === "rechazada") return err("ESTADO_INVALIDO", "No podés cerrar una oferta rechazada.");
   if (oferta.estado !== "activa" && oferta.estado !== "pendiente_aprobacion")
-    return { error: "No se puede cerrar esta oferta." };
+    return err("ESTADO_INVALIDO", "No se puede cerrar esta oferta.");
 
   // Pendiente con postulaciones es el único caso de pendiente que puede cerrarse.
   if (oferta.estado === "pendiente_aprobacion") {
@@ -268,27 +270,27 @@ export async function cerrarOferta(id: string): Promise<ActionResult> {
       .eq("oferta_id", id);
 
     if (!count || count === 0)
-      return {
-        error:
-          "No podés cerrar una oferta pendiente sin postulaciones. Usá «Eliminar envío» para borrarla.",
-      };
+      return err(
+        "ESTADO_INVALIDO",
+        "No podés cerrar una oferta pendiente sin postulaciones. Usá «Eliminar envío» para borrarla.",
+      );
   }
 
   const { data: actualizada, error } = await supabase
     .from("ofertas")
     .update({ estado: "cerrada", updated_at: new Date().toISOString() })
     .eq("id", id)
-    .eq("empresa_id", empresa!.id)
+    .eq("empresa_id", empresa.id)
     .select("id");
 
   if (error) {
-    console.error("[cerrarOferta] error al cerrar", error);
-    return { error: "No se pudo cerrar la oferta. Intentá de nuevo." };
+    const ref = logError("cerrarOferta", error, { ofertaId: id });
+    return errConRef("ERROR_INTERNO", "No se pudo cerrar la oferta. Intentá de nuevo.", ref);
   }
   if (!actualizada || actualizada.length === 0)
-    return { error: "No se encontró la oferta o ya está cerrada." };
+    return err("ESTADO_INVALIDO", "No se encontró la oferta o ya está cerrada.");
 
   revalidatePath("/empresa/ofertas");
   revalidatePath("/ofertas");
-  return { exito: true };
+  return ok();
 }

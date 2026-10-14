@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FileText, Users } from "lucide-react";
+import { logError } from "@/lib/logger";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { FiltrosPostulantes } from "./filtros-postulantes";
@@ -111,7 +112,7 @@ export default async function PostulantesPage({
     : undefined;
 
   if (esperandoCurso && "error" in esperandoPreResult && esperandoPreResult.error)
-    console.error("[postulantes_esperando_curso_ids]", esperandoPreResult.error);
+    logError("postulantes_esperando_curso_ids", esperandoPreResult.error);
   const esperandoCursoFilterIds: string[] | undefined = esperandoCurso
     ? ((esperandoPreResult.data ?? []) as EsperandoRow[]).map(
         (r) => r.postulante_id
@@ -318,7 +319,7 @@ export default async function PostulantesPage({
   }
 
   if (rechazosRes.error)
-    console.error("[rechazos_por_postulantes]", rechazosRes.error);
+    logError("rechazos_por_postulantes", rechazosRes.error);
   const rechazosMap = new Map<string, number>();
   for (const row of (rechazosRes.data ?? []) as unknown as RechazosRow[]) {
     rechazosMap.set(row.postulante_id, Number(row.rechazos));

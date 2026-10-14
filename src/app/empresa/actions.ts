@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { logError } from "@/lib/logger";
+import { err, errConRef, ok, type Resultado } from "@/lib/resultado";
 import { formatearCUIT } from "@/lib/cuit";
 import {
   validarCuitConMensaje,
@@ -17,13 +19,13 @@ export async function reenviarSolicitudEmpresa(data: {
   nombre: string;
   apellido: string;
   telefono: string;
-}): Promise<{ error?: string }> {
+}): Promise<Resultado<void>> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return { error: "No autenticado." };
+  if (!user) return err("NO_AUTENTICADO");
 
   const { data: usuario } = await supabase
     .from("usuarios")
@@ -31,9 +33,7 @@ export async function reenviarSolicitudEmpresa(data: {
     .eq("id", user.id)
     .single();
 
-  if (!usuario || usuario.rol !== "empresa") {
-    return { error: "No tenés permiso para realizar esta acción." };
-  }
+  if (!usuario || usuario.rol !== "empresa") return err("SIN_PERMISO");
 
   const { data: empresa } = await supabase
     .from("empresas")
@@ -41,31 +41,29 @@ export async function reenviarSolicitudEmpresa(data: {
     .eq("usuario_id", user.id)
     .maybeSingle();
 
-  if (!empresa) return { error: "Empresa no encontrada." };
+  if (!empresa) return err("NO_ENCONTRADO", "Empresa no encontrada.");
 
   if (empresa.estado_aprobacion !== "rechazada") {
-    return {
-      error: "Solo podés reenviar la solicitud si fue rechazada.",
-    };
+    return err("ESTADO_INVALIDO", "Solo podés reenviar la solicitud si fue rechazada.");
   }
 
   // ── Validaciones ─────────────────────────────────────────────────────────
   const errRazon = validarNombre(data.razonSocial);
-  if (errRazon) return { error: `Razón social: ${errRazon}` };
+  if (errRazon) return err("DATOS_INVALIDOS", `Razón social: ${errRazon}`);
 
   const errCuit = validarCuitConMensaje(data.cuit);
-  if (errCuit) return { error: errCuit };
+  if (errCuit) return err("DATOS_INVALIDOS", errCuit);
 
-  if (!data.rubro.trim()) return { error: "El rubro es obligatorio." };
+  if (!data.rubro.trim()) return err("DATOS_INVALIDOS", "El rubro es obligatorio.");
 
   const errNombre = validarNombre(data.nombre);
-  if (errNombre) return { error: `Nombre: ${errNombre}` };
+  if (errNombre) return err("DATOS_INVALIDOS", `Nombre: ${errNombre}`);
 
   const errApellido = validarNombre(data.apellido);
-  if (errApellido) return { error: `Apellido: ${errApellido}` };
+  if (errApellido) return err("DATOS_INVALIDOS", `Apellido: ${errApellido}`);
 
   const errTelefono = validarTelefono(data.telefono);
-  if (errTelefono) return { error: errTelefono };
+  if (errTelefono) return err("DATOS_INVALIDOS", errTelefono);
 
   // ── Verificar que al menos un dato de empresa cambió ────────────────────
   // Solo los cambios en razon_social / cuit / rubro / descripcion disparan
@@ -80,10 +78,7 @@ export async function reenviarSolicitudEmpresa(data: {
     (data.descripcion.trim() || null) !== (empresa.descripcion ?? null);
 
   if (!empresaDataCambio) {
-    return {
-      error:
-        "Modificá los datos que te indicaron antes de reenviar.",
-    };
+    return err("DATOS_INVALIDOS", "Modificá los datos que te indicaron antes de reenviar.");
   }
 
   // ── Verificar unicidad del CUIT si cambió ────────────────────────────────
@@ -96,7 +91,7 @@ export async function reenviarSolicitudEmpresa(data: {
       .maybeSingle();
 
     if (otra) {
-      return { error: "Ya hay una empresa registrada con ese CUIT." };
+      return err("CONFLICTO", "Ya hay una empresa registrada con ese CUIT.");
     }
   }
 
@@ -113,10 +108,10 @@ export async function reenviarSolicitudEmpresa(data: {
 
   if (errEmpresa) {
     if (errEmpresa.code === "23505") {
-      return { error: "Ya hay una empresa registrada con ese CUIT." };
+      return err("CONFLICTO", "Ya hay una empresa registrada con ese CUIT.");
     }
-    console.error("[reenviarSolicitudEmpresa] empresa", errEmpresa);
-    return { error: "Error al enviar la solicitud. Intentá de nuevo." };
+    const ref = logError("reenviarSolicitudEmpresa:empresa", errEmpresa, { empresaId: empresa.id });
+    return errConRef("ERROR_INTERNO", "Error al enviar la solicitud. Intentá de nuevo.", ref);
   }
 
   // ── Actualizar datos de contacto en usuarios ─────────────────────────────
@@ -130,10 +125,10 @@ export async function reenviarSolicitudEmpresa(data: {
     .eq("id", user.id);
 
   if (errUsuario) {
-    console.error("[reenviarSolicitudEmpresa] usuario", errUsuario);
+    logError("reenviarSolicitudEmpresa:usuario", errUsuario, { userId: user.id });
   }
 
   revalidatePath("/empresa");
   revalidatePath("/empresa/solicitud");
-  return {};
+  return ok();
 }

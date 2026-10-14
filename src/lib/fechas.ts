@@ -9,10 +9,7 @@ function parseFecha(value: string | null | undefined): Date | null {
 
 export function formatFecha(iso: string | null | undefined): string {
   const d = parseFecha(iso);
-  if (!d) {
-    console.warn("[formatFecha] valor inválido:", iso);
-    return "—";
-  }
+  if (!d) return "—";
   return new Intl.DateTimeFormat("es-AR", {
     timeZone: TZ,
     day: "numeric",
@@ -23,10 +20,7 @@ export function formatFecha(iso: string | null | undefined): string {
 
 export function formatFechaCorta(iso: string | null | undefined): string {
   const d = parseFecha(iso);
-  if (!d) {
-    console.warn("[formatFechaCorta] valor inválido:", iso);
-    return "—";
-  }
+  if (!d) return "—";
   return new Intl.DateTimeFormat("es-AR", {
     timeZone: TZ,
     day: "numeric",
@@ -37,10 +31,7 @@ export function formatFechaCorta(iso: string | null | undefined): string {
 
 export function formatFechaHora(iso: string | null | undefined): string {
   const d = parseFecha(iso);
-  if (!d) {
-    console.warn("[formatFechaHora] valor inválido:", iso);
-    return "—";
-  }
+  if (!d) return "—";
   return new Intl.DateTimeFormat("es-AR", {
     timeZone: TZ,
     day: "numeric",

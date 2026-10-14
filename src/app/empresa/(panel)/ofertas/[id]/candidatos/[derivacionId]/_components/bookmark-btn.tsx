@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { guardarCandidato, quitarGuardado } from "@/app/empresa/(panel)/candidatos-guardados/actions";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 
 type Props = {
   postulanteId: string;
@@ -19,14 +20,14 @@ export function BookmarkBtn({ postulanteId, ofertaOrigenId, guardadoId }: Props)
   const [isPending, startTransition] = useTransition();
   const [openGuardar, setOpenGuardar] = useState(false);
   const [nota, setNota] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorAccion | null>(null);
 
   function handleGuardar() {
     setError(null);
     startTransition(async () => {
       const result = await guardarCandidato(postulanteId, ofertaOrigenId, nota.trim() || null);
-      if (result.error) {
-        setError(result.error);
+      if (!result.ok) {
+        setError(toErrorAccion(result));
       } else {
         setOpenGuardar(false);
         setNota("");
@@ -101,9 +102,14 @@ export function BookmarkBtn({ postulanteId, ofertaOrigenId, guardadoId }: Props)
             />
           </div>
           {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-              {error}
-            </p>
+            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+              <p>{error.mensaje}</p>
+              {error.ref && (
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                </p>
+              )}
+            </div>
           )}
           <DialogFooter>
             <button

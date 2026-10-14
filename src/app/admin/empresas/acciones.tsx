@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { aprobarEmpresa, rechazarEmpresa } from "../actions";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import type { HistorialEntry } from "./page";
 
 type Props = {
@@ -58,7 +59,7 @@ export function EmpresaAcciones({
   const [abrirRechazar, setAbrirRechazar] = useState(false);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
   const [motivo, setMotivo] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorAccion | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleAbrirRechazar(open: boolean) {
@@ -78,8 +79,8 @@ export function EmpresaAcciones({
     setError(null);
     startTransition(async () => {
       const resultado = await aprobarEmpresa(empresaId);
-      if (resultado.error) {
-        setError(resultado.error);
+      if (!resultado.ok) {
+        setError(toErrorAccion(resultado));
       } else {
         setAbrirAprobar(false);
       }
@@ -88,14 +89,14 @@ export function EmpresaAcciones({
 
   function handleRechazar() {
     if (!motivo.trim()) {
-      setError("El motivo de rechazo es obligatorio.");
+      setError({ mensaje: "El motivo de rechazo es obligatorio." });
       return;
     }
     setError(null);
     startTransition(async () => {
       const resultado = await rechazarEmpresa(empresaId, motivo.trim());
-      if (resultado.error) {
-        setError(resultado.error);
+      if (!resultado.ok) {
+        setError(toErrorAccion(resultado));
       } else {
         setAbrirRechazar(false);
         setMotivo("");
@@ -201,7 +202,14 @@ export function EmpresaAcciones({
             </DialogDescription>
           </DialogHeader>
           {error && (
-            <p className="text-sm text-red-600">{error}</p>
+            <div>
+              <p className="text-sm text-red-600">{error.mensaje}</p>
+              {error.ref && (
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                </p>
+              )}
+            </div>
           )}
           <DialogFooter>
             <Button
@@ -246,7 +254,14 @@ export function EmpresaAcciones({
             />
           </div>
           {error && (
-            <p className="text-sm text-red-600">{error}</p>
+            <div>
+              <p className="text-sm text-red-600">{error.mensaje}</p>
+              {error.ref && (
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                </p>
+              )}
+            </div>
           )}
           <DialogFooter>
             <Button

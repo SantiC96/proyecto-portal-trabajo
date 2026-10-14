@@ -12,17 +12,18 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmar, setShowConfirmar] = useState(false);
 
+  const stateError = state && !state.ok ? state.mensaje : undefined;
+
   // Clear fields on server error so the user doesn't re-submit stale values.
-  // setTimeout defers the setState calls out of the effect body to avoid cascading renders.
   useEffect(() => {
-    if (state?.error) {
+    if (stateError) {
       const id = setTimeout(() => {
         setPassword("");
         setConfirmar("");
       }, 0);
       return () => clearTimeout(id);
     }
-  }, [state?.error]);
+  }, [stateError]);
 
   const confirmarTocado = confirmar.length > 0;
   const coinciden = password === confirmar;
@@ -39,6 +40,9 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
   const confirmarInputClass = `${inputBase} ${
     confirmarTocado && !coinciden ? inputError : inputOk
   }`;
+
+  const tokenVencido = state && !state.ok && state.codigo === "TOKEN_VENCIDO";
+  const errorRef = state && !state.ok && state.codigo === "ERROR_INTERNO" ? state.ref : undefined;
 
   return (
     <div className="w-full max-w-md rounded-2xl border border-border bg-white px-8 py-10 shadow-sm">
@@ -151,13 +155,18 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
         </div>
 
         {/* Error de la server action */}
-        {state?.error && (
+        {stateError && (
           <div className="flex flex-col gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
             <div className="flex items-start gap-2.5">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{state.error}</span>
+              <span>{stateError}</span>
             </div>
-            {state.linkVencido && (
+            {errorRef && (
+              <p className="ml-6 text-xs text-gray-500">
+                Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {errorRef}
+              </p>
+            )}
+            {tokenVencido && (
               <Link
                 href="/auth/recuperar-contrasena"
                 className="ml-6 font-medium underline hover:text-red-700"
