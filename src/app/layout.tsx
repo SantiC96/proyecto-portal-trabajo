@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Toaster } from "sonner";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SesionProvider } from "@/components/layout/sesion-provider";
 import { obtenerSesionActual } from "@/lib/sesion";
@@ -23,6 +24,17 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <SesionProvider sesion={sesionCtx}>
           {children}
         </SesionProvider>
+        <Toaster
+          richColors
+          position="bottom-right"
+          duration={4000}
+          closeButton
+          toastOptions={{
+            classNames: {
+              toast: "font-sans",
+            },
+          }}
+        />
       </body>
     </html>
   );
