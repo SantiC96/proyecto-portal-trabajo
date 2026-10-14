@@ -2,21 +2,27 @@ import { Hero } from "@/components/public/hero";
 import { JobDirectory } from "@/components/public/job-directory";
 import { HowItWorks } from "@/components/public/how-it-works";
 import { PublicFooter } from "@/components/public/public-footer";
-import { getOfertasActivas, getCategorias } from "@/lib/ofertas";
+import { getCategorias, leerFiltrosOfertasPublicas } from "@/lib/ofertas";
 import { obtenerSesionActual } from "@/lib/sesion";
 import { SesionActivaLanding } from "@/components/auth/sesion-activa-landing";
 
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ aviso?: string; redirectTo?: string; accion?: string }>;
+  searchParams: Promise<{
+    aviso?: string;
+    redirectTo?: string;
+    accion?: string;
+    q?: string;
+    categoria?: string;
+    modalidad?: string;
+    pagina?: string;
+  }>;
 }) {
   const params = await searchParams;
 
-  const [ofertas, categorias] = await Promise.all([
-    getOfertasActivas(),
-    getCategorias(),
-  ]);
+  const categorias = await getCategorias();
+  const filtros = leerFiltrosOfertasPublicas(params, categorias);
 
   let sesionAviso: {
     nombre: string;
@@ -54,7 +60,12 @@ export default async function HomePage({
       )}
       <main className="flex-1">
         <Hero />
-        <JobDirectory ofertas={ofertas} categorias={categorias} />
+        <JobDirectory
+          ruta="/"
+          searchParams={params}
+          categorias={categorias}
+          filtros={filtros}
+        />
         <HowItWorks />
       </main>
 
