@@ -33,6 +33,7 @@ import {
 } from "./actions";
 import { validarNombre, validarDNI, validarTelefono } from "@/lib/validaciones";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
 import {
   AVATAR_ACCEPT,
   AVATAR_HELP_TEXT,
@@ -267,6 +268,7 @@ export function PerfilForm({
     fd.append("avatar", avatarFile);
     try {
       const result = await subirAvatar(fd);
+      mostrarAviso(result);
       if (!result.ok) {
         setErrorAvatar(toErrorAccion(result));
       } else {
@@ -294,6 +296,7 @@ export function PerfilForm({
     setGuardandoAvatar(true);
     setErrorAvatar(null);
     const result = await quitarAvatar();
+    mostrarAviso(result);
     if (!result.ok) {
       setErrorAvatar(toErrorAccion(result));
     } else {
@@ -318,6 +321,7 @@ export function PerfilForm({
     setErrorDatos(null);
     setExitoDatos(false);
     const result = await actualizarPerfil({ nombre, apellido, telefono, domicilio, dni });
+    mostrarAviso(result);
     if (!result.ok) {
       setErrorDatos(toErrorAccion(result));
     } else {
@@ -341,6 +345,7 @@ export function PerfilForm({
     setErrorRubros(null);
     setExitoRubros(false);
     const result = await actualizarRubros(categoriaIds);
+    mostrarAviso(result);
     if (!result.ok) {
       setErrorRubros(toErrorAccion(result));
     } else {
@@ -370,6 +375,7 @@ export function PerfilForm({
     fd.append("cv", file);
     try {
       const result = await subirCV(fd);
+      mostrarAviso(result);
       if (!result.ok) {
         setErrorCV(toErrorAccion(result));
         setCvFile(null);
@@ -392,6 +398,7 @@ export function PerfilForm({
     setErrorCV(null);
     setMensajeCV(null);
     const result = await eliminarCV();
+    mostrarAviso(result);
     if (!result.ok) {
       setErrorCV(toErrorAccion(result));
     } else {
@@ -412,6 +419,7 @@ export function PerfilForm({
     fd.append("repetirContrasena", repetirContrasena);
     const res = await cambiarContrasena(fd);
     setCargandoContrasena(false);
+    mostrarAviso(res);
     if (!res.ok) {
       setErrorContrasena(toErrorAccion(res));
     } else {

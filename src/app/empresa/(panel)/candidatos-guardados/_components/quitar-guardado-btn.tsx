@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { quitarGuardado } from "@/app/empresa/(panel)/candidatos-guardados/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
 
 type Props = {
   guardadoId: string;
@@ -18,16 +19,25 @@ export function QuitarGuardadoBtn({ guardadoId, nombre }: Props) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<ErrorAccion | null>(null);
+  const needsRefresh = useRef(false);
+
+  useEffect(() => {
+    if (!isPending && needsRefresh.current) {
+      needsRefresh.current = false;
+      router.refresh();
+    }
+  }, [isPending, router]);
 
   function handleConfirm() {
     setError(null);
     startTransition(async () => {
       const result = await quitarGuardado(guardadoId);
+      mostrarAviso(result);
       if (!result.ok) {
         setError(toErrorAccion(result));
       } else {
+        needsRefresh.current = true;
         setOpen(false);
-        router.refresh();
       }
     });
   }

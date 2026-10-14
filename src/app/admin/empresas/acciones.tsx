@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { aprobarEmpresa, rechazarEmpresa } from "../actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
 import type { HistorialEntry } from "./page";
 
 type Props = {
@@ -79,6 +80,7 @@ export function EmpresaAcciones({
     setError(null);
     startTransition(async () => {
       const resultado = await aprobarEmpresa(empresaId);
+      mostrarAviso(resultado);
       if (!resultado.ok) {
         setError(toErrorAccion(resultado));
       } else {
@@ -95,6 +97,7 @@ export function EmpresaAcciones({
     setError(null);
     startTransition(async () => {
       const resultado = await rechazarEmpresa(empresaId, motivo.trim());
+      mostrarAviso(resultado);
       if (!resultado.ok) {
         setError(toErrorAccion(resultado));
       } else {

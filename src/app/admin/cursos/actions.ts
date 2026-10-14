@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
-import { err, errConRef, fromSupabaseError, ok, type Resultado, type ResultadoError } from "@/lib/resultado";
+import { err, errConRef, fromSupabaseError, okMsg, type Resultado, type ResultadoError } from "@/lib/resultado";
 
 type CursoData = {
   nombre: string;
@@ -69,7 +69,7 @@ export async function crearCurso(data: CursoData): Promise<Resultado<void>> {
   }
 
   revalidarCursos(nuevo.id);
-  redirect(`/admin/cursos/${nuevo.id}`);
+  redirect(`/admin/cursos/${nuevo.id}?aviso=creado`);
 }
 
 export async function editarCurso(
@@ -102,7 +102,7 @@ export async function editarCurso(
   if (!updated || updated.length === 0) return err("NO_ENCONTRADO", "Curso no encontrado.");
 
   revalidarCursos(cursoId);
-  return ok();
+  return okMsg("Curso actualizado.");
 }
 
 export async function toggleActivoCurso(
@@ -126,7 +126,7 @@ export async function toggleActivoCurso(
   if (!updated || updated.length === 0) return err("NO_ENCONTRADO", "Curso no encontrado.");
 
   revalidarCursos(cursoId);
-  return ok();
+  return okMsg(nuevoEstado ? "Curso activado." : "Curso desactivado.");
 }
 
 export async function eliminarCurso(cursoId: string): Promise<Resultado<void>> {
@@ -186,5 +186,5 @@ export async function asignarCurso(
   revalidatePath("/admin");
   revalidatePath(`/admin/cursos/${cursoId}`);
   revalidatePath("/mis-postulaciones");
-  return ok();
+  return okMsg("Curso asignado.");
 }

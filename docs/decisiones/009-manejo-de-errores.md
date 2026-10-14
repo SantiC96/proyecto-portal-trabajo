@@ -117,12 +117,61 @@ La excepción `P0001` es deliberada: las funciones PostgreSQL del proyecto usan 
 
 ---
 
+---
+
+### 7. Feedback al usuario: toasts de éxito y error
+
+**Decisión:** se usa [sonner](https://sonner.emilkowalski.se/) como sistema de notificaciones. El `<Toaster>` vive en el root layout con `richColors`, `closeButton`, `duration={4000}` y `position="bottom-right"` (en móvil se mueve a la parte superior vía `mobileBreakpoint={640}`).
+
+#### 7a. Helper `mostrarAviso(resultado, fallbackExito?)`
+
+`src/lib/avisos.ts` expone `mostrarAviso(resultado)` — un helper client-side que recibe un `Resultado` y dispara el toast correspondiente:
+
+- **Éxito:** `toast.success(resultado.mensaje ?? fallbackExito)` — fallback: `"Hecho"`.
+- **Error `ERROR_INTERNO`:** `toast.error(mensaje, { description: "... indicá este código: <ref>" })`.
+- **Cualquier otro error:** `toast.error(resultado.mensaje)` — sin descripción adicional.
+
+Este helper es la única forma de mostrar toasts desde acciones. Los componentes no llaman a `toast.success()` o `toast.error()` directamente.
+
+#### 7b. Mensajes de éxito en server actions
+
+Todos los server actions devuelven un mensaje humano en la rama ok mediante `okMsg(mensaje)` (helper nuevo en `resultado.ts`). Ejemplos:
+
+| Action | Mensaje |
+|---|---|
+| `postularme` | `"¡Te postulaste! Podés ver el estado en Mis postulaciones."` |
+| `retirarPostulacion` | `"Postulación retirada."` |
+| `crearOferta` | `"Oferta enviada a revisión."` |
+| `cerrarOferta` | `"Oferta cerrada."` |
+| `aprobarEmpresa` | `"Empresa aprobada."` |
+| `derivarPostulacion` | `"Postulación derivada a la empresa."` |
+| `actualizarPerfil` | `"Perfil actualizado."` |
+| … | Ver acciones individuales para el texto exacto |
+
+#### 7c. Toasts en redirecciones (param `?aviso=`)
+
+Cuando una acción termina en una redirección a otra página (alta de oferta, reenvío de solicitud, creación de curso), el toast se muestra en la página destino usando el componente `AvisoUrl`:
+
+- La acción redirige con `?aviso=<clave>` (ej. `?aviso=enviada`).
+- `src/components/ui/aviso-url.tsx` lee el param al montar, muestra el toast correspondiente y limpia el param de la URL con `router.replace`.
+- Páginas que incluyen `<AvisoUrl>`: `empresa/ofertas`, `empresa` (panel), `admin/cursos/[id]`.
+
+**Razonamiento:** un toast disparado antes de un `redirect()` se pierde porque el browser navega antes de que el componente monte. El param `?aviso=` persiste la intención de mostrar feedback a través de la navegación.
+
+#### 7d. Formularios
+
+Los formularios mantienen errores de validación inline (junto al campo o debajo del form). El éxito se muestra via toast (`mostrarAviso`) y no como banner persistente en pantalla.
+
+---
+
 ## Archivos clave
 
 ```
-src/lib/resultado.ts      — tipos y helpers
-src/lib/logger.ts         — logger server-only
-src/lib/auth-errors.ts    — traducción de errores de Supabase Auth
-eslint.config.mjs         — regla no-console
-next.config.ts            — removeConsole en producción
+src/lib/resultado.ts           — tipos y helpers (incluye okMsg)
+src/lib/logger.ts              — logger server-only
+src/lib/avisos.ts              — helper mostrarAviso (client-side)
+src/components/ui/aviso-url.tsx — toasts en páginas destino de redirecciones
+src/lib/auth-errors.ts         — traducción de errores de Supabase Auth
+eslint.config.mjs              — regla no-console
+next.config.ts                 — removeConsole en producción
 ```

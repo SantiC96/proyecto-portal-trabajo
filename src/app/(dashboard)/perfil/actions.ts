@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { traducirErrorAuth } from "@/lib/auth-errors";
 import { logError } from "@/lib/logger";
-import { err, errConRef, ok, type Resultado } from "@/lib/resultado";
+import { err, errConRef, okMsg, type Resultado } from "@/lib/resultado";
 import { validarNombre, validarDNI, validarTelefono, validarPassword } from "@/lib/validaciones";
 import {
   AVATAR_MAX_SIZE,
@@ -82,7 +82,7 @@ export async function actualizarPerfil(data: {
   }
 
   revalidatePath("/perfil");
-  return ok();
+  return okMsg("Perfil actualizado.");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -146,7 +146,7 @@ export async function actualizarRubros(
   }
 
   revalidatePath("/perfil");
-  return ok();
+  return okMsg("Rubros actualizados.");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -211,7 +211,7 @@ export async function subirAvatar(
   }
 
   revalidatePath("/perfil");
-  return ok();
+  return okMsg("Foto de perfil actualizada.");
 }
 
 export async function ajustarAvatar(data: {
@@ -244,7 +244,7 @@ export async function ajustarAvatar(data: {
 
   revalidatePath("/perfil");
   revalidatePath("/", "layout");
-  return ok();
+  return okMsg("Ajuste guardado.");
 }
 
 export async function quitarAvatar(): Promise<Resultado<void>> {
@@ -268,7 +268,7 @@ export async function quitarAvatar(): Promise<Resultado<void>> {
   }
 
   revalidatePath("/perfil");
-  return ok();
+  return okMsg("Foto de perfil quitada.");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -333,7 +333,7 @@ export async function subirCV(
   }
 
   revalidatePath("/perfil");
-  return ok();
+  return okMsg("CV actualizado.");
 }
 
 export async function eliminarCV(): Promise<Resultado<void>> {
@@ -357,7 +357,7 @@ export async function eliminarCV(): Promise<Resultado<void>> {
   }
 
   revalidatePath("/perfil");
-  return ok();
+  return okMsg("CV eliminado.");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -406,5 +406,5 @@ export async function cambiarContrasena(
     return r;
   }
 
-  return ok();
+  return okMsg("Contraseña actualizada.");
 }

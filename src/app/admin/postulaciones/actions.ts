@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
-import { err, errConRef, ok, type Resultado, type ResultadoError } from "@/lib/resultado";
+import { err, errConRef, okMsg, type Resultado, type ResultadoError } from "@/lib/resultado";
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 
 async function verificarMunicipalidad(): Promise<{ ok: true; userId: string } | ResultadoError> {
@@ -111,7 +111,7 @@ export async function marcarEnRevision(
   }
 
   revalidarVistas(postulacionId);
-  return ok();
+  return okMsg("Postulación marcada como «En revisión».");
 }
 
 export async function descartarPostulacion(
@@ -169,7 +169,7 @@ export async function descartarPostulacion(
   }
 
   revalidarVistas(postulacionId);
-  return ok();
+  return okMsg("Postulación marcada como «No seleccionada».");
 }
 
 export async function derivarPostulacion(
@@ -244,7 +244,7 @@ export async function derivarPostulacion(
   }
 
   revalidarVistas(postulacionId);
-  return ok();
+  return okMsg("Postulación derivada a la empresa.");
 }
 
 export async function corregirEstadoDerivacion(
@@ -267,5 +267,5 @@ export async function corregirEstadoDerivacion(
   }
 
   revalidarVistas(postulacionId);
-  return ok();
+  return okMsg("Estado corregido.");
 }

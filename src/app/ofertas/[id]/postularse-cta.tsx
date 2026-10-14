@@ -8,6 +8,7 @@ import { X, Briefcase, CheckCircle, FileText, AlertCircle } from "lucide-react";
 import { useMounted } from "@/lib/use-mounted";
 import { postularme } from "@/app/(dashboard)/postulaciones/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
 
 const ESTADO_LABEL: Record<string, string> = {
   recibida: "Recibida",
@@ -87,6 +88,7 @@ export function PostularseCta({
     setError(null);
     startTransition(async () => {
       const result = await postularme(ofertaId);
+      mostrarAviso(result);
       if (!result.ok) {
         setError(toErrorAccion(result));
       } else {

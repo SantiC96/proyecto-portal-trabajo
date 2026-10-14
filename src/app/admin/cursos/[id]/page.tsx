@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { CursoForm } from "../curso-form";
 import { CursoAcciones } from "../curso-acciones";
 import { formatFechaCorta } from "@/lib/fechas";
+import { AvisoUrl } from "@/components/ui/aviso-url";
 
 export const metadata: Metadata = {
   title: "Detalle del curso | Panel municipal | Portal de Empleo Funes",
@@ -64,6 +66,9 @@ export default async function CursoDetallePage({
 
   return (
     <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
+      <Suspense>
+        <AvisoUrl />
+      </Suspense>
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Link href="/admin" className="hover:text-foreground">
           Panel

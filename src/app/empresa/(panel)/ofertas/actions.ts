@@ -1,11 +1,10 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { logError } from "@/lib/logger";
-import { err, errConRef, fromSupabaseError, ok, type Resultado, type ResultadoError } from "@/lib/resultado";
+import { err, errConRef, fromSupabaseError, okMsg, type Resultado, type ResultadoError } from "@/lib/resultado";
 import { validarOferta, type OfertaData } from "@/lib/validaciones";
 
 async function getEmpresaAprobada(
@@ -97,7 +96,7 @@ export async function crearOferta(data: OfertaData): Promise<Resultado<void>> {
 
   revalidatePath("/empresa/ofertas");
   revalidatePath("/ofertas");
-  return ok();
+  return okMsg("Oferta enviada a revisión.");
 }
 
 export async function editarOferta(id: string, data: OfertaData): Promise<Resultado<void>> {
@@ -196,7 +195,7 @@ export async function editarOferta(id: string, data: OfertaData): Promise<Result
   revalidatePath("/empresa/ofertas");
   revalidatePath(`/empresa/ofertas/${id}/editar`);
   revalidatePath("/ofertas");
-  return ok();
+  return okMsg("Oferta guardada. Volvió a revisión de la Oficina de Empleo.");
 }
 
 export async function eliminarOferta(id: string): Promise<Resultado<void>> {
@@ -239,7 +238,7 @@ export async function eliminarOferta(id: string): Promise<Resultado<void>> {
 
   revalidatePath("/empresa/ofertas");
   revalidatePath("/ofertas");
-  redirect("/empresa/ofertas?aviso=eliminada");
+  return okMsg("El envío fue eliminado.");
 }
 
 export async function cerrarOferta(id: string): Promise<Resultado<void>> {
@@ -292,5 +291,5 @@ export async function cerrarOferta(id: string): Promise<Resultado<void>> {
 
   revalidatePath("/empresa/ofertas");
   revalidatePath("/ofertas");
-  return ok();
+  return okMsg("Oferta cerrada.");
 }

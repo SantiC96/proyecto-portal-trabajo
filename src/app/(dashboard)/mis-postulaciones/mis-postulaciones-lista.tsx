@@ -8,6 +8,7 @@ import { X, AlertCircle, Briefcase, CheckCircle, AlertTriangle, CalendarClock } 
 import { useMounted } from "@/lib/use-mounted";
 import { retirarPostulacion } from "@/app/(dashboard)/postulaciones/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { getOfertaEstadoBadge } from "@/lib/oferta-estados";
 
@@ -48,10 +49,8 @@ function getBadgeEstado(estado: EstadoPostulacion) {
 
 function RetirarBoton({
   postulacionId,
-  onSuccess,
 }: {
   postulacionId: string;
-  onSuccess: () => void;
 }) {
   const mounted = useMounted();
   const router = useRouter();
@@ -59,6 +58,7 @@ function RetirarBoton({
   const [error, setError] = useState<ErrorAccion | null>(null);
   const [isPending, startTransition] = useTransition();
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const needsRefresh = useRef(false);
 
   useEffect(() => {
     if (open) {
@@ -78,16 +78,23 @@ function RetirarBoton({
     return () => document.removeEventListener("keydown", handler);
   }, [open, isPending]);
 
+  useEffect(() => {
+    if (!isPending && needsRefresh.current) {
+      needsRefresh.current = false;
+      router.refresh();
+    }
+  }, [isPending, router]);
+
   function handleConfirm() {
     setError(null);
     startTransition(async () => {
       const result = await retirarPostulacion(postulacionId);
+      mostrarAviso(result);
       if (!result.ok) {
         setError(toErrorAccion(result));
       } else {
+        needsRefresh.current = true;
         setOpen(false);
-        router.refresh();
-        onSuccess();
       }
     });
   }
@@ -206,22 +213,8 @@ interface Props {
 }
 
 export function MisPostulacionesLista({ postulaciones }: Props) {
-  const [toastVisible, setToastVisible] = useState(false);
-
-  useEffect(() => {
-    if (!toastVisible) return;
-    const timer = setTimeout(() => setToastVisible(false), 4000);
-    return () => clearTimeout(timer);
-  }, [toastVisible]);
-
   return (
     <div className="flex flex-col gap-4">
-      {toastVisible && (
-        <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
-          <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600" />
-          Retiraste tu postulación.
-        </div>
-      )}
 
       {postulaciones.map((p) => {
         const badge = getBadgeEstado(p.estado);
@@ -353,7 +346,6 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
             {p.estado === "recibida" && (
               <RetirarBoton
                 postulacionId={p.id}
-                onSuccess={() => setToastVisible(true)}
               />
             )}
           </article>

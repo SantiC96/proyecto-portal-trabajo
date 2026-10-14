@@ -95,8 +95,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
       if (!result.ok) {
         setSubmitError(toErrorAccion(result));
       } else {
-        router.push("/empresa");
-        router.refresh();
+        router.push("/empresa?aviso=reenviada");
       }
     });
   }

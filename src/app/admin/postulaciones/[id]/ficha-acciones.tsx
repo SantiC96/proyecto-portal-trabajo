@@ -24,6 +24,7 @@ import {
   type EstadoDerivacionEmpresa,
 } from "@/lib/derivacion-estados";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
 
 type Props = {
   postulacionId: string;
@@ -74,6 +75,7 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
     setError(null);
     startTransition(async () => {
       const res = await descartarPostulacion(postulacionId, notaDescartar);
+      mostrarAviso(res);
       if (!res.ok) {
         setError(toErrorAccion(res));
       } else {
@@ -86,6 +88,7 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
     setError(null);
     startTransition(async () => {
       const res = await derivarPostulacion(postulacionId, notaDerivar);
+      mostrarAviso(res);
       if (!res.ok) {
         setError(toErrorAccion(res));
       } else {
@@ -98,6 +101,7 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
     setError(null);
     startTransition(async () => {
       const res = await marcarEnRevision(postulacionId);
+      mostrarAviso(res);
       if (!res.ok) {
         setError(toErrorAccion(res));
       } else {
@@ -111,6 +115,7 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
     setError(null);
     startTransition(async () => {
       const res = await corregirEstadoDerivacion(postulacionId, derivacion.id, estadoCorreccion);
+      mostrarAviso(res);
       if (!res.ok) {
         setError(toErrorAccion(res));
       } else {

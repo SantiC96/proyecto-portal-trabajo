@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Building2, Plus, List, BookmarkCheck } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { AvisoUrl } from "@/components/ui/aviso-url";
 
 export const metadata: Metadata = {
   title: "Panel de empresa | Portal de Empleo Funes",
@@ -49,6 +51,9 @@ export default async function EmpresaDashboardPage() {
 
   return (
     <section className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
+      <Suspense>
+        <AvisoUrl />
+      </Suspense>
       <div className="flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Building2 className="h-6 w-6" />
