@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { aprobarOferta, rechazarOferta } from "../actions";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 
 type Props = {
   ofertaId: string;
@@ -24,7 +25,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
   const [abrirAprobar, setAbrirAprobar] = useState(false);
   const [abrirRechazar, setAbrirRechazar] = useState(false);
   const [motivo, setMotivo] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorAccion | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function cerrarTodo() {
@@ -38,8 +39,8 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
     setError(null);
     startTransition(async () => {
       const res = await aprobarOferta(ofertaId);
-      if (res?.error) {
-        setError(res.error);
+      if (!res.ok) {
+        setError(toErrorAccion(res));
       } else {
         cerrarTodo();
         router.push("/admin/ofertas");
@@ -49,14 +50,14 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
 
   function handleRechazar() {
     if (!motivo.trim()) {
-      setError("El motivo del rechazo es obligatorio.");
+      setError({ mensaje: "El motivo del rechazo es obligatorio." });
       return;
     }
     setError(null);
     startTransition(async () => {
       const res = await rechazarOferta(ofertaId, motivo);
-      if (res?.error) {
-        setError(res.error);
+      if (!res.ok) {
+        setError(toErrorAccion(res));
       } else {
         cerrarTodo();
         router.push("/admin/ofertas");
@@ -78,7 +79,16 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
 
   return (
     <div className="space-y-3">
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <div>
+          <p className="text-sm text-red-600">{error.mensaje}</p>
+          {error.ref && (
+            <p className="mt-0.5 text-xs text-gray-500">
+              Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <Button
@@ -121,7 +131,16 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
               será visible para los postulantes.
             </DialogDescription>
           </DialogHeader>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && (
+            <div>
+              <p className="text-sm text-red-600">{error.mensaje}</p>
+              {error.ref && (
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                </p>
+              )}
+            </div>
+          )}
           <DialogFooter>
             <button
               type="button"
@@ -177,7 +196,16 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
               disabled={isPending}
             />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && (
+            <div>
+              <p className="text-sm text-red-600">{error.mensaje}</p>
+              {error.ref && (
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                </p>
+              )}
+            </div>
+          )}
           <DialogFooter>
             <button
               type="button"

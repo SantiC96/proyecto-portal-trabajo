@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Check, Pencil, X } from "lucide-react";
 import { actualizarNotaGuardado } from "@/app/empresa/(panel)/candidatos-guardados/actions";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 
 type Props = {
   guardadoId: string;
@@ -13,14 +14,14 @@ export function NotaGuardadoEditor({ guardadoId, notaInicial }: Props) {
   const [isPending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
   const [nota, setNota] = useState(notaInicial ?? "");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorAccion | null>(null);
 
   function handleSave() {
     setError(null);
     startTransition(async () => {
       const result = await actualizarNotaGuardado(guardadoId, nota.trim() || null);
-      if (result.error) {
-        setError(result.error);
+      if (!result.ok) {
+        setError(toErrorAccion(result));
       } else {
         setEditing(false);
       }
@@ -61,7 +62,14 @@ export function NotaGuardadoEditor({ guardadoId, notaInicial }: Props) {
         autoFocus
       />
       {error && (
-        <p className="text-xs text-red-600">{error}</p>
+        <div>
+          <p className="text-xs text-red-600">{error.mensaje}</p>
+          {error.ref && (
+            <p className="mt-0.5 text-xs text-gray-500">
+              Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+            </p>
+          )}
+        </div>
       )}
       <div className="flex gap-2">
         <button

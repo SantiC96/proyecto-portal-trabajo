@@ -6,6 +6,7 @@ import { Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { quitarGuardado } from "@/app/empresa/(panel)/candidatos-guardados/actions";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 
 type Props = {
   guardadoId: string;
@@ -16,14 +17,14 @@ export function QuitarGuardadoBtn({ guardadoId, nombre }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorAccion | null>(null);
 
   function handleConfirm() {
     setError(null);
     startTransition(async () => {
       const result = await quitarGuardado(guardadoId);
-      if (result.error) {
-        setError(result.error);
+      if (!result.ok) {
+        setError(toErrorAccion(result));
       } else {
         setOpen(false);
         router.refresh();
@@ -57,9 +58,14 @@ export function QuitarGuardadoBtn({ guardadoId, nombre }: Props) {
             </DialogDescription>
           </DialogHeader>
           {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-              {error}
-            </p>
+            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+              <p>{error.mensaje}</p>
+              {error.ref && (
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                </p>
+              )}
+            </div>
           )}
           <DialogFooter>
             <button

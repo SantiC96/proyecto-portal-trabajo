@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { crearCurso, editarCurso } from "./actions";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 
 type CursoData = {
   nombre: string;
@@ -21,7 +22,7 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
   const [descripcion, setDescripcion] = useState(inicial?.descripcion ?? "");
   const [link, setLink] = useState(inicial?.link ?? "");
   const [indicaciones, setIndicaciones] = useState(inicial?.indicaciones ?? "");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorAccion | null>(null);
   const [guardado, setGuardado] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -31,11 +32,11 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
     setGuardado(false);
 
     if (!nombre.trim()) {
-      setError("El nombre del curso es obligatorio.");
+      setError({ mensaje: "El nombre del curso es obligatorio." });
       return;
     }
     if (link.trim() && !link.trim().startsWith("https://")) {
-      setError("El link debe comenzar con https://");
+      setError({ mensaje: "El link debe comenzar con https://" });
       return;
     }
 
@@ -51,8 +52,8 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
         modo === "crear"
           ? await crearCurso(data)
           : await editarCurso(cursoId!, data);
-      if (res.error) {
-        setError(res.error);
+      if (!res.ok) {
+        setError(toErrorAccion(res));
       } else {
         setGuardado(true);
       }
@@ -126,7 +127,16 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
         />
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <div>
+          <p className="text-sm text-red-600">{error.mensaje}</p>
+          {error.ref && (
+            <p className="mt-0.5 text-xs text-gray-500">
+              Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+            </p>
+          )}
+        </div>
+      )}
       {guardado && (
         <p className="text-sm text-primary">Cambios guardados.</p>
       )}

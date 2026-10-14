@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toggleActivoCurso, eliminarCurso } from "./actions";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 
 type Props = {
   cursoId: string;
@@ -10,14 +11,14 @@ type Props = {
 };
 
 export function CursoAcciones({ cursoId, activo, tieneAsignaciones }: Props) {
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorAccion | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleToggle() {
     setError(null);
     startTransition(async () => {
       const res = await toggleActivoCurso(cursoId, !activo);
-      if (res.error) setError(res.error);
+      if (!res.ok) setError(toErrorAccion(res));
     });
   }
 
@@ -27,13 +28,22 @@ export function CursoAcciones({ cursoId, activo, tieneAsignaciones }: Props) {
     setError(null);
     startTransition(async () => {
       const res = await eliminarCurso(cursoId);
-      if (res.error) setError(res.error);
+      if (!res.ok) setError(toErrorAccion(res));
     });
   }
 
   return (
     <div className="space-y-2">
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <div>
+          <p className="text-sm text-red-600">{error.mensaje}</p>
+          {error.ref && (
+            <p className="mt-0.5 text-xs text-gray-500">
+              Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+            </p>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         <button
           type="button"

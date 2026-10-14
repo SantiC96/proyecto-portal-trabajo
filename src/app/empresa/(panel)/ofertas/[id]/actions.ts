@@ -2,14 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { logError } from "@/lib/logger";
+import { err, errConRef, ok, type Resultado, type ResultadoError } from "@/lib/resultado";
 
-type ActionResult = { error?: string; ofertaCerrada?: boolean };
-
-async function getEmpresaId(supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>) {
+async function verificarEmpresa(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+): Promise<{ ok: true; empresaId: string } | ResultadoError> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return null;
+  if (!user) return err("NO_AUTENTICADO");
 
   const { data: empresa } = await supabase
     .from("empresas")
@@ -17,7 +19,8 @@ async function getEmpresaId(supabase: Awaited<ReturnType<typeof createSupabaseSe
     .eq("usuario_id", user.id)
     .maybeSingle();
 
-  return empresa?.id ?? null;
+  if (!empresa) return err("SIN_PERMISO");
+  return { ok: true, empresaId: empresa.id };
 }
 
 function revalidarOferta(ofertaId: string) {
@@ -31,16 +34,16 @@ export async function coordinarEntrevista(
   ofertaId: string,
   fechaEntrevistaISO: string,
   lugarEntrevista: string
-): Promise<ActionResult> {
+): Promise<Resultado<void>> {
   const supabase = await createSupabaseServerClient();
-  const empresaId = await getEmpresaId(supabase);
-  if (!empresaId) return { error: "No autenticado." };
+  const empresaResult = await verificarEmpresa(supabase);
+  if (!empresaResult.ok) return empresaResult;
 
   const fechaDate = new Date(fechaEntrevistaISO);
-  if (isNaN(fechaDate.getTime())) return { error: "Fecha inválida." };
-  if (fechaDate <= new Date()) return { error: "La fecha debe ser posterior al momento actual." };
+  if (isNaN(fechaDate.getTime())) return err("DATOS_INVALIDOS", "Fecha inválida.");
+  if (fechaDate <= new Date()) return err("DATOS_INVALIDOS", "La fecha debe ser posterior al momento actual.");
 
-  if (!lugarEntrevista.trim()) return { error: "El lugar o indicaciones es obligatorio." };
+  if (!lugarEntrevista.trim()) return err("DATOS_INVALIDOS", "El lugar o indicaciones es obligatorio.");
 
   const { error } = await supabase
     .from("derivaciones")
@@ -52,12 +55,12 @@ export async function coordinarEntrevista(
     .eq("id", derivacionId);
 
   if (error) {
-    console.error("[coordinarEntrevista]", error);
-    return { error: error.message || "No se pudo coordinar la entrevista." };
+    const ref = logError("coordinarEntrevista", error, { derivacionId });
+    return errConRef("ERROR_INTERNO", "No se pudo coordinar la entrevista.", ref);
   }
 
   revalidarOferta(ofertaId);
-  return {};
+  return ok();
 }
 
 export async function reprogramarEntrevista(
@@ -65,16 +68,16 @@ export async function reprogramarEntrevista(
   ofertaId: string,
   fechaEntrevistaISO: string,
   lugarEntrevista: string
-): Promise<ActionResult> {
+): Promise<Resultado<void>> {
   const supabase = await createSupabaseServerClient();
-  const empresaId = await getEmpresaId(supabase);
-  if (!empresaId) return { error: "No autenticado." };
+  const empresaResult = await verificarEmpresa(supabase);
+  if (!empresaResult.ok) return empresaResult;
 
   const fechaDate = new Date(fechaEntrevistaISO);
-  if (isNaN(fechaDate.getTime())) return { error: "Fecha inválida." };
-  if (fechaDate <= new Date()) return { error: "La fecha debe ser posterior al momento actual." };
+  if (isNaN(fechaDate.getTime())) return err("DATOS_INVALIDOS", "Fecha inválida.");
+  if (fechaDate <= new Date()) return err("DATOS_INVALIDOS", "La fecha debe ser posterior al momento actual.");
 
-  if (!lugarEntrevista.trim()) return { error: "El lugar o indicaciones es obligatorio." };
+  if (!lugarEntrevista.trim()) return err("DATOS_INVALIDOS", "El lugar o indicaciones es obligatorio.");
 
   const { error } = await supabase
     .from("derivaciones")
@@ -86,21 +89,21 @@ export async function reprogramarEntrevista(
     .eq("id", derivacionId);
 
   if (error) {
-    console.error("[reprogramarEntrevista]", error);
-    return { error: error.message || "No se pudo reprogramar la entrevista." };
+    const ref = logError("reprogramarEntrevista", error, { derivacionId });
+    return errConRef("ERROR_INTERNO", "No se pudo reprogramar la entrevista.", ref);
   }
 
   revalidarOferta(ofertaId);
-  return {};
+  return ok();
 }
 
 export async function seleccionarCandidato(
   derivacionId: string,
   ofertaId: string
-): Promise<ActionResult> {
+): Promise<Resultado<{ ofertaCerrada: boolean }>> {
   const supabase = await createSupabaseServerClient();
-  const empresaId = await getEmpresaId(supabase);
-  if (!empresaId) return { error: "No autenticado." };
+  const empresaResult = await verificarEmpresa(supabase);
+  if (!empresaResult.ok) return empresaResult;
 
   const { error } = await supabase
     .from("derivaciones")
@@ -108,8 +111,8 @@ export async function seleccionarCandidato(
     .eq("id", derivacionId);
 
   if (error) {
-    console.error("[seleccionarCandidato]", error);
-    return { error: error.message || "No se pudo seleccionar al candidato." };
+    const ref = logError("seleccionarCandidato", error, { derivacionId });
+    return errConRef("ERROR_INTERNO", "No se pudo seleccionar al candidato.", ref);
   }
 
   // Detect if the offer auto-closed due to vacancies being filled
@@ -120,19 +123,19 @@ export async function seleccionarCandidato(
     .maybeSingle();
 
   revalidarOferta(ofertaId);
-  return { ofertaCerrada: ofertaData?.estado === "cerrada" };
+  return ok({ ofertaCerrada: ofertaData?.estado === "cerrada" });
 }
 
 export async function rechazarCandidato(
   derivacionId: string,
   ofertaId: string,
   motivo: string
-): Promise<ActionResult> {
+): Promise<Resultado<void>> {
   const supabase = await createSupabaseServerClient();
-  const empresaId = await getEmpresaId(supabase);
-  if (!empresaId) return { error: "No autenticado." };
+  const empresaResult = await verificarEmpresa(supabase);
+  if (!empresaResult.ok) return empresaResult;
 
-  if (!motivo.trim()) return { error: "Debés indicar el motivo." };
+  if (!motivo.trim()) return err("DATOS_INVALIDOS", "Debés indicar el motivo.");
 
   const { error } = await supabase
     .from("derivaciones")
@@ -140,10 +143,10 @@ export async function rechazarCandidato(
     .eq("id", derivacionId);
 
   if (error) {
-    console.error("[rechazarCandidato]", error);
-    return { error: error.message || "No se pudo registrar la decisión." };
+    const ref = logError("rechazarCandidato", error, { derivacionId });
+    return errConRef("ERROR_INTERNO", "No se pudo registrar la decisión.", ref);
   }
 
   revalidarOferta(ofertaId);
-  return {};
+  return ok();
 }

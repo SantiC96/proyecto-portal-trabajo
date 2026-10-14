@@ -15,6 +15,7 @@ import {
 import { formatearCUIT } from "@/lib/cuit";
 import { validarCuitConMensaje } from "@/lib/validaciones";
 import { reenviarSolicitudEmpresa } from "@/app/empresa/actions";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -69,7 +70,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
   const [apellido, setApellido] = useState(datos.apellido);
   const [telefono, setTelefono] = useState(datos.telefono ?? "");
 
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<ErrorAccion | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const cuitCompleto = cuit.length === 11;
@@ -91,8 +92,8 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
         telefono,
       });
 
-      if (result.error) {
-        setSubmitError(result.error);
+      if (!result.ok) {
+        setSubmitError(toErrorAccion(result));
       } else {
         router.push("/empresa");
         router.refresh();
@@ -320,9 +321,16 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
 
         {/* ── Error global ─────────────────────────────────────────────── */}
         {submitError && (
-          <div className="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>{submitError}</span>
+          <div className="flex flex-col gap-1 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{submitError.mensaje}</span>
+            </div>
+            {submitError.ref && (
+              <p className="ml-7 text-xs text-gray-500">
+                Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {submitError.ref}
+              </p>
+            )}
           </div>
         )}
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { logError } from "@/lib/logger";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
@@ -101,7 +102,7 @@ export default async function PostulanteFichaPage({
   const postulaciones = (postulacionesResult.data ??
     []) as unknown as PostulacionHistorial[];
   if (rechazosResult.error)
-    console.error("[rechazos_desde_ultimo_curso]", rechazosResult.error);
+    logError("rechazos_desde_ultimo_curso", rechazosResult.error);
   const rechazos = Number(rechazosResult.data ?? 0);
   const asignaciones = (asignacionesResult.data ?? []) as unknown as AsignacionRow[];
   const cursosActivos = (cursosResult.data ?? []) as {

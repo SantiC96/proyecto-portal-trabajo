@@ -3,15 +3,17 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { logError } from "@/lib/logger";
+import { err, errConRef, ok, type Resultado, type ResultadoError } from "@/lib/resultado";
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 
-async function verificarMunicipalidad(): Promise<{ error: string } | { userId: string }> {
+async function verificarMunicipalidad(): Promise<{ ok: true; userId: string } | ResultadoError> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return { error: "No autenticado." };
+  if (!user) return err("NO_AUTENTICADO");
 
   const { data: usuario } = await supabase
     .from("usuarios")
@@ -19,11 +21,9 @@ async function verificarMunicipalidad(): Promise<{ error: string } | { userId: s
     .eq("id", user.id)
     .single();
 
-  if (!usuario || usuario.rol !== "municipalidad") {
-    return { error: "No tenés permiso para realizar esta acción." };
-  }
+  if (!usuario || usuario.rol !== "municipalidad") return err("SIN_PERMISO");
 
-  return { userId: user.id };
+  return { ok: true, userId: user.id };
 }
 
 function revalidarVistas(postulacionId: string) {
@@ -35,7 +35,7 @@ function revalidarVistas(postulacionId: string) {
 
 export async function abrirFicha(postulacionId: string): Promise<void> {
   const auth = await verificarMunicipalidad();
-  if ("error" in auth) {
+  if (!auth.ok) {
     redirect(`/admin/postulaciones/${postulacionId}`);
   }
 
@@ -56,10 +56,10 @@ export async function abrirFicha(postulacionId: string): Promise<void> {
       })
       .eq("id", postulacionId);
 
-    if (!error) {
-      revalidarVistas(postulacionId);
+    if (error) {
+      logError("abrirFicha", error, { postulacionId });
     } else {
-      console.error("[abrirFicha]", error);
+      revalidarVistas(postulacionId);
     }
   }
 
@@ -68,9 +68,9 @@ export async function abrirFicha(postulacionId: string): Promise<void> {
 
 export async function marcarEnRevision(
   postulacionId: string
-): Promise<{ error?: string }> {
+): Promise<Resultado<void>> {
   const auth = await verificarMunicipalidad();
-  if ("error" in auth) return auth;
+  if (!auth.ok) return auth;
 
   const supabase = await createSupabaseServerClient();
   const { data: postulacion } = await supabase
@@ -79,16 +79,16 @@ export async function marcarEnRevision(
     .eq("id", postulacionId)
     .single();
 
-  if (!postulacion) return { error: "Postulación no encontrada." };
+  if (!postulacion) return err("NO_ENCONTRADO", "Postulación no encontrada.");
 
   if (
     postulacion.estado !== "recibida" &&
     postulacion.estado !== "rechazada_municipalidad"
   ) {
-    return {
-      error:
-        "Solo se puede marcar en revisión desde 'recibida' o 'no seleccionada'.",
-    };
+    return err(
+      "ESTADO_INVALIDO",
+      "Solo se puede marcar en revisión desde 'recibida' o 'no seleccionada'.",
+    );
   }
 
   const { data, error } = await supabase
@@ -102,24 +102,24 @@ export async function marcarEnRevision(
     .select("id");
 
   if (error) {
-    console.error("[marcarEnRevision]", error);
-    return { error: "Error al actualizar la postulación. Intentá de nuevo." };
+    const ref = logError("marcarEnRevision", error, { postulacionId });
+    return errConRef("ERROR_INTERNO", "Error al actualizar la postulación. Intentá de nuevo.", ref);
   }
   if (!data || data.length === 0) {
-    console.error("[marcarEnRevision] update no afectó ninguna fila", { postulacionId });
-    return { error: "No se pudo completar la acción." };
+    const ref = logError("marcarEnRevision:noRow", null, { postulacionId });
+    return errConRef("ERROR_INTERNO", "No se pudo completar la acción.", ref);
   }
 
   revalidarVistas(postulacionId);
-  return {};
+  return ok();
 }
 
 export async function descartarPostulacion(
   postulacionId: string,
   nota?: string
-): Promise<{ error?: string }> {
+): Promise<Resultado<void>> {
   const auth = await verificarMunicipalidad();
-  if ("error" in auth) return auth;
+  if (!auth.ok) return auth;
 
   const supabase = await createSupabaseServerClient();
   const { data: postulacion } = await supabase
@@ -128,22 +128,24 @@ export async function descartarPostulacion(
     .eq("id", postulacionId)
     .single();
 
-  if (!postulacion) return { error: "Postulación no encontrada." };
+  if (!postulacion) return err("NO_ENCONTRADO", "Postulación no encontrada.");
 
   if (
     postulacion.estado !== "recibida" &&
     postulacion.estado !== "en_revision"
   ) {
-    return {
-      error: "Solo se puede descartar desde 'recibida' o 'en revisión'.",
-    };
+    return err(
+      "ESTADO_INVALIDO",
+      "Solo se puede descartar desde 'recibida' o 'en revisión'.",
+    );
   }
 
   const oferta = postulacion.ofertas as unknown as { estado: string } | null;
   if (!oferta || oferta.estado !== "activa") {
-    return {
-      error: "La oferta está en revisión y no se puede procesar la postulación hasta que vuelva a aprobarse.",
-    };
+    return err(
+      "ESTADO_INVALIDO",
+      "La oferta está en revisión y no se puede procesar la postulación hasta que vuelva a aprobarse.",
+    );
   }
 
   const { data, error } = await supabase
@@ -158,24 +160,24 @@ export async function descartarPostulacion(
     .select("id");
 
   if (error) {
-    console.error("[descartarPostulacion]", error);
-    return { error: "Error al descartar la postulación. Intentá de nuevo." };
+    const ref = logError("descartarPostulacion", error, { postulacionId });
+    return errConRef("ERROR_INTERNO", "Error al descartar la postulación. Intentá de nuevo.", ref);
   }
   if (!data || data.length === 0) {
-    console.error("[descartarPostulacion] update no afectó ninguna fila", { postulacionId });
-    return { error: "No se pudo completar la acción." };
+    const ref = logError("descartarPostulacion:noRow", null, { postulacionId });
+    return errConRef("ERROR_INTERNO", "No se pudo completar la acción.", ref);
   }
 
   revalidarVistas(postulacionId);
-  return {};
+  return ok();
 }
 
 export async function derivarPostulacion(
   postulacionId: string,
   nota?: string
-): Promise<{ error?: string }> {
+): Promise<Resultado<void>> {
   const auth = await verificarMunicipalidad();
-  if ("error" in auth) return auth;
+  if (!auth.ok) return auth;
 
   const supabase = await createSupabaseServerClient();
   const { data: postulacion } = await supabase
@@ -184,20 +186,18 @@ export async function derivarPostulacion(
     .eq("id", postulacionId)
     .single();
 
-  if (!postulacion) return { error: "Postulación no encontrada." };
+  if (!postulacion) return err("NO_ENCONTRADO", "Postulación no encontrada.");
 
   if (
     postulacion.estado !== "en_revision" &&
     postulacion.estado !== "recibida"
   ) {
-    return { error: "Solo se puede derivar desde 'recibida' o 'en revisión'." };
+    return err("ESTADO_INVALIDO", "Solo se puede derivar desde 'recibida' o 'en revisión'.");
   }
 
   const oferta = postulacion.ofertas as unknown as { estado: string } | null;
   if (!oferta || oferta.estado !== "activa") {
-    return {
-      error: "La oferta ya no está activa y no puede recibir derivaciones.",
-    };
+    return err("ESTADO_INVALIDO", "La oferta ya no está activa y no puede recibir derivaciones.");
   }
 
   const { error: insertError } = await supabase
@@ -210,10 +210,10 @@ export async function derivarPostulacion(
 
   if (insertError) {
     if (insertError.code === "23505") {
-      return { error: "Esta postulación ya fue derivada." };
+      return err("CONFLICTO", "Esta postulación ya fue derivada.");
     }
-    console.error("[derivarPostulacion] insert derivacion", insertError);
-    return { error: "Error al derivar la postulación. Intentá de nuevo." };
+    const ref = logError("derivarPostulacion:insert", insertError, { postulacionId });
+    return errConRef("ERROR_INTERNO", "Error al derivar la postulación. Intentá de nuevo.", ref);
   }
 
   const { data, error: updateError } = await supabase
@@ -227,31 +227,33 @@ export async function derivarPostulacion(
     .select("id");
 
   if (updateError) {
-    console.error("[derivarPostulacion] update estado", updateError);
-    return {
-      error:
-        "La derivación se registró pero no se pudo actualizar el estado. Contactá a soporte.",
-    };
+    const ref = logError("derivarPostulacion:update", updateError, { postulacionId });
+    return errConRef(
+      "ERROR_INTERNO",
+      "La derivación se registró pero no se pudo actualizar el estado. Contactá a soporte.",
+      ref,
+    );
   }
   if (!data || data.length === 0) {
-    console.error("[derivarPostulacion] update no afectó ninguna fila", { postulacionId });
-    return {
-      error:
-        "La derivación se registró pero no se pudo actualizar el estado. Contactá a soporte.",
-    };
+    const ref = logError("derivarPostulacion:noRow", null, { postulacionId });
+    return errConRef(
+      "ERROR_INTERNO",
+      "La derivación se registró pero no se pudo actualizar el estado. Contactá a soporte.",
+      ref,
+    );
   }
 
   revalidarVistas(postulacionId);
-  return {};
+  return ok();
 }
 
 export async function corregirEstadoDerivacion(
   postulacionId: string,
   derivacionId: string,
   nuevoEstado: EstadoDerivacionEmpresa
-): Promise<{ error?: string }> {
+): Promise<Resultado<void>> {
   const auth = await verificarMunicipalidad();
-  if ("error" in auth) return auth;
+  if (!auth.ok) return auth;
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase
@@ -260,10 +262,10 @@ export async function corregirEstadoDerivacion(
     .eq("id", derivacionId);
 
   if (error) {
-    console.error("[corregirEstadoDerivacion]", error);
-    return { error: "No se pudo corregir el estado. Intentá de nuevo." };
+    const ref = logError("corregirEstadoDerivacion", error, { derivacionId });
+    return errConRef("ERROR_INTERNO", "No se pudo corregir el estado. Intentá de nuevo.", ref);
   }
 
   revalidarVistas(postulacionId);
-  return {};
+  return ok();
 }

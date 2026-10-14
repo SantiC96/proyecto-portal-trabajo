@@ -23,6 +23,7 @@ import {
   DERIVACION_ESTADO_LABEL,
   type EstadoDerivacionEmpresa,
 } from "@/lib/derivacion-estados";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 
 type Props = {
   postulacionId: string;
@@ -56,7 +57,7 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
   const [estadoCorreccion, setEstadoCorreccion] = useState<EstadoDerivacionEmpresa>("pendiente");
   const [notaDescartar, setNotaDescartar] = useState("");
   const [notaDerivar, setNotaDerivar] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorAccion | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function cerrarTodo() {
@@ -73,8 +74,8 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
     setError(null);
     startTransition(async () => {
       const res = await descartarPostulacion(postulacionId, notaDescartar);
-      if (res.error) {
-        setError(res.error);
+      if (!res.ok) {
+        setError(toErrorAccion(res));
       } else {
         cerrarTodo();
       }
@@ -85,8 +86,8 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
     setError(null);
     startTransition(async () => {
       const res = await derivarPostulacion(postulacionId, notaDerivar);
-      if (res.error) {
-        setError(res.error);
+      if (!res.ok) {
+        setError(toErrorAccion(res));
       } else {
         cerrarTodo();
       }
@@ -97,8 +98,8 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
     setError(null);
     startTransition(async () => {
       const res = await marcarEnRevision(postulacionId);
-      if (res.error) {
-        setError(res.error);
+      if (!res.ok) {
+        setError(toErrorAccion(res));
       } else {
         setAbrirReconsiderar(false);
       }
@@ -110,8 +111,8 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
     setError(null);
     startTransition(async () => {
       const res = await corregirEstadoDerivacion(postulacionId, derivacion.id, estadoCorreccion);
-      if (res.error) {
-        setError(res.error);
+      if (!res.ok) {
+        setError(toErrorAccion(res));
       } else {
         setAbrirCorregir(false);
       }
@@ -184,7 +185,16 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
                 ))}
               </select>
             </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && (
+              <div>
+                <p className="text-sm text-red-600">{error.mensaje}</p>
+                {error.ref && (
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                  </p>
+                )}
+              </div>
+            )}
             <DialogFooter>
               <button
                 type="button"
@@ -212,7 +222,16 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <div>
+          <p className="text-sm text-red-600">{error.mensaje}</p>
+          {error.ref && (
+            <p className="mt-0.5 text-xs text-gray-500">
+              Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {(estado === "recibida" || estado === "en_revision") && (
@@ -285,7 +304,16 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
               disabled={isPending}
             />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && (
+            <div>
+              <p className="text-sm text-red-600">{error.mensaje}</p>
+              {error.ref && (
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                </p>
+              )}
+            </div>
+          )}
           <DialogFooter>
             <button
               type="button"
@@ -337,7 +365,16 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
               disabled={isPending}
             />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && (
+            <div>
+              <p className="text-sm text-red-600">{error.mensaje}</p>
+              {error.ref && (
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                </p>
+              )}
+            </div>
+          )}
           <DialogFooter>
             <button
               type="button"
@@ -371,7 +408,16 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
               .
             </DialogDescription>
           </DialogHeader>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && (
+            <div>
+              <p className="text-sm text-red-600">{error.mensaje}</p>
+              {error.ref && (
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                </p>
+              )}
+            </div>
+          )}
           <DialogFooter>
             <button
               type="button"

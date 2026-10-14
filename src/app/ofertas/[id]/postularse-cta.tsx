@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { X, Briefcase, CheckCircle, FileText, AlertCircle } from "lucide-react";
 import { useMounted } from "@/lib/use-mounted";
 import { postularme } from "@/app/(dashboard)/postulaciones/actions";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 
 const ESTADO_LABEL: Record<string, string> = {
   recibida: "Recibida",
@@ -49,7 +50,7 @@ export function PostularseCta({
   // Initialize open from autoOpen so the overlay shows immediately on first render
   // without needing a setState call inside an effect
   const [open, setOpen] = useState(autoOpen);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorAccion | null>(null);
   const [isPending, startTransition] = useTransition();
   const confirmRef = useRef<HTMLButtonElement>(null);
 
@@ -86,8 +87,8 @@ export function PostularseCta({
     setError(null);
     startTransition(async () => {
       const result = await postularme(ofertaId);
-      if (result.error) {
-        setError(result.error);
+      if (!result.ok) {
+        setError(toErrorAccion(result));
       } else {
         setOpen(false);
         router.refresh();
@@ -278,9 +279,16 @@ export function PostularseCta({
               </div>
 
               {error && (
-                <div className="mb-4 flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-600">
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                  {error}
+                <div className="mb-4 flex flex-col gap-1 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-600">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    {error.mensaje}
+                  </div>
+                  {error.ref && (
+                    <p className="ml-6 text-xs text-gray-500">
+                      Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                    </p>
+                  )}
                 </div>
               )}
 

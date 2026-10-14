@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { registrarEmpresa } from "@/app/auth/actions";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { formatearCUIT } from "@/lib/cuit";
 import { validarCuitConMensaje } from "@/lib/validaciones";
 import Link from "next/link";
@@ -70,7 +71,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
 
   // Submit state
   const [isLoading, setIsLoading] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<ErrorAccion | null>(null);
 
   // ── derived ────────────────────────────────────────────────────────────────
   const passwordRepeatError =
@@ -84,12 +85,12 @@ export function RegistroEmpresaForm({ categorias }: Props) {
     e.preventDefault();
 
     if (password !== passwordRepeat) {
-      setSubmitError("Las contraseñas no coinciden.");
+      setSubmitError({ mensaje: "Las contraseñas no coinciden." });
       return;
     }
     const cuitErrMsg = validarCuitConMensaje(cuit);
     if (cuitErrMsg) {
-      setSubmitError(cuitErrMsg);
+      setSubmitError({ mensaje: cuitErrMsg });
       return;
     }
 
@@ -106,8 +107,8 @@ export function RegistroEmpresaForm({ categorias }: Props) {
       email,
       password,
     });
-    if (result?.error) {
-      setSubmitError(result.error);
+    if (result && !result.ok) {
+      setSubmitError(toErrorAccion(result));
       setIsLoading(false);
     }
   };
@@ -448,9 +449,16 @@ export function RegistroEmpresaForm({ categorias }: Props) {
 
         {/* ── Error global ───────────────────────────────────────────────── */}
         {submitError && (
-          <div className="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>{submitError}</span>
+          <div className="flex flex-col gap-1 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{submitError.mensaje}</span>
+            </div>
+            {submitError.ref && (
+              <p className="ml-6 text-xs text-gray-500">
+                Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {submitError.ref}
+              </p>
+            )}
           </div>
         )}
 

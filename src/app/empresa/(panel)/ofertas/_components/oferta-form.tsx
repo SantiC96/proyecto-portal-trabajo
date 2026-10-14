@@ -6,6 +6,7 @@ import { Plus, X, MapPin } from "lucide-react";
 import { MultiCombobox } from "@/components/ui/multi-combobox";
 import { validarOferta, type OfertaData } from "@/lib/validaciones";
 import { crearOferta, editarOferta } from "@/app/empresa/(panel)/ofertas/actions";
+import { type ErrorAccion, toErrorAccion } from "@/lib/resultado";
 
 interface Categoria {
   id: string;
@@ -26,7 +27,7 @@ const JORNADAS = ["Tiempo completo", "Part-time", "Pasantía", "Por proyecto"] a
 export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, minimoVacantes = 1 }: OfertaFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorAccion | null>(null);
   const [errorRequisitos, setErrorRequisitos] = useState<string | null>(null);
   const errorRef = useRef<HTMLDivElement>(null);
 
@@ -111,7 +112,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
       if (validationError === "Agregá al menos un requisito.") {
         setErrorRequisitos(validationError);
       }
-      setError(validationError);
+      setError({ mensaje: validationError });
       setTimeout(() => errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
       return;
     }
@@ -121,11 +122,11 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
         ? await editarOferta(ofertaId, data)
         : await crearOferta(data);
 
-      if (result.error) {
-        if (result.error === "Agregá al menos un requisito.") {
-          setErrorRequisitos(result.error);
+      if (!result.ok) {
+        if (result.mensaje.toLowerCase().includes("requisito")) {
+          setErrorRequisitos(result.mensaje);
         }
-        setError(result.error);
+        setError(toErrorAccion(result));
         return;
       }
       router.push("/empresa/ofertas?aviso=enviada");
@@ -373,10 +374,15 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
       {error && (
         <div
           ref={errorRef}
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="flex flex-col gap-1 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
           role="alert"
         >
-          {error}
+          <p>{error.mensaje}</p>
+          {error.ref && (
+            <p className="text-xs text-gray-500">
+              Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+            </p>
+          )}
         </div>
       )}
 

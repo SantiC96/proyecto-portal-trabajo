@@ -21,6 +21,7 @@ import {
   rechazarCandidato,
 } from "@/app/empresa/(panel)/ofertas/[id]/actions";
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { BookmarkBtn } from "./bookmark-btn";
 
 // Genera intervalos de 15 min de 08:00 a 20:00
@@ -87,7 +88,7 @@ function EntrevistaDialog({
   const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [lugar, setLugar] = useState(lugarActual ?? "");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorAccion | null>(null);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -116,14 +117,14 @@ function EntrevistaDialog({
   }
 
   function handleSubmit() {
-    if (!selectedDay) { setError("Seleccioná un día."); return; }
-    if (!selectedTime) { setError("Seleccioná un horario."); return; }
+    if (!selectedDay) { setError({ mensaje: "Seleccioná un día." }); return; }
+    if (!selectedTime) { setError({ mensaje: "Seleccioná un horario." }); return; }
     if (isHoraDisabled(selectedTime)) {
-      setError("El horario elegido ya pasó. Seleccioná uno futuro.");
+      setError({ mensaje: "El horario elegido ya pasó. Seleccioná uno futuro." });
       return;
     }
     if (!lugar.trim()) {
-      setError("El lugar o indicaciones es obligatorio.");
+      setError({ mensaje: "El lugar o indicaciones es obligatorio." });
       return;
     }
     setError(null);
@@ -131,8 +132,8 @@ function EntrevistaDialog({
     const action = modo === "coordinar" ? coordinarEntrevista : reprogramarEntrevista;
     startTransition(async () => {
       const result = await action(derivacionId, ofertaId, fechaISO, lugar.trim());
-      if (result.error) {
-        setError(result.error);
+      if (!result.ok) {
+        setError(toErrorAccion(result));
       } else {
         handleReset();
         onClose();
@@ -232,9 +233,14 @@ function EntrevistaDialog({
           </div>
 
           {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-              {error}
-            </p>
+            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+              <p>{error.mensaje}</p>
+              {error.ref && (
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                </p>
+              )}
+            </div>
           )}
         </div>
 
@@ -282,7 +288,7 @@ export function AccionesDerivacion({
   const [openSeleccion, setOpenSeleccion] = useState(false);
   const [openOfertaCerrada, setOpenOfertaCerrada] = useState(false);
   const [motivo, setMotivo] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorAccion | null>(null);
 
   // Entrevista ya pasada → empresa puede seleccionar
   const entrevistaYaPaso =
@@ -294,11 +300,11 @@ export function AccionesDerivacion({
     setError(null);
     startTransition(async () => {
       const result = await seleccionarCandidato(derivacionId, ofertaId);
-      if (result.error) {
-        setError(result.error);
+      if (!result.ok) {
+        setError(toErrorAccion(result));
       } else {
         setOpenSeleccion(false);
-        if (result.ofertaCerrada) {
+        if (result.data?.ofertaCerrada) {
           setOpenOfertaCerrada(true);
         }
         router.refresh();
@@ -307,12 +313,12 @@ export function AccionesDerivacion({
   }
 
   function handleRechazar() {
-    if (!motivo.trim()) { setError("El motivo es obligatorio."); return; }
+    if (!motivo.trim()) { setError({ mensaje: "El motivo es obligatorio." }); return; }
     setError(null);
     startTransition(async () => {
       const result = await rechazarCandidato(derivacionId, ofertaId, motivo);
-      if (result.error) {
-        setError(result.error);
+      if (!result.ok) {
+        setError(toErrorAccion(result));
       } else {
         setOpenRechazo(false);
         setMotivo("");
@@ -346,9 +352,14 @@ export function AccionesDerivacion({
   return (
     <div className="space-y-3">
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-          {error}
-        </p>
+        <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+          <p>{error.mensaje}</p>
+          {error.ref && (
+            <p className="mt-0.5 text-xs text-gray-500">
+              Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+            </p>
+          )}
+        </div>
       )}
 
       {/* Acciones según estado */}
@@ -442,9 +453,14 @@ export function AccionesDerivacion({
             </DialogDescription>
           </DialogHeader>
           {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-              {error}
-            </p>
+            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+              <p>{error.mensaje}</p>
+              {error.ref && (
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                </p>
+              )}
+            </div>
           )}
           <DialogFooter>
             <button
@@ -493,9 +509,14 @@ export function AccionesDerivacion({
             />
           </div>
           {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-              {error}
-            </p>
+            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+              <p>{error.mensaje}</p>
+              {error.ref && (
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                </p>
+              )}
+            </div>
           )}
           <DialogFooter>
             <button
