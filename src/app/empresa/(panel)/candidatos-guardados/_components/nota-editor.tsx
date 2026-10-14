@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Check, Pencil, X } from "lucide-react";
-import { actualizarNotaGuardado } from "@/app/empresa/candidatos-guardados/actions";
+import { actualizarNotaGuardado } from "@/app/empresa/(panel)/candidatos-guardados/actions";
 
 type Props = {
   guardadoId: string;

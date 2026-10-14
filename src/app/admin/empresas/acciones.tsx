@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -12,17 +12,51 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { aprobarEmpresa, rechazarEmpresa } from "../actions";
+import type { HistorialEntry } from "./page";
 
 type Props = {
   empresaId: string;
   razonSocial: string;
   estadoActual: "pendiente" | "aprobada" | "rechazada";
+  historial: HistorialEntry[];
+  fechaReenvio?: string;
 };
 
-export function EmpresaAcciones({ empresaId, razonSocial, estadoActual }: Props) {
+function formatFecha(iso: string) {
+  return new Date(iso).toLocaleDateString("es-AR", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+const EVENTO_LABEL: Record<HistorialEntry["evento"], string> = {
+  aprobada: "Aprobada",
+  rechazada: "Rechazada",
+  reenviada: "Reenviada",
+};
+
+const EVENTO_COLOR: Record<
+  HistorialEntry["evento"],
+  "default" | "destructive" | "secondary"
+> = {
+  aprobada: "default",
+  rechazada: "destructive",
+  reenviada: "secondary",
+};
+
+export function EmpresaAcciones({
+  empresaId,
+  razonSocial,
+  estadoActual,
+  historial,
+  fechaReenvio,
+}: Props) {
   const [abrirAprobar, setAbrirAprobar] = useState(false);
   const [abrirRechazar, setAbrirRechazar] = useState(false);
+  const [mostrarHistorial, setMostrarHistorial] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -70,27 +104,89 @@ export function EmpresaAcciones({ empresaId, razonSocial, estadoActual }: Props)
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
-      {estadoActual !== "aprobada" && (
-        <Button
-          size="sm"
-          onClick={() => handleAbrirAprobar(true)}
-          disabled={isPending}
-          className="min-h-11"
-        >
-          Aprobar
-        </Button>
+    <div className="flex flex-col gap-3">
+      {/* Etiqueta "Reenviada" con fecha (solo en pestaña pendiente) */}
+      {estadoActual === "pendiente" && fechaReenvio && (
+        <div className="flex items-center gap-2">
+          <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">
+            Reenviada
+          </Badge>
+          <span className="text-xs text-muted-foreground">
+            {formatFecha(fechaReenvio)}
+          </span>
+        </div>
       )}
-      {estadoActual !== "rechazada" && (
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => handleAbrirRechazar(true)}
-          disabled={isPending}
-          className="min-h-11"
-        >
-          Rechazar
-        </Button>
+
+      {/* Botones de acción */}
+      <div className="flex flex-wrap gap-2">
+        {estadoActual !== "aprobada" && (
+          <Button
+            size="sm"
+            onClick={() => handleAbrirAprobar(true)}
+            disabled={isPending}
+            className="min-h-11"
+          >
+            Aprobar
+          </Button>
+        )}
+        {estadoActual !== "rechazada" && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleAbrirRechazar(true)}
+            disabled={isPending}
+            className="min-h-11"
+          >
+            Rechazar
+          </Button>
+        )}
+      </div>
+
+      {/* Historial de revisiones */}
+      {historial.length > 0 && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setMostrarHistorial((v) => !v)}
+            className="flex items-center gap-1 text-xs text-muted-foreground transition hover:text-foreground"
+          >
+            {mostrarHistorial ? (
+              <ChevronUp className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5" />
+            )}
+            {mostrarHistorial ? "Ocultar historial" : "Ver historial"}
+          </button>
+
+          {mostrarHistorial && (
+            <ol className="mt-2 space-y-2">
+              {historial.map((entry) => (
+                <li key={entry.id} className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant={EVENTO_COLOR[entry.evento]}
+                      className={
+                        entry.evento === "reenviada"
+                          ? "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100"
+                          : undefined
+                      }
+                    >
+                      {EVENTO_LABEL[entry.evento]}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {formatFecha(entry.created_at)}
+                    </span>
+                  </div>
+                  {entry.motivo && (
+                    <p className="ml-1 text-xs text-muted-foreground">
+                      {entry.motivo}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
       )}
 
       {/* Dialog: Aprobar */}

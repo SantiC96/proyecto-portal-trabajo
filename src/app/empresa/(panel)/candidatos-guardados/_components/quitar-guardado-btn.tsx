@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { quitarGuardado } from "@/app/empresa/candidatos-guardados/actions";
+import { quitarGuardado } from "@/app/empresa/(panel)/candidatos-guardados/actions";
 
 type Props = {
   guardadoId: string;

@@ -17,7 +17,7 @@ import {
   DERIVACION_ESTADO_STYLE,
   type EstadoDerivacionEmpresa,
 } from "@/lib/derivacion-estados";
-import { NotaGuardadoEditor } from "@/app/empresa/candidatos-guardados/_components/nota-editor";
+import { NotaGuardadoEditor } from "@/app/empresa/(panel)/candidatos-guardados/_components/nota-editor";
 
 export const metadata: Metadata = {
   title: "Perfil de candidato | Portal de Empleo Funes",
