@@ -4,7 +4,9 @@ import Link from "next/link";
 import { Briefcase } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
-import { formatFechaCorta } from "@/lib/fechas";
+import { dentroDeDiasISO, formatFechaCorta } from "@/lib/fechas";
+import { VencimientoOferta } from "@/components/ofertas/vencimiento-oferta";
+import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 import { getOfertaEstadoLabel } from "@/lib/oferta-estados";
 import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
 import {
@@ -22,11 +24,14 @@ export const metadata: Metadata = {
   title: "Ofertas | Panel municipal | Portal de Empleo Funes",
 };
 
-type EstadoFiltro = "pendiente_aprobacion" | "activa" | "rechazada" | "cerrada";
+// "vencida" no es un estado de la base: es una oferta 'activa' con vence_en
+// vencido (migration_036). Se muestra aparte porque ya no se ve en el portal.
+type EstadoFiltro = "pendiente_aprobacion" | "activa" | "vencida" | "rechazada" | "cerrada";
 
 const ESTADOS_FILTRO: EstadoFiltro[] = [
   "pendiente_aprobacion",
   "activa",
+  "vencida",
   "rechazada",
   "cerrada",
 ];
@@ -34,6 +39,7 @@ const ESTADOS_FILTRO: EstadoFiltro[] = [
 const LABEL_FILTRO: Record<EstadoFiltro, string> = {
   pendiente_aprobacion: "Pendientes",
   activa: "Activas",
+  vencida: "Vencidas",
   rechazada: "Rechazadas",
   cerrada: "Cerradas",
 };
@@ -41,6 +47,7 @@ const LABEL_FILTRO: Record<EstadoFiltro, string> = {
 const ESTADO_STYLE: Record<EstadoFiltro, string> = {
   pendiente_aprobacion: "bg-amber-100 text-amber-800",
   activa: "bg-emerald-100 text-emerald-800",
+  vencida: "bg-red-100 text-red-700",
   rechazada: "bg-red-100 text-red-700",
   cerrada: "bg-gray-100 text-gray-600",
 };
@@ -52,6 +59,7 @@ type OfertaRow = {
   created_at: string;
   estado: string;
   contenido_editado_en: string | null;
+  vence_en: string | null;
 };
 
 const RUTA = "/admin/ofertas";
@@ -74,9 +82,11 @@ export default async function AdminOfertasPage({
 
   const supabase = await createSupabaseServerClient();
 
+  const ahora = dentroDeDiasISO(0);
   const [
     { count: cPendientes },
     { count: cActivas },
+    { count: cVencidas },
     { count: cRechazadas },
     { count: cCerradas },
   ] = await Promise.all([
@@ -87,7 +97,13 @@ export default async function AdminOfertasPage({
     supabase
       .from("ofertas")
       .select("*", { count: "exact", head: true })
-      .eq("estado", "activa"),
+      .eq("estado", "activa")
+      .gt("vence_en", ahora),
+    supabase
+      .from("ofertas")
+      .select("*", { count: "exact", head: true })
+      .eq("estado", "activa")
+      .lte("vence_en", ahora),
     supabase
       .from("ofertas")
       .select("*", { count: "exact", head: true })
@@ -114,7 +130,7 @@ export default async function AdminOfertasPage({
       </h1>
 
       {/* Contadores */}
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
         <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
           <p className="text-xs font-medium text-muted-foreground">Pendientes</p>
           <p className="mt-1 text-2xl font-bold text-amber-700">
@@ -125,6 +141,12 @@ export default async function AdminOfertasPage({
           <p className="text-xs font-medium text-muted-foreground">Activas</p>
           <p className="mt-1 text-2xl font-bold text-emerald-700">
             {cActivas ?? 0}
+          </p>
+        </div>
+        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
+          <p className="text-xs font-medium text-muted-foreground">Vencidas</p>
+          <p className="mt-1 text-2xl font-bold text-red-600">
+            {cVencidas ?? 0}
           </p>
         </div>
         <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
@@ -142,15 +164,15 @@ export default async function AdminOfertasPage({
       </div>
 
       {/* Barra de pestañas */}
-      <div className="mt-6 flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
+      <div className="mt-6 flex gap-1 overflow-x-auto rounded-[var(--radius-md)] border border-border bg-surface p-1">
         {ESTADOS_FILTRO.map((tab) => (
           <Link
             key={tab}
             href={hrefConParams(RUTA, {}, { estado: tab, q: sp.q ?? null })}
             className={
               tab === estado
-                ? "flex-1 rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
-                : "flex-1 rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+                ? "flex-1 whitespace-nowrap rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
+                : "flex-1 whitespace-nowrap rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
             }
           >
             {LABEL_FILTRO[tab]}
@@ -191,10 +213,16 @@ async function ListadoOfertas({
     let query = supabase
       .from("ofertas")
       .select(
-        "id, titulo, empresa_nombre, created_at, estado, contenido_editado_en",
+        "id, titulo, empresa_nombre, created_at, estado, contenido_editado_en, vence_en",
         { count: "exact" }
-      )
-      .eq("estado", estado);
+      );
+    if (estado === "activa") {
+      query = query.eq("estado", "activa").gt("vence_en", dentroDeDiasISO(0));
+    } else if (estado === "vencida") {
+      query = query.eq("estado", "activa").lte("vence_en", dentroDeDiasISO(0));
+    } else {
+      query = query.eq("estado", estado);
+    }
     if (q) query = query.ilike("titulo", patronIlike(q));
     return query
       .order("created_at", { ascending: ascendente })
@@ -266,6 +294,11 @@ async function ListadoOfertas({
                           </span>
                         )}
                       </div>
+                      <VencimientoOferta
+                        className="mt-1 font-normal"
+                        estado={row.estado}
+                        venceEn={row.vence_en}
+                      />
                     </td>
                     <td className="py-4 pr-4 text-muted-foreground">
                       {row.empresa_nombre}
@@ -275,9 +308,9 @@ async function ListadoOfertas({
                     </td>
                     <td className="py-4 pr-4">
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ESTADO_STYLE[row.estado as EstadoFiltro] ?? "bg-gray-100 text-gray-600"}`}
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ESTADO_STYLE[estadoVisible(row)] ?? "bg-gray-100 text-gray-600"}`}
                       >
-                        {getOfertaEstadoLabel(row.estado)}
+                        {etiquetaEstado(row)}
                       </span>
                     </td>
                     <td className="py-4">
@@ -309,11 +342,16 @@ async function ListadoOfertas({
                         Modificada
                       </span>
                     )}
+                    <VencimientoOferta
+                      className="mt-1"
+                      estado={row.estado}
+                      venceEn={row.vence_en}
+                    />
                   </div>
                   <span
-                    className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ESTADO_STYLE[row.estado as EstadoFiltro] ?? "bg-gray-100 text-gray-600"}`}
+                    className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ESTADO_STYLE[estadoVisible(row)] ?? "bg-gray-100 text-gray-600"}`}
                   >
-                    {getOfertaEstadoLabel(row.estado)}
+                    {etiquetaEstado(row)}
                   </span>
                 </div>
                 <dl className="mt-3 space-y-1.5 text-sm">
@@ -353,4 +391,13 @@ async function ListadoOfertas({
           />
     </>
   );
+}
+
+function estadoVisible(row: OfertaRow): EstadoFiltro {
+  if (estadoVencimiento(row.estado, row.vence_en).vencida) return "vencida";
+  return row.estado as EstadoFiltro;
+}
+
+function etiquetaEstado(row: OfertaRow): string {
+  return estadoVisible(row) === "vencida" ? "Vencida" : getOfertaEstadoLabel(row.estado);
 }

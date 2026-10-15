@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
-import { err, errConRef, okMsg, type Resultado } from "@/lib/resultado";
+import { err, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
 
 export async function postularme(
   ofertaId: string,
@@ -25,7 +25,7 @@ export async function postularme(
 
   const { data: oferta } = await supabase
     .from("ofertas")
-    .select("id, estado")
+    .select("id, estado, vence_en")
     .eq("id", ofertaId)
     .maybeSingle();
 
@@ -41,6 +41,10 @@ export async function postularme(
       "ESTADO_INVALIDO",
       mensajes[oferta.estado as string] ?? "Esta oferta no está disponible.",
     );
+  }
+
+  if (oferta.vence_en && new Date(oferta.vence_en) <= new Date()) {
+    return err("ESTADO_INVALIDO", "Esta oferta ya venció y no acepta postulaciones nuevas.");
   }
 
   const { data: cv } = await supabase
@@ -61,6 +65,8 @@ export async function postularme(
 
   if (error) {
     if (error.code === "23505") return err("CONFLICTO", "Ya te postulaste a esta oferta.");
+    // P0001: la oferta venció entre la carga de la página y el envío (migration_036).
+    if (error.code === "P0001") return fromSupabaseError(error);
     const ref = logError("postularme", error, { ofertaId });
     return errConRef("ERROR_INTERNO", "Error al procesar la postulación. Intentá de nuevo.", ref);
   }

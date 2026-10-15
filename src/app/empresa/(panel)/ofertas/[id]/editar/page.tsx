@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { getCategoriasConId } from "@/lib/ofertas";
+import { DURACION_OFERTA_POR_DEFECTO } from "@/lib/ofertas-vencimiento";
 import { OfertaForm } from "@/app/empresa/(panel)/ofertas/_components/oferta-form";
 
 export const metadata: Metadata = {
@@ -34,7 +35,7 @@ export default async function EditarOfertaPage({ params }: Props) {
   const { data: oferta } = await supabase
     .from("ofertas")
     .select(
-      "id, titulo, descripcion, ubicacion, modalidad, jornada, requisitos, beneficios, estado, empresa_id, oferta_categorias(categoria_id)"
+      "id, titulo, descripcion, ubicacion, modalidad, jornada, requisitos, beneficios, estado, empresa_id, duracion_dias, oferta_categorias(categoria_id)"
     )
     .eq("id", id)
     .eq("empresa_id", empresa.id)
@@ -67,6 +68,7 @@ export default async function EditarOfertaPage({ params }: Props) {
     beneficios: (oferta.beneficios as string[]) ?? [],
     categorias: categoriasSeleccionadas,
     cantidadVacantes,
+    duracionDias: (oferta.duracion_dias as number | null) ?? DURACION_OFERTA_POR_DEFECTO,
   };
 
   return (

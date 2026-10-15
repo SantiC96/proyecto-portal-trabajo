@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { X, AlertCircle } from "lucide-react";
@@ -8,6 +8,7 @@ import { useMounted } from "@/lib/use-mounted";
 import { eliminarOferta } from "@/app/empresa/(panel)/ofertas/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
+import { useAccion } from "@/lib/use-accion";
 
 interface Props {
   ofertaId: string;
@@ -19,7 +20,7 @@ export function EliminarEnvioBtn({ ofertaId, ofertaTitulo }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<ErrorAccion | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const { pendiente: isPending, ejecutar } = useAccion();
   const needsRefresh = useRef(false);
 
   useEffect(() => {
@@ -31,7 +32,7 @@ export function EliminarEnvioBtn({ ofertaId, ofertaTitulo }: Props) {
 
   function handleConfirm() {
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const result = await eliminarOferta(ofertaId);
       if (result.ok) {
         mostrarAviso(result, "El envío fue eliminado.");

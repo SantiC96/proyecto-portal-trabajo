@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { guardarCandidato, quitarGuardado } from "@/app/empresa/(panel)/candidatos-guardados/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
+import { useAccion } from "@/lib/use-accion";
+import { Spinner } from "@/components/ui/spinner";
 
 type Props = {
   postulanteId: string;
@@ -18,14 +20,14 @@ type Props = {
 
 export function BookmarkBtn({ postulanteId, ofertaOrigenId, guardadoId }: Props) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const { pendiente: isPending, ejecutar } = useAccion();
   const [openGuardar, setOpenGuardar] = useState(false);
   const [nota, setNota] = useState("");
   const [error, setError] = useState<ErrorAccion | null>(null);
 
   function handleGuardar() {
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const result = await guardarCandidato(postulanteId, ofertaOrigenId, nota.trim() || null);
       mostrarAviso(result);
       if (!result.ok) {
@@ -40,7 +42,7 @@ export function BookmarkBtn({ postulanteId, ofertaOrigenId, guardadoId }: Props)
 
   function handleQuitar() {
     if (!guardadoId) return;
-    startTransition(async () => {
+    ejecutar(async () => {
       const result = await quitarGuardado(guardadoId);
       mostrarAviso(result);
       router.refresh();
@@ -124,6 +126,7 @@ export function BookmarkBtn({ postulanteId, ofertaOrigenId, guardadoId }: Props)
               Cancelar
             </button>
             <Button onClick={handleGuardar} disabled={isPending}>
+              {isPending && <Spinner className="mr-1" />}
               {isPending ? "Guardando…" : "Guardar"}
             </Button>
           </DialogFooter>

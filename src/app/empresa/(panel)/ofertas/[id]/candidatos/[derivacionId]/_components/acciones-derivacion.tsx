@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { es } from "react-day-picker/locale";
 import { Calendar } from "@/components/ui/calendar";
@@ -24,6 +24,8 @@ import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
 import { BookmarkBtn } from "./bookmark-btn";
+import { useAccion } from "@/lib/use-accion";
+import { Spinner } from "@/components/ui/spinner";
 
 // Genera intervalos de 15 min de 08:00 a 20:00
 function generarHorarios(): string[] {
@@ -85,7 +87,7 @@ function EntrevistaDialog({
   lugarActual,
 }: EntrevistaDialogProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const { pendiente: isPending, ejecutar } = useAccion();
   const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [lugar, setLugar] = useState(lugarActual ?? "");
@@ -131,7 +133,7 @@ function EntrevistaDialog({
     setError(null);
     const fechaISO = buildFechaISO(selectedDay, selectedTime);
     const action = modo === "coordinar" ? coordinarEntrevista : reprogramarEntrevista;
-    startTransition(async () => {
+    ejecutar(async () => {
       const result = await action(derivacionId, ofertaId, fechaISO, lugar.trim());
       mostrarAviso(result);
       if (!result.ok) {
@@ -256,6 +258,7 @@ function EntrevistaDialog({
             Cancelar
           </button>
           <Button onClick={handleSubmit} disabled={isPending}>
+            {isPending && <Spinner className="mr-1" />}
             {isPending ? "Guardando…" : "Confirmar"}
           </Button>
         </DialogFooter>
@@ -284,7 +287,7 @@ export function AccionesDerivacion({
   guardadoId,
 }: Props) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const { pendiente: isPending, ejecutar } = useAccion();
   const [openEntrevista, setOpenEntrevista] = useState<"coordinar" | "reprogramar" | null>(null);
   const [openRechazo, setOpenRechazo] = useState(false);
   const [openSeleccion, setOpenSeleccion] = useState(false);
@@ -300,7 +303,7 @@ export function AccionesDerivacion({
 
   function handleSeleccionar() {
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const result = await seleccionarCandidato(derivacionId, ofertaId);
       mostrarAviso(result);
       if (!result.ok) {
@@ -318,7 +321,7 @@ export function AccionesDerivacion({
   function handleRechazar() {
     if (!motivo.trim()) { setError({ mensaje: "El motivo es obligatorio." }); return; }
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const result = await rechazarCandidato(derivacionId, ofertaId, motivo);
       mostrarAviso(result);
       if (!result.ok) {
@@ -476,6 +479,7 @@ export function AccionesDerivacion({
               Cancelar
             </button>
             <Button onClick={handleSeleccionar} disabled={isPending}>
+              {isPending && <Spinner className="mr-1" />}
               {isPending ? "Guardando…" : "Confirmar"}
             </Button>
           </DialogFooter>
@@ -532,6 +536,7 @@ export function AccionesDerivacion({
               Cancelar
             </button>
             <Button onClick={handleRechazar} disabled={isPending}>
+              {isPending && <Spinner className="mr-1" />}
               {isPending ? "Guardando…" : "Confirmar"}
             </Button>
           </DialogFooter>

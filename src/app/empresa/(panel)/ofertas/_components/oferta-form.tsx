@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useRef, useTransition } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X, MapPin } from "lucide-react";
 import { MultiCombobox } from "@/components/ui/multi-combobox";
 import { validarOferta, type OfertaData } from "@/lib/validaciones";
 import { crearOferta, editarOferta } from "@/app/empresa/(panel)/ofertas/actions";
 import { type ErrorAccion, toErrorAccion } from "@/lib/resultado";
+import { DURACIONES_OFERTA, DURACION_OFERTA_POR_DEFECTO } from "@/lib/ofertas-vencimiento";
+import { useAccion } from "@/lib/use-accion";
 
 interface Categoria {
   id: string;
@@ -26,7 +28,7 @@ const JORNADAS = ["Tiempo completo", "Part-time", "Pasantía", "Por proyecto"] a
 
 export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, minimoVacantes = 1 }: OfertaFormProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const { pendiente: isPending, ejecutar } = useAccion();
   const [error, setError] = useState<ErrorAccion | null>(null);
   const [errorRequisitos, setErrorRequisitos] = useState<string | null>(null);
   const errorRef = useRef<HTMLDivElement>(null);
@@ -44,6 +46,9 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
   const [nuevoBeneficio, setNuevoBeneficio] = useState("");
   const [cantidadVacantes, setCantidadVacantes] = useState(
     valorInicial?.cantidadVacantes ?? 1
+  );
+  const [duracionDias, setDuracionDias] = useState<number>(
+    valorInicial?.duracionDias ?? DURACION_OFERTA_POR_DEFECTO
   );
 
   function agregarRequisito() {
@@ -105,6 +110,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
       requisitos: reqFinal,
       beneficios: benFinal,
       cantidadVacantes,
+      duracionDias,
     };
 
     const validationError = validarOferta(data);
@@ -117,7 +123,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
       return;
     }
 
-    startTransition(async () => {
+    ejecutar(async () => {
       const result = ofertaId
         ? await editarOferta(ofertaId, data)
         : await crearOferta(data);
@@ -259,6 +265,30 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
             Ya tenés {minimoVacantes} {minimoVacantes === 1 ? "candidato seleccionado" : "candidatos seleccionados"}. La cantidad no puede ser menor.
           </p>
         )}
+      </div>
+
+      {/* Duración de la publicación */}
+      <div className="space-y-1.5">
+        <label htmlFor="duracion" className="block text-sm font-semibold text-foreground">
+          Duración de la publicación <span className="text-red-500">*</span>
+        </label>
+        <select
+          id="duracion"
+          value={duracionDias}
+          onChange={(e) => setDuracionDias(Number(e.target.value))}
+          className="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 sm:w-48"
+        >
+          {DURACIONES_OFERTA.map((d) => (
+            <option key={d} value={d}>
+              {d} días
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">
+          Se cuenta desde que la Oficina de Empleo aprueba la oferta. Cuando vence, deja de
+          verse en el portal y podés renovarla por el mismo plazo.
+          {estaPublicada && " Cambiarla no modifica el vencimiento actual."}
+        </p>
       </div>
 
       {/* Requisitos */}

@@ -15,6 +15,9 @@ import {
   DERIVACION_ESTADO_STYLE,
   type EstadoDerivacionEmpresa,
 } from "@/lib/derivacion-estados";
+import { VencimientoOferta } from "@/components/ofertas/vencimiento-oferta";
+import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
+import { RenovarOfertaBtn } from "../_components/renovar-oferta-btn";
 
 export const metadata: Metadata = {
   title: "Detalle de oferta | Portal de Empleo Funes",
@@ -62,7 +65,7 @@ export default async function OfertaDetallePage({
 
   const { data: oferta } = await supabase
     .from("ofertas")
-    .select("id, titulo, estado, empresa_nombre")
+    .select("id, titulo, estado, empresa_nombre, vence_en, duracion_dias")
     .eq("id", ofertaId)
     .eq("empresa_id", empresa.id)
     .maybeSingle();
@@ -102,8 +105,23 @@ export default async function OfertaDetallePage({
             {oferta.titulo}
           </h1>
           <p className="text-sm text-muted-foreground">{oferta.empresa_nombre}</p>
+          <VencimientoOferta
+            className="mt-1"
+            estado={oferta.estado}
+            venceEn={oferta.vence_en}
+          />
         </div>
       </div>
+
+      {estadoVencimiento(oferta.estado, oferta.vence_en).vencida && (
+        <div className="mt-4">
+          <RenovarOfertaBtn
+            ofertaId={oferta.id}
+            ofertaTitulo={oferta.titulo}
+            duracionDias={oferta.duracion_dias}
+          />
+        </div>
+      )}
 
       {/* Candidatos derivados */}
       <div id="candidatos" className="mt-8 scroll-mt-20">

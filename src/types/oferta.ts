@@ -13,4 +13,6 @@ export interface OfertaLaboral {
   requisitos: string[];
   beneficios?: string[];
   fechaPublicacion: string; // ISO o formato fecha
+  /** Solo en el detalle: fecha de vencimiento (migration_036). */
+  venceEn?: string | null;
 }

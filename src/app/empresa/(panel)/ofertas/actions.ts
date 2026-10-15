@@ -61,6 +61,7 @@ export async function crearOferta(data: OfertaData): Promise<Resultado<void>> {
       empresa_id: empresa.id,
       empresa_nombre: empresa.razon_social,
       estado: "pendiente_aprobacion",
+      duracion_dias: data.duracionDias,
     })
     .select("id")
     .single();
@@ -157,6 +158,8 @@ export async function editarOferta(id: string, data: OfertaData): Promise<Result
       jornada: data.jornada,
       requisitos: data.requisitos.map((r) => r.trim()).filter(Boolean),
       beneficios: data.beneficios.map((b) => b.trim()).filter(Boolean),
+      // Cambiar la duración no mueve vence_en: se usa al publicar o renovar.
+      duracion_dias: data.duracionDias,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
@@ -292,4 +295,49 @@ export async function cerrarOferta(id: string): Promise<Resultado<void>> {
   revalidatePath("/empresa/ofertas");
   revalidatePath("/ofertas");
   return okMsg("Oferta cerrada.");
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Renueva una oferta publicada y vencida por la misma duración, sin pasar
+ * por revisión (el contenido no cambia). La función de la base verifica que
+ * la oferta sea de la empresa y que esté vencida (migration_036).
+ */
+export async function renovarOferta(id: string): Promise<Resultado<void>> {
+  const supabase = await createSupabaseServerClient();
+
+  const empresaResult = await getEmpresaAprobada(supabase);
+  if (!empresaResult.ok) return empresaResult;
+  const { empresa } = empresaResult;
+
+  if (!UUID.test(id)) return err("DATOS_INVALIDOS");
+
+  const { data: oferta } = await supabase
+    .from("ofertas")
+    .select("id, estado, vence_en")
+    .eq("id", id)
+    .eq("empresa_id", empresa.id)
+    .maybeSingle();
+
+  if (!oferta) return err("NO_ENCONTRADO", "No se encontró la oferta o no tenés permiso para renovarla.");
+  if (oferta.estado !== "activa" || !oferta.vence_en || new Date(oferta.vence_en) > new Date())
+    return err("ESTADO_INVALIDO", "Solo podés renovar una oferta publicada que ya venció.");
+
+  const { error } = await supabase.rpc("renovar_oferta", { p_oferta_id: id });
+
+  if (error) {
+    if (error.code === "P0001" || error.code === "42501") return fromSupabaseError(error);
+    const ref = logError("renovarOferta", error, { ofertaId: id });
+    return errConRef("ERROR_INTERNO", "No se pudo renovar la oferta. Intentá de nuevo.", ref);
+  }
+
+  revalidatePath("/empresa/ofertas");
+  revalidatePath(`/empresa/ofertas/${id}`);
+  revalidatePath("/empresa");
+  revalidatePath("/ofertas");
+  revalidatePath(`/ofertas/${id}`);
+  revalidatePath("/");
+  revalidatePath("/admin/ofertas");
+  return okMsg("Oferta renovada. Ya se ve de nuevo en el portal.");
 }
