@@ -2,6 +2,7 @@ import { AlertTriangle, CalendarClock } from "lucide-react";
 import { formatFecha } from "@/lib/fechas";
 import { estadoVencimiento, textoDiasRestantes } from "@/lib/ofertas-vencimiento";
 import { cn } from "@/lib/utils";
+import type { Enum } from "@/types/db";
 
 /**
  * "Vence el <fecha>" para una oferta activa, con aviso cuando faltan pocos
@@ -13,7 +14,7 @@ export function VencimientoOferta({
   venceEn,
   className,
 }: {
-  estado: string;
+  estado: Enum<"estado_oferta">;
   venceEn: string | null;
   className?: string;
 }) {

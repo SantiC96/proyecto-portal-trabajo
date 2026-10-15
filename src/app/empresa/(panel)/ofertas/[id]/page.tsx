@@ -1,42 +1,24 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { ArrowLeft, Users } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirEmpresaPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
-import {
-  DERIVACION_ESTADO_LABEL,
-  DERIVACION_ESTADO_STYLE,
-  type EstadoDerivacionEmpresa,
-} from "@/lib/derivacion-estados";
+import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_STYLE } from "@/lib/derivacion-estados";
+import type { FilaCandidatoParaEmpresa, FilaDerivacionDeOfertaEmpresa } from "@/types/db";
 import { VencimientoOferta } from "@/components/ofertas/vencimiento-oferta";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 import { RenovarOfertaBtn } from "../_components/renovar-oferta-btn";
 
 export const metadata: Metadata = {
   title: "Detalle de oferta | Portal de Empleo Funes",
-};
-
-type CandidatoRow = {
-  derivacion_id: string;
-  postulante_id: string;
-  estado_empresa: EstadoDerivacionEmpresa;
-  nota_municipalidad: string | null;
-  fecha_entrevista: string | null;
-  lugar_entrevista: string | null;
-  fecha_respuesta: string | null;
-  derivacion_created_at: string;
-};
-
-type CandidatoDato = {
-  nombre: string;
-  apellido: string;
 };
 
 export default async function OfertaDetallePage({
@@ -49,19 +31,8 @@ export default async function OfertaDetallePage({
   const { id: ofertaId } = await params;
   const sp = await searchParams;
   const pagina = leerPagina(sp.pagina);
+  const empresa = await requerirEmpresaPagina("/empresa");
   const supabase = await createSupabaseServerClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
-
-  const { data: empresa } = await supabase
-    .from("empresas")
-    .select("id")
-    .eq("usuario_id", user.id)
-    .maybeSingle();
-  if (!empresa) redirect("/empresa");
 
   const { data: oferta } = await supabase
     .from("ofertas")
@@ -77,9 +48,9 @@ export default async function OfertaDetallePage({
     supabase.rpc("contratados_en_oferta", { p_oferta_id: ofertaId }),
   ]);
 
-  const vacantes = (vacantesResult.data?.cantidad as number | null) ?? null;
+  const vacantes = vacantesResult.data?.cantidad ?? null;
   if (contratadosResult.error) logError("empresa_oferta_contratados", contratadosResult.error);
-  const contratados = (contratadosResult.data as number | null) ?? 0;
+  const contratados = contratadosResult.data ?? 0;
 
   return (
     <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
@@ -163,13 +134,13 @@ async function ListadoDerivados({
 
   // derivaciones_de_oferta_empresa devuelve un conjunto de filas: PostgREST
   // permite ordenarlo, contarlo y paginarlo como si fuera una tabla.
-  const resultado = await consultarPagina<CandidatoRow>(pagina, async (desde, hasta) => {
+  const resultado = await consultarPagina(pagina, async (desde, hasta) => {
     const respuesta = await supabase
       .rpc("derivaciones_de_oferta_empresa", { p_oferta_id: ofertaId }, { count: "exact" })
       .order("derivacion_created_at", { ascending: false })
       .order("derivacion_id", { ascending: false })
       .range(desde, hasta);
-    const data: CandidatoRow[] | null = respuesta.data;
+    const data: FilaDerivacionDeOfertaEmpresa[] | null = respuesta.data;
     return { data, count: respuesta.count, error: respuesta.error };
   });
 
@@ -198,7 +169,7 @@ async function ListadoDerivados({
     );
   }
 
-  const nombresMap: Record<string, CandidatoDato> = {};
+  const nombresMap: Record<string, Pick<FilaCandidatoParaEmpresa, "nombre" | "apellido">> = {};
   const uniquePostulanteIds = [
     ...new Set(derivaciones.map((d) => d.postulante_id)),
   ];
@@ -208,7 +179,7 @@ async function ListadoDerivados({
     )
   );
   uniquePostulanteIds.forEach((pid, i) => {
-    const row = (nombreResults[i].data as CandidatoDato[] | null)?.[0];
+    const row = nombreResults[i].data?.[0];
     if (row) nombresMap[pid] = row;
   });
 

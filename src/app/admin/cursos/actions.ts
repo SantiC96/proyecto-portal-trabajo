@@ -3,41 +3,27 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirRol } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errConRef, fromSupabaseError, okMsg, type Resultado, type ResultadoError } from "@/lib/resultado";
-import {
-  MENSAJE_CURSO_ACTIVO,
-  MENSAJE_SOLO_SI_NECESITA_CURSO,
-  type EstadoCursosPostulante,
-} from "@/lib/cursos";
+import { err, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
+import { MENSAJE_CURSO_ACTIVO, MENSAJE_SOLO_SI_NECESITA_CURSO } from "@/lib/cursos";
+import { esUuid, LARGO_MAXIMO, validarTextoOpcional } from "@/lib/validaciones";
+import type { Tabla } from "@/types/db";
 
-type CursoData = {
-  nombre: string;
-  descripcion: string | null;
-  link: string | null;
-  indicaciones: string | null;
-};
-
-async function verificarMunicipalidad(): Promise<{ ok: true; userId: string } | ResultadoError> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return err("NO_AUTENTICADO");
-
-  const { data: usuario } = await supabase
-    .from("usuarios")
-    .select("rol")
-    .eq("id", user.id)
-    .single();
-
-  if (!usuario || usuario.rol !== "municipalidad") return err("SIN_PERMISO");
-
-  return { ok: true, userId: user.id };
-}
+type CursoData = Pick<Tabla<"cursos">, "nombre" | "descripcion" | "link" | "indicaciones">;
 
 function validarCursoData(data: CursoData): string | null {
-  if (!data.nombre.trim()) return "El nombre del curso es obligatorio.";
+  if (typeof data !== "object" || data === null) return "Los datos del curso no son válidos.";
+  if (typeof data.nombre !== "string" || !data.nombre.trim())
+    return "El nombre del curso es obligatorio.";
+  const errNombre = validarTextoOpcional(data.nombre, LARGO_MAXIMO.nombreCurso);
+  if (errNombre) return `Nombre: ${errNombre}`;
+  const errDescripcion = validarTextoOpcional(data.descripcion, LARGO_MAXIMO.descripcion);
+  if (errDescripcion) return `Descripción: ${errDescripcion}`;
+  const errIndicaciones = validarTextoOpcional(data.indicaciones, LARGO_MAXIMO.descripcion);
+  if (errIndicaciones) return `Indicaciones: ${errIndicaciones}`;
+  const errLink = validarTextoOpcional(data.link, LARGO_MAXIMO.linkCurso);
+  if (errLink) return `Link: ${errLink}`;
   if (data.link && !data.link.startsWith("https://"))
     return "El link debe comenzar con https://";
   return null;
@@ -50,7 +36,7 @@ function revalidarCursos(cursoId?: string) {
 }
 
 export async function crearCurso(data: CursoData): Promise<Resultado<void>> {
-  const auth = await verificarMunicipalidad();
+  const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
 
   const errVal = validarCursoData(data);
@@ -81,9 +67,10 @@ export async function editarCurso(
   cursoId: string,
   data: CursoData
 ): Promise<Resultado<void>> {
-  const auth = await verificarMunicipalidad();
+  const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
 
+  if (!esUuid(cursoId)) return err("DATOS_INVALIDOS");
   const errVal = validarCursoData(data);
   if (errVal) return err("DATOS_INVALIDOS", errVal);
 
@@ -114,8 +101,10 @@ export async function toggleActivoCurso(
   cursoId: string,
   nuevoEstado: boolean
 ): Promise<Resultado<void>> {
-  const auth = await verificarMunicipalidad();
+  const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
+
+  if (!esUuid(cursoId) || typeof nuevoEstado !== "boolean") return err("DATOS_INVALIDOS");
 
   const supabase = await createSupabaseServerClient();
   const { data: updated, error } = await supabase
@@ -135,8 +124,10 @@ export async function toggleActivoCurso(
 }
 
 export async function eliminarCurso(cursoId: string): Promise<Resultado<void>> {
-  const auth = await verificarMunicipalidad();
+  const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
+
+  if (!esUuid(cursoId)) return err("DATOS_INVALIDOS");
 
   const supabase = await createSupabaseServerClient();
 
@@ -164,10 +155,13 @@ export async function asignarCurso(
   cursoId: string,
   nota: string
 ): Promise<Resultado<void>> {
-  const auth = await verificarMunicipalidad();
+  const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
 
   if (!cursoId) return err("DATOS_INVALIDOS", "Debés seleccionar un curso.");
+  if (!esUuid(cursoId) || !esUuid(postulanteId)) return err("DATOS_INVALIDOS");
+  const errNota = validarTextoOpcional(nota, LARGO_MAXIMO.nota);
+  if (errNota) return err("DATOS_INVALIDOS", `Nota: ${errNota}`);
 
   const supabase = await createSupabaseServerClient();
 
@@ -180,7 +174,7 @@ export async function asignarCurso(
     const ref = logError("asignarCurso_estado", errorEstado, { postulanteId });
     return errConRef("ERROR_INTERNO", "No se pudo asignar el curso. Intentá de nuevo.", ref);
   }
-  const estado = ((estados ?? []) as EstadoCursosPostulante[])[0];
+  const estado = estados?.[0];
   if (!estado) return err("NO_ENCONTRADO", "Postulante no encontrado.");
   if (estado.asignacion_activa_id) return err("REGLA_DE_NEGOCIO", MENSAJE_CURSO_ACTIVO);
   if (!estado.necesita_curso) return err("REGLA_DE_NEGOCIO", MENSAJE_SOLO_SI_NECESITA_CURSO);
@@ -188,8 +182,8 @@ export async function asignarCurso(
   const { error } = await supabase.from("asignaciones_curso").insert({
     postulante_id: postulanteId,
     curso_id: cursoId,
-    asignado_por: auth.userId,
-    nota: nota.trim() || null,
+    asignado_por: auth.usuario.id,
+    nota: nota?.trim() || null,
   });
 
   if (error) {

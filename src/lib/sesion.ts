@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { obtenerUsuarioActual, panelDeRol, type Rol } from "@/lib/auth";
 import {
   obtenerResumenNotificaciones,
   type ResumenNotificaciones,
@@ -7,7 +8,7 @@ import {
 export type SesionData = {
   nombre: string;
   apellido: string;
-  rol: string | null;
+  rol: Rol | null;
   avatarUrl: string | null;
   ajuste: { x: number; y: number; zoom: number } | null;
   profileHref: string;
@@ -17,37 +18,29 @@ export type SesionData = {
   notificaciones: ResumenNotificaciones | null;
 };
 
-export async function obtenerSesionActual(): Promise<SesionData | null> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+function textoDeMetadata(valor: unknown): string {
+  return typeof valor === "string" ? valor : "";
+}
 
+export async function obtenerSesionActual(): Promise<SesionData | null> {
+  const user = await obtenerUsuarioActual();
   if (!user) return null;
 
-  const [{ data: u }, { data: avatarActivo }] = await Promise.all([
-    supabase
-      .from("usuarios")
-      .select("nombre, apellido, rol")
-      .eq("id", user.id)
-      .single(),
-    supabase
-      .from("archivos_usuario")
-      .select("ruta, ajuste_x, ajuste_y, ajuste_zoom")
-      .eq("usuario_id", user.id)
-      .eq("tipo", "avatar")
-      .eq("activo", true)
-      .maybeSingle(),
-  ]);
+  const supabase = await createSupabaseServerClient();
+  const { data: avatarActivo } = await supabase
+    .from("archivos_usuario")
+    .select("ruta, ajuste_x, ajuste_y, ajuste_zoom")
+    .eq("usuario_id", user.id)
+    .eq("tipo", "avatar")
+    .eq("activo", true)
+    .maybeSingle();
 
-  const nombre = u?.nombre ?? (user.user_metadata?.nombre as string) ?? "";
-  const apellido = u?.apellido ?? (user.user_metadata?.apellido as string) ?? "";
-  const rol: string | null = u?.rol ?? null;
+  const u = user.perfil;
+  const nombre = u?.nombre ?? textoDeMetadata(user.metadata.nombre);
+  const apellido = u?.apellido ?? textoDeMetadata(user.metadata.apellido);
+  const rol = u?.rol ?? null;
 
-  const profileHref =
-    rol === "empresa" ? "/empresa" :
-    rol === "municipalidad" ? "/admin" :
-    "/perfil";
+  const profileHref = rol ? panelDeRol(rol) : "/perfil";
 
   let cursosPendientes = 0;
   if (rol === "postulante") {

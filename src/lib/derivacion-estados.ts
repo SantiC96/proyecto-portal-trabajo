@@ -1,8 +1,6 @@
-export type EstadoDerivacionEmpresa =
-  | "pendiente"
-  | "en_proceso"
-  | "contratado"
-  | "rechazado";
+import type { Enum } from "@/types/db";
+
+export type EstadoDerivacionEmpresa = Enum<"estado_empresa">;
 
 export const DERIVACION_ESTADO_LABEL: Record<EstadoDerivacionEmpresa, string> = {
   pendiente: "Por contactar",

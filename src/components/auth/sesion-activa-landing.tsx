@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SesionActivaModal } from "@/components/auth/sesion-activa-modal";
+import type { Rol } from "@/types/db";
 
 interface Props {
   nombre: string;
-  rol: string | null;
+  rol: Rol | null;
   redirectTo: string;
   accion?: "registro" | "login";
   profileHref?: string;

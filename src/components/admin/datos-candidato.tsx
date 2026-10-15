@@ -1,11 +1,10 @@
 import { ExternalLink } from "lucide-react";
+import type { Tabla } from "@/types/db";
 
-type Props = {
+type Props = Pick<Tabla<"postulantes">, "dni" | "domicilio"> & {
   email: string | null;
-  dni: string | null;
-  domicilio: string | null;
   telefono: string | null;
-  categorias: { id: string; nombre: string }[];
+  categorias: Pick<Tabla<"categorias">, "id" | "nombre">[];
   cvUrl: string | null;
 };
 

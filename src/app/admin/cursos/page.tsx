@@ -16,6 +16,7 @@ import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { UMBRAL_RECHAZOS_CURSO, VENTANA_RECHAZOS_DIAS } from "@/lib/cursos";
+import { requerirRolPagina } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Cursos | Panel municipal | Portal de Empleo Funes",
@@ -23,18 +24,12 @@ export const metadata: Metadata = {
 
 const RUTA = "/admin/cursos";
 
-type CursoRow = {
-  id: string;
-  nombre: string;
-  link: string | null;
-  activo: boolean;
-};
-
 export default async function CursosPage({
   searchParams,
 }: {
   searchParams: Promise<{ estado?: string; q?: string; pagina?: string }>;
 }) {
+  await requerirRolPagina("municipalidad");
   const sp = await searchParams;
   const soloActivos = sp.estado !== "inactivos";
   const q = limpiarBusqueda(sp.q);
@@ -123,7 +118,7 @@ async function ListadoCursos({
 }) {
   const supabase = await createSupabaseServerClient();
 
-  const resultado = await consultarPagina<CursoRow>(pagina, (desde, hasta) => {
+  const resultado = await consultarPagina(pagina, (desde, hasta) => {
     let query = supabase
       .from("cursos")
       .select("id, nombre, link, activo", { count: "exact" })
@@ -132,8 +127,7 @@ async function ListadoCursos({
     return query
       .order("nombre", { ascending: true })
       .order("id", { ascending: true })
-      .range(desde, hasta)
-      .overrideTypes<CursoRow[], { merge: false }>();
+      .range(desde, hasta);
   });
 
   if (!resultado.ok) {
@@ -180,7 +174,7 @@ async function ListadoCursos({
   if (conteosError) logError("admin_cursos_conteo_asignaciones", conteosError);
 
   const conteosAsignaciones: Record<string, number> = {};
-  for (const row of (conteosData ?? []) as { curso_id: string }[]) {
+  for (const row of conteosData ?? []) {
     conteosAsignaciones[row.curso_id] =
       (conteosAsignaciones[row.curso_id] ?? 0) + 1;
   }

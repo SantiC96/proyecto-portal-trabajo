@@ -23,10 +23,11 @@ import {
   BADGE_ESTADO_VISIBLE,
   badgePostulacion,
   type BadgePostulacion,
-  type EstadoPostulacion,
 } from "@/lib/admin/postulacion-estados";
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
+import type { FilaPostulacionNoSeleccionada, Tabla } from "@/types/db";
 import { formatFechaCorta } from "@/lib/fechas";
+import { requerirRolPagina } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Postulaciones | Panel municipal | Portal de Empleo Funes",
@@ -54,53 +55,17 @@ const LABEL_FILTRO: Record<EstadoFiltro, string> = {
   rechazada_municipalidad: "No seleccionado",
 };
 
-const DERIVACION_ABIERTA = ["pendiente", "en_proceso"];
+const DERIVACION_ABIERTA: EstadoDerivacionEmpresa[] = ["pendiente", "en_proceso"];
 
 const ID_INEXISTENTE = "00000000-0000-0000-0000-000000000000";
 
-type PostulanteEmbebido = {
-  id: string;
-  usuario_id: string;
-  dni: string | null;
-  usuarios: { nombre: string; apellido: string } | null;
-} | null;
+type PostulanteEmbebido =
+  | (Pick<Tabla<"postulantes">, "id" | "usuario_id" | "dni"> & {
+      usuarios: Pick<Tabla<"usuarios">, "nombre" | "apellido"> | null;
+    })
+  | null;
 
-type OfertaEmbebida = { id: string; titulo: string; empresa_nombre: string } | null;
-
-type PostulacionRow = {
-  id: string;
-  estado: EstadoPostulacion;
-  created_at: string;
-  postulante_id: string;
-  postulantes: PostulanteEmbebido;
-  ofertas: OfertaEmbebida;
-  derivaciones: { estado_empresa: EstadoDerivacionEmpresa } | null;
-};
-
-type ContratacionRow = {
-  id: string;
-  fecha_respuesta: string | null;
-  updated_at: string;
-  postulaciones: {
-    id: string;
-    postulantes: PostulanteEmbebido;
-    ofertas: OfertaEmbebida;
-  };
-};
-
-type NoSeleccionadaRow = {
-  postulacion_id: string;
-  postulante_id: string;
-  oferta_id: string;
-  usuario_id: string | null;
-  nombre: string | null;
-  apellido: string | null;
-  dni: string | null;
-  oferta_titulo: string;
-  empresa_nombre: string | null;
-  rechazado_por: "oficina" | "empresa";
-  fecha_rechazo: string;
-};
+type OfertaEmbebida = Pick<Tabla<"ofertas">, "id" | "titulo" | "empresa_nombre"> | null;
 
 /** Fila común a las cuatro secciones. */
 type Fila = {
@@ -123,13 +88,10 @@ export default async function PostulacionesPage({
     pagina?: string;
   }>;
 }) {
+  await requerirRolPagina("municipalidad");
   const sp = await searchParams;
 
-  const estado: EstadoFiltro = ESTADOS_FILTRO.includes(
-    sp.estado as EstadoFiltro
-  )
-    ? (sp.estado as EstadoFiltro)
-    : "pendiente";
+  const estado: EstadoFiltro = ESTADOS_FILTRO.find((e) => e === sp.estado) ?? "pendiente";
 
   const ofertaId = (sp.oferta_id ?? "").trim();
   const q = limpiarBusqueda(sp.q);
@@ -374,7 +336,7 @@ async function ListadoPostulaciones({
   let total: number;
 
   if (estado === "contratado") {
-    const resultado = await consultarPagina<ContratacionRow>(pagina, (desde, hasta) => {
+    const resultado = await consultarPagina(pagina, (desde, hasta) => {
       let query = supabase
         .from("derivaciones")
         .select(
@@ -408,8 +370,7 @@ async function ListadoPostulaciones({
         .order("fecha_respuesta", { ascending: false, nullsFirst: false })
         .order("updated_at", { ascending: false })
         .order("id", { ascending: false })
-        .range(desde, hasta)
-        .overrideTypes<ContratacionRow[], { merge: false }>();
+        .range(desde, hasta);
     });
 
     if (!resultado.ok) {
@@ -427,7 +388,7 @@ async function ListadoPostulaciones({
     paginaActual = resultado.pagina;
     total = resultado.total;
   } else if (estado === "rechazada_municipalidad") {
-    const resultado = await consultarPagina<NoSeleccionadaRow>(pagina, async (desde, hasta) => {
+    const resultado = await consultarPagina(pagina, async (desde, hasta) => {
       let query = supabase.rpc("postulaciones_no_seleccionadas", undefined, {
         count: "exact",
       });
@@ -439,7 +400,7 @@ async function ListadoPostulaciones({
         .order("fecha_rechazo", { ascending: false })
         .order("postulacion_id", { ascending: false })
         .range(desde, hasta);
-      const data: NoSeleccionadaRow[] | null = respuesta.data;
+      const data: FilaPostulacionNoSeleccionada[] | null = respuesta.data;
       return { data, count: respuesta.count, error: respuesta.error };
     });
 
@@ -475,7 +436,7 @@ async function ListadoPostulaciones({
     paginaActual = resultado.pagina;
     total = resultado.total;
   } else {
-    const resultado = await consultarPagina<PostulacionRow>(pagina, (desde, hasta) => {
+    const resultado = await consultarPagina(pagina, (desde, hasta) => {
       const columnas = `
         id,
         estado,
@@ -514,8 +475,7 @@ async function ListadoPostulaciones({
       return query
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
-        .range(desde, hasta)
-        .overrideTypes<PostulacionRow[], { merge: false }>();
+        .range(desde, hasta);
     });
 
     if (!resultado.ok) {

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Building2, Plus, List, BookmarkCheck, AlertTriangle } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirEmpresaPagina } from "@/lib/auth";
 import { AvisoUrl } from "@/components/ui/aviso-url";
 import { CandidatosSinResultado } from "./_components/candidatos-sin-resultado";
 import { DIAS_AVISO_VENCIMIENTO } from "@/lib/ofertas-vencimiento";
@@ -14,19 +14,8 @@ export const metadata: Metadata = {
 };
 
 export default async function EmpresaDashboardPage() {
+  const empresa = await requerirEmpresaPagina();
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
-
-  const { data: empresa } = await supabase
-    .from("empresas")
-    .select("id, razon_social")
-    .eq("usuario_id", user.id)
-    .maybeSingle();
-
-  if (!empresa) redirect("/");
 
   // Conteo de ofertas por estado. Una oferta activa con vence_en vencido se
   // cuenta como "Vencida": sigue en estado 'activa' pero ya no se ve en el portal.

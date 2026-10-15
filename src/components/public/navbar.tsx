@@ -15,11 +15,12 @@ import { logout } from "@/app/auth/actions";
 import { BotonFormulario } from "@/components/ui/boton-formulario";
 import { CampanaNotificaciones } from "@/components/notificaciones/campana-notificaciones";
 import type { ResumenNotificaciones } from "@/lib/notificaciones";
+import type { Rol } from "@/types/db";
 
 type NavbarSession = {
   nombre: string;
   apellido: string;
-  rol?: string | null;
+  rol?: Rol | null;
   avatarUrl?: string | null;
   ajuste?: { x: number; y: number; zoom: number } | null;
   profileHref: string;
@@ -31,7 +32,7 @@ interface NavbarProps {
   session?: NavbarSession | null;
 }
 
-function getRolLabel(rol?: string | null): string {
+function getRolLabel(rol?: Rol | null): string {
   if (rol === "empresa") return "Empresa";
   if (rol === "municipalidad") return "Oficina de empleo";
   return "Postulante";
@@ -53,7 +54,7 @@ type MenuItem = {
   pendientes?: number;
 };
 
-function getMenuItems(rol?: string | null, cursosPendientes = 0): MenuItem[] {
+function getMenuItems(rol?: Rol | null, cursosPendientes = 0): MenuItem[] {
   if (rol === "postulante") {
     return [
       { label: "Mi perfil", href: "/perfil", Icon: User },

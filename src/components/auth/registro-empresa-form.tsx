@@ -4,7 +4,8 @@ import { useState } from "react";
 import { registrarEmpresa } from "@/app/auth/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { formatearCUIT } from "@/lib/cuit";
-import { validarCuitConMensaje } from "@/lib/validaciones";
+import { LARGO_MAXIMO, validarCuitConMensaje } from "@/lib/validaciones";
+import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import Link from "next/link";
 import {
   Building2,
@@ -19,6 +20,7 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
+import type { Tabla } from "@/types/db";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -49,7 +51,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 // ─── component ──────────────────────────────────────────────────────────────
 
 interface Props {
-  categorias: { id: string; nombre: string }[];
+  categorias: Tabla<"categorias">[];
 }
 
 export function RegistroEmpresaForm({ categorias }: Props) {
@@ -248,8 +250,10 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                 value={descripcion}
                 onChange={(e) => setDescripcion(e.target.value)}
                 placeholder="Contanos brevemente a qué se dedica tu empresa…"
+                maxLength={LARGO_MAXIMO.descripcion}
                 className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20"
               />
+              <ContadorCaracteres actual={descripcion.length} maximo={LARGO_MAXIMO.descripcion} />
             </div>
           </div>
         </section>

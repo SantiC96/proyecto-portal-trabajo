@@ -4,16 +4,15 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X, MapPin } from "lucide-react";
 import { MultiCombobox } from "@/components/ui/multi-combobox";
-import { validarOferta, type OfertaData } from "@/lib/validaciones";
+import { LARGO_MAXIMO, validarOferta, type OfertaData } from "@/lib/validaciones";
+import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { crearOferta, editarOferta } from "@/app/empresa/(panel)/ofertas/actions";
 import { type ErrorAccion, toErrorAccion } from "@/lib/resultado";
 import { DURACIONES_OFERTA, DURACION_OFERTA_POR_DEFECTO } from "@/lib/ofertas-vencimiento";
 import { useAccion } from "@/lib/use-accion";
+import type { Tabla } from "@/types/db";
 
-interface Categoria {
-  id: string;
-  nombre: string;
-}
+type Categoria = Pick<Tabla<"categorias">, "id" | "nombre">;
 
 interface OfertaFormProps {
   categorias: Categoria[];
@@ -158,7 +157,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
           value={titulo}
           onChange={(e) => setTitulo(e.target.value)}
           placeholder="Ej: Vendedor/a de salón"
-          maxLength={120}
+          maxLength={LARGO_MAXIMO.tituloOferta}
           className="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-foreground placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
@@ -174,10 +173,10 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
           onChange={(e) => setDescripcion(e.target.value)}
           placeholder="Describí las tareas, responsabilidades y el contexto del puesto..."
           rows={5}
-          maxLength={4000}
+          maxLength={LARGO_MAXIMO.descripcion}
           className="w-full resize-y rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-foreground placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
-        <p className="text-xs text-muted-foreground">{descripcion.length}/4000</p>
+        <ContadorCaracteres actual={descripcion.length} maximo={LARGO_MAXIMO.descripcion} />
       </div>
 
       {/* Categorías */}
@@ -325,7 +324,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
               onChange={(e) => setNuevoRequisito(e.target.value)}
               onKeyDown={handleKeyDownRequisito}
               placeholder="Ej: Secundario completo, experiencia en ventas…"
-              maxLength={200}
+              maxLength={LARGO_MAXIMO.itemOferta}
               className="flex-1 rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-foreground placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
             <button
@@ -381,7 +380,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
               onChange={(e) => setNuevoBeneficio(e.target.value)}
               onKeyDown={handleKeyDownBeneficio}
               placeholder="Ej: Obra social, flexibilidad horaria, comedor…"
-              maxLength={200}
+              maxLength={LARGO_MAXIMO.itemOferta}
               className="flex-1 rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-foreground placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
             <button

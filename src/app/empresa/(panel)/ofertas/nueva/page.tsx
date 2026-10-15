@@ -3,12 +3,14 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getCategoriasConId } from "@/lib/ofertas";
 import { OfertaForm } from "@/app/empresa/(panel)/ofertas/_components/oferta-form";
+import { requerirEmpresaPagina } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Publicar oferta | Portal de Empleo Funes",
 };
 
 export default async function NuevaOfertaPage() {
+  await requerirEmpresaPagina("/empresa");
   const categorias = await getCategoriasConId();
 
   return (

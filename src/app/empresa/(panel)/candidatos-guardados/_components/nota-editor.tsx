@@ -7,6 +7,8 @@ import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
+import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
+import { LARGO_MAXIMO } from "@/lib/validaciones";
 
 type Props = {
   guardadoId: string;
@@ -62,9 +64,11 @@ export function NotaGuardadoEditor({ guardadoId, notaInicial }: Props) {
         rows={3}
         className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         placeholder="Escribí una nota privada…"
+        maxLength={LARGO_MAXIMO.nota}
         disabled={isPending}
         autoFocus
       />
+      <ContadorCaracteres actual={nota.length} maximo={LARGO_MAXIMO.nota} />
       {error && (
         <div>
           <p className="text-xs text-red-600">{error.mensaje}</p>

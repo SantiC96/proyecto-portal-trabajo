@@ -1,20 +1,13 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import type { Tabla } from "@/types/db";
+
+type Categoria = Pick<Tabla<"categorias">, "id" | "nombre">;
 
 export type DatosCandidatoResult = {
-  postulante: {
-    id: string;
-    usuario_id: string;
-    dni: string | null;
-    domicilio: string | null;
-  };
-  usuario: {
-    id: string;
-    nombre: string;
-    apellido: string;
-    telefono: string | null;
-  };
+  postulante: Pick<Tabla<"postulantes">, "id" | "usuario_id" | "dni" | "domicilio">;
+  usuario: Pick<Tabla<"usuarios">, "id" | "nombre" | "apellido" | "telefono">;
   email: string | null;
-  categorias: { id: string; nombre: string }[];
+  categorias: Categoria[];
   avatar: {
     url: string | null;
     ajuste?: { x: number; y: number; zoom: number };
@@ -27,20 +20,7 @@ export async function obtenerCandidato(
 ): Promise<DatosCandidatoResult | null> {
   const supabase = await createSupabaseServerClient();
 
-  type PostulanteRow = {
-    id: string;
-    usuario_id: string;
-    dni: string | null;
-    domicilio: string | null;
-    usuarios: {
-      id: string;
-      nombre: string;
-      apellido: string;
-      telefono: string | null;
-    } | null;
-  };
-
-  const { data: raw } = await supabase
+  const { data: postulante } = await supabase
     .from("postulantes")
     .select(
       "id, usuario_id, dni, domicilio, usuarios!usuario_id(id, nombre, apellido, telefono)"
@@ -48,22 +28,12 @@ export async function obtenerCandidato(
     .eq("id", postulanteId)
     .single();
 
-  if (!raw) return null;
+  if (!postulante) return null;
 
-  const postulante = raw as unknown as PostulanteRow;
   const usuario = postulante.usuarios;
   if (!usuario) return null;
 
   const usuarioId = postulante.usuario_id;
-
-  type CategoriaRow = { categorias: { id: string; nombre: string } | null };
-  type ArchivoRow = {
-    tipo: string;
-    ruta: string;
-    ajuste_x: number;
-    ajuste_y: number;
-    ajuste_zoom: number;
-  };
 
   const [categoriasResult, archivosResult, emailResult] = await Promise.all([
     supabase
@@ -78,18 +48,15 @@ export async function obtenerCandidato(
     supabase.rpc("emails_de_usuarios", { ids: [usuarioId] }),
   ]);
 
-  const categorias = (
-    (categoriasResult.data ?? []) as unknown as CategoriaRow[]
-  )
+  const categorias = (categoriasResult.data ?? [])
     .map((r) => r.categorias)
-    .filter((c): c is { id: string; nombre: string } => Boolean(c));
+    .filter((c): c is Categoria => Boolean(c));
 
-  const archivos = (archivosResult.data ?? []) as unknown as ArchivoRow[];
+  const archivos = archivosResult.data ?? [];
   const cvArchivo = archivos.find((a) => a.tipo === "cv") ?? null;
   const avatarArchivo = archivos.find((a) => a.tipo === "avatar") ?? null;
 
-  const emailRows = (emailResult.data ?? []) as { id: string; email: string }[];
-  const email = emailRows[0]?.email ?? null;
+  const email = emailResult.data?.[0]?.email ?? null;
 
   const [cvUrlResult, avatarUrlResult] = await Promise.all([
     cvArchivo

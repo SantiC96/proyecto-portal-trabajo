@@ -10,18 +10,14 @@ import { obtenerCandidato } from "@/lib/admin/candidato";
 import {
   BADGE_ESTADO_VISIBLE,
   estadoVisiblePostulacion,
-  type EstadoPostulacion,
 } from "@/lib/admin/postulacion-estados";
 import { getOfertaEstadoLabel } from "@/lib/oferta-estados";
 import { FichaAcciones } from "./ficha-acciones";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { logError } from "@/lib/logger";
-import { avisoCursoAlDerivar, type EstadoCursosPostulante } from "@/lib/cursos";
-import {
-  DERIVACION_ESTADO_LABEL,
-  DERIVACION_ESTADO_STYLE,
-  type EstadoDerivacionEmpresa,
-} from "@/lib/derivacion-estados";
+import { aEstadoCursos, avisoCursoAlDerivar } from "@/lib/cursos";
+import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_STYLE } from "@/lib/derivacion-estados";
+import { requerirRolPagina } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Ficha | Postulaciones | Panel municipal | Portal de Empleo Funes",
@@ -33,10 +29,11 @@ export default async function PostulacionFichaPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requerirRolPagina("municipalidad");
   const { id: postulacionId } = await params;
 
   const supabase = await createSupabaseServerClient();
-  const { data: raw } = await supabase
+  const { data: postulacion } = await supabase
     .from("postulaciones")
     .select(
       `
@@ -55,28 +52,8 @@ export default async function PostulacionFichaPage({
     .eq("id", postulacionId)
     .single();
 
-  if (!raw) notFound();
+  if (!postulacion) notFound();
 
-  type PostulacionDetalle = {
-    id: string;
-    estado: EstadoPostulacion;
-    created_at: string;
-    updated_at: string | null;
-    nota_oficina: string | null;
-    revisado_por: string | null;
-    postulantes: { id: string; usuario_id: string } | null;
-    ofertas: {
-      id: string;
-      titulo: string;
-      empresa_nombre: string;
-      modalidad: string;
-      jornada: string;
-      estado: string;
-      contenido_editado_en: string | null;
-    } | null;
-  };
-
-  const postulacion = raw as unknown as PostulacionDetalle;
   const postulanteId = postulacion.postulantes?.id ?? null;
   const oferta = postulacion.ofertas;
 
@@ -108,25 +85,13 @@ export default async function PostulacionFichaPage({
 
   if (estadoCursosResult.error)
     logError("estado_cursos_postulantes", estadoCursosResult.error, { postulacionId });
+  const filaEstadoCursos = estadoCursosResult.data?.[0];
   const avisoCurso = avisoCursoAlDerivar(
-    ((estadoCursosResult.data ?? []) as EstadoCursosPostulante[])[0] ?? null
+    filaEstadoCursos ? aEstadoCursos(filaEstadoCursos) : null
   );
 
-  const derivacion = derivacionResult.data as {
-    id: string;
-    nota_municipalidad: string | null;
-    created_at: string;
-    updated_at: string;
-    estado_empresa: EstadoDerivacionEmpresa;
-    fecha_entrevista: string | null;
-    lugar_entrevista: string | null;
-    fecha_respuesta: string | null;
-    nota_empresa: string | null;
-  } | null;
-  const revisor = revisorResult.data as {
-    nombre: string;
-    apellido: string;
-  } | null;
+  const derivacion = derivacionResult.data;
+  const revisor = revisorResult.data;
 
   const estadoVisible = estadoVisiblePostulacion(
     postulacion.estado,

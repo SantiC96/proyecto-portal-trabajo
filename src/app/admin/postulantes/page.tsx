@@ -20,9 +20,12 @@ import { AsignarCursoDialog } from "./asignar-curso-dialog";
 import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
 import {
   VENTANA_RECHAZOS_DIAS,
+  aEstadoCursos,
   textoRechazos,
   type EstadoCursosPostulante,
 } from "@/lib/cursos";
+import type { Tabla } from "@/types/db";
+import { requerirRolPagina } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Postulantes | Panel municipal | Portal de Empleo Funes",
@@ -59,6 +62,7 @@ export default async function PostulantesPage({
     pagina?: string;
   }>;
 }) {
+  await requerirRolPagina("municipalidad");
   const sp = await searchParams;
 
   const filtros: FiltrosListado = {
@@ -82,7 +86,7 @@ export default async function PostulantesPage({
     .from("categorias")
     .select("id, nombre")
     .order("nombre");
-  const opciones = (categoriasRes.data ?? []) as { id: string; nombre: string }[];
+  const opciones = categoriasRes.data ?? [];
 
   return (
     <PostulantesShell
@@ -123,11 +127,7 @@ async function ListadoPostulantes({
     .eq("activo", true)
     .order("nombre");
 
-  const cursosActivos = (cursosRes.data ?? []) as {
-    id: string;
-    nombre: string;
-    descripcion: string | null;
-  }[];
+  const cursosActivos = cursosRes.data ?? [];
 
   // Pre-filtros paralelos
   const [rubroPreResult, cvPreResult, esperandoPreResult, pendientePreResult] = await Promise.all([
@@ -155,44 +155,34 @@ async function ListadoPostulantes({
       : Promise.resolve({ data: null }),
   ]);
 
-  type RubroRow = { postulante_id: string };
-  type CvRow = { usuario_id: string };
-  type EsperandoRow = { postulante_id: string };
-
   const rubroPrefilterId: string[] | undefined =
     rubroIds.length > 0
       ? [
           ...new Set(
-            ((rubroPreResult.data ?? []) as RubroRow[]).map(
-              (r) => r.postulante_id
-            )
+            (rubroPreResult.data ?? []).map((r) => r.postulante_id)
           ),
         ]
       : undefined;
 
   const cvUsuarioIds: string[] | undefined = conCv
-    ? ((cvPreResult.data ?? []) as CvRow[]).map((r) => r.usuario_id)
+    ? (cvPreResult.data ?? []).map((r) => r.usuario_id)
     : undefined;
 
   if (esperandoCurso && "error" in esperandoPreResult && esperandoPreResult.error)
     logError("postulantes_esperando_curso_ids", esperandoPreResult.error);
   const esperandoCursoFilterIds: string[] | undefined = esperandoCurso
-    ? ((esperandoPreResult.data ?? []) as EsperandoRow[]).map(
-        (r) => r.postulante_id
-      )
+    ? (esperandoPreResult.data ?? []).map((r) => r.postulante_id)
     : undefined;
 
   if (cursoPendiente && "error" in pendientePreResult && pendientePreResult.error)
     logError("postulantes_curso_pendiente", pendientePreResult.error);
   const cursoPendienteFilterIds: string[] | undefined = cursoPendiente
-    ? ((pendientePreResult.data ?? []) as EsperandoRow[]).map((r) => r.postulante_id)
+    ? (pendientePreResult.data ?? []).map((r) => r.postulante_id)
     : undefined;
 
   // Pre-filtro: búsqueda de texto
   let textFilterIds: string[] | undefined;
   if (q) {
-    type UserRow = { id: string };
-    type PRow = { id: string };
     const patron = patronIlike(q);
 
     const [usersRes, dniRes] = await Promise.all([
@@ -209,8 +199,8 @@ async function ListadoPostulantes({
       return <ErrorListado refError={ref} />;
     }
 
-    const usuarioIds = ((usersRes.data ?? []) as UserRow[]).map((r) => r.id);
-    const idsByDni = ((dniRes.data ?? []) as PRow[]).map((r) => r.id);
+    const usuarioIds = (usersRes.data ?? []).map((r) => r.id);
+    const idsByDni = (dniRes.data ?? []).map((r) => r.id);
 
     let idsByName: string[] = [];
     if (usuarioIds.length > 0) {
@@ -218,7 +208,7 @@ async function ListadoPostulantes({
         .from("postulantes")
         .select("id")
         .in("usuario_id", usuarioIds);
-      idsByName = ((byName ?? []) as PRow[]).map((r) => r.id);
+      idsByName = (byName ?? []).map((r) => r.id);
     }
 
     textFilterIds = [...new Set([...idsByName, ...idsByDni])];
@@ -250,19 +240,7 @@ async function ListadoPostulantes({
 
   if (emptyFilter) return vacio;
 
-  type PostulanteRow = {
-    id: string;
-    usuario_id: string;
-    dni: string | null;
-    created_at: string;
-    usuarios: {
-      nombre: string;
-      apellido: string;
-      telefono: string | null;
-    } | null;
-  };
-
-  const resultado = await consultarPagina<PostulanteRow>(pagina, (desde, hasta) => {
+  const resultado = await consultarPagina(pagina, (desde, hasta) => {
     let query = supabase
       .from("postulantes")
       .select(
@@ -283,8 +261,7 @@ async function ListadoPostulantes({
     return query
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
-      .range(desde, hasta)
-      .overrideTypes<PostulanteRow[], { merge: false }>();
+      .range(desde, hasta);
   });
 
   if (!resultado.ok) {
@@ -299,20 +276,6 @@ async function ListadoPostulantes({
 
   const postulanteIds = postulantes.map((p) => p.id);
   const usuarioIds = postulantes.map((p) => p.usuario_id);
-
-  type AvatarRow = {
-    usuario_id: string;
-    ruta: string;
-    ajuste_x: number;
-    ajuste_y: number;
-    ajuste_zoom: number;
-  };
-  type CatRow = {
-    postulante_id: string;
-    categorias: { id: string; nombre: string } | null;
-  };
-  type CvStatusRow = { usuario_id: string };
-  type PostulacionCountRow = { postulante_id: string };
 
   const [
     avatarRes,
@@ -352,14 +315,14 @@ async function ListadoPostulantes({
       .in("estado", ["asignado", "en_curso"]),
   ]);
 
-  const avatarRows = (avatarRes.data ?? []) as unknown as AvatarRow[];
+  const avatarRows = avatarRes.data ?? [];
   const avatarPaths = avatarRows.map((r) => r.ruta).filter(Boolean);
-  let signedUrls: { path: string; signedUrl: string }[] = [];
+  let signedUrls: { path: string | null; signedUrl: string | null }[] = [];
   if (avatarPaths.length > 0) {
     const { data: urls } = await supabase.storage
       .from("avatares")
       .createSignedUrls(avatarPaths, 600);
-    signedUrls = (urls ?? []) as { path: string; signedUrl: string }[];
+    signedUrls = urls ?? [];
   }
 
   const avatarByRuta = new Map(signedUrls.map((u) => [u.path, u.signedUrl]));
@@ -378,8 +341,8 @@ async function ListadoPostulantes({
     });
   }
 
-  const catRows = (catRes.data ?? []) as unknown as CatRow[];
-  const rubrosPorPostulante = new Map<string, { id: string; nombre: string }[]>();
+  const catRows = catRes.data ?? [];
+  const rubrosPorPostulante = new Map<string, Pick<Tabla<"categorias">, "id" | "nombre">[]>();
   for (const row of catRows) {
     if (!row.categorias) continue;
     const existing = rubrosPorPostulante.get(row.postulante_id) ?? [];
@@ -387,16 +350,10 @@ async function ListadoPostulantes({
     rubrosPorPostulante.set(row.postulante_id, existing);
   }
 
-  const usuariosConCv = new Set(
-    (
-      (cvStatusRes.data ?? []) as unknown as CvStatusRow[]
-    ).map((r) => r.usuario_id)
-  );
+  const usuariosConCv = new Set((cvStatusRes.data ?? []).map((r) => r.usuario_id));
 
   const conteosMap = new Map<string, number>();
-  for (const row of (
-    postulacionesRes.data ?? []
-  ) as unknown as PostulacionCountRow[]) {
+  for (const row of postulacionesRes.data ?? []) {
     conteosMap.set(
       row.postulante_id,
       (conteosMap.get(row.postulante_id) ?? 0) + 1
@@ -405,7 +362,8 @@ async function ListadoPostulantes({
 
   if (estadoCursosRes.error) logError("estado_cursos_postulantes", estadoCursosRes.error);
   const cursosMap = new Map<string, EstadoCursosPostulante>();
-  for (const row of (estadoCursosRes.data ?? []) as EstadoCursosPostulante[]) {
+  for (const fila of estadoCursosRes.data ?? []) {
+    const row = aEstadoCursos(fila);
     cursosMap.set(row.postulante_id, {
       ...row,
       rechazos_ventana: Number(row.rechazos_ventana),
@@ -416,7 +374,7 @@ async function ListadoPostulantes({
   if (cursosPendientesRes.error)
     logError("admin_postulantes_cursos_pendientes", cursosPendientesRes.error);
   const cursosPendientesMap = new Map<string, number>();
-  for (const row of (cursosPendientesRes.data ?? []) as PostulacionCountRow[]) {
+  for (const row of cursosPendientesRes.data ?? []) {
     cursosPendientesMap.set(
       row.postulante_id,
       (cursosPendientesMap.get(row.postulante_id) ?? 0) + 1
@@ -600,7 +558,7 @@ function EtiquetaCurso({
 function RubrosPills({
   rubros,
 }: {
-  rubros: { id: string; nombre: string }[];
+  rubros: Tabla<"categorias">[];
 }) {
   if (rubros.length === 0)
     return <span className="text-muted-foreground text-xs">—</span>;
@@ -636,7 +594,7 @@ function PostulantesShell({
   cursoPendiente,
   children,
 }: {
-  opciones: { id: string; nombre: string }[];
+  opciones: Tabla<"categorias">[];
   rubroIds: string[];
   hayBusqueda: boolean;
   conCv: boolean;

@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CursoForm } from "../curso-form";
+import { requerirRolPagina } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Nuevo curso | Panel municipal | Portal de Empleo Funes",
 };
 
-export default function NuevoCursoPage() {
+export default async function NuevoCursoPage() {
+  await requerirRolPagina("municipalidad");
   return (
     <section className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">

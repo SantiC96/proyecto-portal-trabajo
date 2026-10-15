@@ -2,12 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirRol } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { err, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
+import { esUuid } from "@/lib/validaciones";
 
 type EstadoPostulante = "en_curso" | "completado";
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const MENSAJES: Record<EstadoPostulante, string> = {
   en_curso: "Marcaste el curso como empezado.",
@@ -18,22 +18,14 @@ export async function actualizarEstadoMiCurso(
   asignacionId: string,
   estado: EstadoPostulante,
 ): Promise<Resultado<void>> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return err("NO_AUTENTICADO");
+  const auth = await requerirRol("postulante");
+  if (!auth.ok) return auth;
 
-  const { data: usuario } = await supabase
-    .from("usuarios")
-    .select("rol")
-    .eq("id", user.id)
-    .single();
-  if (!usuario || usuario.rol !== "postulante") return err("SIN_PERMISO");
-
-  if (!UUID.test(asignacionId) || (estado !== "en_curso" && estado !== "completado")) {
+  if (!esUuid(asignacionId) || (estado !== "en_curso" && estado !== "completado")) {
     return err("DATOS_INVALIDOS");
   }
+
+  const supabase = await createSupabaseServerClient();
 
   // La función verifica que la asignación sea del postulante y el trigger
   // valida la transición (migration_035).

@@ -18,8 +18,11 @@ import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
+import type { Tabla } from "@/types/db";
+import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
+import { LARGO_MAXIMO } from "@/lib/validaciones";
 
-type Curso = { id: string; nombre: string; descripcion: string | null };
+type Curso = Pick<Tabla<"cursos">, "id" | "nombre" | "descripcion">;
 
 type Props = {
   postulanteId: string;
@@ -144,9 +147,11 @@ export function AsignarCursoDialog({
                   value={nota}
                   onChange={(e) => setNota(e.target.value)}
                   placeholder="Observaciones sobre la asignación..."
+                  maxLength={LARGO_MAXIMO.nota}
                   className="min-h-20"
                   disabled={isPending}
                 />
+                <ContadorCaracteres actual={nota.length} maximo={LARGO_MAXIMO.nota} />
               </div>
             </div>
           )}

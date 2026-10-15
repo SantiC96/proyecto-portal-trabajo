@@ -5,6 +5,7 @@ import { PublicFooter } from "@/components/public/public-footer";
 import { getCategorias, leerFiltrosOfertasPublicas } from "@/lib/ofertas";
 import { obtenerSesionActual } from "@/lib/sesion";
 import { SesionActivaLanding } from "@/components/auth/sesion-activa-landing";
+import type { Rol } from "@/types/db";
 
 export default async function HomePage({
   searchParams,
@@ -26,7 +27,7 @@ export default async function HomePage({
 
   let sesionAviso: {
     nombre: string;
-    rol: string | null;
+    rol: Rol | null;
     redirectTo: string;
     accion: "registro" | "login";
     profileHref?: string;

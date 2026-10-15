@@ -2,32 +2,45 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirEmpresa } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { err, errConRef, okMsg, type Resultado } from "@/lib/resultado";
+import { esUuid, LARGO_MAXIMO, validarTextoOpcional } from "@/lib/validaciones";
+import type { Insert } from "@/types/db";
+
+/**
+ * empresa_id lo completa el trigger candidatos_guardados_set_empresa y el
+ * grant de columna no deja enviarlo (migration_028). El generador de tipos no
+ * lo sabe y lo marca obligatorio: este es el único lugar donde se completa el
+ * tipo de inserción.
+ */
+function filaGuardado(
+  fila: Omit<Insert<"candidatos_guardados">, "empresa_id">,
+): Insert<"candidatos_guardados"> {
+  return fila as Insert<"candidatos_guardados">;
+}
 
 export async function guardarCandidato(
   postulanteId: string,
   ofertaOrigenId: string | null,
   nota: string | null
 ): Promise<Resultado<void>> {
+  const auth = await requerirEmpresa({ aprobada: true });
+  if (!auth.ok) return auth;
+
+  if (!esUuid(postulanteId)) return err("DATOS_INVALIDOS");
+  if (ofertaOrigenId !== null && !esUuid(ofertaOrigenId)) return err("DATOS_INVALIDOS");
+  const errNota = validarTextoOpcional(nota, LARGO_MAXIMO.nota);
+  if (errNota) return err("DATOS_INVALIDOS", `Nota: ${errNota}`);
+
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return err("NO_AUTENTICADO");
-
-  const { data: usuario } = await supabase
-    .from("usuarios")
-    .select("rol")
-    .eq("id", user.id)
-    .single();
-  if (!usuario || usuario.rol !== "empresa") return err("SIN_PERMISO");
-
-  const { error } = await supabase.from("candidatos_guardados").insert({
-    postulante_id: postulanteId,
-    oferta_origen_id: ofertaOrigenId,
-    nota: nota || null,
-  });
+  const { error } = await supabase.from("candidatos_guardados").insert(
+    filaGuardado({
+      postulante_id: postulanteId,
+      oferta_origen_id: ofertaOrigenId,
+      nota: nota || null,
+    }),
+  );
 
   if (error) {
     if (error.code === "23505") {
@@ -42,19 +55,12 @@ export async function guardarCandidato(
 }
 
 export async function quitarGuardado(guardadoId: string): Promise<Resultado<void>> {
+  const auth = await requerirEmpresa({ aprobada: true });
+  if (!auth.ok) return auth;
+
+  if (!esUuid(guardadoId)) return err("DATOS_INVALIDOS");
+
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return err("NO_AUTENTICADO");
-
-  const { data: usuario } = await supabase
-    .from("usuarios")
-    .select("rol")
-    .eq("id", user.id)
-    .single();
-  if (!usuario || usuario.rol !== "empresa") return err("SIN_PERMISO");
-
   const { error } = await supabase
     .from("candidatos_guardados")
     .delete()
@@ -73,19 +79,14 @@ export async function actualizarNotaGuardado(
   guardadoId: string,
   nota: string | null
 ): Promise<Resultado<void>> {
+  const auth = await requerirEmpresa({ aprobada: true });
+  if (!auth.ok) return auth;
+
+  if (!esUuid(guardadoId)) return err("DATOS_INVALIDOS");
+  const errNota = validarTextoOpcional(nota, LARGO_MAXIMO.nota);
+  if (errNota) return err("DATOS_INVALIDOS", `Nota: ${errNota}`);
+
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return err("NO_AUTENTICADO");
-
-  const { data: usuario } = await supabase
-    .from("usuarios")
-    .select("rol")
-    .eq("id", user.id)
-    .single();
-  if (!usuario || usuario.rol !== "empresa") return err("SIN_PERMISO");
-
   const { error } = await supabase
     .from("candidatos_guardados")
     .update({ nota: nota?.trim() || null })

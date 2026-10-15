@@ -19,6 +19,8 @@ import { Buscador } from "@/components/ui/buscador";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
+import type { Enum, Tabla } from "@/types/db";
+import { requerirRolPagina } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Ofertas | Panel municipal | Portal de Empleo Funes",
@@ -44,7 +46,9 @@ const LABEL_FILTRO: Record<EstadoFiltro, string> = {
   cerrada: "Cerradas",
 };
 
-const ESTADO_STYLE: Record<EstadoFiltro, string> = {
+type EstadoVisible = Enum<"estado_oferta"> | "vencida";
+
+const ESTADO_STYLE: Partial<Record<EstadoVisible, string>> = {
   pendiente_aprobacion: "bg-amber-100 text-amber-800",
   activa: "bg-emerald-100 text-emerald-800",
   vencida: "bg-red-100 text-red-700",
@@ -52,15 +56,7 @@ const ESTADO_STYLE: Record<EstadoFiltro, string> = {
   cerrada: "bg-gray-100 text-gray-600",
 };
 
-type OfertaRow = {
-  id: string;
-  titulo: string;
-  empresa_nombre: string;
-  created_at: string;
-  estado: string;
-  contenido_editado_en: string | null;
-  vence_en: string | null;
-};
+type OfertaRow = Pick<Tabla<"ofertas">, "estado" | "vence_en">;
 
 const RUTA = "/admin/ofertas";
 
@@ -69,13 +65,11 @@ export default async function AdminOfertasPage({
 }: {
   searchParams: Promise<{ estado?: string; q?: string; pagina?: string }>;
 }) {
+  await requerirRolPagina("municipalidad");
   const sp = await searchParams;
 
-  const estado: EstadoFiltro = ESTADOS_FILTRO.includes(
-    sp.estado as EstadoFiltro
-  )
-    ? (sp.estado as EstadoFiltro)
-    : "pendiente_aprobacion";
+  const estado: EstadoFiltro =
+    ESTADOS_FILTRO.find((e) => e === sp.estado) ?? "pendiente_aprobacion";
 
   const q = limpiarBusqueda(sp.q);
   const pagina = leerPagina(sp.pagina);
@@ -209,7 +203,7 @@ async function ListadoOfertas({
   // Pendientes: de más vieja a más nueva (más urgentes primero)
   const ascendente = estado === "pendiente_aprobacion";
 
-  const resultado = await consultarPagina<OfertaRow>(pagina, (desde, hasta) => {
+  const resultado = await consultarPagina(pagina, (desde, hasta) => {
     let query = supabase
       .from("ofertas")
       .select(
@@ -227,8 +221,7 @@ async function ListadoOfertas({
     return query
       .order("created_at", { ascending: ascendente })
       .order("id", { ascending: ascendente })
-      .range(desde, hasta)
-      .overrideTypes<OfertaRow[], { merge: false }>();
+      .range(desde, hasta);
   });
 
   if (!resultado.ok) {
@@ -393,9 +386,9 @@ async function ListadoOfertas({
   );
 }
 
-function estadoVisible(row: OfertaRow): EstadoFiltro {
+function estadoVisible(row: OfertaRow): EstadoVisible {
   if (estadoVencimiento(row.estado, row.vence_en).vencida) return "vencida";
-  return row.estado as EstadoFiltro;
+  return row.estado;
 }
 
 function etiquetaEstado(row: OfertaRow): string {

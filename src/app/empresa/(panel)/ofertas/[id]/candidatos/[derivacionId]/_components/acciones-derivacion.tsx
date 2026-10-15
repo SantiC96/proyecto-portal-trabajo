@@ -26,6 +26,8 @@ import { mostrarAviso } from "@/lib/avisos";
 import { BookmarkBtn } from "./bookmark-btn";
 import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
+import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
+import { LARGO_MAXIMO } from "@/lib/validaciones";
 
 // Genera intervalos de 15 min de 08:00 a 20:00
 function generarHorarios(): string[] {
@@ -232,6 +234,7 @@ function EntrevistaDialog({
               value={lugar}
               onChange={(e) => setLugar(e.target.value)}
               placeholder="Dirección, piso, o link de videollamada"
+              maxLength={LARGO_MAXIMO.lugarEntrevista}
               className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
@@ -512,9 +515,11 @@ export function AccionesDerivacion({
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               placeholder="¿Por qué no encaja este candidato?"
+              maxLength={LARGO_MAXIMO.motivo}
               className="min-h-24"
               disabled={isPending}
             />
+            <ContadorCaracteres actual={motivo.length} maximo={LARGO_MAXIMO.motivo} />
           </div>
           {error && (
             <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">

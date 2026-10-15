@@ -3,40 +3,28 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { requerirEmpresa } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errConRef, fromSupabaseError, okMsg, type Resultado, type ResultadoError } from "@/lib/resultado";
-import { validarOferta, type OfertaData } from "@/lib/validaciones";
+import { err, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
+import { esUuid, validarOfertaRecibida, type OfertaData } from "@/lib/validaciones";
 
-async function getEmpresaAprobada(
-  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
-): Promise<{ ok: true; empresa: { id: string; razon_social: string } } | ResultadoError> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return err("NO_AUTENTICADO");
-
-  const { data: empresa } = await supabase
-    .from("empresas")
-    .select("id, razon_social, estado_aprobacion")
-    .eq("usuario_id", user.id)
-    .maybeSingle();
-
-  if (!empresa) return err("SIN_PERMISO");
-  if (empresa.estado_aprobacion !== "aprobada")
-    return err("SIN_PERMISO", "Tu empresa no está aprobada para publicar ofertas.");
-
-  return { ok: true, empresa: { id: empresa.id, razon_social: empresa.razon_social } };
+function getEmpresaAprobada() {
+  return requerirEmpresa({
+    aprobada: true,
+    mensajeNoAprobada: "Tu empresa no está aprobada para publicar ofertas.",
+  });
 }
 
-export async function crearOferta(data: OfertaData): Promise<Resultado<void>> {
-  const supabase = await createSupabaseServerClient();
-
-  const empresaResult = await getEmpresaAprobada(supabase);
+export async function crearOferta(datos: OfertaData): Promise<Resultado<void>> {
+  const empresaResult = await getEmpresaAprobada();
   if (!empresaResult.ok) return empresaResult;
   const { empresa } = empresaResult;
 
-  const errorValidacion = validarOferta(data);
-  if (errorValidacion) return err("DATOS_INVALIDOS", errorValidacion);
+  const validacion = validarOfertaRecibida(datos);
+  if (!validacion.ok) return err("DATOS_INVALIDOS", validacion.mensaje);
+  const data = validacion.oferta;
+
+  const supabase = await createSupabaseServerClient();
 
   // Verificar que todas las categorías existan
   const { data: categoriasExistentes, error: errorCats } = await supabase
@@ -100,12 +88,14 @@ export async function crearOferta(data: OfertaData): Promise<Resultado<void>> {
   return okMsg("Oferta enviada a revisión.");
 }
 
-export async function editarOferta(id: string, data: OfertaData): Promise<Resultado<void>> {
-  const supabase = await createSupabaseServerClient();
-
-  const empresaResult = await getEmpresaAprobada(supabase);
+export async function editarOferta(id: string, datos: OfertaData): Promise<Resultado<void>> {
+  const empresaResult = await getEmpresaAprobada();
   if (!empresaResult.ok) return empresaResult;
   const { empresa } = empresaResult;
+
+  if (!esUuid(id)) return err("NO_ENCONTRADO", "No se encontró la oferta o no tenés permiso para editarla.");
+
+  const supabase = await createSupabaseServerClient();
 
   // Bloquear edición si la oferta está pendiente de revisión
   const { data: ofertaActual } = await supabase
@@ -119,14 +109,15 @@ export async function editarOferta(id: string, data: OfertaData): Promise<Result
   if (ofertaActual.estado === "pendiente_aprobacion")
     return err("ESTADO_INVALIDO", "No podés editar una oferta que está pendiente de revisión.");
 
-  const errorValidacion = validarOferta(data);
-  if (errorValidacion) return err("DATOS_INVALIDOS", errorValidacion);
+  const validacion = validarOfertaRecibida(datos);
+  if (!validacion.ok) return err("DATOS_INVALIDOS", validacion.mensaje);
+  const data = validacion.oferta;
 
   // Validar que la nueva cantidad de vacantes no sea menor que los ya seleccionados
   const { data: contratadosData } = await supabase.rpc("contratados_en_oferta", {
     p_oferta_id: id,
   });
-  const contratadosActuales = (contratadosData as number | null) ?? 0;
+  const contratadosActuales = contratadosData ?? 0;
   if (contratadosActuales > 0 && data.cantidadVacantes < contratadosActuales) {
     return err(
       "REGLA_DE_NEGOCIO",
@@ -202,11 +193,13 @@ export async function editarOferta(id: string, data: OfertaData): Promise<Result
 }
 
 export async function eliminarOferta(id: string): Promise<Resultado<void>> {
-  const supabase = await createSupabaseServerClient();
-
-  const empresaResult = await getEmpresaAprobada(supabase);
+  const empresaResult = await getEmpresaAprobada();
   if (!empresaResult.ok) return empresaResult;
   const { empresa } = empresaResult;
+
+  if (!esUuid(id)) return err("NO_ENCONTRADO", "No se encontró la oferta o no tenés permiso para eliminarla.");
+
+  const supabase = await createSupabaseServerClient();
 
   const { data: oferta } = await supabase
     .from("ofertas")
@@ -245,11 +238,13 @@ export async function eliminarOferta(id: string): Promise<Resultado<void>> {
 }
 
 export async function cerrarOferta(id: string): Promise<Resultado<void>> {
-  const supabase = await createSupabaseServerClient();
-
-  const empresaResult = await getEmpresaAprobada(supabase);
+  const empresaResult = await getEmpresaAprobada();
   if (!empresaResult.ok) return empresaResult;
   const { empresa } = empresaResult;
+
+  if (!esUuid(id)) return err("NO_ENCONTRADO", "No se encontró la oferta o no tenés permiso para cerrarla.");
+
+  const supabase = await createSupabaseServerClient();
 
   const { data: oferta } = await supabase
     .from("ofertas")
@@ -297,21 +292,19 @@ export async function cerrarOferta(id: string): Promise<Resultado<void>> {
   return okMsg("Oferta cerrada.");
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /**
  * Renueva una oferta publicada y vencida por la misma duración, sin pasar
  * por revisión (el contenido no cambia). La función de la base verifica que
  * la oferta sea de la empresa y que esté vencida (migration_036).
  */
 export async function renovarOferta(id: string): Promise<Resultado<void>> {
-  const supabase = await createSupabaseServerClient();
-
-  const empresaResult = await getEmpresaAprobada(supabase);
+  const empresaResult = await getEmpresaAprobada();
   if (!empresaResult.ok) return empresaResult;
   const { empresa } = empresaResult;
 
-  if (!UUID.test(id)) return err("DATOS_INVALIDOS");
+  if (!esUuid(id)) return err("DATOS_INVALIDOS");
+
+  const supabase = await createSupabaseServerClient();
 
   const { data: oferta } = await supabase
     .from("ofertas")

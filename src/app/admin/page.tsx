@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { UMBRAL_RECHAZOS_CURSO } from "@/lib/cursos";
+import { requerirRolPagina } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Panel municipal | Portal de Empleo Funes",
@@ -23,6 +24,7 @@ function textoEstado(hayPendientes: boolean): string {
 }
 
 export default async function AdminDashboardPage() {
+  await requerirRolPagina("municipalidad");
   const supabase = await createSupabaseServerClient();
 
   const [

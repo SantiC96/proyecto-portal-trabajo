@@ -13,10 +13,12 @@ import {
   Loader2,
 } from "lucide-react";
 import { formatearCUIT } from "@/lib/cuit";
-import { validarCuitConMensaje } from "@/lib/validaciones";
+import { LARGO_MAXIMO, validarCuitConMensaje, validarTelefono } from "@/lib/validaciones";
+import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { reenviarSolicitudEmpresa } from "@/app/empresa/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { useAccion } from "@/lib/use-accion";
+import type { Tabla } from "@/types/db";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -55,7 +57,7 @@ export type DatosIniciales = {
   apellido: string;
   telefono: string;
   motivoRechazo: string | null;
-  rubros: { id: string; nombre: string }[];
+  rubros: Tabla<"categorias">[];
 };
 
 // ─── component ──────────────────────────────────────────────────────────────
@@ -70,6 +72,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
   const [nombre, setNombre] = useState(datos.nombre);
   const [apellido, setApellido] = useState(datos.apellido);
   const [telefono, setTelefono] = useState(datos.telefono ?? "");
+  const [telefonoError, setTelefonoError] = useState<string | null>(null);
 
   const [submitError, setSubmitError] = useState<ErrorAccion | null>(null);
   const { pendiente: isPending, ejecutar } = useAccion();
@@ -81,6 +84,15 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitError(null);
+
+    const errTelefono = telefono.trim()
+      ? validarTelefono(telefono)
+      : "Ingresá un teléfono de contacto.";
+    setTelefonoError(errTelefono);
+    if (errTelefono) {
+      document.getElementById("sol-telefono")?.focus();
+      return;
+    }
 
     ejecutar(async () => {
       const result = await reenviarSolicitudEmpresa({
@@ -235,9 +247,11 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                 value={descripcion}
                 onChange={(e) => setDescripcion(e.target.value)}
                 placeholder="Contanos brevemente a qué se dedica tu empresa…"
+                maxLength={LARGO_MAXIMO.descripcion}
                 className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
                 disabled={isPending}
               />
+              <ContadorCaracteres actual={descripcion.length} maximo={LARGO_MAXIMO.descripcion} />
             </div>
           </div>
         </section>
@@ -300,7 +314,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                 htmlFor="sol-telefono"
                 className="text-sm font-medium text-foreground"
               >
-                Teléfono / Celular
+                Teléfono / Celular <span className="text-red-500">*</span>
               </label>
               <InputWrapper>
                 <FieldIcon icon={Phone} />
@@ -308,13 +322,32 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                   id="sol-telefono"
                   type="tel"
                   autoComplete="tel"
+                  required
                   value={telefono}
-                  onChange={(e) => setTelefono(e.target.value)}
+                  onChange={(e) => {
+                    setTelefono(e.target.value);
+                    if (telefonoError) setTelefonoError(null);
+                  }}
                   placeholder="Ej: 341 5678901"
-                  className={inputClass}
+                  aria-invalid={telefonoError ? true : undefined}
+                  aria-describedby={telefonoError ? "sol-telefono-error" : undefined}
+                  className={`${inputClass} ${
+                    telefonoError
+                      ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
+                      : ""
+                  }`}
                   disabled={isPending}
                 />
               </InputWrapper>
+              {telefonoError && (
+                <p
+                  id="sol-telefono-error"
+                  className="flex items-center gap-1.5 text-xs text-red-500"
+                >
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  {telefonoError}
+                </p>
+              )}
             </div>
           </div>
         </section>

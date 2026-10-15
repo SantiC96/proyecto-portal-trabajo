@@ -2,11 +2,12 @@
 
 import { createContext, useContext, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@supabase/ssr";
+import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
+import type { Rol } from "@/types/db";
 
 export type SesionContextValue = {
   nombre: string;
-  rol: string | null;
+  rol: Rol | null;
   profileHref: string;
 } | null;
 
@@ -22,10 +23,7 @@ export function SesionProvider({
   const router = useRouter();
 
   useEffect(() => {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-    );
+    const supabase = createSupabaseBrowserClient();
 
     const {
       data: { subscription },

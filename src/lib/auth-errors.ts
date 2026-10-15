@@ -2,8 +2,7 @@ import type { AuthError } from "@supabase/supabase-js";
 import { err, type Resultado } from "@/lib/resultado";
 
 export function traducirErrorAuth(error: AuthError): Resultado<never> {
-  const code = (error as AuthError & { code?: string }).code;
-  switch (code) {
+  switch (error.code) {
     case "invalid_credentials":
       return err("DATOS_INVALIDOS", "El email o la contraseña no son correctos.");
     case "email_not_confirmed":
