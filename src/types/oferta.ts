@@ -1,5 +1,7 @@
-export type Modalidad = "Presencial" | "Híbrido" | "Remoto";
-export type Jornada = "Tiempo completo" | "Part-time" | "Pasantía" | "Por proyecto";
+import type { Enum } from "@/types/db";
+
+export type Modalidad = Enum<"modalidad_oferta">;
+export type Jornada = Enum<"jornada_oferta">;
 
 export interface OfertaLaboral {
   id: string;
