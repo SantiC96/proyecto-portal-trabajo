@@ -31,6 +31,7 @@ PostgreSQL `SECURITY DEFINER`** con `SET search_path = ''`:
 | `candidato_para_empresa(postulante_id)` | Devuelve nombre, apellido, email, teléfono y ruta CV. Solo si el postulante fue derivado (actualmente) **o** guardado por esa empresa. Nunca DNI ni domicilio. |
 | `empresa_puede_ver_cv(ruta)` | Utilizada en la política Storage del bucket `cvs` para que `createSupabaseServerClient()` pueda generar URLs firmadas sin `supabaseAdmin`. |
 | `ofertas_con_candidatos_pendientes()` | Devuelve los IDs de ofertas de la empresa autenticada que tienen candidatos en estado `pendiente`. No devuelve conteos (criterio PR #38). |
+| `derivaciones_sin_resultado_empresa(dias)` | (migration_037) Derivaciones de las ofertas de la empresa con la entrevista vencida hace más de `dias` días y sin respuesta (`pendiente` o `en_proceso`), con nombre y apellido del candidato. Alimenta el recordatorio "¿los contrataste?" del panel. |
 | `estado_derivacion_postulante(postulacion_id)` | Solo para el **postulante**: devuelve `estado_empresa`, `fecha_entrevista` y `lugar_entrevista` de sus propias postulaciones. Nunca `nota_empresa` ni `nota_municipalidad`. |
 
 ## Por qué no `supabaseAdmin`
