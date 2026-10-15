@@ -41,3 +41,13 @@ export function formatFechaHora(iso: string | null | undefined): string {
     minute: "2-digit",
   }).format(d);
 }
+
+/** Momento de hace `dias` días, en ISO (para filtros relativos a ahora). */
+export function haceDiasISO(dias: number): string {
+  return new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString();
+}
+
+/** Momento dentro de `dias` días (0 = ahora), en ISO. */
+export function dentroDeDiasISO(dias: number): string {
+  return new Date(Date.now() + dias * 24 * 60 * 60 * 1000).toISOString();
+}

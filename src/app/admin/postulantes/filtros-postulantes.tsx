@@ -13,6 +13,7 @@ type Filtros = {
   rubros: string[];
   conCv: boolean;
   esperandoCurso: boolean;
+  cursoPendiente: boolean;
 };
 
 type Props = Filtros & {
@@ -25,6 +26,7 @@ export function FiltrosPostulantes({
   rubros,
   conCv,
   esperandoCurso,
+  cursoPendiente,
   hayBusqueda,
 }: Props) {
   const router = useRouter();
@@ -35,10 +37,15 @@ export function FiltrosPostulantes({
     rubros,
     conCv,
     esperandoCurso,
+    cursoPendiente,
   });
 
   const tienesFiltros =
-    hayBusqueda || filtros.rubros.length > 0 || filtros.conCv || filtros.esperandoCurso;
+    hayBusqueda ||
+    filtros.rubros.length > 0 ||
+    filtros.conCv ||
+    filtros.esperandoCurso ||
+    filtros.cursoPendiente;
 
   function aplicar(cambios: Partial<Filtros>) {
     const siguiente = { ...filtros, ...cambios };
@@ -46,6 +53,7 @@ export function FiltrosPostulantes({
       rubros: siguiente.rubros.join(",") || null,
       con_cv: siguiente.conCv ? "1" : null,
       esperando_curso: siguiente.esperandoCurso ? "1" : null,
+      curso_pendiente: siguiente.cursoPendiente ? "1" : null,
       pagina: null,
     });
     startTransition(() => {
@@ -56,7 +64,7 @@ export function FiltrosPostulantes({
 
   function handleLimpiar() {
     startTransition(() => {
-      setFiltros({ rubros: [], conCv: false, esperandoCurso: false });
+      setFiltros({ rubros: [], conCv: false, esperandoCurso: false, cursoPendiente: false });
       router.push(RUTA);
     });
   }
@@ -101,6 +109,17 @@ export function FiltrosPostulantes({
             className="h-4 w-4 rounded border-amber-300 accent-amber-600"
           />
           Esperando curso
+        </label>
+
+        {/* Checkbox curso pendiente (asignado o en curso) */}
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 whitespace-nowrap rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground select-none">
+          <input
+            type="checkbox"
+            checked={filtros.cursoPendiente}
+            onChange={(e) => aplicar({ cursoPendiente: e.target.checked })}
+            className="h-4 w-4 rounded border-border accent-primary"
+          />
+          Con curso pendiente
         </label>
       </div>
 

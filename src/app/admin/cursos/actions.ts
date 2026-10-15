@@ -5,6 +5,11 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
 import { err, errConRef, fromSupabaseError, okMsg, type Resultado, type ResultadoError } from "@/lib/resultado";
+import {
+  MENSAJE_CURSO_ACTIVO,
+  MENSAJE_SOLO_SI_NECESITA_CURSO,
+  type EstadoCursosPostulante,
+} from "@/lib/cursos";
 
 type CursoData = {
   nombre: string;
@@ -165,6 +170,21 @@ export async function asignarCurso(
   if (!cursoId) return err("DATOS_INVALIDOS", "Debés seleccionar un curso.");
 
   const supabase = await createSupabaseServerClient();
+
+  // La misma regla la aplica el trigger asignaciones_curso_alta (migration_039).
+  const { data: estados, error: errorEstado } = await supabase.rpc(
+    "estado_cursos_postulantes",
+    { p_postulante_ids: [postulanteId] }
+  );
+  if (errorEstado) {
+    const ref = logError("asignarCurso_estado", errorEstado, { postulanteId });
+    return errConRef("ERROR_INTERNO", "No se pudo asignar el curso. Intentá de nuevo.", ref);
+  }
+  const estado = ((estados ?? []) as EstadoCursosPostulante[])[0];
+  if (!estado) return err("NO_ENCONTRADO", "Postulante no encontrado.");
+  if (estado.asignacion_activa_id) return err("REGLA_DE_NEGOCIO", MENSAJE_CURSO_ACTIVO);
+  if (!estado.necesita_curso) return err("REGLA_DE_NEGOCIO", MENSAJE_SOLO_SI_NECESITA_CURSO);
+
   const { error } = await supabase.from("asignaciones_curso").insert({
     postulante_id: postulanteId,
     curso_id: cursoId,
@@ -181,10 +201,18 @@ export async function asignarCurso(
     return errConRef("ERROR_INTERNO", "No se pudo asignar el curso. Intentá de nuevo.", ref);
   }
 
+  revalidarAsignaciones(cursoId, postulanteId);
+  return okMsg("Curso asignado.");
+}
+
+function revalidarAsignaciones(cursoId: string, postulanteId: string) {
   revalidatePath("/admin/postulantes");
   revalidatePath(`/admin/postulantes/${postulanteId}`);
+  revalidatePath("/admin/postulaciones", "layout");
   revalidatePath("/admin");
+  revalidatePath("/admin/cursos");
   revalidatePath(`/admin/cursos/${cursoId}`);
   revalidatePath("/mis-postulaciones");
-  return okMsg("Curso asignado.");
+  revalidatePath("/mis-cursos", "layout");
+  revalidatePath("/perfil");
 }

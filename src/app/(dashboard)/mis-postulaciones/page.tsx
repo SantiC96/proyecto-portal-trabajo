@@ -10,6 +10,7 @@ import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { MisPostulacionesLista } from "./mis-postulaciones-lista";
+import { AvisoCursoPendiente } from "@/components/cursos/aviso-curso-pendiente";
 
 export const metadata: Metadata = {
   title: "Mis postulaciones | Portal de Empleo Funes",
@@ -75,6 +76,10 @@ export default async function MisPostulacionesPage({
           <p className="mt-1 text-sm text-muted-foreground">
             Seguí el estado de cada postulación que enviaste.
           </p>
+
+          <Suspense fallback={null}>
+            <AvisoCursoPendiente className="mt-6" />
+          </Suspense>
 
           <Suspense
             key={pagina}

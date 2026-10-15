@@ -4,16 +4,18 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { formatFechaCorta } from "@/lib/fechas";
+import type { MiCurso } from "@/lib/cursos";
+import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
+import { AccionesMiCurso } from "../acciones-mi-curso";
 
-type CursoAsignado = {
-  asignacion_id: string;
-  curso_id: string;
-  asignado_en: string;
-  nombre: string;
-  descripcion: string | null;
-  link: string | null;
-  indicaciones: string | null;
-};
+async function obtenerMiCurso(asignacionId: string): Promise<MiCurso | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .rpc("mis_cursos_con_estado")
+    .eq("asignacion_id", asignacionId)
+    .maybeSingle();
+  return (data as MiCurso | null) ?? null;
+}
 
 export async function generateMetadata({
   params,
@@ -21,10 +23,7 @@ export async function generateMetadata({
   params: Promise<{ asignacionId: string }>;
 }): Promise<Metadata> {
   const { asignacionId } = await params;
-  const supabase = await createSupabaseServerClient();
-  const { data: rawCursos } = await supabase.rpc("mis_cursos_asignados");
-  const cursos = (rawCursos ?? []) as CursoAsignado[];
-  const curso = cursos.find((c) => c.asignacion_id === asignacionId);
+  const curso = await obtenerMiCurso(asignacionId);
   if (!curso) return { title: "Curso no encontrado | Portal de Empleo Funes" };
   return { title: `${curso.nombre} | Portal de Empleo Funes` };
 }
@@ -54,9 +53,7 @@ export default async function MiCursoDetallePage({
     redirect("/");
   }
 
-  const { data: rawCursos } = await supabase.rpc("mis_cursos_asignados");
-  const cursos = (rawCursos ?? []) as CursoAsignado[];
-  const curso = cursos.find((c) => c.asignacion_id === asignacionId);
+  const curso = await obtenerMiCurso(asignacionId);
 
   if (!curso) notFound();
 
@@ -73,13 +70,56 @@ export default async function MiCursoDetallePage({
 
         <article className="mt-6 rounded-2xl border border-border bg-white p-6 shadow-xs sm:p-8 space-y-6">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              {curso.nombre}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Asignado el {formatFechaCorta(curso.asignado_en)}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                {curso.nombre}
+              </h1>
+              <EstadoCursoBadge estado={curso.estado} />
+            </div>
+            <dl className="mt-2 space-y-0.5 text-sm text-muted-foreground">
+              <div>
+                <dt className="inline">Asignado el </dt>
+                <dd className="inline">{formatFechaCorta(curso.asignado_en)}</dd>
+              </div>
+              {curso.iniciado_en && (
+                <div>
+                  <dt className="inline">Empezado el </dt>
+                  <dd className="inline">{formatFechaCorta(curso.iniciado_en)}</dd>
+                </div>
+              )}
+              {curso.completado_en && (
+                <div>
+                  <dt className="inline">Completado el </dt>
+                  <dd className="inline">{formatFechaCorta(curso.completado_en)}</dd>
+                </div>
+              )}
+              {curso.estado === "abandonado" && curso.abandonado_en && (
+                <div>
+                  <dt className="inline">Abandonado el </dt>
+                  <dd className="inline">{formatFechaCorta(curso.abandonado_en)}</dd>
+                </div>
+              )}
+            </dl>
           </div>
+
+          {curso.estado === "abandonado" && (
+            <p className="rounded-[var(--radius-md)] bg-surface-tinted px-4 py-3 text-sm text-muted-foreground-strong">
+              Este curso figura como abandonado y ya no se puede retomar. Si
+              necesitás otro curso, comunicate con la Oficina de Empleo.
+            </p>
+          )}
+
+          {curso.estado === "completado" && (
+            <p className="rounded-[var(--radius-md)] bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+              Ya le avisamos a la Oficina de Empleo que completaste este curso.
+            </p>
+          )}
+
+          <AccionesMiCurso
+            asignacionId={curso.asignacion_id}
+            estado={curso.estado}
+            nombreCurso={curso.nombre}
+          />
 
           {curso.descripcion && (
             <div>
@@ -103,7 +143,7 @@ export default async function MiCursoDetallePage({
             </div>
           )}
 
-          {curso.link && (
+          {curso.link && curso.estado !== "abandonado" && (
             <div className="space-y-2">
               <a
                 href={curso.link}

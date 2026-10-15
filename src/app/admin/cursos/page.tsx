@@ -15,6 +15,7 @@ import { Buscador } from "@/components/ui/buscador";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { UMBRAL_RECHAZOS_CURSO, VENTANA_RECHAZOS_DIAS } from "@/lib/cursos";
 
 export const metadata: Metadata = {
   title: "Cursos | Panel municipal | Portal de Empleo Funes",
@@ -55,7 +56,11 @@ export default async function CursosPage({
             Cursos de inserción laboral
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Cursos asignables a postulantes con 3 o más rechazos de empresas.
+            Cursos asignables a postulantes con {UMBRAL_RECHAZOS_CURSO} o más rechazos de
+            empresas en los últimos {VENTANA_RECHAZOS_DIAS} días.{" "}
+            <Link href="/admin/cursos/completados" className="text-primary hover:underline">
+              Ver cursos completados
+            </Link>
           </p>
         </div>
         <Link href="/admin/cursos/nuevo" className="btn-primario">

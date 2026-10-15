@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { PerfilForm } from "./perfil-form";
+import { AvisoCursoPendiente } from "@/components/cursos/aviso-curso-pendiente";
 
 export const metadata: Metadata = {
   title: "Mi perfil | Portal de Empleo Funes",
@@ -127,6 +129,9 @@ export default async function PerfilPage() {
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-foreground">
         Mi perfil
       </h1>
+      <Suspense fallback={null}>
+        <AvisoCursoPendiente className="-mt-4 mb-8" />
+      </Suspense>
       <PerfilForm
         usuario={{
           nombre: usuario.nombre ?? "",
