@@ -7,10 +7,16 @@ import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { DatosCandidato } from "@/components/admin/datos-candidato";
 import { obtenerCandidato } from "@/lib/admin/candidato";
-import { BADGE_CONFIG, type EstadoPostulacion } from "@/lib/admin/postulacion-estados";
+import {
+  BADGE_ESTADO_VISIBLE,
+  estadoVisiblePostulacion,
+  type EstadoPostulacion,
+} from "@/lib/admin/postulacion-estados";
 import { getOfertaEstadoLabel } from "@/lib/oferta-estados";
 import { FichaAcciones } from "./ficha-acciones";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
+import { logError } from "@/lib/logger";
+import { avisoCursoAlDerivar, type EstadoCursosPostulante } from "@/lib/cursos";
 import {
   DERIVACION_ESTADO_LABEL,
   DERIVACION_ESTADO_STYLE,
@@ -74,13 +80,16 @@ export default async function PostulacionFichaPage({
   const postulanteId = postulacion.postulantes?.id ?? null;
   const oferta = postulacion.ofertas;
 
-  const [candidato, derivacionResult, revisorResult] = await Promise.all([
+  const puedeDerivarse =
+    postulacion.estado === "recibida" || postulacion.estado === "en_revision";
+
+  const [candidato, derivacionResult, revisorResult, estadoCursosResult] = await Promise.all([
     postulanteId ? obtenerCandidato(postulanteId) : Promise.resolve(null),
     postulacion.estado === "derivada"
       ? supabase
           .from("derivaciones")
           .select(
-            "id, nota_municipalidad, created_at, estado_empresa, fecha_entrevista, lugar_entrevista, fecha_respuesta, nota_empresa"
+            "id, nota_municipalidad, created_at, updated_at, estado_empresa, fecha_entrevista, lugar_entrevista, fecha_respuesta, nota_empresa"
           )
           .eq("postulacion_id", postulacion.id)
           .maybeSingle()
@@ -92,12 +101,22 @@ export default async function PostulacionFichaPage({
           .eq("id", postulacion.revisado_por)
           .single()
       : Promise.resolve({ data: null }),
+    postulanteId && puedeDerivarse
+      ? supabase.rpc("estado_cursos_postulantes", { p_postulante_ids: [postulanteId] })
+      : Promise.resolve({ data: null, error: null }),
   ]);
+
+  if (estadoCursosResult.error)
+    logError("estado_cursos_postulantes", estadoCursosResult.error, { postulacionId });
+  const avisoCurso = avisoCursoAlDerivar(
+    ((estadoCursosResult.data ?? []) as EstadoCursosPostulante[])[0] ?? null
+  );
 
   const derivacion = derivacionResult.data as {
     id: string;
     nota_municipalidad: string | null;
     created_at: string;
+    updated_at: string;
     estado_empresa: EstadoDerivacionEmpresa;
     fecha_entrevista: string | null;
     lugar_entrevista: string | null;
@@ -109,7 +128,17 @@ export default async function PostulacionFichaPage({
     apellido: string;
   } | null;
 
-  const badge = BADGE_CONFIG[postulacion.estado];
+  const estadoVisible = estadoVisiblePostulacion(
+    postulacion.estado,
+    derivacion?.estado_empresa
+  );
+  const badge = BADGE_ESTADO_VISIBLE[estadoVisible];
+  // fecha_respuesta la fija el trigger de derivaciones al llegar a un estado
+  // final; updated_at cubre filas viejas que no la tengan.
+  const fechaContratacion =
+    estadoVisible === "contratado" && derivacion
+      ? derivacion.fecha_respuesta ?? derivacion.updated_at
+      : null;
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
@@ -149,6 +178,15 @@ export default async function PostulacionFichaPage({
               {badge.label}
             </Badge>
           </div>
+          {fechaContratacion && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              Contratado por{" "}
+              <span className="font-medium text-foreground">
+                {oferta?.empresa_nombre ?? "la empresa"}
+              </span>{" "}
+              el {formatFecha(fechaContratacion)}
+            </p>
+          )}
         </div>
       </div>
 
@@ -330,8 +368,11 @@ export default async function PostulacionFichaPage({
               <FichaAcciones
                 postulacionId={postulacion.id}
                 estado={postulacion.estado}
+                estadoVisible={estadoVisible}
+                empresaNombre={oferta?.empresa_nombre ?? null}
                 ofertaEstado={oferta?.estado}
                 derivacion={derivacion}
+                avisoCurso={avisoCurso}
               />
             </div>
           </div>

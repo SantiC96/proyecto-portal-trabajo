@@ -87,7 +87,7 @@ export async function marcarEnRevision(
   ) {
     return err(
       "ESTADO_INVALIDO",
-      "Solo se puede marcar en revisión desde 'recibida' o 'no seleccionada'.",
+      "Solo se puede marcar en revisión desde «Recibida» o «No seleccionado».",
     );
   }
 
@@ -169,7 +169,7 @@ export async function descartarPostulacion(
   }
 
   revalidarVistas(postulacionId);
-  return okMsg("Postulación marcada como «No seleccionada».");
+  return okMsg("Postulante marcado como «No seleccionado».");
 }
 
 export async function derivarPostulacion(

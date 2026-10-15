@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -17,18 +17,26 @@ import {
   derivarPostulacion,
   corregirEstadoDerivacion,
 } from "../actions";
-import { type EstadoPostulacion } from "@/lib/admin/postulacion-estados";
-import { formatFechaHora } from "@/lib/fechas";
+import {
+  type EstadoPostulacion,
+  type EstadoVisiblePostulacion,
+} from "@/lib/admin/postulacion-estados";
+import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import {
   DERIVACION_ESTADO_LABEL,
   type EstadoDerivacionEmpresa,
 } from "@/lib/derivacion-estados";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
+import { useAccion } from "@/lib/use-accion";
+import { Spinner } from "@/components/ui/spinner";
 
 type Props = {
   postulacionId: string;
   estado: EstadoPostulacion;
+  /** Estado que combina la postulación con el resultado de la empresa. */
+  estadoVisible: EstadoVisiblePostulacion;
+  empresaNombre?: string | null;
   ofertaEstado?: string;
   derivacion?: {
     id: string;
@@ -40,6 +48,8 @@ type Props = {
     fecha_respuesta: string | null;
     nota_empresa: string | null;
   } | null;
+  /** Aviso informativo sobre cursos, se muestra antes de confirmar la derivación. */
+  avisoCurso?: string | null;
 };
 
 const ESTADOS_CORREGUIBLES: EstadoDerivacionEmpresa[] = [
@@ -49,7 +59,15 @@ const ESTADOS_CORREGUIBLES: EstadoDerivacionEmpresa[] = [
   "rechazado",
 ];
 
-export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion }: Props) {
+export function FichaAcciones({
+  postulacionId,
+  estado,
+  estadoVisible,
+  empresaNombre,
+  ofertaEstado,
+  derivacion,
+  avisoCurso,
+}: Props) {
   const ofertaEnRevision = ofertaEstado === "pendiente_aprobacion";
   const [abrirDescartar, setAbrirDescartar] = useState(false);
   const [abrirDerivar, setAbrirDerivar] = useState(false);
@@ -59,7 +77,7 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
   const [notaDescartar, setNotaDescartar] = useState("");
   const [notaDerivar, setNotaDerivar] = useState("");
   const [error, setError] = useState<ErrorAccion | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const { pendiente: isPending, ejecutar } = useAccion();
 
   function cerrarTodo() {
     setAbrirDescartar(false);
@@ -73,7 +91,7 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
 
   function handleDescartar() {
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const res = await descartarPostulacion(postulacionId, notaDescartar);
       mostrarAviso(res);
       if (!res.ok) {
@@ -86,7 +104,7 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
 
   function handleDerivar() {
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const res = await derivarPostulacion(postulacionId, notaDerivar);
       mostrarAviso(res);
       if (!res.ok) {
@@ -99,7 +117,7 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
 
   function handleReconsiderar() {
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const res = await marcarEnRevision(postulacionId);
       mostrarAviso(res);
       if (!res.ok) {
@@ -113,7 +131,7 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
   function handleCorregir() {
     if (!derivacion) return;
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const res = await corregirEstadoDerivacion(postulacionId, derivacion.id, estadoCorreccion);
       mostrarAviso(res);
       if (!res.ok) {
@@ -124,12 +142,29 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
     });
   }
 
-  // Estado derivada: info + acción de corrección
+  // Estado derivada: info + acción de corrección. Con resultado final de la
+  // empresa (contratado o no seleccionado) no se ofrece derivar, rechazar ni
+  // reconsiderar; solo corregir el estado si la empresa lo cargó mal.
   if (estado === "derivada") {
+    const empresa = empresaNombre?.trim() || "la empresa";
     return (
       <div className="space-y-3">
         <div className="rounded-[var(--radius-lg)] border border-border bg-surface-tinted p-4">
-          <p className="text-sm font-medium text-primary">Derivada a la empresa</p>
+          {estadoVisible === "contratado" ? (
+            <p className="text-sm font-medium text-emerald-800">
+              Contratado por {empresa}
+              {derivacion?.fecha_respuesta &&
+                ` el ${formatFecha(derivacion.fecha_respuesta)}`}
+            </p>
+          ) : estadoVisible === "no_seleccionado_empresa" ? (
+            <p className="text-sm font-medium text-red-700">
+              No seleccionado por {empresa}
+              {derivacion?.fecha_respuesta &&
+                ` el ${formatFecha(derivacion.fecha_respuesta)}`}
+            </p>
+          ) : (
+            <p className="text-sm font-medium text-primary">Derivada a la empresa</p>
+          )}
           {derivacion?.created_at && (
             <p className="mt-1 text-sm text-muted-foreground">
               Derivada el {formatFechaHora(derivacion.created_at)}
@@ -210,6 +245,7 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
                 Cancelar
               </button>
               <Button onClick={handleCorregir} disabled={isPending}>
+                {isPending && <Spinner className="mr-1" />}
                 {isPending ? "Guardando..." : "Guardar corrección"}
               </Button>
             </DialogFooter>
@@ -329,6 +365,7 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
               Cancelar
             </button>
             <Button onClick={handleDescartar} disabled={isPending}>
+              {isPending && <Spinner className="mr-1" />}
               {isPending ? "Guardando..." : "Confirmar"}
             </Button>
           </DialogFooter>
@@ -351,6 +388,14 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
               puede deshacer.
             </DialogDescription>
           </DialogHeader>
+          {avisoCurso && (
+            <p
+              role="note"
+              className="rounded-[var(--radius-md)] border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+            >
+              {avisoCurso}
+            </p>
+          )}
           <div className="space-y-2">
             <label
               htmlFor="nota-derivar"
@@ -390,6 +435,7 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
               Cancelar
             </button>
             <Button onClick={handleDerivar} disabled={isPending}>
+              {isPending && <Spinner className="mr-1" />}
               {isPending ? "Derivando..." : "Derivar candidato"}
             </Button>
           </DialogFooter>
@@ -433,6 +479,7 @@ export function FichaAcciones({ postulacionId, estado, ofertaEstado, derivacion 
               Cancelar
             </button>
             <Button onClick={handleReconsiderar} disabled={isPending}>
+              {isPending && <Spinner className="mr-1" />}
               {isPending ? "Guardando..." : "Confirmar"}
             </Button>
           </DialogFooter>
