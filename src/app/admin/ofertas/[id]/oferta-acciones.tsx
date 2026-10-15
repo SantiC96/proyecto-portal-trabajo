@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,6 +15,8 @@ import {
 import { aprobarOferta, rechazarOferta } from "../actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
+import { useAccion } from "@/lib/use-accion";
+import { Spinner } from "@/components/ui/spinner";
 
 type Props = {
   ofertaId: string;
@@ -27,7 +29,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
   const [abrirRechazar, setAbrirRechazar] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [error, setError] = useState<ErrorAccion | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const { pendiente: isPending, ejecutar } = useAccion();
 
   function cerrarTodo() {
     setAbrirAprobar(false);
@@ -38,7 +40,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
 
   function handleAprobar() {
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const res = await aprobarOferta(ofertaId);
       mostrarAviso(res);
       if (!res.ok) {
@@ -56,7 +58,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
       return;
     }
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const res = await rechazarOferta(ofertaId, motivo);
       mostrarAviso(res);
       if (!res.ok) {
@@ -157,6 +159,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
               Cancelar
             </button>
             <Button onClick={handleAprobar} disabled={isPending}>
+              {isPending && <Spinner className="mr-1" />}
               {isPending ? "Aprobando..." : "Confirmar aprobación"}
             </Button>
           </DialogFooter>
@@ -228,6 +231,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
               disabled={isPending || !motivo.trim()}
               className="inline-flex items-center justify-center whitespace-nowrap h-9 rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-60"
             >
+              {isPending && <Spinner className="mr-1" />}
               {isPending ? "Rechazando..." : "Rechazar oferta"}
             </button>
           </DialogFooter>

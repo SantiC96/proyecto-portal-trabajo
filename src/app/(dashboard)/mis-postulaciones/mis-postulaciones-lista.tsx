@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,6 +11,7 @@ import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { getOfertaEstadoBadge } from "@/lib/oferta-estados";
+import { useAccion } from "@/lib/use-accion";
 
 type EstadoPostulacion = "recibida" | "en_revision" | "derivada" | "rechazada_municipalidad";
 
@@ -56,7 +57,7 @@ function RetirarBoton({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<ErrorAccion | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const { pendiente: isPending, ejecutar } = useAccion();
   const confirmRef = useRef<HTMLButtonElement>(null);
   const needsRefresh = useRef(false);
 
@@ -87,7 +88,7 @@ function RetirarBoton({
 
   function handleConfirm() {
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const result = await retirarPostulacion(postulacionId);
       mostrarAviso(result);
       if (!result.ok) {

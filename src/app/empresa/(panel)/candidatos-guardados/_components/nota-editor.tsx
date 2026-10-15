@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Check, Pencil, X } from "lucide-react";
 import { actualizarNotaGuardado } from "@/app/empresa/(panel)/candidatos-guardados/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
+import { useAccion } from "@/lib/use-accion";
+import { Spinner } from "@/components/ui/spinner";
 
 type Props = {
   guardadoId: string;
@@ -12,14 +14,14 @@ type Props = {
 };
 
 export function NotaGuardadoEditor({ guardadoId, notaInicial }: Props) {
-  const [isPending, startTransition] = useTransition();
+  const { pendiente: isPending, ejecutar } = useAccion();
   const [editing, setEditing] = useState(false);
   const [nota, setNota] = useState(notaInicial ?? "");
   const [error, setError] = useState<ErrorAccion | null>(null);
 
   function handleSave() {
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const result = await actualizarNotaGuardado(guardadoId, nota.trim() || null);
       mostrarAviso(result);
       if (!result.ok) {
@@ -81,6 +83,7 @@ export function NotaGuardadoEditor({ guardadoId, notaInicial }: Props) {
           className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-medium text-white transition hover:bg-primary-hover disabled:opacity-60"
         >
           <Check className="h-3.5 w-3.5" />
+          {isPending && <Spinner className="mr-1" />}
           {isPending ? "Guardando…" : "Guardar"}
         </button>
         <button

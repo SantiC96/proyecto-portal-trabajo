@@ -20,6 +20,9 @@ import {
 } from "@/lib/paginacion";
 import { CerrarOfertaBtn } from "./_components/cerrar-oferta-btn";
 import { EliminarEnvioBtn } from "./_components/eliminar-envio-btn";
+import { RenovarOfertaBtn } from "./_components/renovar-oferta-btn";
+import { VencimientoOferta } from "@/components/ofertas/vencimiento-oferta";
+import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 import { formatFecha } from "@/lib/fechas";
 import { accionesDisponibles } from "@/lib/oferta-estados";
 
@@ -33,6 +36,7 @@ const ESTADO_LABEL: Record<string, string> = {
   rechazada: "Rechazada",
   cerrada: "Cerrada",
   borrador: "Borrador",
+  vencida: "Vencida",
 };
 
 const ESTADO_STYLE: Record<string, string> = {
@@ -41,6 +45,7 @@ const ESTADO_STYLE: Record<string, string> = {
   rechazada: "bg-red-100 text-red-700",
   cerrada: "bg-gray-100 text-gray-600",
   borrador: "bg-gray-100 text-gray-500",
+  vencida: "bg-red-100 text-red-700",
 };
 
 type OfertaRow = {
@@ -49,6 +54,8 @@ type OfertaRow = {
   estado: string;
   motivo_rechazo: string | null;
   created_at: string;
+  vence_en: string | null;
+  duracion_dias: number;
   oferta_categorias: Array<{ categorias: { nombre: string } | null }>;
 };
 
@@ -133,7 +140,7 @@ async function ListadoMisOfertas({
     let query = supabase
       .from("ofertas")
       .select(
-        "id, titulo, estado, motivo_rechazo, created_at, oferta_categorias(categorias(nombre))",
+        "id, titulo, estado, motivo_rechazo, created_at, vence_en, duracion_dias, oferta_categorias(categorias(nombre))",
         { count: "exact" }
       )
       .eq("empresa_id", empresaId);
@@ -228,6 +235,8 @@ async function ListadoMisOfertas({
             const { mostrarEliminar, mostrarCerrar, mostrarCandidatosPorContactar } = accionesDisponibles(oferta.estado, cantPost);
 
             const tienePendientes = mostrarCandidatosPorContactar && ofertasConPendientesSet.has(oferta.id);
+            const { vencida } = estadoVencimiento(oferta.estado, oferta.vence_en);
+            const estadoVisible = vencida ? "vencida" : oferta.estado;
 
             return (
               <li
@@ -239,9 +248,9 @@ async function ListadoMisOfertas({
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-base font-semibold text-foreground">{oferta.titulo}</h2>
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ESTADO_STYLE[oferta.estado] ?? "bg-gray-100 text-gray-600"}`}
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ESTADO_STYLE[estadoVisible] ?? "bg-gray-100 text-gray-600"}`}
                       >
-                        {ESTADO_LABEL[oferta.estado] ?? oferta.estado}
+                        {ESTADO_LABEL[estadoVisible] ?? estadoVisible}
                       </span>
                       {tienePendientes && (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700">
@@ -252,6 +261,11 @@ async function ListadoMisOfertas({
                     </div>
 
                     <p className="mt-1 text-xs text-muted-foreground">Publicada el {fecha}</p>
+                    <VencimientoOferta
+                      className="mt-1"
+                      estado={oferta.estado}
+                      venceEn={oferta.vence_en}
+                    />
 
                     {categorias.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
@@ -276,6 +290,13 @@ async function ListadoMisOfertas({
                   </div>
 
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    {vencida && (
+                      <RenovarOfertaBtn
+                        ofertaId={oferta.id}
+                        ofertaTitulo={oferta.titulo}
+                        duracionDias={oferta.duracion_dias}
+                      />
+                    )}
                     {oferta.estado === "activa" && (
                       <Link
                         href={`/empresa/ofertas/${oferta.id}`}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,9 @@ import Link from "next/link";
 import { asignarCurso } from "@/app/admin/cursos/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
+import { useAccion } from "@/lib/use-accion";
+import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
 
 type Curso = { id: string; nombre: string; descripcion: string | null };
 
@@ -23,6 +26,8 @@ type Props = {
   postulanteNombre: string;
   cursosActivos: Curso[];
   destacado?: boolean;
+  /** Clases extra para el botón que abre el diálogo. */
+  claseBoton?: string;
 };
 
 export function AsignarCursoDialog({
@@ -30,12 +35,13 @@ export function AsignarCursoDialog({
   postulanteNombre,
   cursosActivos,
   destacado = false,
+  claseBoton,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [cursoId, setCursoId] = useState(cursosActivos[0]?.id ?? "");
   const [nota, setNota] = useState("");
   const [error, setError] = useState<ErrorAccion | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const { pendiente: isPending, ejecutar } = useAccion();
 
   function handleOpen() {
     setCursoId(cursosActivos[0]?.id ?? "");
@@ -50,7 +56,7 @@ export function AsignarCursoDialog({
       setError({ mensaje: "Seleccioná un curso." });
       return;
     }
-    startTransition(async () => {
+    ejecutar(async () => {
       const res = await asignarCurso(postulanteId, cursoId, nota);
       mostrarAviso(res);
       if (!res.ok) {
@@ -71,7 +77,7 @@ export function AsignarCursoDialog({
 
   return (
     <>
-      <button type="button" onClick={handleOpen} className={triggerClass}>
+      <button type="button" onClick={handleOpen} className={cn(triggerClass, claseBoton)}>
         Asignar curso
       </button>
 
@@ -170,6 +176,7 @@ export function AsignarCursoDialog({
             </button>
             {cursosActivos.length > 0 && (
               <Button onClick={handleAsignar} disabled={isPending}>
+                {isPending && <Spinner className="mr-1" />}
                 {isPending ? "Asignando..." : "Asignar curso"}
               </Button>
             )}

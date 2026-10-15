@@ -12,6 +12,9 @@ import {
 import { RegisterModal } from "@/components/auth/register-modal";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { logout } from "@/app/auth/actions";
+import { BotonFormulario } from "@/components/ui/boton-formulario";
+import { CampanaNotificaciones } from "@/components/notificaciones/campana-notificaciones";
+import type { ResumenNotificaciones } from "@/lib/notificaciones";
 
 type NavbarSession = {
   nombre: string;
@@ -20,6 +23,8 @@ type NavbarSession = {
   avatarUrl?: string | null;
   ajuste?: { x: number; y: number; zoom: number } | null;
   profileHref: string;
+  cursosPendientes?: number;
+  notificaciones?: ResumenNotificaciones | null;
 };
 
 interface NavbarProps {
@@ -41,14 +46,19 @@ const NAV_LINKS: NavLink[] = [
   { label: "Para empresas", href: "/#empresas", anchor: "empresas" },
 ];
 
-type MenuItem = { label: string; href: string; Icon: React.ComponentType<{ className?: string }> };
+type MenuItem = {
+  label: string;
+  href: string;
+  Icon: React.ComponentType<{ className?: string }>;
+  pendientes?: number;
+};
 
-function getMenuItems(rol?: string | null): MenuItem[] {
+function getMenuItems(rol?: string | null, cursosPendientes = 0): MenuItem[] {
   if (rol === "postulante") {
     return [
       { label: "Mi perfil", href: "/perfil", Icon: User },
       { label: "Mis postulaciones", href: "/mis-postulaciones", Icon: Briefcase },
-      { label: "Mis cursos", href: "/mis-cursos", Icon: BookOpen },
+      { label: "Mis cursos", href: "/mis-cursos", Icon: BookOpen, pendientes: cursosPendientes },
     ];
   }
   if (rol === "empresa") {
@@ -178,7 +188,8 @@ export function Navbar({ session = null }: NavbarProps) {
   const mobileLinkActive = "text-primary font-semibold border-l-2 border-primary pl-2.5";
   const mobileLinkInactive = "text-foreground";
 
-  const menuItems = getMenuItems(session?.rol);
+  const menuItems = getMenuItems(session?.rol, session?.cursosPendientes ?? 0);
+  const cursosPendientes = session?.rol === "postulante" ? session.cursosPendientes ?? 0 : 0;
 
   return (
     <>
@@ -227,101 +238,113 @@ export function Navbar({ session = null }: NavbarProps) {
             </nav>
           </div>
 
-          {/* Desktop actions */}
-          {!session ? (
-            <div className="hidden items-center gap-3 lg:flex">
-              <Link
-                href="/auth/login"
-                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-white px-3.5 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-              >
-                <LogIn className="h-4 w-4" />
-                <span>Iniciar sesión</span>
-              </Link>
-              <button
-                onClick={() => setRegisterModalOpen(true)}
-                type="button"
-                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                <UserPlus className="h-4 w-4" />
-                <span>Registrarse</span>
-              </button>
-            </div>
-          ) : (
-            <div className="hidden items-center gap-2 lg:flex">
-              {/* Avatar dropdown trigger */}
-              <div ref={menuRef} className="relative">
-                <button
-                  type="button"
-                  onClick={() => (menuOpen ? closeMenu() : openMenu())}
-                  aria-haspopup="menu"
-                  aria-expanded={menuOpen}
-                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition hover:bg-surface-tinted focus:outline-none focus:ring-2 focus:ring-primary/30"
-                >
-                  <AvatarAjustado
-                    src={session.avatarUrl}
-                    alt={`Foto de ${session.nombre} ${session.apellido}`.trim()}
-                    ajuste={session.ajuste ?? undefined}
-                    size="sm"
-                  />
-                  <div className="text-left leading-tight">
-                    <p className="text-sm font-medium text-foreground">
-                      {session.nombre} {session.apellido}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {getRolLabel(session.rol)}
-                    </p>
-                  </div>
-                  <ChevronDown
-                    className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${menuOpen ? "rotate-180" : ""}`}
-                  />
-                </button>
+          <div className="flex items-center gap-2">
+            {session?.rol === "municipalidad" && session.notificaciones && (
+              <CampanaNotificaciones resumen={session.notificaciones} />
+            )}
 
-                {menuOpen && (
-                  <div
-                    role="menu"
-                    className="absolute right-0 top-full mt-1 w-52 rounded-xl border border-border bg-white shadow-md z-50 py-1"
-                  >
-                    {menuItems.map((item, i) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        role="menuitem"
-                        ref={(el) => { menuItemRefs.current[i] = el; }}
-                        onClick={closeMenu}
-                        className="flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-foreground rounded-lg mx-1 hover:bg-surface-tinted hover:text-primary focus:outline-none focus:bg-surface-tinted focus:text-primary"
-                      >
-                        <item.Icon className="h-4 w-4 shrink-0" />
-                        {item.label}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="mx-1 h-6 w-px bg-border" />
-
-              <form action={logout}>
-                <button
-                  type="submit"
+            {/* Desktop actions */}
+            {!session ? (
+              <div className="hidden items-center gap-3 lg:flex">
+                <Link
+                  href="/auth/login"
                   className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-white px-3.5 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                 >
-                  <LogOut className="h-4 w-4" />
-                  <span>Cerrar sesión</span>
+                  <LogIn className="h-4 w-4" />
+                  <span>Iniciar sesión</span>
+                </Link>
+                <button
+                  onClick={() => setRegisterModalOpen(true)}
+                  type="button"
+                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  <span>Registrarse</span>
                 </button>
-              </form>
-            </div>
-          )}
+              </div>
+            ) : (
+              <div className="hidden items-center gap-2 lg:flex">
+                {/* Avatar dropdown trigger */}
+                <div ref={menuRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => (menuOpen ? closeMenu() : openMenu())}
+                    aria-haspopup="menu"
+                    aria-expanded={menuOpen}
+                    className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition hover:bg-surface-tinted focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <AvatarAjustado
+                      src={session.avatarUrl}
+                      alt={`Foto de ${session.nombre} ${session.apellido}`.trim()}
+                      ajuste={session.ajuste ?? undefined}
+                      size="sm"
+                    />
+                    <div className="text-left leading-tight">
+                      <p className="text-sm font-medium text-foreground">
+                        {session.nombre} {session.apellido}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {getRolLabel(session.rol)}
+                      </p>
+                    </div>
+                    {cursosPendientes > 0 && (
+                      <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
+                    )}
+                    <ChevronDown
+                      className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${menuOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
 
-          {/* Mobile menu button */}
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-white text-foreground transition hover:bg-surface-tinted lg:hidden"
-            aria-expanded={mobileMenuOpen}
-            aria-label="Abrir menú de navegación"
-          >
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+                  {menuOpen && (
+                    <div
+                      role="menu"
+                      className="absolute right-0 top-full mt-1 w-52 rounded-xl border border-border bg-white shadow-md z-50 py-1"
+                    >
+                      {menuItems.map((item, i) => (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          role="menuitem"
+                          ref={(el) => { menuItemRefs.current[i] = el; }}
+                          onClick={closeMenu}
+                          className="flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-foreground rounded-lg mx-1 hover:bg-surface-tinted hover:text-primary focus:outline-none focus:bg-surface-tinted focus:text-primary"
+                        >
+                          <item.Icon className="h-4 w-4 shrink-0" />
+                          {item.label}
+                          {(item.pendientes ?? 0) > 0 && (
+                            <IndicadorPendientes cantidad={item.pendientes ?? 0} />
+                          )}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mx-1 h-6 w-px bg-border" />
+
+                <form action={logout}>
+                  <BotonFormulario
+                    icono={<LogOut className="h-4 w-4" />}
+                    textoPendiente="Cerrando sesión…"
+                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-white px-3.5 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
+                  >
+                    <span>Cerrar sesión</span>
+                  </BotonFormulario>
+                </form>
+              </div>
+            )}
+
+            {/* Mobile menu button */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-white text-foreground transition hover:bg-surface-tinted lg:hidden"
+              aria-expanded={mobileMenuOpen}
+              aria-label="Abrir menú de navegación"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile dropdown */}
@@ -397,21 +420,24 @@ export function Navbar({ session = null }: NavbarProps) {
                       <Link
                         href="/mis-cursos"
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`${mobileLinkBase} ${mobileLinkInactive}`}
+                        className={`${mobileLinkBase} ${mobileLinkInactive} gap-2`}
                       >
                         Mis cursos
+                        {cursosPendientes > 0 && (
+                          <IndicadorPendientes cantidad={cursosPendientes} />
+                        )}
                       </Link>
                     </>
                   )}
 
                   <form action={logout}>
-                    <button
-                      type="submit"
-                      className="flex h-11 w-full items-center gap-2 rounded-lg px-3 text-base font-medium text-foreground transition hover:bg-secondary-hover"
+                    <BotonFormulario
+                      icono={<LogOut className="h-4 w-4" />}
+                      textoPendiente="Cerrando sesión…"
+                      className="flex h-11 w-full items-center gap-2 rounded-lg px-3 text-base font-medium text-foreground transition hover:bg-secondary-hover disabled:opacity-60"
                     >
-                      <LogOut className="h-4 w-4" />
                       Cerrar sesión
-                    </button>
+                    </BotonFormulario>
                   </form>
                 </>
               ) : (
@@ -446,5 +472,16 @@ export function Navbar({ session = null }: NavbarProps) {
         <RegisterModal onClose={() => setRegisterModalOpen(false)} />
       )}
     </>
+  );
+}
+
+function IndicadorPendientes({ cantidad }: { cantidad: number }) {
+  return (
+    <span
+      className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-xs font-semibold text-white"
+      aria-label={`${cantidad} curso${cantidad === 1 ? "" : "s"} pendiente${cantidad === 1 ? "" : "s"}`}
+    >
+      {cantidad}
+    </span>
   );
 }

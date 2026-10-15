@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { X, AlertCircle } from "lucide-react";
 import { useMounted } from "@/lib/use-mounted";
@@ -8,6 +8,7 @@ import { cerrarOferta } from "@/app/empresa/(panel)/ofertas/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
 import { useRouter } from "next/navigation";
+import { useAccion } from "@/lib/use-accion";
 
 interface Props {
   ofertaId: string;
@@ -19,11 +20,11 @@ export function CerrarOfertaBtn({ ofertaId, ofertaTitulo }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<ErrorAccion | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const { pendiente: isPending, ejecutar } = useAccion();
 
   function handleConfirm() {
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const result = await cerrarOferta(ofertaId);
       mostrarAviso(result);
       if (!result.ok) {

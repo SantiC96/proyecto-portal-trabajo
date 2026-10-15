@@ -10,19 +10,12 @@ import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
+import type { MiCurso } from "@/lib/cursos";
+import { AccionesMiCurso } from "./acciones-mi-curso";
 
 export const metadata: Metadata = {
   title: "Mis cursos | Portal de Empleo Funes",
-};
-
-type CursoAsignado = {
-  asignacion_id: string;
-  curso_id: string;
-  asignado_en: string;
-  nombre: string;
-  descripcion: string | null;
-  link: string | null;
-  indicaciones: string | null;
 };
 
 const RUTA = "/mis-cursos";
@@ -82,15 +75,15 @@ async function ListadoMisCursos({
 }) {
   const supabase = await createSupabaseServerClient();
 
-  // mis_cursos_asignados devuelve un conjunto de filas: PostgREST permite
+  // mis_cursos_con_estado devuelve un conjunto de filas: PostgREST permite
   // ordenarlo, contarlo y paginarlo como si fuera una tabla.
-  const resultado = await consultarPagina<CursoAsignado>(pagina, async (desde, hasta) => {
+  const resultado = await consultarPagina<MiCurso>(pagina, async (desde, hasta) => {
     const respuesta = await supabase
-      .rpc("mis_cursos_asignados", undefined, { count: "exact" })
+      .rpc("mis_cursos_con_estado", undefined, { count: "exact" })
       .order("asignado_en", { ascending: false })
       .order("asignacion_id", { ascending: false })
       .range(desde, hasta);
-    const data: CursoAsignado[] | null = respuesta.data;
+    const data: MiCurso[] | null = respuesta.data;
     return { data, count: respuesta.count, error: respuesta.error };
   });
 
@@ -137,11 +130,14 @@ async function ListadoMisCursos({
                     <BookOpen className="h-4.5 w-4.5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-primary underline-offset-2 group-hover:underline">
-                      {curso.nombre}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-primary underline-offset-2 group-hover:underline">
+                        {curso.nombre}
+                      </p>
+                      <EstadoCursoBadge estado={curso.estado} />
+                    </div>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Asignado el {formatFechaCorta(curso.asignado_en)}
+                      {textoFechaCurso(curso)}
                     </p>
                   </div>
                 </div>
@@ -152,7 +148,21 @@ async function ListadoMisCursos({
                   </p>
                 )}
 
-                {curso.link && (
+                {curso.estado === "abandonado" && (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    Este curso figura como abandonado y ya no se puede retomar. Si
+                    necesitás otro curso, comunicate con la Oficina de Empleo.
+                  </p>
+                )}
+
+                <AccionesMiCurso
+                  className="mt-3"
+                  asignacionId={curso.asignacion_id}
+                  estado={curso.estado}
+                  nombreCurso={curso.nombre}
+                />
+
+                {curso.link && curso.estado !== "abandonado" && (
                   <div className="mt-3">
                     <a
                       href={curso.link}
@@ -176,4 +186,14 @@ async function ListadoMisCursos({
           />
     </>
   );
+}
+
+function textoFechaCurso(curso: MiCurso): string {
+  if (curso.estado === "completado" && curso.completado_en)
+    return `Completado el ${formatFechaCorta(curso.completado_en)}`;
+  if (curso.estado === "abandonado" && curso.abandonado_en)
+    return `Abandonado el ${formatFechaCorta(curso.abandonado_en)}`;
+  if (curso.estado === "en_curso" && curso.iniciado_en)
+    return `Empezado el ${formatFechaCorta(curso.iniciado_en)}`;
+  return `Asignado el ${formatFechaCorta(curso.asignado_en)}`;
 }

@@ -16,6 +16,7 @@ type DbOfertaRow = {
   jornada: string;
   requisitos: string[];
   beneficios: string[];
+  vence_en: string | null;
   oferta_categorias: Array<{ categorias: { nombre: string } | null }>;
 };
 
@@ -31,6 +32,7 @@ const OFERTA_SELECT = `
   jornada,
   requisitos,
   beneficios,
+  vence_en,
   oferta_categorias(categorias(nombre))
 ` as const;
 
@@ -51,6 +53,7 @@ function mapRow(row: DbOfertaRow): OfertaLaboral {
     beneficios: row.beneficios ?? [],
     // publicado_en se fija al aprobar; se cae a created_at para ofertas sin ese dato.
     fechaPublicacion: row.publicado_en ?? row.created_at,
+    venceEn: row.vence_en,
   };
 }
 

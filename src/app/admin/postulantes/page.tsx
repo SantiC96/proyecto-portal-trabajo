@@ -17,6 +17,12 @@ import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { FiltrosPostulantes } from "./filtros-postulantes";
 import { AsignarCursoDialog } from "./asignar-curso-dialog";
+import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
+import {
+  VENTANA_RECHAZOS_DIAS,
+  textoRechazos,
+  type EstadoCursosPostulante,
+} from "@/lib/cursos";
 
 export const metadata: Metadata = {
   title: "Postulantes | Panel municipal | Portal de Empleo Funes",
@@ -37,6 +43,7 @@ type FiltrosListado = {
   rubroIds: string[];
   conCv: boolean;
   esperandoCurso: boolean;
+  cursoPendiente: boolean;
   pagina: number;
 };
 
@@ -48,6 +55,7 @@ export default async function PostulantesPage({
     rubros?: string;
     con_cv?: string;
     esperando_curso?: string;
+    curso_pendiente?: string;
     pagina?: string;
   }>;
 }) {
@@ -63,6 +71,7 @@ export default async function PostulantesPage({
       : [],
     conCv: sp.con_cv === "1",
     esperandoCurso: sp.esperando_curso === "1",
+    cursoPendiente: sp.curso_pendiente === "1",
     pagina: leerPagina(sp.pagina),
   };
 
@@ -82,6 +91,7 @@ export default async function PostulantesPage({
       hayBusqueda={filtros.q.length > 0}
       conCv={filtros.conCv}
       esperandoCurso={filtros.esperandoCurso}
+      cursoPendiente={filtros.cursoPendiente}
     >
       <Suspense
         key={JSON.stringify(filtros)}
@@ -100,8 +110,9 @@ async function ListadoPostulantes({
   filtros: FiltrosListado;
   searchParams: ParamsUrl;
 }) {
-  const { q, rubroIds, conCv, esperandoCurso, pagina } = filtros;
-  const hayFiltros = rubroIds.length > 0 || conCv || q.length > 0 || esperandoCurso;
+  const { q, rubroIds, conCv, esperandoCurso, cursoPendiente, pagina } = filtros;
+  const hayFiltros =
+    rubroIds.length > 0 || conCv || q.length > 0 || esperandoCurso || cursoPendiente;
 
   const supabase = await createSupabaseServerClient();
 
@@ -119,7 +130,7 @@ async function ListadoPostulantes({
   }[];
 
   // Pre-filtros paralelos
-  const [rubroPreResult, cvPreResult, esperandoPreResult] = await Promise.all([
+  const [rubroPreResult, cvPreResult, esperandoPreResult, pendientePreResult] = await Promise.all([
     rubroIds.length > 0
       ? supabase
           .from("postulante_categorias")
@@ -135,6 +146,12 @@ async function ListadoPostulantes({
       : Promise.resolve({ data: null }),
     esperandoCurso
       ? supabase.rpc("postulantes_esperando_curso_ids")
+      : Promise.resolve({ data: null }),
+    cursoPendiente
+      ? supabase
+          .from("asignaciones_curso")
+          .select("postulante_id")
+          .in("estado", ["asignado", "en_curso"])
       : Promise.resolve({ data: null }),
   ]);
 
@@ -163,6 +180,12 @@ async function ListadoPostulantes({
     ? ((esperandoPreResult.data ?? []) as EsperandoRow[]).map(
         (r) => r.postulante_id
       )
+    : undefined;
+
+  if (cursoPendiente && "error" in pendientePreResult && pendientePreResult.error)
+    logError("postulantes_curso_pendiente", pendientePreResult.error);
+  const cursoPendienteFilterIds: string[] | undefined = cursoPendiente
+    ? ((pendientePreResult.data ?? []) as EsperandoRow[]).map((r) => r.postulante_id)
     : undefined;
 
   // Pre-filtro: búsqueda de texto
@@ -221,7 +244,9 @@ async function ListadoPostulantes({
     (cvUsuarioIds !== undefined && cvUsuarioIds.length === 0) ||
     (textFilterIds !== undefined && textFilterIds.length === 0) ||
     (esperandoCursoFilterIds !== undefined &&
-      esperandoCursoFilterIds.length === 0);
+      esperandoCursoFilterIds.length === 0) ||
+    (cursoPendienteFilterIds !== undefined &&
+      cursoPendienteFilterIds.length === 0);
 
   if (emptyFilter) return vacio;
 
@@ -252,6 +277,8 @@ async function ListadoPostulantes({
     if (textFilterIds !== undefined) query = query.in("id", textFilterIds);
     if (esperandoCursoFilterIds !== undefined)
       query = query.in("id", esperandoCursoFilterIds);
+    if (cursoPendienteFilterIds !== undefined)
+      query = query.in("id", cursoPendienteFilterIds);
 
     return query
       .order("created_at", { ascending: false })
@@ -286,14 +313,14 @@ async function ListadoPostulantes({
   };
   type CvStatusRow = { usuario_id: string };
   type PostulacionCountRow = { postulante_id: string };
-  type RechazosRow = { postulante_id: string; rechazos: number };
 
   const [
     avatarRes,
     catRes,
     cvStatusRes,
     postulacionesRes,
-    rechazosRes,
+    estadoCursosRes,
+    cursosPendientesRes,
   ] = await Promise.all([
     supabase
       .from("archivos_usuario")
@@ -315,9 +342,14 @@ async function ListadoPostulantes({
       .from("postulaciones")
       .select("postulante_id")
       .in("postulante_id", postulanteIds),
-    supabase.rpc("rechazos_por_postulantes", {
+    supabase.rpc("estado_cursos_postulantes", {
       p_postulante_ids: postulanteIds,
     }),
+    supabase
+      .from("asignaciones_curso")
+      .select("postulante_id")
+      .in("postulante_id", postulanteIds)
+      .in("estado", ["asignado", "en_curso"]),
   ]);
 
   const avatarRows = (avatarRes.data ?? []) as unknown as AvatarRow[];
@@ -371,11 +403,24 @@ async function ListadoPostulantes({
     );
   }
 
-  if (rechazosRes.error)
-    logError("rechazos_por_postulantes", rechazosRes.error);
-  const rechazosMap = new Map<string, number>();
-  for (const row of (rechazosRes.data ?? []) as unknown as RechazosRow[]) {
-    rechazosMap.set(row.postulante_id, Number(row.rechazos));
+  if (estadoCursosRes.error) logError("estado_cursos_postulantes", estadoCursosRes.error);
+  const cursosMap = new Map<string, EstadoCursosPostulante>();
+  for (const row of (estadoCursosRes.data ?? []) as EstadoCursosPostulante[]) {
+    cursosMap.set(row.postulante_id, {
+      ...row,
+      rechazos_ventana: Number(row.rechazos_ventana),
+      rechazos_totales: Number(row.rechazos_totales),
+    });
+  }
+
+  if (cursosPendientesRes.error)
+    logError("admin_postulantes_cursos_pendientes", cursosPendientesRes.error);
+  const cursosPendientesMap = new Map<string, number>();
+  for (const row of (cursosPendientesRes.data ?? []) as PostulacionCountRow[]) {
+    cursosPendientesMap.set(
+      row.postulante_id,
+      (cursosPendientesMap.get(row.postulante_id) ?? 0) + 1
+    );
   }
 
   const volverUrl = hrefConParams(RUTA, searchParams, {
@@ -390,136 +435,23 @@ async function ListadoPostulantes({
           : `${totalCount} postulantes encontrados`}
       </p>
 
-      {/* Tabla md+ */}
-      <div className="hidden md:block overflow-x-auto rounded-[var(--radius-lg)] border border-border bg-surface">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border bg-surface-tinted text-left">
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                Postulante
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                DNI
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                Teléfono
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                Rubros
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                CV
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                Postulaciones
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                Registrado
-              </th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {postulantes.map((p) => {
-              const usuario = p.usuarios;
-              const avatar = avatarMap.get(p.usuario_id);
-              const rubros = rubrosPorPostulante.get(p.id) ?? [];
-              const tieneCv = usuariosConCv.has(p.usuario_id);
-              const numPostulaciones = conteosMap.get(p.id) ?? 0;
-              const rechazos = rechazosMap.get(p.id) ?? 0;
-              const necesitaCurso = rechazos >= 3;
-              const nombreCompleto = usuario
-                ? `${usuario.nombre} ${usuario.apellido}`
-                : "—";
-              const fichaUrl = `/admin/postulantes/${p.id}?volver=${encodeURIComponent(
-                volverUrl
-              )}`;
-
-              return (
-                <tr
-                  key={p.id}
-                  className="hover:bg-surface-tinted transition-colors"
-                >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <AvatarAjustado
-                        src={avatar?.url ?? null}
-                        alt={nombreCompleto}
-                        ajuste={avatar?.ajuste}
-                        size="sm"
-                      />
-                      <div className="min-w-0">
-                        <span className="font-medium text-foreground">
-                          {nombreCompleto}
-                        </span>
-                        {necesitaCurso && (
-                          <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 whitespace-nowrap">
-                            Necesita curso · {rechazos} rechazo
-                            {rechazos !== 1 ? "s" : ""}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-foreground">
-                    {p.dni ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-foreground">
-                    {usuario?.telefono || "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <RubrosPills rubros={rubros} />
-                  </td>
-                  <td className="px-4 py-3">
-                    {tieneCv ? (
-                      <span className="inline-flex items-center gap-1 text-primary">
-                        <FileText className="h-4 w-4" />
-                        Sí
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">Sin CV</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-foreground">
-                    {numPostulaciones}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {formatearFecha(p.created_at)}
-                  </td>
-                  <td className="px-4 py-3 w-px whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      {necesitaCurso && (
-                        <AsignarCursoDialog
-                          postulanteId={p.id}
-                          postulanteNombre={nombreCompleto}
-                          cursosActivos={cursosActivos}
-                        />
-                      )}
-                      <Link
-                        href={fichaUrl}
-                        className="btn-secundario inline-flex items-center justify-center whitespace-nowrap px-3 py-1.5 text-xs"
-                      >
-                        Ver ficha
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Cards mobile */}
-      <div className="space-y-3 md:hidden">
+      {/*
+        Una sola lista para todos los anchos: en celular cada postulante es una
+        tarjeta apilada y desde lg los datos, los números y los botones se
+        acomodan en tres columnas. Los textos largos pasan de línea, así que
+        nunca hace falta desplazarse hacia los costados.
+      */}
+      <ul className="space-y-3">
         {postulantes.map((p) => {
           const usuario = p.usuarios;
           const avatar = avatarMap.get(p.usuario_id);
           const rubros = rubrosPorPostulante.get(p.id) ?? [];
           const tieneCv = usuariosConCv.has(p.usuario_id);
           const numPostulaciones = conteosMap.get(p.id) ?? 0;
-          const rechazos = rechazosMap.get(p.id) ?? 0;
-          const necesitaCurso = rechazos >= 3;
+          const cursos = cursosMap.get(p.id);
+          const rechazos = cursos?.rechazos_ventana ?? 0;
+          const necesitaCurso = cursos?.necesita_curso ?? false;
+          const pendientes = cursosPendientesMap.get(p.id) ?? 0;
           const nombreCompleto = usuario
             ? `${usuario.nombre} ${usuario.apellido}`
             : "—";
@@ -528,88 +460,98 @@ async function ListadoPostulantes({
           )}`;
 
           return (
-            <div
+            <li
               key={p.id}
-              className="rounded-[var(--radius-lg)] border border-border bg-surface p-4 space-y-3"
+              className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-border bg-surface p-4 transition-colors hover:bg-surface-tinted lg:flex-row lg:items-center lg:gap-6"
             >
-              <div className="flex items-center gap-3">
+              {/* Identidad y datos de contacto */}
+              <div className="flex min-w-0 flex-1 items-start gap-3">
                 <AvatarAjustado
                   src={avatar?.url ?? null}
                   alt={nombreCompleto}
                   ajuste={avatar?.ajuste}
                   size="sm"
                 />
-                <div>
-                  <p className="font-medium text-foreground">
-                    {nombreCompleto}
-                  </p>
-                  {necesitaCurso && (
-                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                      Necesita curso · {rechazos} rechazo
-                      {rechazos !== 1 ? "s" : ""}
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="break-words font-medium text-foreground">
+                      {nombreCompleto}
                     </span>
+                    <EtiquetaCurso cursos={cursos} />
+                  </div>
+                  {pendientes > 0 && (
+                    <p className="text-xs font-medium text-amber-700">
+                      {textoCursosPendientes(pendientes)}
+                    </p>
                   )}
-                  <p className="text-xs text-muted-foreground">
-                    DNI: {p.dni ?? "—"}
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground">Teléfono</p>
-                  <p className="text-foreground">
-                    {usuario?.telefono || "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">CV</p>
-                  {tieneCv ? (
-                    <span className="inline-flex items-center gap-1 text-primary text-sm">
-                      <FileText className="h-3.5 w-3.5" />
-                      Sí
+                  <p className="text-sm text-muted-foreground">
+                    <span className="whitespace-nowrap">
+                      DNI <span className="font-mono text-foreground">{p.dni ?? "—"}</span>
                     </span>
-                  ) : (
-                    <span className="text-muted-foreground text-sm">
-                      Sin CV
+                    <span aria-hidden="true"> · </span>
+                    <span className="whitespace-nowrap">
+                      Tel. <span className="text-foreground">{usuario?.telefono || "—"}</span>
                     </span>
-                  )}
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Postulaciones</p>
-                  <p className="text-foreground">{numPostulaciones}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Registrado</p>
-                  <p className="text-foreground">
-                    {formatearFecha(p.created_at)}
+                    <span aria-hidden="true"> · </span>
+                    <span className="whitespace-nowrap">
+                      Registrado el {formatearFecha(p.created_at)}
+                    </span>
                   </p>
-                </div>
-              </div>
-              {rubros.length > 0 && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Rubros</p>
                   <RubrosPills rubros={rubros} />
                 </div>
-              )}
-              <div className="flex flex-wrap gap-2">
+              </div>
+
+              {/* Números */}
+              <dl className="grid grid-cols-3 gap-2 text-sm lg:w-80 lg:flex-none">
+                <div>
+                  <dt className="text-xs text-muted-foreground">CV</dt>
+                  <dd>
+                    {tieneCv ? (
+                      <span className="inline-flex items-center gap-1 text-primary">
+                        <FileText className="h-4 w-4" aria-hidden="true" />
+                        Sí
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">Sin CV</span>
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Postulaciones</dt>
+                  <dd className="text-foreground">{numPostulaciones}</dd>
+                </div>
+                <div>
+                  <dt
+                    className="text-xs text-muted-foreground"
+                    title={`Rechazos de empresas en los últimos ${VENTANA_RECHAZOS_DIAS} días, posteriores al último curso completado`}
+                  >
+                    Rechazos ({VENTANA_RECHAZOS_DIAS} días)
+                  </dt>
+                  <dd className="text-foreground">{rechazos}</dd>
+                </div>
+              </dl>
+
+              {/* Acciones */}
+              <div className="flex flex-wrap gap-2 lg:w-36 lg:flex-none lg:flex-col lg:items-stretch">
                 {necesitaCurso && (
                   <AsignarCursoDialog
                     postulanteId={p.id}
                     postulanteNombre={nombreCompleto}
                     cursosActivos={cursosActivos}
+                    claseBoton="min-h-11 px-4 text-sm lg:min-h-9 lg:px-3"
                   />
                 )}
                 <Link
                   href={fichaUrl}
-                  className="btn-secundario inline-flex items-center justify-center whitespace-nowrap px-3 py-2 text-sm"
+                  className="btn-secundario inline-flex min-h-11 items-center justify-center whitespace-nowrap px-4 text-sm lg:min-h-9 lg:px-3"
                 >
                   Ver ficha
                 </Link>
               </div>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ul>
 
       <Paginacion
         ruta={RUTA}
@@ -619,6 +561,40 @@ async function ListadoPostulantes({
       />
     </>
   );
+}
+
+function textoCursosPendientes(cantidad: number): string {
+  return cantidad === 1
+    ? "1 curso pendiente por terminar"
+    : `${cantidad} cursos pendientes por terminar`;
+}
+
+function EtiquetaCurso({
+  cursos,
+  className,
+}: {
+  cursos: EstadoCursosPostulante | undefined;
+  className?: string;
+}) {
+  if (!cursos) return null;
+  if (cursos.necesita_curso) {
+    return (
+      <span
+        className={`inline-flex items-center whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 ${className ?? ""}`}
+      >
+        Necesita curso · {textoRechazos(cursos.rechazos_ventana)}
+      </span>
+    );
+  }
+  if (cursos.asignacion_activa_estado) {
+    return (
+      <EstadoCursoBadge
+        estado={cursos.asignacion_activa_estado}
+        className={`px-2 ${className ?? ""}`}
+      />
+    );
+  }
+  return null;
 }
 
 function RubrosPills({
@@ -657,6 +633,7 @@ function PostulantesShell({
   hayBusqueda,
   conCv,
   esperandoCurso,
+  cursoPendiente,
   children,
 }: {
   opciones: { id: string; nombre: string }[];
@@ -664,6 +641,7 @@ function PostulantesShell({
   hayBusqueda: boolean;
   conCv: boolean;
   esperandoCurso: boolean;
+  cursoPendiente: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -690,6 +668,7 @@ function PostulantesShell({
           hayBusqueda={hayBusqueda}
           conCv={conCv}
           esperandoCurso={esperandoCurso}
+          cursoPendiente={cursoPendiente}
         />
       </div>
 

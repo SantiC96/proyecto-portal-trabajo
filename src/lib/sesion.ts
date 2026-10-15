@@ -1,4 +1,8 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import {
+  obtenerResumenNotificaciones,
+  type ResumenNotificaciones,
+} from "@/lib/notificaciones";
 
 export type SesionData = {
   nombre: string;
@@ -7,6 +11,10 @@ export type SesionData = {
   avatarUrl: string | null;
   ajuste: { x: number; y: number; zoom: number } | null;
   profileHref: string;
+  /** Solo postulantes: cursos asignados o en curso (indicador de la navbar). */
+  cursosPendientes: number;
+  /** Solo municipalidad: campanita de notificaciones de la navbar. */
+  notificaciones: ResumenNotificaciones | null;
 };
 
 export async function obtenerSesionActual(): Promise<SesionData | null> {
@@ -41,6 +49,17 @@ export async function obtenerSesionActual(): Promise<SesionData | null> {
     rol === "municipalidad" ? "/admin" :
     "/perfil";
 
+  let cursosPendientes = 0;
+  if (rol === "postulante") {
+    const { count } = await supabase
+      .rpc("mis_cursos_con_estado", undefined, { count: "exact", head: true })
+      .in("estado", ["asignado", "en_curso"]);
+    cursosPendientes = count ?? 0;
+  }
+
+  const notificaciones =
+    rol === "municipalidad" ? await obtenerResumenNotificaciones(user.id) : null;
+
   let avatarUrl: string | null = null;
   if (avatarActivo?.ruta) {
     const { data: signed } = await supabase.storage
@@ -57,5 +76,14 @@ export async function obtenerSesionActual(): Promise<SesionData | null> {
       }
     : null;
 
-  return { nombre, apellido, rol, avatarUrl, ajuste, profileHref };
+  return {
+    nombre,
+    apellido,
+    rol,
+    avatarUrl,
+    ajuste,
+    profileHref,
+    cursosPendientes,
+    notificaciones,
+  };
 }

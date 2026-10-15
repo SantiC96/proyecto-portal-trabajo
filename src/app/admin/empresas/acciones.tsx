@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +17,8 @@ import { aprobarEmpresa, rechazarEmpresa } from "../actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
 import type { HistorialEntry } from "./page";
+import { useAccion } from "@/lib/use-accion";
+import { Spinner } from "@/components/ui/spinner";
 
 type Props = {
   empresaId: string;
@@ -61,7 +63,7 @@ export function EmpresaAcciones({
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [error, setError] = useState<ErrorAccion | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const { pendiente: isPending, ejecutar } = useAccion();
 
   function handleAbrirRechazar(open: boolean) {
     setAbrirRechazar(open);
@@ -78,7 +80,7 @@ export function EmpresaAcciones({
 
   function handleAprobar() {
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const resultado = await aprobarEmpresa(empresaId);
       mostrarAviso(resultado);
       if (!resultado.ok) {
@@ -95,7 +97,7 @@ export function EmpresaAcciones({
       return;
     }
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const resultado = await rechazarEmpresa(empresaId, motivo.trim());
       mostrarAviso(resultado);
       if (!resultado.ok) {
@@ -223,6 +225,7 @@ export function EmpresaAcciones({
               Cancelar
             </Button>
             <Button onClick={handleAprobar} disabled={isPending}>
+              {isPending && <Spinner className="mr-1" />}
               {isPending ? "Aprobando..." : "Confirmar"}
             </Button>
           </DialogFooter>
@@ -280,6 +283,7 @@ export function EmpresaAcciones({
               disabled={isPending}
             >
               {isPending && <Loader2 className="animate-spin" />}
+              {isPending && <Spinner className="mr-1" />}
               {isPending ? "Rechazando..." : "Rechazar empresa"}
             </Button>
           </DialogFooter>

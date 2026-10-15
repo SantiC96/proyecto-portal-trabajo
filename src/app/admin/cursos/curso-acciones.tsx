@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { toggleActivoCurso, eliminarCurso } from "./actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
+import { useAccion } from "@/lib/use-accion";
+import { Spinner } from "@/components/ui/spinner";
 
 type Props = {
   cursoId: string;
@@ -13,11 +15,11 @@ type Props = {
 
 export function CursoAcciones({ cursoId, activo, tieneAsignaciones }: Props) {
   const [error, setError] = useState<ErrorAccion | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const { pendiente: isPending, ejecutar } = useAccion();
 
   function handleToggle() {
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const res = await toggleActivoCurso(cursoId, !activo);
       mostrarAviso(res);
       if (!res.ok) setError(toErrorAccion(res));
@@ -28,7 +30,7 @@ export function CursoAcciones({ cursoId, activo, tieneAsignaciones }: Props) {
     if (!confirm("¿Seguro querés eliminar este curso? Esta acción no se puede deshacer."))
       return;
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const res = await eliminarCurso(cursoId);
       if (!res.ok) {
         mostrarAviso(res);
@@ -56,6 +58,7 @@ export function CursoAcciones({ cursoId, activo, tieneAsignaciones }: Props) {
           disabled={isPending}
           className="btn-secundario inline-flex items-center justify-center whitespace-nowrap px-4 py-2 text-sm font-medium disabled:opacity-60"
         >
+          {isPending && <Spinner className="mr-1" />}
           {isPending ? "Guardando..." : activo ? "Desactivar" : "Activar"}
         </button>
         {!tieneAsignaciones && (

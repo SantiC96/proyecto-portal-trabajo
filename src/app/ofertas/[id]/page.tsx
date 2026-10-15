@@ -7,6 +7,7 @@ import { formatFecha } from "@/lib/fechas";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { PostularseCta } from "./postularse-cta";
 import { RequisitosList, BeneficiosList } from "@/components/ofertas/requisitos-beneficios";
+import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -18,6 +19,10 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
 
   const oferta = await getOfertaById(id);
   if (!oferta) notFound();
+
+  // Una oferta vencida sigue en estado 'activa' (no hay cron): se muestra, pero
+  // sin el formulario para postularse.
+  const { vencida } = estadoVencimiento("activa", oferta.venceEn ?? null);
 
   // Determine who is viewing and build the CTA props
   const supabase = await createSupabaseServerClient();
@@ -161,6 +166,26 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
             <hr className="my-6 border-border/60" />
 
             {/* CTA */}
+            {vencida ? (
+              <div
+                role="status"
+                className="rounded-[var(--radius-md)] border border-border bg-surface-tinted px-4 py-3 text-sm text-muted-foreground-strong"
+              >
+                <p className="font-semibold text-foreground">Esta oferta ya no está disponible</p>
+                <p className="mt-1">
+                  {ctaVariant === "ya-postulado"
+                    ? "Ya no recibe postulaciones nuevas. Podés seguir el estado de la tuya en "
+                    : "Ya no recibe postulaciones. Mirá las otras ofertas del "}
+                  <Link
+                    href={ctaVariant === "ya-postulado" ? "/mis-postulaciones" : "/ofertas"}
+                    className="font-medium text-primary underline-offset-2 hover:underline"
+                  >
+                    {ctaVariant === "ya-postulado" ? "Mis postulaciones" : "portal de empleo"}
+                  </Link>
+                  .
+                </p>
+              </div>
+            ) : (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-muted-foreground">
                 Las postulaciones son revisadas por el equipo de intermediación laboral municipal.
@@ -176,6 +201,7 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
                 autoOpen={autoOpen}
               />
             </div>
+            )}
           </article>
         </div>
       </main>

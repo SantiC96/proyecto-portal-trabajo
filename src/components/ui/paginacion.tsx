@@ -16,6 +16,11 @@ type Props = {
   tamano?: number;
   /** id del elemento al que vuelve el scroll al cambiar de página. */
   ancla?: string;
+  /**
+   * Parámetro de la URL con el número de página. Cambiarlo permite tener
+   * varias paginaciones independientes en la misma pantalla.
+   */
+  parametro?: string;
   className?: string;
 };
 
@@ -29,6 +34,7 @@ export function Paginacion({
   total,
   tamano = TAMANO_PAGINA,
   ancla,
+  parametro = "pagina",
   className,
 }: Props) {
   if (total <= 0) return null;
@@ -38,7 +44,12 @@ export function Paginacion({
   const hasta = Math.min(pagina * tamano, total);
 
   const href = (destino: number) =>
-    hrefConParams(ruta, searchParams, { pagina: destino }, ancla);
+    hrefConParams(
+      ruta,
+      searchParams,
+      { [parametro]: destino === 1 ? null : destino },
+      ancla,
+    );
 
   return (
     <nav

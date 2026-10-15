@@ -1,4 +1,5 @@
 import { validarCUIT } from "@/lib/cuit";
+import { DURACIONES_OFERTA, esDuracionOferta } from "@/lib/ofertas-vencimiento";
 
 /** Devuelve el mensaje de error o null si es válido. */
 
@@ -53,6 +54,8 @@ export type OfertaData = {
   requisitos: string[];
   beneficios: string[];
   cantidadVacantes: number;
+  /** Días que la oferta queda publicada (migration_036). */
+  duracionDias: number;
 };
 
 export function validarOferta(data: OfertaData): string | null {
@@ -66,6 +69,8 @@ export function validarOferta(data: OfertaData): string | null {
     return "La modalidad no es válida.";
   if (!JORNADAS_VALIDAS.includes(data.jornada as (typeof JORNADAS_VALIDAS)[number]))
     return "La jornada no es válida.";
+  if (!esDuracionOferta(data.duracionDias))
+    return `La duración debe ser de ${DURACIONES_OFERTA.join(", ").replace(/, (\d+)$/, " o $1")} días.`;
   const reqLimpios = data.requisitos.filter((r) => r.trim().length > 0);
   if (reqLimpios.length < 1)
     return "Agregá al menos un requisito.";

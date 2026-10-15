@@ -5,6 +5,8 @@ import { Building, MapPin, Clock, Briefcase } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { getOfertaEstadoLabel } from "@/lib/oferta-estados";
+import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
+import { VencimientoOferta } from "@/components/ofertas/vencimiento-oferta";
 import { OfertaAcciones } from "./oferta-acciones";
 import { RequisitosList, BeneficiosList } from "@/components/ofertas/requisitos-beneficios";
 
@@ -30,6 +32,8 @@ type OfertaDetalle = {
   publicado_en: string | null;
   revisado_por: string | null;
   revisado_en: string | null;
+  vence_en: string | null;
+  duracion_dias: number;
   oferta_categorias: Array<{ categorias: { nombre: string } | null }>;
 };
 
@@ -49,6 +53,7 @@ export default async function AdminOfertaDetallePage({
       ubicacion, modalidad, jornada, requisitos, beneficios,
       estado, created_at, contenido_editado_en,
       motivo_rechazo, publicado_en, revisado_por, revisado_en,
+      vence_en, duracion_dias,
       oferta_categorias(categorias(nombre))
     `
     )
@@ -223,8 +228,21 @@ export default async function AdminOfertaDetallePage({
               <div>
                 <dt className="text-muted-foreground">Estado</dt>
                 <dd className="mt-0.5 font-medium text-foreground">
-                  {getOfertaEstadoLabel(oferta.estado)}
+                  {estadoVencimiento(oferta.estado, oferta.vence_en).vencida
+                    ? "Vencida"
+                    : getOfertaEstadoLabel(oferta.estado)}
                 </dd>
+                <dd>
+                  <VencimientoOferta
+                    className="mt-1"
+                    estado={oferta.estado}
+                    venceEn={oferta.vence_en}
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Duración de la publicación</dt>
+                <dd className="mt-0.5 text-foreground">{oferta.duracion_dias} días</dd>
               </div>
               {totalPostulaciones > 0 && (
                 <div>
