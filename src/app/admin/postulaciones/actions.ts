@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirRol } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errConRef, okMsg, type Resultado } from "@/lib/resultado";
+import { err, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 import { esUuid, LARGO_MAXIMO, validarTextoOpcional } from "@/lib/validaciones";
 import { esValorEnum } from "@/types/db";
@@ -32,6 +32,7 @@ export async function abrirFicha(postulacionId: string): Promise<void> {
     .single();
 
   if (postulacion?.estado === "recibida") {
+    // Condicional: si entretanto se derivó o descartó, no la pisa.
     const { error } = await supabase
       .from("postulaciones")
       .update({
@@ -39,7 +40,8 @@ export async function abrirFicha(postulacionId: string): Promise<void> {
         revisado_por: auth.usuario.id,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", postulacionId);
+      .eq("id", postulacionId)
+      .eq("estado", "recibida");
 
     if (error) {
       logError("abrirFicha", error, { postulacionId });
@@ -68,16 +70,16 @@ export async function marcarEnRevision(
 
   if (!postulacion) return err("NO_ENCONTRADO", "Postulación no encontrada.");
 
+  const mensajeEstado = "Solo se puede marcar en revisión desde «Recibida» o «No seleccionado».";
   if (
     postulacion.estado !== "recibida" &&
     postulacion.estado !== "rechazada_municipalidad"
   ) {
-    return err(
-      "ESTADO_INVALIDO",
-      "Solo se puede marcar en revisión desde «Recibida» o «No seleccionado».",
-    );
+    return err("ESTADO_INVALIDO", mensajeEstado);
   }
 
+  // Condicional: si otra pestaña la derivó entre la lectura y el update, no
+  // afecta filas y no deja una postulación derivada «en revisión».
   const { data, error } = await supabase
     .from("postulaciones")
     .update({
@@ -86,16 +88,14 @@ export async function marcarEnRevision(
       updated_at: new Date().toISOString(),
     })
     .eq("id", postulacionId)
+    .in("estado", ["recibida", "rechazada_municipalidad"])
     .select("id");
 
   if (error) {
     const ref = logError("marcarEnRevision", error, { postulacionId });
     return errConRef("ERROR_INTERNO", "Error al actualizar la postulación. Intentá de nuevo.", ref);
   }
-  if (!data || data.length === 0) {
-    const ref = logError("marcarEnRevision:noRow", null, { postulacionId });
-    return errConRef("ERROR_INTERNO", "No se pudo completar la acción.", ref);
-  }
+  if (!data || data.length === 0) return err("ESTADO_INVALIDO", mensajeEstado);
 
   revalidarVistas(postulacionId);
   return okMsg("Postulación marcada como «En revisión».");
@@ -121,14 +121,12 @@ export async function descartarPostulacion(
 
   if (!postulacion) return err("NO_ENCONTRADO", "Postulación no encontrada.");
 
+  const mensajeEstado = "Solo se puede descartar desde 'recibida' o 'en revisión'.";
   if (
     postulacion.estado !== "recibida" &&
     postulacion.estado !== "en_revision"
   ) {
-    return err(
-      "ESTADO_INVALIDO",
-      "Solo se puede descartar desde 'recibida' o 'en revisión'.",
-    );
+    return err("ESTADO_INVALIDO", mensajeEstado);
   }
 
   const oferta = postulacion.ofertas;
@@ -139,6 +137,8 @@ export async function descartarPostulacion(
     );
   }
 
+  // Condicional: si otra pestaña la derivó entre la lectura y el update, no
+  // afecta filas y no deja una derivación con la postulación descartada.
   const { data, error } = await supabase
     .from("postulaciones")
     .update({
@@ -148,16 +148,14 @@ export async function descartarPostulacion(
       updated_at: new Date().toISOString(),
     })
     .eq("id", postulacionId)
+    .in("estado", ["recibida", "en_revision"])
     .select("id");
 
   if (error) {
     const ref = logError("descartarPostulacion", error, { postulacionId });
     return errConRef("ERROR_INTERNO", "Error al descartar la postulación. Intentá de nuevo.", ref);
   }
-  if (!data || data.length === 0) {
-    const ref = logError("descartarPostulacion:noRow", null, { postulacionId });
-    return errConRef("ERROR_INTERNO", "No se pudo completar la acción.", ref);
-  }
+  if (!data || data.length === 0) return err("ESTADO_INVALIDO", mensajeEstado);
 
   revalidarVistas(postulacionId);
   return okMsg("Postulante marcado como «No seleccionado».");
@@ -174,68 +172,19 @@ export async function derivarPostulacion(
   const errNota = validarTextoOpcional(nota, LARGO_MAXIMO.nota);
   if (errNota) return err("DATOS_INVALIDOS", `Nota: ${errNota}`);
 
+  // La función inserta la derivación y cambia el estado en una transacción, y
+  // controla el estado de la postulación y de la oferta (migration_040).
   const supabase = await createSupabaseServerClient();
-  const { data: postulacion } = await supabase
-    .from("postulaciones")
-    .select("estado, ofertas!oferta_id(estado)")
-    .eq("id", postulacionId)
-    .single();
+  const { error } = await supabase.rpc("derivar_postulacion", {
+    p_postulacion_id: postulacionId,
+    p_nota: nota?.trim() ?? "",
+  });
 
-  if (!postulacion) return err("NO_ENCONTRADO", "Postulación no encontrada.");
-
-  if (
-    postulacion.estado !== "en_revision" &&
-    postulacion.estado !== "recibida"
-  ) {
-    return err("ESTADO_INVALIDO", "Solo se puede derivar desde 'recibida' o 'en revisión'.");
-  }
-
-  const oferta = postulacion.ofertas;
-  if (!oferta || oferta.estado !== "activa") {
-    return err("ESTADO_INVALIDO", "La oferta ya no está activa y no puede recibir derivaciones.");
-  }
-
-  const { error: insertError } = await supabase
-    .from("derivaciones")
-    .insert({
-      postulacion_id: postulacionId,
-      municipalidad_usuario_id: auth.usuario.id,
-      nota_municipalidad: nota?.trim() || null,
-    });
-
-  if (insertError) {
-    if (insertError.code === "23505") {
-      return err("CONFLICTO", "Esta postulación ya fue derivada.");
-    }
-    const ref = logError("derivarPostulacion:insert", insertError, { postulacionId });
+  if (error) {
+    if (error.code === "23505") return err("CONFLICTO", "Esta postulación ya fue derivada.");
+    if (error.code === "P0001" || error.code === "42501") return fromSupabaseError(error);
+    const ref = logError("derivarPostulacion", error, { postulacionId });
     return errConRef("ERROR_INTERNO", "Error al derivar la postulación. Intentá de nuevo.", ref);
-  }
-
-  const { data, error: updateError } = await supabase
-    .from("postulaciones")
-    .update({
-      estado: "derivada",
-      revisado_por: auth.usuario.id,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", postulacionId)
-    .select("id");
-
-  if (updateError) {
-    const ref = logError("derivarPostulacion:update", updateError, { postulacionId });
-    return errConRef(
-      "ERROR_INTERNO",
-      "La derivación se registró pero no se pudo actualizar el estado. Contactá a soporte.",
-      ref,
-    );
-  }
-  if (!data || data.length === 0) {
-    const ref = logError("derivarPostulacion:noRow", null, { postulacionId });
-    return errConRef(
-      "ERROR_INTERNO",
-      "La derivación se registró pero no se pudo actualizar el estado. Contactá a soporte.",
-      ref,
-    );
   }
 
   revalidarVistas(postulacionId);
@@ -260,6 +209,8 @@ export async function corregirEstadoDerivacion(
     .eq("id", derivacionId);
 
   if (error) {
+    // derivaciones_limite_vacantes (040) también aplica a la oficina.
+    if (error.code === "P0001") return fromSupabaseError(error);
     const ref = logError("corregirEstadoDerivacion", error, { derivacionId });
     return errConRef("ERROR_INTERNO", "No se pudo corregir el estado. Intentá de nuevo.", ref);
   }

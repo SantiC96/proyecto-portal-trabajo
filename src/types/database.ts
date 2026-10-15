@@ -480,6 +480,7 @@ export type Database = {
       ofertas: {
         Row: {
           beneficios: string[]
+          clave_envio: string | null
           contenido_editado_en: string | null
           created_at: string
           descripcion: string
@@ -502,6 +503,7 @@ export type Database = {
         }
         Insert: {
           beneficios?: string[]
+          clave_envio?: string | null
           contenido_editado_en?: string | null
           created_at?: string
           descripcion: string
@@ -524,6 +526,7 @@ export type Database = {
         }
         Update: {
           beneficios?: string[]
+          clave_envio?: string | null
           contenido_editado_en?: string | null
           created_at?: string
           descripcion?: string
@@ -718,6 +721,16 @@ export type Database = {
         Args: { p_asignacion_id: string; p_estado: string }
         Returns: undefined
       }
+      actualizar_mi_perfil_postulante: {
+        Args: {
+          p_apellido: string
+          p_dni: string
+          p_domicilio: string
+          p_nombre: string
+          p_telefono: string
+        }
+        Returns: undefined
+      }
       buscar_ofertas_publicas: {
         Args: {
           p_categoria?: string
@@ -764,8 +777,28 @@ export type Database = {
           telefono: string
         }[]
       }
+      categorias_validas_de_oferta: {
+        Args: { p_categoria_ids: string[] }
+        Returns: string[]
+      }
       contar_postulantes_esperando_curso: { Args: never; Returns: number }
       contratados_en_oferta: { Args: { p_oferta_id: string }; Returns: number }
+      crear_oferta_empresa: {
+        Args: {
+          p_beneficios: string[]
+          p_cantidad_vacantes: number
+          p_categoria_ids: string[]
+          p_clave_envio: string
+          p_descripcion: string
+          p_duracion_dias: number
+          p_jornada: Database["public"]["Enums"]["jornada_oferta"]
+          p_modalidad: Database["public"]["Enums"]["modalidad_oferta"]
+          p_requisitos: string[]
+          p_titulo: string
+          p_ubicacion: string
+        }
+        Returns: string
+      }
       derivaciones_de_oferta_empresa: {
         Args: { p_oferta_id: string }
         Returns: {
@@ -802,6 +835,26 @@ export type Database = {
           oferta_titulo: string
           postulante_id: string
         }[]
+      }
+      derivar_postulacion: {
+        Args: { p_nota: string; p_postulacion_id: string }
+        Returns: string
+      }
+      editar_oferta_empresa: {
+        Args: {
+          p_beneficios: string[]
+          p_cantidad_vacantes: number
+          p_categoria_ids: string[]
+          p_descripcion: string
+          p_duracion_dias: number
+          p_jornada: Database["public"]["Enums"]["jornada_oferta"]
+          p_modalidad: Database["public"]["Enums"]["modalidad_oferta"]
+          p_oferta_id: string
+          p_requisitos: string[]
+          p_titulo: string
+          p_ubicacion: string
+        }
+        Returns: undefined
       }
       emails_de_usuarios: {
         Args: { ids: string[] }
@@ -929,6 +982,22 @@ export type Database = {
           postulante_id: string
           rechazos: number
         }[]
+      }
+      reemplazar_mis_rubros: {
+        Args: { p_categoria_ids: string[] }
+        Returns: undefined
+      }
+      reenviar_solicitud_empresa: {
+        Args: {
+          p_apellido: string
+          p_cuit: string
+          p_descripcion: string
+          p_nombre: string
+          p_razon_social: string
+          p_rubro: string
+          p_telefono: string
+        }
+        Returns: undefined
       }
       renovar_oferta: { Args: { p_oferta_id: string }; Returns: string }
       rol_actual: {

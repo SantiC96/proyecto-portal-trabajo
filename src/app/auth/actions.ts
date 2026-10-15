@@ -47,6 +47,37 @@ function wrapAuthError(contexto: string, authErr: AuthError): Resultado<never> {
   return r;
 }
 
+/**
+ * Compensación cuando signUp creó el usuario pero falló el alta del perfil:
+ * borra el usuario de Auth para que pueda registrarse de nuevo.
+ *
+ * Mientras el email no está confirmado, signUp devuelve el mismo usuario a
+ * cada envío. Si el perfil ya existe, lo creó un envío anterior del mismo
+ * formulario (doble click, reintento o segunda pestaña) y el error es solo el
+ * duplicado: no se borra nada y devuelve true (el alta está completa). Si no
+ * se puede verificar, tampoco se borra.
+ */
+async function deshacerAltaSinPerfil(
+  tabla: "postulantes" | "empresas",
+  userId: string,
+  contexto: string,
+): Promise<boolean> {
+  const { data: perfil, error } =
+    tabla === "postulantes"
+      ? await supabaseAdmin.from("postulantes").select("id").eq("usuario_id", userId).maybeSingle()
+      : await supabaseAdmin.from("empresas").select("id").eq("usuario_id", userId).maybeSingle();
+
+  if (error) {
+    logError(`${contexto}:verificarPerfil`, error, { userId });
+    return false;
+  }
+  if (perfil) return true;
+
+  const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+  if (deleteError) logError(`${contexto}:deleteUser`, deleteError, { userId });
+  return false;
+}
+
 export async function login(credentials: {
   email: string;
   password: string;
@@ -137,7 +168,8 @@ export async function registrarPostulante(data: {
     .insert({ usuario_id: authData.user.id, dni: dniLimpio, domicilio: data.domicilio });
 
   if (profileError) {
-    await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+    const altaCompleta = await deshacerAltaSinPerfil("postulantes", authData.user.id, "registrarPostulante");
+    if (altaCompleta) redirect("/auth/verificar-email");
     if (profileError.code === "23505") {
       return err("CONFLICTO", "Ya existe una cuenta con ese DNI.");
     }
@@ -233,7 +265,8 @@ export async function registrarEmpresa(data: {
     });
 
   if (profileError) {
-    await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+    const altaCompleta = await deshacerAltaSinPerfil("empresas", authData.user.id, "registrarEmpresa");
+    if (altaCompleta) redirect("/auth/verificar-email-empresa");
     if (profileError.code === "23505") {
       return err("CONFLICTO", "Ya existe una empresa registrada con ese CUIT.");
     }

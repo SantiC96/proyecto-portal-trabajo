@@ -278,6 +278,7 @@ type Props = {
   lugarEntrevista: string | null;
   postulanteId: string;
   guardadoId: string | null;
+  vacantesCubiertas: boolean;
 };
 
 export function AccionesDerivacion({
@@ -288,6 +289,7 @@ export function AccionesDerivacion({
   lugarEntrevista,
   postulanteId,
   guardadoId,
+  vacantesCubiertas,
 }: Props) {
   const router = useRouter();
   const { pendiente: isPending, ejecutar } = useAccion();
@@ -303,6 +305,12 @@ export function AccionesDerivacion({
     estado === "en_proceso" &&
     fechaEntrevista !== null &&
     new Date(fechaEntrevista) <= new Date();
+
+  const motivoSeleccionNoDisponible = vacantesCubiertas
+    ? "Ya cubriste todas las vacantes de esta oferta."
+    : !entrevistaYaPaso
+      ? "Disponible después de la entrevista"
+      : null;
 
   function handleSeleccionar() {
     setError(null);
@@ -396,21 +404,22 @@ export function AccionesDerivacion({
           </button>
         )}
 
-        {/* Seleccionar: solo en en_proceso. Deshabilitado hasta que pase la fecha */}
+        {/* Seleccionar: solo en en_proceso. Deshabilitado hasta que pase la fecha
+            o si ya se cubrieron las vacantes */}
         {estado === "en_proceso" && (
           <div className="flex flex-col gap-1">
             <button
               type="button"
               onClick={() => { setError(null); setOpenSeleccion(true); }}
-              disabled={isPending || !entrevistaYaPaso}
-              title={!entrevistaYaPaso ? "Disponible después de la entrevista" : undefined}
+              disabled={isPending || motivoSeleccionNoDisponible !== null}
+              title={motivoSeleccionNoDisponible ?? undefined}
               className="btn-secundario inline-flex h-9 items-center justify-center px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
             >
               Seleccionar
             </button>
-            {!entrevistaYaPaso && (
+            {motivoSeleccionNoDisponible && (
               <p className="text-xs text-muted-foreground">
-                Disponible después de la entrevista
+                {motivoSeleccionNoDisponible}
               </p>
             )}
           </div>

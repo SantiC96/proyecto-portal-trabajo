@@ -100,10 +100,13 @@ export async function retirarPostulacion(
     );
   }
 
+  // La política de DELETE solo permite 'recibida' (migration_018). Si la
+  // oficina la abrió o otra pestaña ya la retiró, no se borra ninguna fila.
   const { data: deleted, error } = await supabase
     .from("postulaciones")
     .delete()
     .eq("id", postulacionId)
+    .eq("estado", "recibida")
     .select("id");
 
   if (error) {
@@ -111,8 +114,10 @@ export async function retirarPostulacion(
     return errConRef("ERROR_INTERNO", "Error al retirar la postulación. Intentá de nuevo.", ref);
   }
   if (!deleted || deleted.length === 0) {
-    const ref = logError("retirarPostulacion:noRow", null, { postulacionId });
-    return errConRef("ERROR_INTERNO", "No se pudo completar la acción.", ref);
+    return err(
+      "ESTADO_INVALIDO",
+      "Esta postulación ya fue retirada o la Oficina de Empleo empezó a revisarla.",
+    );
   }
 
   revalidatePath(`/ofertas/${postulacion.oferta_id}`);

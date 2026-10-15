@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Mail, Phone, FileText, ExternalLink, User } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirEmpresaPagina } from "@/lib/auth";
+import { logError } from "@/lib/logger";
 import { formatFechaHora } from "@/lib/fechas";
 import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_STYLE } from "@/lib/derivacion-estados";
 import type { FilaCandidatoParaEmpresa, FilaDerivacionDeOfertaEmpresa } from "@/types/db";
@@ -44,7 +45,7 @@ export default async function CandidatoFichaPage({
   if (!derivacion) notFound();
 
   // Get candidate data and saved status in parallel
-  const [candidatoResult, guardadoResult] = await Promise.all([
+  const [candidatoResult, guardadoResult, vacantesResult, contratadosResult] = await Promise.all([
     supabase.rpc("candidato_para_empresa", {
       p_postulante_id: derivacion.postulante_id,
     }),
@@ -53,10 +54,18 @@ export default async function CandidatoFichaPage({
       .select("id, nota, oferta_origen_id")
       .eq("postulante_id", derivacion.postulante_id)
       .maybeSingle(),
+    supabase.from("oferta_vacantes").select("cantidad").eq("oferta_id", ofertaId).maybeSingle(),
+    supabase.rpc("contratados_en_oferta", { p_oferta_id: ofertaId }),
   ]);
 
   const candidato: FilaCandidatoParaEmpresa | null = candidatoResult.data?.[0] ?? null;
   const guardado = guardadoResult.data;
+
+  // Solo informativo: el límite lo hace cumplir derivaciones_limite_vacantes (040).
+  if (contratadosResult.error) logError("empresa_candidato_contratados", contratadosResult.error);
+  const vacantes = vacantesResult.data?.cantidad ?? null;
+  const vacantesCubiertas =
+    vacantes !== null && contratadosResult.data != null && contratadosResult.data >= vacantes;
 
   // Generate signed CV URL if available (10 min lifetime)
   let cvUrl: string | null = null;
@@ -238,6 +247,7 @@ export default async function CandidatoFichaPage({
                 lugarEntrevista={derivacion.lugar_entrevista}
                 postulanteId={derivacion.postulante_id}
                 guardadoId={guardado?.id ?? null}
+                vacantesCubiertas={vacantesCubiertas}
               />
             </div>
           </div>

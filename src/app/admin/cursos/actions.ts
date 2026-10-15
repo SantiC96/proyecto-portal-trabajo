@@ -12,6 +12,8 @@ import type { Tabla } from "@/types/db";
 
 type CursoData = Pick<Tabla<"cursos">, "nombre" | "descripcion" | "link" | "indicaciones">;
 
+const MENSAJE_CURSO_REPETIDO = "Ya existe un curso con ese nombre.";
+
 function validarCursoData(data: CursoData): string | null {
   if (typeof data !== "object" || data === null) return "Los datos del curso no son válidos.";
   if (typeof data.nombre !== "string" || !data.nombre.trim())
@@ -55,6 +57,8 @@ export async function crearCurso(data: CursoData): Promise<Resultado<void>> {
     .single();
 
   if (error || !nuevo) {
+    // Índice único sobre el nombre (migration_040): también frena el doble envío.
+    if (error?.code === "23505") return err("CONFLICTO", MENSAJE_CURSO_REPETIDO);
     const ref = logError("crearCurso", error);
     return errConRef("ERROR_INTERNO", "No se pudo crear el curso. Intentá de nuevo.", ref);
   }
@@ -88,6 +92,7 @@ export async function editarCurso(
     .select("id");
 
   if (error) {
+    if (error.code === "23505") return err("CONFLICTO", MENSAJE_CURSO_REPETIDO);
     const ref = logError("editarCurso", error, { cursoId });
     return errConRef("ERROR_INTERNO", "No se pudo actualizar el curso. Intentá de nuevo.", ref);
   }
@@ -142,6 +147,9 @@ export async function eliminarCurso(cursoId: string): Promise<Resultado<void>> {
   const { error } = await supabase.from("cursos").delete().eq("id", cursoId);
 
   if (error) {
+    // 23503: se asignó entre el conteo y el borrado; la FK lo impide.
+    if (error.code === "23503")
+      return err("REGLA_DE_NEGOCIO", "No se puede eliminar un curso que ya tiene asignaciones.");
     const ref = logError("eliminarCurso", error, { cursoId });
     return errConRef("ERROR_INTERNO", "No se pudo eliminar el curso.", ref);
   }
@@ -187,10 +195,11 @@ export async function asignarCurso(
   });
 
   if (error) {
+    // 23505: dos asignaciones simultáneas pasaron el trigger y el índice
+    // asignaciones_curso_una_activa_idx rechazó la segunda.
+    if (error.code === "23505") return err("CONFLICTO", MENSAJE_CURSO_ACTIVO);
     // P0001 messages (e.g. "El curso no está activo") are user-friendly and safe to show
-    if (error.code === "P0001" || error.code === "23505") {
-      return fromSupabaseError(error);
-    }
+    if (error.code === "P0001") return fromSupabaseError(error);
     const ref = logError("asignarCurso", error, { postulanteId, cursoId });
     return errConRef("ERROR_INTERNO", "No se pudo asignar el curso. Intentá de nuevo.", ref);
   }
