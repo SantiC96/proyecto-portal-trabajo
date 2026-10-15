@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { quitarGuardado } from "@/app/empresa/(panel)/candidatos-guardados/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
+import { useAccion } from "@/lib/use-accion";
+import { Spinner } from "@/components/ui/spinner";
 
 type Props = {
   guardadoId: string;
@@ -17,7 +19,7 @@ type Props = {
 export function QuitarGuardadoBtn({ guardadoId, nombre }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const { pendiente: isPending, ejecutar } = useAccion();
   const [error, setError] = useState<ErrorAccion | null>(null);
   const needsRefresh = useRef(false);
 
@@ -30,7 +32,7 @@ export function QuitarGuardadoBtn({ guardadoId, nombre }: Props) {
 
   function handleConfirm() {
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const result = await quitarGuardado(guardadoId);
       mostrarAviso(result);
       if (!result.ok) {
@@ -87,6 +89,7 @@ export function QuitarGuardadoBtn({ guardadoId, nombre }: Props) {
               Cancelar
             </button>
             <Button onClick={handleConfirm} disabled={isPending} variant="destructive">
+              {isPending && <Spinner className="mr-1" />}
               {isPending ? "Quitando…" : "Sí, quitar"}
             </Button>
           </DialogFooter>

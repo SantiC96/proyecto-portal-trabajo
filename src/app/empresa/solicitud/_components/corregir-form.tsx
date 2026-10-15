@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Building2,
@@ -16,6 +16,7 @@ import { formatearCUIT } from "@/lib/cuit";
 import { validarCuitConMensaje } from "@/lib/validaciones";
 import { reenviarSolicitudEmpresa } from "@/app/empresa/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { useAccion } from "@/lib/use-accion";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -71,7 +72,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
   const [telefono, setTelefono] = useState(datos.telefono ?? "");
 
   const [submitError, setSubmitError] = useState<ErrorAccion | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const { pendiente: isPending, ejecutar } = useAccion();
 
   const cuitCompleto = cuit.length === 11;
   const cuitError = cuitCompleto && validarCuitConMensaje(cuit) !== null;
@@ -81,7 +82,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
     e.preventDefault();
     setSubmitError(null);
 
-    startTransition(async () => {
+    ejecutar(async () => {
       const result = await reenviarSolicitudEmpresa({
         razonSocial,
         cuit,

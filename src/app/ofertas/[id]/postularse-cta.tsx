@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,6 +9,7 @@ import { useMounted } from "@/lib/use-mounted";
 import { postularme } from "@/app/(dashboard)/postulaciones/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
+import { useAccion } from "@/lib/use-accion";
 
 const ESTADO_LABEL: Record<string, string> = {
   recibida: "Recibida",
@@ -52,7 +53,7 @@ export function PostularseCta({
   // without needing a setState call inside an effect
   const [open, setOpen] = useState(autoOpen);
   const [error, setError] = useState<ErrorAccion | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const { pendiente: isPending, ejecutar } = useAccion();
   const confirmRef = useRef<HTMLButtonElement>(null);
 
   // Clean the ?accion=postular param from the URL after the auto-open
@@ -86,7 +87,7 @@ export function PostularseCta({
 
   function handleConfirm() {
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const result = await postularme(ofertaId);
       mostrarAviso(result);
       if (!result.ok) {
