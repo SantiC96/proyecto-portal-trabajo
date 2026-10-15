@@ -1,44 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { ArrowLeft, Mail, Phone, FileText, ExternalLink, User } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirEmpresaPagina } from "@/lib/auth";
 import { formatFechaHora } from "@/lib/fechas";
-import {
-  DERIVACION_ESTADO_LABEL,
-  DERIVACION_ESTADO_STYLE,
-  type EstadoDerivacionEmpresa,
-} from "@/lib/derivacion-estados";
+import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_STYLE } from "@/lib/derivacion-estados";
+import type { FilaCandidatoParaEmpresa, FilaDerivacionDeOfertaEmpresa } from "@/types/db";
 import { AccionesDerivacion } from "./_components/acciones-derivacion";
 
 export const metadata: Metadata = {
   title: "Ficha de candidato | Portal de Empleo Funes",
-};
-
-type DerivacionRow = {
-  derivacion_id: string;
-  postulante_id: string;
-  estado_empresa: EstadoDerivacionEmpresa;
-  nota_municipalidad: string | null;
-  fecha_entrevista: string | null;
-  lugar_entrevista: string | null;
-  fecha_respuesta: string | null;
-  derivacion_created_at: string;
-  derivacion_updated_at: string;
-};
-
-type CandidatoRow = {
-  nombre: string;
-  apellido: string;
-  email: string;
-  telefono: string | null;
-  cv_ruta: string | null;
-};
-
-type GuardadoRow = {
-  id: string;
-  nota: string | null;
-  oferta_origen_id: string | null;
 };
 
 export default async function CandidatoFichaPage({
@@ -47,19 +19,8 @@ export default async function CandidatoFichaPage({
   params: Promise<{ id: string; derivacionId: string }>;
 }) {
   const { id: ofertaId, derivacionId } = await params;
+  const empresa = await requerirEmpresaPagina("/empresa");
   const supabase = await createSupabaseServerClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
-
-  const { data: empresa } = await supabase
-    .from("empresas")
-    .select("id")
-    .eq("usuario_id", user.id)
-    .maybeSingle();
-  if (!empresa) redirect("/empresa");
 
   // Verify the offer belongs to this empresa
   const { data: oferta } = await supabase
@@ -76,7 +37,8 @@ export default async function CandidatoFichaPage({
     { p_oferta_id: ofertaId }
   );
 
-  const derivacion = ((derivacionesRaw ?? []) as DerivacionRow[]).find(
+  const derivaciones: FilaDerivacionDeOfertaEmpresa[] = derivacionesRaw ?? [];
+  const derivacion = derivaciones.find(
     (d) => d.derivacion_id === derivacionId
   );
   if (!derivacion) notFound();
@@ -93,8 +55,8 @@ export default async function CandidatoFichaPage({
       .maybeSingle(),
   ]);
 
-  const candidato = ((candidatoResult.data as CandidatoRow[] | null) ?? [])[0] ?? null;
-  const guardado = guardadoResult.data as GuardadoRow | null;
+  const candidato: FilaCandidatoParaEmpresa | null = candidatoResult.data?.[0] ?? null;
+  const guardado = guardadoResult.data;
 
   // Generate signed CV URL if available (10 min lifetime)
   let cvUrl: string | null = null;

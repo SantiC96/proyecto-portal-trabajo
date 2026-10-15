@@ -12,27 +12,17 @@ import { mostrarAviso } from "@/lib/avisos";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { getOfertaEstadoBadge } from "@/lib/oferta-estados";
 import { useAccion } from "@/lib/use-accion";
+import type { Enum, FilaEstadoDerivacionPostulante, Tabla } from "@/types/db";
 
-type EstadoPostulacion = "recibida" | "en_revision" | "derivada" | "rechazada_municipalidad";
+type EstadoPostulacion = Enum<"estado_postulacion">;
 
-type DerivacionEstado = {
-  estado_empresa: string;
-  fecha_entrevista: string | null;
-  lugar_entrevista: string | null;
-};
-
-type Postulacion = {
-  id: string;
-  estado: EstadoPostulacion;
-  created_at: string;
-  oferta: {
-    id: string;
-    titulo: string;
-    empresa_nombre: string;
-    estado: string;
-    contenido_editado_en: string | null;
-  } | null;
-  derivacion: DerivacionEstado | null;
+export type Postulacion = Pick<Tabla<"postulaciones">, "id" | "estado" | "created_at"> & {
+  /** null cuando RLS no deja ver la oferta (por ejemplo, si está cerrada). */
+  oferta: Pick<
+    Tabla<"ofertas">,
+    "id" | "titulo" | "empresa_nombre" | "estado" | "contenido_editado_en"
+  > | null;
+  derivacion: FilaEstadoDerivacionPostulante | null;
 };
 
 function getBadgeEstado(estado: EstadoPostulacion) {

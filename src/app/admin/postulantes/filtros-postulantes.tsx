@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { MultiCombobox } from "@/components/ui/multi-combobox";
 import { Buscador } from "@/components/ui/buscador";
 import { hrefConParams } from "@/lib/paginacion";
+import type { Tabla } from "@/types/db";
 
 const RUTA = "/admin/postulantes";
 
@@ -17,7 +18,7 @@ type Filtros = {
 };
 
 type Props = Filtros & {
-  opciones: { id: string; nombre: string }[];
+  opciones: Tabla<"categorias">[];
   hayBusqueda: boolean;
 };
 

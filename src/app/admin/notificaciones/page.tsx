@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Bell } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirRolPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
-import { COLUMNAS_NOTIFICACION, type Notificacion } from "@/lib/notificaciones";
+import { COLUMNAS_NOTIFICACION } from "@/lib/notificaciones";
 import { formatFechaHora } from "@/lib/fechas";
 import { cn } from "@/lib/utils";
 import { Paginacion } from "@/components/ui/paginacion";
@@ -30,11 +30,8 @@ export default async function NotificacionesPage({
   const sp = await searchParams;
   const pagina = leerPagina(sp.pagina);
 
+  const user = await requerirRolPagina("municipalidad");
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
 
   const { count: noLeidas } = await supabase
     .from("notificaciones")
@@ -83,7 +80,7 @@ async function ListadoNotificaciones({
   searchParams: ParamsUrl;
 }) {
   const supabase = await createSupabaseServerClient();
-  const resultado = await consultarPagina<Notificacion>(pagina, (desde, hasta) =>
+  const resultado = await consultarPagina(pagina, (desde, hasta) =>
     supabase
       .from("notificaciones")
       .select(COLUMNAS_NOTIFICACION, { count: "exact" })
@@ -91,7 +88,6 @@ async function ListadoNotificaciones({
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .range(desde, hasta)
-      .overrideTypes<Notificacion[], { merge: false }>()
   );
 
   if (!resultado.ok) {

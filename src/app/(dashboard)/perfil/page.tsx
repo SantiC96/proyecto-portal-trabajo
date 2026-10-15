@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirRolPagina } from "@/lib/auth";
 import { PerfilForm } from "./perfil-form";
 import { AvisoCursoPendiente } from "@/components/cursos/aviso-curso-pendiente";
 
@@ -10,27 +10,13 @@ export const metadata: Metadata = {
 };
 
 export default async function PerfilPage() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/auth/login");
-
   // Verify role FIRST — before querying any role-specific table.
   // Next preloads navbar links, so /perfil executes for empresa/municipalidad users too.
   // Querying postulantes before this check would generate spurious error logs.
-  const { data: usuario } = await supabase
-    .from("usuarios")
-    .select("nombre, apellido, telefono, rol")
-    .eq("id", user.id)
-    .single();
+  const user = await requerirRolPagina("postulante", { siNoCorresponde: "panel" });
+  const usuario = user.perfil;
 
-  if (!usuario || usuario.rol !== "postulante") {
-    if (usuario?.rol === "empresa") redirect("/empresa");
-    if (usuario?.rol === "municipalidad") redirect("/admin");
-    redirect("/");
-  }
+  const supabase = await createSupabaseServerClient();
 
   // Only postulantes reach here — run remaining queries in parallel
   const [
@@ -82,9 +68,7 @@ export default async function PerfilPage() {
   }
 
   const categoriasSeleccionadas =
-    postulante.postulante_categorias?.map(
-      (r: { categoria_id: string }) => r.categoria_id
-    ) ?? [];
+    postulante.postulante_categorias?.map((r) => r.categoria_id) ?? [];
 
   let avatarUrl: string | null = null;
   if (avatarActivoResult.data?.ruta) {

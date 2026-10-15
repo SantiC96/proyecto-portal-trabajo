@@ -30,6 +30,9 @@ import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
+import { esValorEnum, type Enum, type Tabla } from "@/types/db";
+import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
+import { LARGO_MAXIMO } from "@/lib/validaciones";
 
 type Props = {
   postulacionId: string;
@@ -37,17 +40,18 @@ type Props = {
   /** Estado que combina la postulación con el resultado de la empresa. */
   estadoVisible: EstadoVisiblePostulacion;
   empresaNombre?: string | null;
-  ofertaEstado?: string;
-  derivacion?: {
-    id: string;
-    nota_municipalidad: string | null;
-    created_at: string;
-    estado_empresa: EstadoDerivacionEmpresa;
-    fecha_entrevista: string | null;
-    lugar_entrevista: string | null;
-    fecha_respuesta: string | null;
-    nota_empresa: string | null;
-  } | null;
+  ofertaEstado?: Enum<"estado_oferta">;
+  derivacion?: Pick<
+    Tabla<"derivaciones">,
+    | "id"
+    | "nota_municipalidad"
+    | "created_at"
+    | "estado_empresa"
+    | "fecha_entrevista"
+    | "lugar_entrevista"
+    | "fecha_respuesta"
+    | "nota_empresa"
+  > | null;
   /** Aviso informativo sobre cursos, se muestra antes de confirmar la derivación. */
   avisoCurso?: string | null;
 };
@@ -214,7 +218,10 @@ export function FichaAcciones({
               </label>
               <select
                 value={estadoCorreccion}
-                onChange={(e) => setEstadoCorreccion(e.target.value as EstadoDerivacionEmpresa)}
+                onChange={(e) => {
+                  const valor = e.target.value;
+                  if (esValorEnum("estado_empresa", valor)) setEstadoCorreccion(valor);
+                }}
                 className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 disabled={isPending}
               >
@@ -341,9 +348,11 @@ export function FichaAcciones({
               value={notaDescartar}
               onChange={(e) => setNotaDescartar(e.target.value)}
               placeholder="¿Por qué no se selecciona a este candidato?"
+              maxLength={LARGO_MAXIMO.nota}
               className="min-h-24"
               disabled={isPending}
             />
+            <ContadorCaracteres actual={notaDescartar.length} maximo={LARGO_MAXIMO.nota} />
           </div>
           {error && (
             <div>
@@ -411,9 +420,11 @@ export function FichaAcciones({
               value={notaDerivar}
               onChange={(e) => setNotaDerivar(e.target.value)}
               placeholder="Contá brevemente por qué este perfil encaja con la búsqueda…"
+              maxLength={LARGO_MAXIMO.nota}
               className="min-h-24"
               disabled={isPending}
             />
+            <ContadorCaracteres actual={notaDerivar.length} maximo={LARGO_MAXIMO.nota} />
           </div>
           {error && (
             <div>

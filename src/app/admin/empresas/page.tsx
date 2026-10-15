@@ -18,6 +18,8 @@ import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { EmpresaAcciones } from "./acciones";
+import type { Tabla } from "@/types/db";
+import { requerirRolPagina } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Empresas | Panel municipal | Portal de Empleo Funes",
@@ -26,23 +28,17 @@ export const metadata: Metadata = {
 const ESTADOS = ["pendiente", "aprobada", "rechazada"] as const;
 type EstadoAprobacion = (typeof ESTADOS)[number];
 
-type EmpresaRow = {
-  id: string;
-  razon_social: string;
-  cuit: string;
-  rubro: string;
-  created_at: string;
-  usuario_id: string;
-  usuarios: { nombre: string; apellido: string; telefono: string } | null;
-};
+// historial_aprobacion_empresa.evento es text con un CHECK (migration_031).
+const EVENTOS_HISTORIAL = ["aprobada", "rechazada", "reenviada"] as const;
 
-export type HistorialEntry = {
-  id: string;
-  empresa_id: string;
-  evento: "aprobada" | "rechazada" | "reenviada";
-  motivo: string | null;
-  created_at: string;
-};
+export type HistorialEntry = Pick<
+  Tabla<"historial_aprobacion_empresa">,
+  "id" | "empresa_id" | "motivo" | "created_at"
+> & { evento: (typeof EVENTOS_HISTORIAL)[number] };
+
+function esEventoHistorial(valor: string): valor is HistorialEntry["evento"] {
+  return EVENTOS_HISTORIAL.some((e) => e === valor);
+}
 
 const LABELS: Record<EstadoAprobacion, string> = {
   pendiente: "Pendientes",
@@ -71,10 +67,9 @@ export default async function AdminEmpresasPage({
 }: {
   searchParams: Promise<{ estado?: string; q?: string; pagina?: string }>;
 }) {
+  await requerirRolPagina("municipalidad");
   const sp = await searchParams;
-  const estado: EstadoAprobacion = ESTADOS.includes(sp.estado as EstadoAprobacion)
-    ? (sp.estado as EstadoAprobacion)
-    : "pendiente";
+  const estado: EstadoAprobacion = ESTADOS.find((e) => e === sp.estado) ?? "pendiente";
   const q = limpiarBusqueda(sp.q);
   const pagina = leerPagina(sp.pagina);
 
@@ -136,7 +131,7 @@ async function ListadoEmpresas({
   const supabase = await createSupabaseServerClient();
   const ascendente = estado === "pendiente";
 
-  const resultado = await consultarPagina<EmpresaRow>(pagina, (desde, hasta) => {
+  const resultado = await consultarPagina(pagina, (desde, hasta) => {
     let query = supabase
       .from("empresas")
       .select(
@@ -162,8 +157,7 @@ async function ListadoEmpresas({
     return query
       .order("created_at", { ascending: ascendente })
       .order("id", { ascending: ascendente })
-      .range(desde, hasta)
-      .overrideTypes<EmpresaRow[], { merge: false }>();
+      .range(desde, hasta);
   });
 
   if (!resultado.ok) {
@@ -216,15 +210,18 @@ async function ListadoEmpresas({
   ]);
 
   const emailMap = new Map<string, string>(
-    ((emailRows ?? []) as { id: string; email: string }[]).map((r) => [
-      r.id,
-      r.email,
-    ])
+    (emailRows ?? []).map((r) => [r.id, r.email])
   );
+
+  // Descarta eventos desconocidos (el CHECK de la base no los permite).
+  const historial: HistorialEntry[] = (historialRows ?? []).flatMap((entry) => {
+    const { evento } = entry;
+    return esEventoHistorial(evento) ? [{ ...entry, evento }] : [];
+  });
 
   // Agrupar historial por empresa (ya viene ordenado DESC por created_at).
   const historialPorEmpresa = new Map<string, HistorialEntry[]>();
-  for (const entry of (historialRows ?? []) as HistorialEntry[]) {
+  for (const entry of historial) {
     const list = historialPorEmpresa.get(entry.empresa_id) ?? [];
     list.push(entry);
     historialPorEmpresa.set(entry.empresa_id, list);
@@ -233,7 +230,7 @@ async function ListadoEmpresas({
   // Para la pestaña pendiente: fecha del último reenvío de cada empresa.
   const reenviadas = new Map<string, string>();
   if (estado === "pendiente") {
-    for (const entry of (historialRows ?? []) as HistorialEntry[]) {
+    for (const entry of historial) {
       if (entry.evento === "reenviada" && !reenviadas.has(entry.empresa_id)) {
         reenviadas.set(entry.empresa_id, entry.created_at);
       }

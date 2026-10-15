@@ -2,8 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import type { Session } from "@supabase/supabase-js";
+import type { AuthError, Session } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { obtenerUsuarioActual } from "@/lib/auth";
 import { createSupabaseEphemeralClient } from "@/lib/supabase-ephemeral";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { traducirErrorAuth } from "@/lib/auth-errors";
@@ -11,12 +12,15 @@ import { logError } from "@/lib/logger";
 import { err, errConRef, type Resultado } from "@/lib/resultado";
 import { formatearCUIT } from "@/lib/cuit";
 import {
+  LARGO_MAXIMO,
+  leerTexto,
   validarDNI,
   validarTelefono,
   validarEmail,
   validarNombre,
   validarPassword,
   validarCuitConMensaje,
+  validarTextoOpcional,
 } from "@/lib/validaciones";
 import {
   LAST_ACTIVITY_COOKIE,
@@ -30,8 +34,12 @@ function safeRedirect(to?: string): string {
   return "/";
 }
 
-function wrapAuthError(contexto: string, authErr: unknown): Resultado<never> {
-  const r = traducirErrorAuth(authErr as Parameters<typeof traducirErrorAuth>[0]);
+function sonTextos(...valores: unknown[]): boolean {
+  return valores.every((v) => typeof v === "string");
+}
+
+function wrapAuthError(contexto: string, authErr: AuthError): Resultado<never> {
+  const r = traducirErrorAuth(authErr);
   if (!r.ok && r.codigo === "ERROR_INTERNO") {
     const ref = logError(contexto, authErr);
     return errConRef("ERROR_INTERNO", r.mensaje, ref);
@@ -44,13 +52,18 @@ export async function login(credentials: {
   password: string;
   redirectTo?: string;
 }): Promise<Resultado<void>> {
+  if (await obtenerUsuarioActual()) redirect("/");
+
+  if (
+    typeof credentials !== "object" ||
+    credentials === null ||
+    !sonTextos(credentials.email, credentials.password) ||
+    (credentials.redirectTo !== undefined && typeof credentials.redirectTo !== "string")
+  ) {
+    return err("DATOS_INVALIDOS");
+  }
+
   const supabase = await createSupabaseServerClient();
-
-  const {
-    data: { user: existingUser },
-  } = await supabase.auth.getUser();
-  if (existingUser) redirect("/");
-
   const { error } = await supabase.auth.signInWithPassword({
     email: credentials.email,
     password: credentials.password,
@@ -70,12 +83,15 @@ export async function registrarPostulante(data: {
   email: string;
   password: string;
 }): Promise<Resultado<void>> {
-  const supabase = await createSupabaseServerClient();
+  if (await obtenerUsuarioActual()) redirect("/");
 
-  const {
-    data: { user: existingUser },
-  } = await supabase.auth.getUser();
-  if (existingUser) redirect("/");
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    !sonTextos(data.nombre, data.apellido, data.telefono, data.dni, data.domicilio, data.email, data.password)
+  ) {
+    return err("DATOS_INVALIDOS");
+  }
 
   const errNombre = validarNombre(data.nombre);
   if (errNombre) return err("DATOS_INVALIDOS", errNombre);
@@ -89,9 +105,12 @@ export async function registrarPostulante(data: {
   if (errEmail) return err("DATOS_INVALIDOS", errEmail);
   const errPassword = validarPassword(data.password);
   if (errPassword) return err("DATOS_INVALIDOS", errPassword);
+  const errDomicilio = validarTextoOpcional(data.domicilio, LARGO_MAXIMO.domicilio);
+  if (errDomicilio) return err("DATOS_INVALIDOS", `Domicilio: ${errDomicilio}`);
 
   const dniLimpio = data.dni.replace(/\D/g, "");
 
+  const supabase = await createSupabaseServerClient();
   const { data: authData, error: signUpError } = await supabase.auth.signUp({
     email: data.email,
     password: data.password,
@@ -140,12 +159,25 @@ export async function registrarEmpresa(data: {
   email: string;
   password: string;
 }): Promise<Resultado<void>> {
-  const supabase = await createSupabaseServerClient();
+  if (await obtenerUsuarioActual()) redirect("/");
 
-  const {
-    data: { user: existingUser },
-  } = await supabase.auth.getUser();
-  if (existingUser) redirect("/");
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    !sonTextos(
+      data.razonSocial,
+      data.cuit,
+      data.rubro,
+      data.descripcion,
+      data.nombre,
+      data.apellido,
+      data.telefono,
+      data.email,
+      data.password,
+    )
+  ) {
+    return err("DATOS_INVALIDOS");
+  }
 
   const errRazonSocial = validarNombre(data.razonSocial);
   if (errRazonSocial) return err("DATOS_INVALIDOS", errRazonSocial);
@@ -161,9 +193,14 @@ export async function registrarEmpresa(data: {
   if (errEmailEmp) return err("DATOS_INVALIDOS", errEmailEmp);
   const errPasswordEmp = validarPassword(data.password);
   if (errPasswordEmp) return err("DATOS_INVALIDOS", errPasswordEmp);
+  const errRubroEmp = validarTextoOpcional(data.rubro, LARGO_MAXIMO.rubro);
+  if (errRubroEmp) return err("DATOS_INVALIDOS", `Rubro: ${errRubroEmp}`);
+  const errDescripcionEmp = validarTextoOpcional(data.descripcion, LARGO_MAXIMO.descripcion);
+  if (errDescripcionEmp) return err("DATOS_INVALIDOS", `Descripción: ${errDescripcionEmp}`);
 
   const cuitNormalizado = formatearCUIT(data.cuit);
 
+  const supabase = await createSupabaseServerClient();
   const { data: authData, error: signUpError } = await supabase.auth.signUp({
     email: data.email,
     password: data.password,
@@ -210,18 +247,20 @@ export async function registrarEmpresa(data: {
 export async function solicitarResetContrasena(
   formData: FormData
 ): Promise<void> {
-  const email = formData.get("email") as string;
-  const supabase = await createSupabaseServerClient();
+  const email = leerTexto(formData, "email");
 
-  await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/nueva-contrasena`,
-  });
+  if (validarEmail(email) === null) {
+    const supabase = await createSupabaseServerClient();
+    await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/nueva-contrasena`,
+    });
+  }
 
   // Always redirect regardless of whether the email exists (avoid account enumeration)
   redirect("/auth/reset-enviado");
 }
 
-export async function logout(formData?: FormData) {
+export async function logout(formData?: FormData): Promise<void> {
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
 
@@ -229,9 +268,7 @@ export async function logout(formData?: FormData) {
   const cookieStore = await cookies();
   cookieStore.delete(LAST_ACTIVITY_COOKIE);
 
-  const rawTo = formData instanceof FormData
-    ? (formData.get("redirectTo") as string | null)
-    : null;
+  const rawTo = formData instanceof FormData ? leerTexto(formData, "redirectTo") : null;
   redirect(rawTo ? safeRedirect(rawTo) : "/auth/login");
 }
 
@@ -239,9 +276,9 @@ export async function restablecerContrasena(
   _prevState: Resultado<void> | null,
   formData: FormData
 ): Promise<Resultado<void> | null> {
-  const password = formData.get("password") as string;
-  const confirmar = formData.get("confirmar") as string;
-  const tokenHash = formData.get("token_hash") as string;
+  const password = leerTexto(formData, "password");
+  const confirmar = leerTexto(formData, "confirmar");
+  const tokenHash = leerTexto(formData, "token_hash");
 
   // 1. Server-side validation — no OTP consumed yet
   const errPwd = validarPassword(password);

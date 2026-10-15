@@ -19,6 +19,8 @@ import { mostrarAviso } from "@/lib/avisos";
 import type { HistorialEntry } from "./page";
 import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
+import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
+import { LARGO_MAXIMO } from "@/lib/validaciones";
 
 type Props = {
   empresaId: string;
@@ -255,9 +257,11 @@ export function EmpresaAcciones({
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               placeholder="Explicá por qué se rechaza esta empresa…"
+              maxLength={LARGO_MAXIMO.motivo}
               className="min-h-24"
               disabled={isPending}
             />
+            <ContadorCaracteres actual={motivo.length} maximo={LARGO_MAXIMO.motivo} />
           </div>
           {error && (
             <div>

@@ -1,9 +1,12 @@
+import type { ConNulos, FilaRpc } from "@/types/db";
+
 // Valores de la regla de rechazos para los textos de la interfaz.
 // La regla se calcula en la base con public.parametros_cursos()
 // (migration_035): si cambian allá, hay que cambiarlos acá también.
 export const UMBRAL_RECHAZOS_CURSO = 3;
 export const VENTANA_RECHAZOS_DIAS = 90;
 
+/** asignaciones_curso.estado es text con un CHECK (migration_035), no un enum. */
 export type EstadoAsignacionCurso = "asignado" | "en_curso" | "completado" | "abandonado";
 
 export const ESTADOS_ASIGNACION_CURSO: EstadoAsignacionCurso[] = [
@@ -28,7 +31,7 @@ export const ESTADO_CURSO_STYLE: Record<EstadoAsignacionCurso, string> = {
 };
 
 export function esEstadoCurso(valor: unknown): valor is EstadoAsignacionCurso {
-  return ESTADOS_ASIGNACION_CURSO.includes(valor as EstadoAsignacionCurso);
+  return ESTADOS_ASIGNACION_CURSO.some((estado) => estado === valor);
 }
 
 /** Asignado o en curso: el curso todavía está pendiente de completar. */
@@ -46,33 +49,54 @@ export function textoRechazos(cantidad: number): string {
   return `${cantidad} rechazo${cantidad === 1 ? "" : "s"}`;
 }
 
+type FilaMiCurso = FilaRpc<"mis_cursos_con_estado">;
+
 /** Fila de public.mis_cursos_con_estado() (migration_035). */
-export type MiCurso = {
-  asignacion_id: string;
-  curso_id: string;
-  asignado_en: string;
-  estado: EstadoAsignacionCurso;
-  iniciado_en: string | null;
-  completado_en: string | null;
-  abandonado_en: string | null;
-  nombre: string;
-  descripcion: string | null;
-  link: string | null;
-  indicaciones: string | null;
-  por_rechazos: boolean;
-};
+export type MiCurso = Omit<
+  ConNulos<
+    FilaMiCurso,
+    "iniciado_en" | "completado_en" | "abandonado_en" | "descripcion" | "link" | "indicaciones"
+  >,
+  "estado"
+> & { estado: EstadoAsignacionCurso };
+
+/**
+ * Tipa el estado de filas que lo traen como text (asignaciones_curso y las
+ * funciones que la leen). Descarta las filas con un estado desconocido: el
+ * CHECK de la base no las permite.
+ */
+export function conEstadoCurso<T extends { estado: string }>(
+  filas: readonly T[],
+): (Omit<T, "estado"> & { estado: EstadoAsignacionCurso })[] {
+  return filas.flatMap((fila) => {
+    const { estado } = fila;
+    return esEstadoCurso(estado) ? [{ ...fila, estado }] : [];
+  });
+}
+
+export function aMisCursos(filas: readonly FilaMiCurso[]): MiCurso[] {
+  return conEstadoCurso(filas);
+}
+
+type FilaEstadoCursos = FilaRpc<"estado_cursos_postulantes">;
 
 /** Fila de public.estado_cursos_postulantes() (migration_035). */
-export type EstadoCursosPostulante = {
-  postulante_id: string;
-  rechazos_ventana: number;
-  rechazos_totales: number;
-  necesita_curso: boolean;
-  asignacion_activa_id: string | null;
+export type EstadoCursosPostulante = Omit<
+  ConNulos<FilaEstadoCursos, "asignacion_activa_id" | "ultimo_completado_en">,
+  "asignacion_activa_estado" | "ultima_asignacion_estado"
+> & {
   asignacion_activa_estado: EstadoAsignacionCurso | null;
   ultima_asignacion_estado: EstadoAsignacionCurso | null;
-  ultimo_completado_en: string | null;
 };
+
+export function aEstadoCursos(fila: FilaEstadoCursos): EstadoCursosPostulante {
+  const { asignacion_activa_estado: activa, ultima_asignacion_estado: ultima } = fila;
+  return {
+    ...fila,
+    asignacion_activa_estado: esEstadoCurso(activa) ? activa : null,
+    ultima_asignacion_estado: esEstadoCurso(ultima) ? ultima : null,
+  };
+}
 
 /**
  * Misma regla que public.estado_cursos_postulantes() (migration_035): un

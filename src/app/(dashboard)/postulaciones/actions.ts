@@ -2,26 +2,24 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirPostulante } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { err, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
+import { esUuid } from "@/lib/validaciones";
+import type { Enum } from "@/types/db";
 
 export async function postularme(
   ofertaId: string,
 ): Promise<Resultado<void>> {
+  const auth = await requerirPostulante({
+    mensajeSinPermiso: "Solo los postulantes pueden postularse.",
+  });
+  if (!auth.ok) return auth;
+  const { usuario, postulante } = auth;
+
+  if (!esUuid(ofertaId)) return err("NO_ENCONTRADO", "Esta oferta no está disponible.");
+
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return err("NO_AUTENTICADO");
-
-  const { data: postulante } = await supabase
-    .from("postulantes")
-    .select("id")
-    .eq("usuario_id", user.id)
-    .maybeSingle();
-
-  if (!postulante) return err("SIN_PERMISO", "Solo los postulantes pueden postularse.");
 
   const { data: oferta } = await supabase
     .from("ofertas")
@@ -33,13 +31,13 @@ export async function postularme(
     return err("NO_ENCONTRADO", "Esta oferta no está disponible.");
   }
   if (oferta.estado !== "activa") {
-    const mensajes: Record<string, string> = {
+    const mensajes: Partial<Record<Enum<"estado_oferta">, string>> = {
       pendiente_aprobacion: "Esta oferta está en revisión y no acepta postulaciones por el momento.",
       cerrada: "Esta oferta está cerrada y ya no acepta postulaciones.",
     };
     return err(
       "ESTADO_INVALIDO",
-      mensajes[oferta.estado as string] ?? "Esta oferta no está disponible.",
+      mensajes[oferta.estado] ?? "Esta oferta no está disponible.",
     );
   }
 
@@ -50,7 +48,7 @@ export async function postularme(
   const { data: cv } = await supabase
     .from("archivos_usuario")
     .select("id")
-    .eq("usuario_id", user.id)
+    .eq("usuario_id", usuario.id)
     .eq("tipo", "cv")
     .eq("activo", true)
     .maybeSingle();
@@ -79,20 +77,13 @@ export async function postularme(
 export async function retirarPostulacion(
   postulacionId: string,
 ): Promise<Resultado<void>> {
+  const auth = await requerirPostulante();
+  if (!auth.ok) return auth;
+  const { postulante } = auth;
+
+  if (!esUuid(postulacionId)) return err("NO_ENCONTRADO", "Postulación no encontrada.");
+
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return err("NO_AUTENTICADO");
-
-  const { data: postulante } = await supabase
-    .from("postulantes")
-    .select("id")
-    .eq("usuario_id", user.id)
-    .maybeSingle();
-
-  if (!postulante) return err("SIN_PERMISO");
 
   const { data: postulacion } = await supabase
     .from("postulaciones")

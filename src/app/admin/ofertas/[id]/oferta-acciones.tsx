@@ -17,10 +17,13 @@ import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
+import type { Enum } from "@/types/db";
+import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
+import { LARGO_MAXIMO } from "@/lib/validaciones";
 
 type Props = {
   ofertaId: string;
-  estado: string;
+  estado: Enum<"estado_oferta">;
 };
 
 export function OfertaAcciones({ ofertaId, estado }: Props) {
@@ -198,9 +201,11 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               placeholder="Explicá brevemente por qué no se aprueba la oferta…"
+              maxLength={LARGO_MAXIMO.motivo}
               className="min-h-24"
               disabled={isPending}
             />
+            <ContadorCaracteres actual={motivo.length} maximo={LARGO_MAXIMO.motivo} />
           </div>
           {error && (
             <div>

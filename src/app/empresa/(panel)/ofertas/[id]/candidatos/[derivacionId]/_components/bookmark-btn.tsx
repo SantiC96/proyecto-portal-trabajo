@@ -11,6 +11,8 @@ import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
+import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
+import { LARGO_MAXIMO } from "@/lib/validaciones";
 
 type Props = {
   postulanteId: string;
@@ -102,9 +104,11 @@ export function BookmarkBtn({ postulanteId, ofertaOrigenId, guardadoId }: Props)
               value={nota}
               onChange={(e) => setNota(e.target.value)}
               placeholder="Ej.: Buen perfil para el área de ventas…"
+              maxLength={LARGO_MAXIMO.nota}
               className="min-h-20"
               disabled={isPending}
             />
+            <ContadorCaracteres actual={nota.length} maximo={LARGO_MAXIMO.nota} />
           </div>
           {error && (
             <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">

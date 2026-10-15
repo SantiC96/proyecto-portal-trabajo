@@ -10,19 +10,16 @@ import { postularme } from "@/app/(dashboard)/postulaciones/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
+import type { Enum, Tabla } from "@/types/db";
 
-const ESTADO_LABEL: Record<string, string> = {
+const ESTADO_LABEL: Record<Enum<"estado_postulacion">, string> = {
   recibida: "Recibida",
   en_revision: "En revisión",
   derivada: "Enviada a la empresa",
   rechazada_municipalidad: "No seleccionada",
 };
 
-type Postulacion = {
-  id: string;
-  estado: string;
-  created_at: string;
-};
+export type Postulacion = Pick<Tabla<"postulaciones">, "id" | "estado" | "created_at">;
 
 type Variant = "sin-sesion" | "puede-postularse" | "sin-cv" | "ya-postulado" | "otro-rol";
 

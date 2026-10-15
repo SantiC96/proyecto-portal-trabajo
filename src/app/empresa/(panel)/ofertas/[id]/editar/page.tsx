@@ -3,8 +3,10 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirEmpresaPagina } from "@/lib/auth";
 import { getCategoriasConId } from "@/lib/ofertas";
 import { DURACION_OFERTA_POR_DEFECTO } from "@/lib/ofertas-vencimiento";
+import type { OfertaData } from "@/lib/validaciones";
 import { OfertaForm } from "@/app/empresa/(panel)/ofertas/_components/oferta-form";
 
 export const metadata: Metadata = {
@@ -17,20 +19,8 @@ interface Props {
 
 export default async function EditarOfertaPage({ params }: Props) {
   const { id } = await params;
+  const empresa = await requerirEmpresaPagina("/empresa");
   const supabase = await createSupabaseServerClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
-
-  const { data: empresa } = await supabase
-    .from("empresas")
-    .select("id")
-    .eq("usuario_id", user.id)
-    .maybeSingle();
-
-  if (!empresa) redirect("/empresa");
 
   const { data: oferta } = await supabase
     .from("ofertas")
@@ -51,24 +41,22 @@ export default async function EditarOfertaPage({ params }: Props) {
     supabase.rpc("contratados_en_oferta", { p_oferta_id: id }),
   ]);
 
-  const cantidadVacantes = (vacantesResult.data?.cantidad as number | null) ?? 1;
-  const contratados = (contratadosResult.data as number | null) ?? 0;
+  const cantidadVacantes = vacantesResult.data?.cantidad ?? 1;
+  const contratados = contratadosResult.data ?? 0;
   const minimoVacantes = Math.max(1, contratados);
 
-  const categoriasSeleccionadas = (
-    oferta.oferta_categorias as Array<{ categoria_id: string }>
-  ).map((oc) => oc.categoria_id);
+  const categoriasSeleccionadas = oferta.oferta_categorias.map((oc) => oc.categoria_id);
 
-  const valorInicial = {
-    titulo: oferta.titulo as string,
-    descripcion: oferta.descripcion as string,
-    modalidad: oferta.modalidad as string,
-    jornada: oferta.jornada as string,
-    requisitos: (oferta.requisitos as string[]) ?? [],
-    beneficios: (oferta.beneficios as string[]) ?? [],
+  const valorInicial: OfertaData = {
+    titulo: oferta.titulo,
+    descripcion: oferta.descripcion,
+    modalidad: oferta.modalidad,
+    jornada: oferta.jornada,
+    requisitos: oferta.requisitos ?? [],
+    beneficios: oferta.beneficios ?? [],
     categorias: categoriasSeleccionadas,
     cantidadVacantes,
-    duracionDias: (oferta.duracion_dias as number | null) ?? DURACION_OFERTA_POR_DEFECTO,
+    duracionDias: oferta.duracion_dias ?? DURACION_OFERTA_POR_DEFECTO,
   };
 
   return (

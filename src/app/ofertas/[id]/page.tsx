@@ -5,7 +5,8 @@ import { PublicFooter } from "@/components/public/public-footer";
 import { getOfertaById } from "@/lib/ofertas";
 import { formatFecha } from "@/lib/fechas";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { PostularseCta } from "./postularse-cta";
+import { obtenerPostulanteActual, obtenerUsuarioActual } from "@/lib/auth";
+import { PostularseCta, type Postulacion } from "./postularse-cta";
 import { RequisitosList, BeneficiosList } from "@/components/ofertas/requisitos-beneficios";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 
@@ -25,39 +26,26 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
   const { vencida } = estadoVencimiento("activa", oferta.venceEn ?? null);
 
   // Determine who is viewing and build the CTA props
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await obtenerUsuarioActual();
 
   const loginHref = `/auth/login?redirect=${encodeURIComponent(`/ofertas/${oferta.id}?accion=postular`)}`;
 
   let ctaVariant: "sin-sesion" | "puede-postularse" | "sin-cv" | "ya-postulado" | "otro-rol" =
     "sin-sesion";
   let cvNombre: string | undefined;
-  let postulacion: { id: string; estado: string; created_at: string } | undefined;
+  let postulacion: Postulacion | undefined;
   let autoOpen = false;
 
   if (user) {
-    const { data: usuario } = await supabase
-      .from("usuarios")
-      .select("rol")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    const rol = usuario?.rol ?? null;
+    const rol = user.perfil?.rol ?? null;
 
     if (rol === "empresa" || rol === "municipalidad") {
       ctaVariant = "otro-rol";
     } else if (rol === "postulante") {
-      // Get postulante record
-      const { data: postulante } = await supabase
-        .from("postulantes")
-        .select("id")
-        .eq("usuario_id", user.id)
-        .maybeSingle();
+      const postulante = await obtenerPostulanteActual();
 
       if (postulante) {
+        const supabase = await createSupabaseServerClient();
         // Parallel: check existing application, check CV
         const [postulacionResult, cvResult] = await Promise.all([
           supabase

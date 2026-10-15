@@ -1,10 +1,7 @@
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
+import type { Enum } from "@/types/db";
 
-export type EstadoPostulacion =
-  | "recibida"
-  | "en_revision"
-  | "derivada"
-  | "rechazada_municipalidad";
+export type EstadoPostulacion = Enum<"estado_postulacion">;
 
 /**
  * Estado que ve la oficina: combina postulaciones.estado con el resultado de

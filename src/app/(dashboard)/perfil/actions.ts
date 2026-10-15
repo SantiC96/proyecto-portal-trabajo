@@ -3,10 +3,21 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { requerirPostulante, requerirRol, requerirUsuario } from "@/lib/auth";
 import { traducirErrorAuth } from "@/lib/auth-errors";
 import { logError } from "@/lib/logger";
 import { err, errConRef, okMsg, type Resultado } from "@/lib/resultado";
-import { validarNombre, validarDNI, validarTelefono, validarPassword } from "@/lib/validaciones";
+import {
+  LARGO_MAXIMO,
+  leerArchivo,
+  leerTexto,
+  sonUuids,
+  validarDNI,
+  validarNombre,
+  validarPassword,
+  validarTelefono,
+  validarTextoOpcional,
+} from "@/lib/validaciones";
 import {
   AVATAR_MAX_SIZE,
   CV_MAX_SIZE,
@@ -27,11 +38,19 @@ export async function actualizarPerfil(data: {
   domicilio: string;
   dni: string;
 }): Promise<Resultado<void>> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return err("NO_AUTENTICADO");
+  const auth = await requerirRol("postulante");
+  if (!auth.ok) return auth;
+  const user = auth.usuario;
+
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    [data.nombre, data.apellido, data.telefono, data.domicilio, data.dni].some(
+      (v) => typeof v !== "string",
+    )
+  ) {
+    return err("DATOS_INVALIDOS");
+  }
 
   const errNombre = validarNombre(data.nombre);
   if (errNombre) return err("DATOS_INVALIDOS", errNombre);
@@ -41,9 +60,12 @@ export async function actualizarPerfil(data: {
   if (errDni) return err("DATOS_INVALIDOS", errDni);
   const errTelefono = validarTelefono(data.telefono);
   if (errTelefono) return err("DATOS_INVALIDOS", errTelefono);
+  const errDomicilio = validarTextoOpcional(data.domicilio, LARGO_MAXIMO.domicilio);
+  if (errDomicilio) return err("DATOS_INVALIDOS", `Domicilio: ${errDomicilio}`);
 
   const dniLimpio = data.dni.replace(/\D/g, "");
 
+  const supabase = await createSupabaseServerClient();
   const [usuariosResult, postulanteResult] = await Promise.all([
     supabase
       .from("usuarios")
@@ -92,23 +114,18 @@ export async function actualizarPerfil(data: {
 export async function actualizarRubros(
   categoriaIds: string[]
 ): Promise<Resultado<void>> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return err("NO_AUTENTICADO");
+  const auth = await requerirPostulante({
+    mensajeSinPermiso: "No se encontró el perfil del postulante.",
+  });
+  if (!auth.ok) return auth;
+  const { postulante } = auth;
 
+  if (!sonUuids(categoriaIds)) {
+    return err("DATOS_INVALIDOS", "Algunas categorías no son válidas.");
+  }
   const ids = [...new Set(categoriaIds)];
 
-  const { data: postulante, error: postulanteError } = await supabase
-    .from("postulantes")
-    .select("id")
-    .eq("usuario_id", user.id)
-    .single();
-
-  if (postulanteError || !postulante) {
-    return err("SIN_PERMISO", "No se encontró el perfil del postulante.");
-  }
+  const supabase = await createSupabaseServerClient();
 
   if (ids.length > 0) {
     const { data: categoriasExistentes } = await supabase
@@ -156,13 +173,11 @@ export async function actualizarRubros(
 export async function subirAvatar(
   formData: FormData
 ): Promise<Resultado<void>> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return err("NO_AUTENTICADO");
+  const auth = await requerirRol("postulante");
+  if (!auth.ok) return auth;
+  const user = auth.usuario;
 
-  const file = formData.get("avatar") as File | null;
+  const file = leerArchivo(formData, "avatar");
   if (!file || file.size === 0) return err("ARCHIVO_INVALIDO", ERRORES_ARCHIVO.vacio);
 
   if (file.name.length > 200) return err("ARCHIVO_INVALIDO", ERRORES_ARCHIVO.nombreLargo);
@@ -219,10 +234,17 @@ export async function ajustarAvatar(data: {
   y: number;
   zoom: number;
 }): Promise<Resultado<void>> {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return err("NO_AUTENTICADO");
+  const auth = await requerirRol("postulante");
+  if (!auth.ok) return auth;
+  const user = auth.usuario;
 
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    ![data.x, data.y, data.zoom].every((v) => typeof v === "number" && Number.isFinite(v))
+  ) {
+    return err("DATOS_INVALIDOS");
+  }
   if (data.x < 0 || data.x > 100 || data.y < 0 || data.y > 100) {
     return err("DATOS_INVALIDOS", "Posición fuera de rango.");
   }
@@ -248,11 +270,9 @@ export async function ajustarAvatar(data: {
 }
 
 export async function quitarAvatar(): Promise<Resultado<void>> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return err("NO_AUTENTICADO");
+  const auth = await requerirRol("postulante");
+  if (!auth.ok) return auth;
+  const user = auth.usuario;
 
   // Eliminación lógica: marcar el activo como inactivo, no borrar del bucket
   const { error } = await supabaseAdmin
@@ -278,13 +298,11 @@ export async function quitarAvatar(): Promise<Resultado<void>> {
 export async function subirCV(
   formData: FormData
 ): Promise<Resultado<void>> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return err("NO_AUTENTICADO");
+  const auth = await requerirRol("postulante");
+  if (!auth.ok) return auth;
+  const user = auth.usuario;
 
-  const file = formData.get("cv") as File | null;
+  const file = leerArchivo(formData, "cv");
   if (!file || file.size === 0) return err("ARCHIVO_INVALIDO", ERRORES_ARCHIVO.vacio);
 
   if (file.name.length > 200) return err("ARCHIVO_INVALIDO", ERRORES_ARCHIVO.nombreLargo);
@@ -337,11 +355,9 @@ export async function subirCV(
 }
 
 export async function eliminarCV(): Promise<Resultado<void>> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return err("NO_AUTENTICADO");
+  const auth = await requerirRol("postulante");
+  if (!auth.ok) return auth;
+  const user = auth.usuario;
 
   // Eliminación lógica: marcar el activo como inactivo, no borrar del bucket
   const { error } = await supabaseAdmin
@@ -367,9 +383,9 @@ export async function eliminarCV(): Promise<Resultado<void>> {
 export async function cambiarContrasena(
   formData: FormData
 ): Promise<Resultado<void>> {
-  const contrasenaActual = formData.get("contrasenaActual") as string;
-  const contrasenaNueva = formData.get("contrasenaNueva") as string;
-  const repetirContrasena = formData.get("repetirContrasena") as string;
+  const contrasenaActual = leerTexto(formData, "contrasenaActual");
+  const contrasenaNueva = leerTexto(formData, "contrasenaNueva");
+  const repetirContrasena = leerTexto(formData, "repetirContrasena");
 
   if (!contrasenaActual || !contrasenaNueva || !repetirContrasena)
     return err("DATOS_INVALIDOS", "Completá todos los campos.");
@@ -380,12 +396,10 @@ export async function cambiarContrasena(
   if (contrasenaNueva === contrasenaActual)
     return err("DATOS_INVALIDOS", "La contraseña nueva debe ser distinta de la actual.");
 
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user?.email) return err("NO_AUTENTICADO");
+  const auth = await requerirUsuario();
+  if (!auth.ok) return auth;
+  const user = auth.usuario;
+  if (!user.email) return err("NO_AUTENTICADO");
 
   // Verificar contraseña actual con el cliente admin (no toca la sesión de cookies)
   const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
@@ -394,6 +408,7 @@ export async function cambiarContrasena(
   });
   if (signInError) return err("DATOS_INVALIDOS", "La contraseña actual es incorrecta.");
 
+  const supabase = await createSupabaseServerClient();
   const { error: updateError } = await supabase.auth.updateUser({
     password: contrasenaNueva,
   });

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirRol, requerirRolPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import {
   esLinkInterno,
@@ -10,18 +11,9 @@ import {
   type ResumenNotificaciones,
 } from "@/lib/notificaciones";
 import { err, errConRef, ok, okMsg, type Resultado } from "@/lib/resultado";
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { esUuid } from "@/lib/validaciones";
 
 const RUTA_LISTADO = "/admin/notificaciones";
-
-async function usuarioActual(): Promise<string | null> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user?.id ?? null;
-}
 
 function revalidarNotificaciones() {
   // La campanita vive en la navbar del layout raíz.
@@ -33,15 +25,16 @@ function revalidarNotificaciones() {
 export async function obtenerNotificacionesRecientes(): Promise<
   Resultado<ResumenNotificaciones>
 > {
-  const usuarioId = await usuarioActual();
-  if (!usuarioId) return err("NO_AUTENTICADO");
-  return ok(await obtenerResumenNotificaciones(usuarioId));
+  const auth = await requerirRol("municipalidad");
+  if (!auth.ok) return auth;
+  return ok(await obtenerResumenNotificaciones(auth.usuario.id));
 }
 
 export async function marcarNotificacionLeida(id: string): Promise<Resultado<void>> {
-  const usuarioId = await usuarioActual();
-  if (!usuarioId) return err("NO_AUTENTICADO");
-  if (!UUID.test(id)) return err("DATOS_INVALIDOS");
+  const auth = await requerirRol("municipalidad");
+  if (!auth.ok) return auth;
+  const usuarioId = auth.usuario.id;
+  if (!esUuid(id)) return err("DATOS_INVALIDOS");
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase
@@ -61,8 +54,9 @@ export async function marcarNotificacionLeida(id: string): Promise<Resultado<voi
 }
 
 export async function marcarTodasLeidas(): Promise<Resultado<void>> {
-  const usuarioId = await usuarioActual();
-  if (!usuarioId) return err("NO_AUTENTICADO");
+  const auth = await requerirRol("municipalidad");
+  if (!auth.ok) return auth;
+  const usuarioId = auth.usuario.id;
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase
@@ -82,9 +76,8 @@ export async function marcarTodasLeidas(): Promise<Resultado<void>> {
 
 /** Abre el link de una notificación y la marca como leída. */
 export async function abrirNotificacion(id: string): Promise<void> {
-  const usuarioId = await usuarioActual();
-  if (!usuarioId) redirect("/auth/login");
-  if (!UUID.test(id)) redirect(RUTA_LISTADO);
+  const { id: usuarioId } = await requerirRolPagina("municipalidad");
+  if (!esUuid(id)) redirect(RUTA_LISTADO);
 
   const supabase = await createSupabaseServerClient();
   const { data: notificacion } = await supabase

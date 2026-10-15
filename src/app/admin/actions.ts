@@ -2,33 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirRol } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errConRef, okMsg, type Resultado, type ResultadoError } from "@/lib/resultado";
-
-async function verificarMunicipalidad(): Promise<{ ok: true; userId: string } | ResultadoError> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return err("NO_AUTENTICADO");
-
-  const { data: usuario } = await supabase
-    .from("usuarios")
-    .select("rol")
-    .eq("id", user.id)
-    .single();
-
-  if (!usuario || usuario.rol !== "municipalidad") return err("SIN_PERMISO");
-
-  return { ok: true, userId: user.id };
-}
+import { err, errConRef, okMsg, type Resultado } from "@/lib/resultado";
+import { esUuid, LARGO_MAXIMO, validarTextoOpcional } from "@/lib/validaciones";
 
 export async function aprobarEmpresa(
   empresaId: string
 ): Promise<Resultado<void>> {
-  const auth = await verificarMunicipalidad();
+  const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
+
+  if (!esUuid(empresaId)) return err("DATOS_INVALIDOS");
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -59,12 +44,15 @@ export async function rechazarEmpresa(
   empresaId: string,
   motivo: string
 ): Promise<Resultado<void>> {
-  const auth = await verificarMunicipalidad();
+  const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
 
-  if (!motivo.trim()) {
+  if (!esUuid(empresaId)) return err("DATOS_INVALIDOS");
+  if (typeof motivo !== "string" || !motivo.trim()) {
     return err("DATOS_INVALIDOS", "El motivo de rechazo es obligatorio.");
   }
+  const errMotivo = validarTextoOpcional(motivo, LARGO_MAXIMO.motivo);
+  if (errMotivo) return err("DATOS_INVALIDOS", `Motivo: ${errMotivo}`);
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase

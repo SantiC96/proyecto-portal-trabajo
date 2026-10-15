@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { BookOpen, ExternalLink } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirRolPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { formatFechaCorta } from "@/lib/fechas";
 import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
@@ -11,7 +11,7 @@ import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
-import type { MiCurso } from "@/lib/cursos";
+import { aMisCursos, type MiCurso } from "@/lib/cursos";
 import { AccionesMiCurso } from "./acciones-mi-curso";
 
 export const metadata: Metadata = {
@@ -27,24 +27,7 @@ export default async function MisCursosPage({
 }) {
   const sp = await searchParams;
   const pagina = leerPagina(sp.pagina);
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/auth/login");
-
-  const { data: usuario } = await supabase
-    .from("usuarios")
-    .select("rol")
-    .eq("id", user.id)
-    .single();
-
-  if (!usuario || usuario.rol !== "postulante") {
-    if (usuario?.rol === "empresa") redirect("/empresa");
-    if (usuario?.rol === "municipalidad") redirect("/admin");
-    redirect("/");
-  }
+  await requerirRolPagina("postulante", { siNoCorresponde: "panel" });
 
   return (
     <main className="flex-1 px-4 py-8 sm:px-6 sm:py-12">
@@ -83,7 +66,7 @@ async function ListadoMisCursos({
       .order("asignado_en", { ascending: false })
       .order("asignacion_id", { ascending: false })
       .range(desde, hasta);
-    const data: MiCurso[] | null = respuesta.data;
+    const data = respuesta.data ? aMisCursos(respuesta.data) : null;
     return { data, count: respuesta.count, error: respuesta.error };
   });
 

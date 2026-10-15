@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSesion } from "@/components/layout/sesion-provider";
 import { SesionActivaModal } from "@/components/auth/sesion-activa-modal";
+import type { Rol } from "@/types/db";
 
 interface Props {
   href: string;
@@ -14,10 +15,10 @@ interface Props {
 }
 
 type SesionVerificada =
-  | { activa: true; nombre: string; rol: string | null; profileHref: string }
+  | { activa: true; nombre: string; rol: Rol | null; profileHref: string }
   | { activa: false };
 
-type ModalData = { nombre: string; rol: string | null; profileHref: string };
+type ModalData = { nombre: string; rol: Rol | null; profileHref: string };
 
 function getAccion(href: string): "registro" | "login" {
   return href.startsWith("/auth/login") ? "login" : "registro";

@@ -5,13 +5,11 @@ import { crearCurso, editarCurso } from "./actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
+import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
+import { LARGO_MAXIMO } from "@/lib/validaciones";
+import type { Tabla } from "@/types/db";
 
-type CursoData = {
-  nombre: string;
-  descripcion: string | null;
-  link: string | null;
-  indicaciones: string | null;
-};
+type CursoData = Pick<Tabla<"cursos">, "nombre" | "descripcion" | "link" | "indicaciones">;
 
 type Props = {
   modo: "crear" | "editar";
@@ -74,6 +72,7 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           placeholder="Ej: Preparación para entrevistas"
+          maxLength={LARGO_MAXIMO.nombreCurso}
           className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
           disabled={isPending}
         />
@@ -90,9 +89,11 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
           onChange={(e) => setDescripcion(e.target.value)}
           placeholder="Breve descripción del contenido del curso..."
           rows={3}
+          maxLength={LARGO_MAXIMO.descripcion}
           className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
           disabled={isPending}
         />
+        <ContadorCaracteres actual={descripcion.length} maximo={LARGO_MAXIMO.descripcion} />
       </div>
 
       <div className="space-y-1.5">
@@ -108,6 +109,7 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
           value={link}
           onChange={(e) => setLink(e.target.value)}
           placeholder="https://..."
+          maxLength={LARGO_MAXIMO.linkCurso}
           className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
           disabled={isPending}
         />
@@ -124,9 +126,11 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
           onChange={(e) => setIndicaciones(e.target.value)}
           placeholder="Cómo inscribirse, qué tener a mano u otras indicaciones para el postulante..."
           rows={3}
+          maxLength={LARGO_MAXIMO.descripcion}
           className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
           disabled={isPending}
         />
+        <ContadorCaracteres actual={indicaciones.length} maximo={LARGO_MAXIMO.descripcion} />
       </div>
 
       {error && (

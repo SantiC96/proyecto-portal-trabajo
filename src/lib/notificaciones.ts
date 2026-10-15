@@ -1,16 +1,12 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
+import type { Tabla } from "@/types/db";
 
 /** Fila de public.notificaciones (migration_038). */
-export type Notificacion = {
-  id: string;
-  tipo: string;
-  titulo: string;
-  mensaje: string;
-  link: string | null;
-  leida_en: string | null;
-  created_at: string;
-};
+export type Notificacion = Pick<
+  Tabla<"notificaciones">,
+  "id" | "tipo" | "titulo" | "mensaje" | "link" | "leida_en" | "created_at"
+>;
 
 export type ResumenNotificaciones = {
   noLeidas: number;
@@ -56,6 +52,6 @@ export async function obtenerResumenNotificaciones(
 
   return {
     noLeidas: conteo.count ?? 0,
-    ultimas: (ultimas.data ?? []) as Notificacion[],
+    ultimas: ultimas.data ?? [],
   };
 }

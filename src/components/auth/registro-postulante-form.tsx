@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { registrarPostulante } from "@/app/auth/actions";
-import { validarDNI } from "@/lib/validaciones";
+import { LARGO_MAXIMO, validarDNI } from "@/lib/validaciones";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import Link from "next/link";
 import {
@@ -208,6 +208,7 @@ export function RegistroPostulanteForm() {
                   value={domicilio}
                   onChange={(e) => setDomicilio(e.target.value)}
                   placeholder="Calle y número  (Ej: San Martín 432)"
+                  maxLength={LARGO_MAXIMO.domicilio}
                   className={inputClass}
                 />
               </InputWrapper>

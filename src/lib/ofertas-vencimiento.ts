@@ -11,7 +11,7 @@ export const DIAS_AVISO_VENCIMIENTO = 5;
 const MS_DIA = 24 * 60 * 60 * 1000;
 
 export function esDuracionOferta(valor: unknown): valor is DuracionOferta {
-  return DURACIONES_OFERTA.includes(valor as DuracionOferta);
+  return DURACIONES_OFERTA.some((d) => d === valor);
 }
 
 export type EstadoVencimiento = {

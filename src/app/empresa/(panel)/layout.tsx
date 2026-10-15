@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { obtenerEmpresaActual, requerirRolPagina } from "@/lib/auth";
 import { PublicFooter } from "@/components/public/public-footer";
 import { Clock, XCircle } from "lucide-react";
 
@@ -9,28 +10,18 @@ export default async function EmpresaPanelLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/auth/login");
-
-  const { data: empresa } = await supabase
-    .from("empresas")
-    .select("id, estado_aprobacion, motivo_rechazo")
-    .eq("usuario_id", user.id)
-    .maybeSingle();
-
+  await requerirRolPagina("empresa");
+  const empresa = await obtenerEmpresaActual();
   if (!empresa) redirect("/");
 
   // ── Pendiente ─────────────────────────────────────────────────────────────
   if (empresa.estado_aprobacion === "pendiente") {
+    const supabase = await createSupabaseServerClient();
     const { data: hist } = await supabase
       .from("historial_aprobacion_empresa")
       .select("evento")
       .eq("empresa_id", empresa.id)
-      .order("fecha_evento", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(1);
     const reenviada = hist?.[0]?.evento === "reenviada";
 

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { BookmarkCheck, User } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirEmpresaPagina } from "@/lib/auth";
+import type { FilaCandidatoParaEmpresa } from "@/types/db";
 import { logError } from "@/lib/logger";
 import { formatFecha } from "@/lib/fechas";
 import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
@@ -17,23 +18,6 @@ export const metadata: Metadata = {
   title: "Candidatos guardados | Portal de Empleo Funes",
 };
 
-type GuardadoRow = {
-  id: string;
-  postulante_id: string;
-  nota: string | null;
-  created_at: string;
-  oferta_origen_id: string | null;
-  ofertas: { titulo: string } | null;
-};
-
-type CandidatoData = {
-  nombre: string;
-  apellido: string;
-  email: string;
-  telefono: string | null;
-  cv_ruta: string | null;
-};
-
 const RUTA = "/empresa/candidatos-guardados";
 
 export default async function CandidatosGuardadosPage({
@@ -43,19 +27,7 @@ export default async function CandidatosGuardadosPage({
 }) {
   const sp = await searchParams;
   const pagina = leerPagina(sp.pagina);
-  const supabase = await createSupabaseServerClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
-
-  const { data: empresa } = await supabase
-    .from("empresas")
-    .select("id")
-    .eq("usuario_id", user.id)
-    .maybeSingle();
-  if (!empresa) redirect("/empresa");
+  const empresa = await requerirEmpresaPagina("/empresa");
 
   return (
     <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
@@ -92,7 +64,7 @@ async function ListadoGuardados({
 }) {
   const supabase = await createSupabaseServerClient();
 
-  const resultado = await consultarPagina<GuardadoRow>(pagina, (desde, hasta) =>
+  const resultado = await consultarPagina(pagina, (desde, hasta) =>
     supabase
       .from("candidatos_guardados")
       .select(
@@ -103,7 +75,6 @@ async function ListadoGuardados({
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .range(desde, hasta)
-      .overrideTypes<GuardadoRow[], { merge: false }>()
   );
 
   if (!resultado.ok) {
@@ -134,7 +105,7 @@ async function ListadoGuardados({
   }
 
   // Get candidato data for each saved candidate
-  const candidatoMap: Record<string, CandidatoData> = {};
+  const candidatoMap: Record<string, FilaCandidatoParaEmpresa> = {};
   if (guardados.length > 0) {
     const uniqueIds = [...new Set(guardados.map((g) => g.postulante_id))];
     const results = await Promise.all(
@@ -143,7 +114,7 @@ async function ListadoGuardados({
       )
     );
     uniqueIds.forEach((pid, i) => {
-      const row = (results[i].data as CandidatoData[] | null)?.[0];
+      const row = results[i].data?.[0];
       if (row) candidatoMap[pid] = row;
     });
   }

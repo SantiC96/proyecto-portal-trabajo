@@ -31,7 +31,8 @@ import {
   eliminarCV,
   cambiarContrasena,
 } from "./actions";
-import { validarNombre, validarDNI, validarTelefono } from "@/lib/validaciones";
+import { LARGO_MAXIMO, validarNombre, validarDNI, validarTelefono } from "@/lib/validaciones";
+import type { Rol, Tabla } from "@/types/db";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
 import {
@@ -116,7 +117,7 @@ interface PerfilFormProps {
     nombre: string;
     apellido: string;
     telefono: string;
-    rol: string | null;
+    rol: Rol | null;
     avatarActivo: { ruta: string; url: string | null; ajuste: AjusteAvatar } | null;
   };
   postulante: {
@@ -132,7 +133,7 @@ interface PerfilFormProps {
     } | null;
   };
   email: string;
-  categorias: { id: string; nombre: string }[];
+  categorias: Pick<Tabla<"categorias">, "id" | "nombre">[];
   categoriasSeleccionadas: string[];
 }
 
@@ -658,6 +659,7 @@ export function PerfilForm({
                     value={domicilio}
                     onChange={(e) => setDomicilio(e.target.value)}
                     placeholder="Calle y número (Ej: San Martín 432)"
+                    maxLength={LARGO_MAXIMO.domicilio}
                     className={inputClass}
                   />
                 </InputWrapper>

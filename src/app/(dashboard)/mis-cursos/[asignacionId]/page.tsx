@@ -1,20 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirRolPagina } from "@/lib/auth";
+import { esUuid } from "@/lib/validaciones";
 import { formatFechaCorta } from "@/lib/fechas";
-import type { MiCurso } from "@/lib/cursos";
+import { aMisCursos, type MiCurso } from "@/lib/cursos";
 import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
 import { AccionesMiCurso } from "../acciones-mi-curso";
 
 async function obtenerMiCurso(asignacionId: string): Promise<MiCurso | null> {
+  if (!esUuid(asignacionId)) return null;
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .rpc("mis_cursos_con_estado")
     .eq("asignacion_id", asignacionId)
     .maybeSingle();
-  return (data as MiCurso | null) ?? null;
+  return data ? (aMisCursos([data])[0] ?? null) : null;
 }
 
 export async function generateMetadata({
@@ -34,24 +37,7 @@ export default async function MiCursoDetallePage({
   params: Promise<{ asignacionId: string }>;
 }) {
   const { asignacionId } = await params;
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/auth/login");
-
-  const { data: usuario } = await supabase
-    .from("usuarios")
-    .select("rol")
-    .eq("id", user.id)
-    .single();
-
-  if (!usuario || usuario.rol !== "postulante") {
-    if (usuario?.rol === "empresa") redirect("/empresa");
-    if (usuario?.rol === "municipalidad") redirect("/admin");
-    redirect("/");
-  }
+  await requerirRolPagina("postulante", { siNoCorresponde: "panel" });
 
   const curso = await obtenerMiCurso(asignacionId);
 

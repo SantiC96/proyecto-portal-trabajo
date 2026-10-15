@@ -3,28 +3,12 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirRol } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errConRef, okMsg, type Resultado, type ResultadoError } from "@/lib/resultado";
+import { err, errConRef, okMsg, type Resultado } from "@/lib/resultado";
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
-
-async function verificarMunicipalidad(): Promise<{ ok: true; userId: string } | ResultadoError> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return err("NO_AUTENTICADO");
-
-  const { data: usuario } = await supabase
-    .from("usuarios")
-    .select("rol")
-    .eq("id", user.id)
-    .single();
-
-  if (!usuario || usuario.rol !== "municipalidad") return err("SIN_PERMISO");
-
-  return { ok: true, userId: user.id };
-}
+import { esUuid, LARGO_MAXIMO, validarTextoOpcional } from "@/lib/validaciones";
+import { esValorEnum } from "@/types/db";
 
 function revalidarVistas(postulacionId: string) {
   revalidatePath("/admin/postulaciones");
@@ -34,7 +18,8 @@ function revalidarVistas(postulacionId: string) {
 }
 
 export async function abrirFicha(postulacionId: string): Promise<void> {
-  const auth = await verificarMunicipalidad();
+  if (!esUuid(postulacionId)) redirect("/admin/postulaciones");
+  const auth = await requerirRol("municipalidad");
   if (!auth.ok) {
     redirect(`/admin/postulaciones/${postulacionId}`);
   }
@@ -51,7 +36,7 @@ export async function abrirFicha(postulacionId: string): Promise<void> {
       .from("postulaciones")
       .update({
         estado: "en_revision",
-        revisado_por: auth.userId,
+        revisado_por: auth.usuario.id,
         updated_at: new Date().toISOString(),
       })
       .eq("id", postulacionId);
@@ -69,8 +54,10 @@ export async function abrirFicha(postulacionId: string): Promise<void> {
 export async function marcarEnRevision(
   postulacionId: string
 ): Promise<Resultado<void>> {
-  const auth = await verificarMunicipalidad();
+  const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
+
+  if (!esUuid(postulacionId)) return err("DATOS_INVALIDOS");
 
   const supabase = await createSupabaseServerClient();
   const { data: postulacion } = await supabase
@@ -95,7 +82,7 @@ export async function marcarEnRevision(
     .from("postulaciones")
     .update({
       estado: "en_revision",
-      revisado_por: auth.userId,
+      revisado_por: auth.usuario.id,
       updated_at: new Date().toISOString(),
     })
     .eq("id", postulacionId)
@@ -118,8 +105,12 @@ export async function descartarPostulacion(
   postulacionId: string,
   nota?: string
 ): Promise<Resultado<void>> {
-  const auth = await verificarMunicipalidad();
+  const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
+
+  if (!esUuid(postulacionId)) return err("DATOS_INVALIDOS");
+  const errNota = validarTextoOpcional(nota, LARGO_MAXIMO.nota);
+  if (errNota) return err("DATOS_INVALIDOS", `Nota: ${errNota}`);
 
   const supabase = await createSupabaseServerClient();
   const { data: postulacion } = await supabase
@@ -140,7 +131,7 @@ export async function descartarPostulacion(
     );
   }
 
-  const oferta = postulacion.ofertas as unknown as { estado: string } | null;
+  const oferta = postulacion.ofertas;
   if (!oferta || oferta.estado !== "activa") {
     return err(
       "ESTADO_INVALIDO",
@@ -153,7 +144,7 @@ export async function descartarPostulacion(
     .update({
       estado: "rechazada_municipalidad",
       nota_oficina: nota?.trim() || null,
-      revisado_por: auth.userId,
+      revisado_por: auth.usuario.id,
       updated_at: new Date().toISOString(),
     })
     .eq("id", postulacionId)
@@ -176,8 +167,12 @@ export async function derivarPostulacion(
   postulacionId: string,
   nota?: string
 ): Promise<Resultado<void>> {
-  const auth = await verificarMunicipalidad();
+  const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
+
+  if (!esUuid(postulacionId)) return err("DATOS_INVALIDOS");
+  const errNota = validarTextoOpcional(nota, LARGO_MAXIMO.nota);
+  if (errNota) return err("DATOS_INVALIDOS", `Nota: ${errNota}`);
 
   const supabase = await createSupabaseServerClient();
   const { data: postulacion } = await supabase
@@ -195,7 +190,7 @@ export async function derivarPostulacion(
     return err("ESTADO_INVALIDO", "Solo se puede derivar desde 'recibida' o 'en revisión'.");
   }
 
-  const oferta = postulacion.ofertas as unknown as { estado: string } | null;
+  const oferta = postulacion.ofertas;
   if (!oferta || oferta.estado !== "activa") {
     return err("ESTADO_INVALIDO", "La oferta ya no está activa y no puede recibir derivaciones.");
   }
@@ -204,7 +199,7 @@ export async function derivarPostulacion(
     .from("derivaciones")
     .insert({
       postulacion_id: postulacionId,
-      municipalidad_usuario_id: auth.userId,
+      municipalidad_usuario_id: auth.usuario.id,
       nota_municipalidad: nota?.trim() || null,
     });
 
@@ -220,7 +215,7 @@ export async function derivarPostulacion(
     .from("postulaciones")
     .update({
       estado: "derivada",
-      revisado_por: auth.userId,
+      revisado_por: auth.usuario.id,
       updated_at: new Date().toISOString(),
     })
     .eq("id", postulacionId)
@@ -252,8 +247,11 @@ export async function corregirEstadoDerivacion(
   derivacionId: string,
   nuevoEstado: EstadoDerivacionEmpresa
 ): Promise<Resultado<void>> {
-  const auth = await verificarMunicipalidad();
+  const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
+
+  if (!esUuid(postulacionId) || !esUuid(derivacionId)) return err("DATOS_INVALIDOS");
+  if (!esValorEnum("estado_empresa", nuevoEstado)) return err("DATOS_INVALIDOS");
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase
