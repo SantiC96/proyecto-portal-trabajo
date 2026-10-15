@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { X, AlertCircle, Briefcase, CheckCircle, AlertTriangle, CalendarClock } from "lucide-react";
 import { useMounted } from "@/lib/use-mounted";
 import { retirarPostulacion } from "@/app/(dashboard)/postulaciones/actions";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { getOfertaEstadoBadge } from "@/lib/oferta-estados";
+import { useAccion } from "@/lib/use-accion";
 
 type EstadoPostulacion = "recibida" | "en_revision" | "derivada" | "rechazada_municipalidad";
 
@@ -47,17 +50,16 @@ function getBadgeEstado(estado: EstadoPostulacion) {
 
 function RetirarBoton({
   postulacionId,
-  onSuccess,
 }: {
   postulacionId: string;
-  onSuccess: () => void;
 }) {
   const mounted = useMounted();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<ErrorAccion | null>(null);
+  const { pendiente: isPending, ejecutar } = useAccion();
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const needsRefresh = useRef(false);
 
   useEffect(() => {
     if (open) {
@@ -77,16 +79,23 @@ function RetirarBoton({
     return () => document.removeEventListener("keydown", handler);
   }, [open, isPending]);
 
+  useEffect(() => {
+    if (!isPending && needsRefresh.current) {
+      needsRefresh.current = false;
+      router.refresh();
+    }
+  }, [isPending, router]);
+
   function handleConfirm() {
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const result = await retirarPostulacion(postulacionId);
-      if (result.error) {
-        setError(result.error);
+      mostrarAviso(result);
+      if (!result.ok) {
+        setError(toErrorAccion(result));
       } else {
+        needsRefresh.current = true;
         setOpen(false);
-        router.refresh();
-        onSuccess();
       }
     });
   }
@@ -148,9 +157,16 @@ function RetirarBoton({
               </div>
 
               {error && (
-                <div className="mb-4 flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-600">
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                  {error}
+                <div className="mb-4 flex flex-col gap-1 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-600">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    {error.mensaje}
+                  </div>
+                  {error.ref && (
+                    <p className="ml-6 text-xs text-gray-500">
+                      Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -198,22 +214,8 @@ interface Props {
 }
 
 export function MisPostulacionesLista({ postulaciones }: Props) {
-  const [toastVisible, setToastVisible] = useState(false);
-
-  useEffect(() => {
-    if (!toastVisible) return;
-    const timer = setTimeout(() => setToastVisible(false), 4000);
-    return () => clearTimeout(timer);
-  }, [toastVisible]);
-
   return (
     <div className="flex flex-col gap-4">
-      {toastVisible && (
-        <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
-          <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600" />
-          Retiraste tu postulación.
-        </div>
-      )}
 
       {postulaciones.map((p) => {
         const badge = getBadgeEstado(p.estado);
@@ -345,7 +347,6 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
             {p.estado === "recibida" && (
               <RetirarBoton
                 postulacionId={p.id}
-                onSuccess={() => setToastVisible(true)}
               />
             )}
           </article>

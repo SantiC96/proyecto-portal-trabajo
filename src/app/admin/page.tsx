@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { logError } from "@/lib/logger";
 import Link from "next/link";
 import {
   BookOpen,
@@ -9,6 +10,7 @@ import {
   Users,
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { UMBRAL_RECHAZOS_CURSO } from "@/lib/cursos";
 
 export const metadata: Metadata = {
   title: "Panel municipal | Portal de Empleo Funes",
@@ -29,7 +31,6 @@ export default async function AdminDashboardPage() {
     { count: rechazadas },
     { count: postulacionesPendientes },
     { count: totalPostulantes },
-    { count: postulantesConCv },
     { count: ofertasPendientes },
     esperandoCursoRes,
     { count: cursosActivos },
@@ -52,11 +53,6 @@ export default async function AdminDashboardPage() {
       .in("estado", ["recibida", "en_revision"]),
     supabase.from("postulantes").select("*", { count: "exact", head: true }),
     supabase
-      .from("archivos_usuario")
-      .select("*", { count: "exact", head: true })
-      .eq("tipo", "cv")
-      .eq("activo", true),
-    supabase
       .from("ofertas")
       .select("*", { count: "exact", head: true })
       .eq("estado", "pendiente_aprobacion"),
@@ -68,7 +64,7 @@ export default async function AdminDashboardPage() {
   ]);
 
   if (esperandoCursoRes.error)
-    console.error("[contar_postulantes_esperando_curso]", esperandoCursoRes.error);
+    logError("contar_postulantes_esperando_curso", esperandoCursoRes.error);
   const postulantesEsperando = Number(esperandoCursoRes.data ?? 0);
 
   return (
@@ -179,13 +175,11 @@ export default async function AdminDashboardPage() {
             <div>
               <p className="font-semibold text-foreground">Postulantes</p>
               <p className={textoEstado(postulantesEsperando > 0)}>
-                {postulantesEsperando > 0
-                  ? `${postulantesEsperando} postulante${postulantesEsperando === 1 ? "" : "s"} esperando curso`
-                  : (totalPostulantes ?? 0) === 0
-                    ? "Buscá candidatos por rubro y revisá sus CVs"
-                    : `${totalPostulantes ?? 0} registrado${
-                        totalPostulantes === 1 ? "" : "s"
-                      } · ${postulantesConCv ?? 0} con CV`}
+                {(totalPostulantes ?? 0) === 0
+                  ? "Buscá candidatos por rubro y revisá sus CVs"
+                  : `${totalPostulantes ?? 0} registrado${
+                      totalPostulantes === 1 ? "" : "s"
+                    } · ${postulantesEsperando} con ${UMBRAL_RECHAZOS_CURSO} o más rechazos`}
               </p>
             </div>
           </div>
@@ -211,6 +205,7 @@ export default async function AdminDashboardPage() {
           </div>
           <ChevronRight className="h-5 w-5 flex-shrink-0 text-muted-icon" />
         </Link>
+
       </div>
     </section>
   );

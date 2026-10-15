@@ -1,8 +1,22 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
+import { Building2 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { logError } from "@/lib/logger";
 import { formatearCUIT } from "@/lib/cuit";
+import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
+import {
+  consultarPagina,
+  hrefConParams,
+  leerPagina,
+  type ParamsUrl,
+} from "@/lib/paginacion";
 import { Badge } from "@/components/ui/badge";
+import { Buscador } from "@/components/ui/buscador";
+import { Paginacion } from "@/components/ui/paginacion";
+import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
+import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { EmpresaAcciones } from "./acciones";
 
 export const metadata: Metadata = {
@@ -20,6 +34,14 @@ type EmpresaRow = {
   created_at: string;
   usuario_id: string;
   usuarios: { nombre: string; apellido: string; telefono: string } | null;
+};
+
+export type HistorialEntry = {
+  id: string;
+  empresa_id: string;
+  evento: "aprobada" | "rechazada" | "reenviada";
+  motivo: string | null;
+  created_at: string;
 };
 
 const LABELS: Record<EstadoAprobacion, string> = {
@@ -42,36 +64,19 @@ function formatearFecha(iso: string) {
   });
 }
 
+const RUTA = "/admin/empresas";
+
 export default async function AdminEmpresasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ estado?: string }>;
+  searchParams: Promise<{ estado?: string; q?: string; pagina?: string }>;
 }) {
-  const { estado: raw } = await searchParams;
-  const estado: EstadoAprobacion = ESTADOS.includes(raw as EstadoAprobacion)
-    ? (raw as EstadoAprobacion)
+  const sp = await searchParams;
+  const estado: EstadoAprobacion = ESTADOS.includes(sp.estado as EstadoAprobacion)
+    ? (sp.estado as EstadoAprobacion)
     : "pendiente";
-
-  const supabase = await createSupabaseServerClient();
-
-  const { data: empresasData } = await supabase
-    .from("empresas")
-    .select(
-      "id, razon_social, cuit, rubro, created_at, usuario_id, usuarios(nombre, apellido, telefono)"
-    )
-    .eq("estado_aprobacion", estado)
-    .order("created_at", { ascending: estado === "pendiente" });
-
-  const empresas = (empresasData ?? []) as unknown as EmpresaRow[];
-
-  // emails_de_usuarios: solo consulta los IDs de la página actual, sin límite de 1000
-  const usuarioIds = empresas.map((e) => e.usuario_id);
-  const { data: emailRows } = usuarioIds.length > 0
-    ? await supabase.rpc("emails_de_usuarios", { ids: usuarioIds })
-    : { data: [] };
-  const emailMap = new Map<string, string>(
-    ((emailRows ?? []) as { id: string; email: string }[]).map((r) => [r.id, r.email])
-  );
+  const q = limpiarBusqueda(sp.q);
+  const pagina = leerPagina(sp.pagina);
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
@@ -92,7 +97,7 @@ export default async function AdminEmpresasPage({
         {ESTADOS.map((tab) => (
           <Link
             key={tab}
-            href={`?estado=${tab}`}
+            href={hrefConParams(RUTA, {}, { estado: tab, q: sp.q ?? null })}
             className={
               tab === estado
                 ? "flex-1 rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
@@ -104,18 +109,139 @@ export default async function AdminEmpresasPage({
         ))}
       </div>
 
-      {empresas.length === 0 ? (
-        <p className="py-16 text-center text-sm text-muted-foreground">
-          No hay empresas{" "}
-          {estado === "pendiente"
+      {/* Búsqueda */}
+      <Buscador className="mt-4" placeholder="Buscar por razón social o CUIT…" />
+
+      <Suspense
+        key={JSON.stringify({ estado, q, pagina })}
+        fallback={<EsqueletoLista filas={5} className="mt-4" />}
+      >
+        <ListadoEmpresas estado={estado} q={q} pagina={pagina} searchParams={sp} />
+      </Suspense>
+    </section>
+  );
+}
+
+async function ListadoEmpresas({
+  estado,
+  q,
+  pagina,
+  searchParams,
+}: {
+  estado: EstadoAprobacion;
+  q: string;
+  pagina: number;
+  searchParams: ParamsUrl;
+}) {
+  const supabase = await createSupabaseServerClient();
+  const ascendente = estado === "pendiente";
+
+  const resultado = await consultarPagina<EmpresaRow>(pagina, (desde, hasta) => {
+    let query = supabase
+      .from("empresas")
+      .select(
+        "id, razon_social, cuit, rubro, created_at, usuario_id, usuarios(nombre, apellido, telefono)",
+        { count: "exact" }
+      )
+      .eq("estado_aprobacion", estado);
+
+    if (q) {
+      // El CUIT se guarda como XX-XXXXXXXX-X: además del texto tal cual se
+      // busca la versión con guiones de los dígitos ingresados.
+      const condiciones = [
+        `razon_social.ilike.${patronIlike(q)}`,
+        `cuit.ilike.${patronIlike(q)}`,
+      ];
+      const digitos = q.replace(/\D/g, "");
+      if (digitos.length >= 2) {
+        condiciones.push(`cuit.ilike.${patronIlike(formatearCUIT(digitos))}`);
+      }
+      query = query.or(condiciones.join(","));
+    }
+
+    return query
+      .order("created_at", { ascending: ascendente })
+      .order("id", { ascending: ascendente })
+      .range(desde, hasta)
+      .overrideTypes<EmpresaRow[], { merge: false }>();
+  });
+
+  if (!resultado.ok) {
+    const ref = logError("admin_empresas_listado", resultado.error, { estado });
+    return <ErrorListado className="mt-4" refError={ref} />;
+  }
+
+  const empresas = resultado.filas;
+
+  if (empresas.length === 0) {
+    return q ? (
+      <EstadoVacio
+        tipo="sin-resultados"
+        className="mt-4"
+        titulo="No se encontraron empresas con esa búsqueda"
+        hrefLimpiar={hrefConParams(RUTA, {}, { estado })}
+        textoLimpiar="Limpiar búsqueda"
+      />
+    ) : (
+      <EstadoVacio
+        tipo="sin-registros"
+        className="mt-4"
+        icono={Building2}
+        titulo={`No hay empresas ${
+          estado === "pendiente"
             ? "pendientes de revisión"
             : estado === "aprobada"
               ? "aprobadas"
-              : "rechazadas"}{" "}
-          en este momento.
-        </p>
-      ) : (
-        <>
+              : "rechazadas"
+        } en este momento.`}
+      />
+    );
+  }
+
+  const empresaIds = empresas.map((e) => e.id);
+  const usuarioIds = empresas.map((e) => e.usuario_id);
+
+  // Consultas paralelas: emails y historial de las empresas de la página actual.
+  const [{ data: emailRows }, { data: historialRows }] = await Promise.all([
+    usuarioIds.length > 0
+      ? supabase.rpc("emails_de_usuarios", { ids: usuarioIds })
+      : Promise.resolve({ data: [] }),
+    empresaIds.length > 0
+      ? supabase
+          .from("historial_aprobacion_empresa")
+          .select("id, empresa_id, evento, motivo, created_at")
+          .in("empresa_id", empresaIds)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const emailMap = new Map<string, string>(
+    ((emailRows ?? []) as { id: string; email: string }[]).map((r) => [
+      r.id,
+      r.email,
+    ])
+  );
+
+  // Agrupar historial por empresa (ya viene ordenado DESC por created_at).
+  const historialPorEmpresa = new Map<string, HistorialEntry[]>();
+  for (const entry of (historialRows ?? []) as HistorialEntry[]) {
+    const list = historialPorEmpresa.get(entry.empresa_id) ?? [];
+    list.push(entry);
+    historialPorEmpresa.set(entry.empresa_id, list);
+  }
+
+  // Para la pestaña pendiente: fecha del último reenvío de cada empresa.
+  const reenviadas = new Map<string, string>();
+  if (estado === "pendiente") {
+    for (const entry of (historialRows ?? []) as HistorialEntry[]) {
+      if (entry.evento === "reenviada" && !reenviadas.has(entry.empresa_id)) {
+        reenviadas.set(entry.empresa_id, entry.created_at);
+      }
+    }
+  }
+
+  return (
+    <>
           {/* Vista desktop: tabla */}
           <div className="mt-4 hidden overflow-x-auto md:block">
             <table className="w-full border-collapse text-sm">
@@ -181,6 +307,8 @@ export default async function AdminEmpresasPage({
                         empresaId={empresa.id}
                         razonSocial={empresa.razon_social}
                         estadoActual={estado}
+                        historial={historialPorEmpresa.get(empresa.id) ?? []}
+                        fechaReenvio={reenviadas.get(empresa.id)}
                       />
                     </td>
                   </tr>
@@ -200,7 +328,14 @@ export default async function AdminEmpresasPage({
                   <p className="font-semibold text-foreground">
                     {empresa.razon_social}
                   </p>
-                  <Badge variant={BADGE_VARIANT[estado]}>{LABELS[estado]}</Badge>
+                  <div className="flex flex-wrap justify-end gap-1">
+                    <Badge variant={BADGE_VARIANT[estado]}>{LABELS[estado]}</Badge>
+                    {estado === "pendiente" && reenviadas.has(empresa.id) && (
+                      <Badge variant="secondary" className="bg-amber-100 text-amber-700 border-amber-200">
+                        Reenviada
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <dl className="mt-3 space-y-1.5 text-sm">
                   <div className="flex gap-2">
@@ -257,13 +392,20 @@ export default async function AdminEmpresasPage({
                     empresaId={empresa.id}
                     razonSocial={empresa.razon_social}
                     estadoActual={estado}
+                    historial={historialPorEmpresa.get(empresa.id) ?? []}
+                    fechaReenvio={reenviadas.get(empresa.id)}
                   />
                 </div>
               </div>
             ))}
           </div>
-        </>
-      )}
-    </section>
+          <Paginacion
+            className="mt-6"
+            ruta={RUTA}
+            searchParams={searchParams}
+            pagina={resultado.pagina}
+            total={resultado.total}
+          />
+    </>
   );
 }

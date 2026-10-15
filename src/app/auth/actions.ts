@@ -7,6 +7,8 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { createSupabaseEphemeralClient } from "@/lib/supabase-ephemeral";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { traducirErrorAuth } from "@/lib/auth-errors";
+import { logError } from "@/lib/logger";
+import { err, errConRef, type Resultado } from "@/lib/resultado";
 import { formatearCUIT } from "@/lib/cuit";
 import {
   validarDNI,
@@ -28,11 +30,20 @@ function safeRedirect(to?: string): string {
   return "/";
 }
 
+function wrapAuthError(contexto: string, authErr: unknown): Resultado<never> {
+  const r = traducirErrorAuth(authErr as Parameters<typeof traducirErrorAuth>[0]);
+  if (!r.ok && r.codigo === "ERROR_INTERNO") {
+    const ref = logError(contexto, authErr);
+    return errConRef("ERROR_INTERNO", r.mensaje, ref);
+  }
+  return r;
+}
+
 export async function login(credentials: {
   email: string;
   password: string;
   redirectTo?: string;
-}): Promise<{ error: string } | undefined> {
+}): Promise<Resultado<void>> {
   const supabase = await createSupabaseServerClient();
 
   const {
@@ -45,9 +56,7 @@ export async function login(credentials: {
     password: credentials.password,
   });
 
-  if (error) {
-    return { error: traducirErrorAuth(error) };
-  }
+  if (error) return wrapAuthError("login", error);
 
   redirect(safeRedirect(credentials.redirectTo));
 }
@@ -60,7 +69,7 @@ export async function registrarPostulante(data: {
   domicilio: string;
   email: string;
   password: string;
-}): Promise<{ error: string } | undefined> {
+}): Promise<Resultado<void>> {
   const supabase = await createSupabaseServerClient();
 
   const {
@@ -69,17 +78,17 @@ export async function registrarPostulante(data: {
   if (existingUser) redirect("/");
 
   const errNombre = validarNombre(data.nombre);
-  if (errNombre) return { error: errNombre };
+  if (errNombre) return err("DATOS_INVALIDOS", errNombre);
   const errApellido = validarNombre(data.apellido);
-  if (errApellido) return { error: errApellido };
+  if (errApellido) return err("DATOS_INVALIDOS", errApellido);
   const errDni = validarDNI(data.dni);
-  if (errDni) return { error: errDni };
+  if (errDni) return err("DATOS_INVALIDOS", errDni);
   const errTelefono = validarTelefono(data.telefono);
-  if (errTelefono) return { error: errTelefono };
+  if (errTelefono) return err("DATOS_INVALIDOS", errTelefono);
   const errEmail = validarEmail(data.email);
-  if (errEmail) return { error: errEmail };
+  if (errEmail) return err("DATOS_INVALIDOS", errEmail);
   const errPassword = validarPassword(data.password);
-  if (errPassword) return { error: errPassword };
+  if (errPassword) return err("DATOS_INVALIDOS", errPassword);
 
   const dniLimpio = data.dni.replace(/\D/g, "");
 
@@ -97,12 +106,11 @@ export async function registrarPostulante(data: {
     },
   });
 
-  if (signUpError) {
-    return { error: traducirErrorAuth(signUpError) };
-  }
+  if (signUpError) return wrapAuthError("registrarPostulante", signUpError);
 
   if (!authData.user) {
-    return { error: "No se pudo crear el usuario. Intentá de nuevo." };
+    const ref = logError("registrarPostulante:noUser", null);
+    return errConRef("ERROR_INTERNO", "No se pudo crear el usuario. Intentá de nuevo.", ref);
   }
 
   const { error: profileError } = await supabaseAdmin
@@ -112,9 +120,10 @@ export async function registrarPostulante(data: {
   if (profileError) {
     await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
     if (profileError.code === "23505") {
-      return { error: "Ya existe una cuenta con ese DNI." };
+      return err("CONFLICTO", "Ya existe una cuenta con ese DNI.");
     }
-    return { error: "Error al crear el perfil. Intentá de nuevo." };
+    const ref = logError("registrarPostulante:profile", profileError, { userId: authData.user.id });
+    return errConRef("ERROR_INTERNO", "Error al crear el perfil. Intentá de nuevo.", ref);
   }
 
   redirect("/auth/verificar-email");
@@ -130,7 +139,7 @@ export async function registrarEmpresa(data: {
   telefono: string;
   email: string;
   password: string;
-}): Promise<{ error: string } | undefined> {
+}): Promise<Resultado<void>> {
   const supabase = await createSupabaseServerClient();
 
   const {
@@ -139,19 +148,19 @@ export async function registrarEmpresa(data: {
   if (existingUser) redirect("/");
 
   const errRazonSocial = validarNombre(data.razonSocial);
-  if (errRazonSocial) return { error: errRazonSocial };
+  if (errRazonSocial) return err("DATOS_INVALIDOS", errRazonSocial);
   const errCuit = validarCuitConMensaje(data.cuit);
-  if (errCuit) return { error: errCuit };
+  if (errCuit) return err("DATOS_INVALIDOS", errCuit);
   const errNombreEmp = validarNombre(data.nombre);
-  if (errNombreEmp) return { error: errNombreEmp };
+  if (errNombreEmp) return err("DATOS_INVALIDOS", errNombreEmp);
   const errApellidoEmp = validarNombre(data.apellido);
-  if (errApellidoEmp) return { error: errApellidoEmp };
+  if (errApellidoEmp) return err("DATOS_INVALIDOS", errApellidoEmp);
   const errTelefonoEmp = validarTelefono(data.telefono);
-  if (errTelefonoEmp) return { error: errTelefonoEmp };
+  if (errTelefonoEmp) return err("DATOS_INVALIDOS", errTelefonoEmp);
   const errEmailEmp = validarEmail(data.email);
-  if (errEmailEmp) return { error: errEmailEmp };
+  if (errEmailEmp) return err("DATOS_INVALIDOS", errEmailEmp);
   const errPasswordEmp = validarPassword(data.password);
-  if (errPasswordEmp) return { error: errPasswordEmp };
+  if (errPasswordEmp) return err("DATOS_INVALIDOS", errPasswordEmp);
 
   const cuitNormalizado = formatearCUIT(data.cuit);
 
@@ -169,12 +178,11 @@ export async function registrarEmpresa(data: {
     },
   });
 
-  if (signUpError) {
-    return { error: traducirErrorAuth(signUpError) };
-  }
+  if (signUpError) return wrapAuthError("registrarEmpresa", signUpError);
 
   if (!authData.user) {
-    return { error: "No se pudo crear el usuario. Intentá de nuevo." };
+    const ref = logError("registrarEmpresa:noUser", null);
+    return errConRef("ERROR_INTERNO", "No se pudo crear el usuario. Intentá de nuevo.", ref);
   }
 
   const { error: profileError } = await supabaseAdmin
@@ -190,9 +198,10 @@ export async function registrarEmpresa(data: {
   if (profileError) {
     await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
     if (profileError.code === "23505") {
-      return { error: "Ya existe una empresa registrada con ese CUIT." };
+      return err("CONFLICTO", "Ya existe una empresa registrada con ese CUIT.");
     }
-    return { error: "Error al crear el perfil de empresa. Intentá de nuevo." };
+    const ref = logError("registrarEmpresa:profile", profileError, { userId: authData.user.id });
+    return errConRef("ERROR_INTERNO", "Error al crear el perfil de empresa. Intentá de nuevo.", ref);
   }
 
   redirect("/auth/verificar-email-empresa");
@@ -227,18 +236,18 @@ export async function logout(formData?: FormData) {
 }
 
 export async function restablecerContrasena(
-  _prevState: { error: string; linkVencido?: boolean } | null,
+  _prevState: Resultado<void> | null,
   formData: FormData
-): Promise<{ error: string; linkVencido?: boolean } | null> {
+): Promise<Resultado<void> | null> {
   const password = formData.get("password") as string;
   const confirmar = formData.get("confirmar") as string;
   const tokenHash = formData.get("token_hash") as string;
 
   // 1. Server-side validation — no OTP consumed yet
   const errPwd = validarPassword(password);
-  if (errPwd) return { error: errPwd };
+  if (errPwd) return err("DATOS_INVALIDOS", errPwd);
   if (password !== confirmar) {
-    return { error: "Las contraseñas no coinciden." };
+    return err("DATOS_INVALIDOS", "Las contraseñas no coinciden.");
   }
 
   const client = createSupabaseEphemeralClient();
@@ -280,10 +289,7 @@ export async function restablecerContrasena(
       path: RECOVERY_COOKIE_PATH,
       httpOnly: true,
     });
-    return {
-      error: "El link venció o ya fue usado. Pedí uno nuevo.",
-      linkVencido: true,
-    };
+    return err("TOKEN_VENCIDO");
   }
 
   // 3. Update password
@@ -296,7 +302,7 @@ export async function restablecerContrasena(
       latestSession.refresh_token,
       recoveryCookieOptions()
     );
-    return { error: traducirErrorAuth(updateError) };
+    return wrapAuthError("restablecerContrasena", updateError);
   }
 
   // 4. Success — sign out the ephemeral session and clean up

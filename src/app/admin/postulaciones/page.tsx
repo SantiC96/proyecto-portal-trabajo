@@ -1,64 +1,117 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
+import { ClipboardList } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { logError } from "@/lib/logger";
+import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
+import {
+  consultarPagina,
+  hrefConParams,
+  leerPagina,
+  type ParamsUrl,
+} from "@/lib/paginacion";
+import { Buscador } from "@/components/ui/buscador";
+import { BotonFormulario } from "@/components/ui/boton-formulario";
+import { Paginacion } from "@/components/ui/paginacion";
+import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
+import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { abrirFicha } from "./actions";
 import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import {
-  BADGE_CONFIG,
+  BADGE_ESTADO_VISIBLE,
+  badgePostulacion,
+  type BadgePostulacion,
   type EstadoPostulacion,
 } from "@/lib/admin/postulacion-estados";
+import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 import { formatFechaCorta } from "@/lib/fechas";
 
 export const metadata: Metadata = {
   title: "Postulaciones | Panel municipal | Portal de Empleo Funes",
 };
 
-type EstadoFiltro = "pendiente" | "derivada" | "rechazada_municipalidad";
+// "derivada" y "contratado" se calculan con el estado de la derivación:
+//   derivada   → la empresa todavía no dio un resultado final (pendiente o
+//                en_proceso).
+//   contratado → la empresa marcó al postulante como contratado.
+// "No seleccionado" junta las que rechazó la oficina y las que rechazó la
+// empresa (RPC postulaciones_no_seleccionadas, migration_038).
+type EstadoFiltro = "pendiente" | "derivada" | "contratado" | "rechazada_municipalidad";
 
 const ESTADOS_FILTRO: EstadoFiltro[] = [
   "pendiente",
   "derivada",
+  "contratado",
   "rechazada_municipalidad",
 ];
 
 const LABEL_FILTRO: Record<EstadoFiltro, string> = {
   pendiente: "Pendientes",
   derivada: "Derivadas",
-  rechazada_municipalidad: "No seleccionadas",
+  contratado: "Contratado",
+  rechazada_municipalidad: "No seleccionado",
 };
+
+const DERIVACION_ABIERTA = ["pendiente", "en_proceso"];
+
+const ID_INEXISTENTE = "00000000-0000-0000-0000-000000000000";
+
+type PostulanteEmbebido = {
+  id: string;
+  usuario_id: string;
+  dni: string | null;
+  usuarios: { nombre: string; apellido: string } | null;
+} | null;
+
+type OfertaEmbebida = { id: string; titulo: string; empresa_nombre: string } | null;
 
 type PostulacionRow = {
   id: string;
   estado: EstadoPostulacion;
   created_at: string;
   postulante_id: string;
-  postulantes: {
-    id: string;
-    usuario_id: string;
-    dni: string | null;
-    usuarios: { nombre: string; apellido: string } | null;
-  } | null;
-  ofertas: { id: string; titulo: string; empresa_nombre: string } | null;
+  postulantes: PostulanteEmbebido;
+  ofertas: OfertaEmbebida;
+  derivaciones: { estado_empresa: EstadoDerivacionEmpresa } | null;
 };
 
-const PAGE_SIZE = 20;
+type ContratacionRow = {
+  id: string;
+  fecha_respuesta: string | null;
+  updated_at: string;
+  postulaciones: {
+    id: string;
+    postulantes: PostulanteEmbebido;
+    ofertas: OfertaEmbebida;
+  };
+};
 
-function buildHref(params: {
-  estado?: string;
-  oferta_id?: string;
-  q?: string;
-  page?: number;
-}) {
-  const url = new URLSearchParams();
-  if (params.estado) url.set("estado", params.estado);
-  if (params.oferta_id) url.set("oferta_id", params.oferta_id);
-  if (params.q) url.set("q", params.q);
-  if (params.page && params.page > 1) url.set("page", String(params.page));
-  const qs = url.toString();
-  return `/admin/postulaciones${qs ? `?${qs}` : ""}`;
-}
+type NoSeleccionadaRow = {
+  postulacion_id: string;
+  postulante_id: string;
+  oferta_id: string;
+  usuario_id: string | null;
+  nombre: string | null;
+  apellido: string | null;
+  dni: string | null;
+  oferta_titulo: string;
+  empresa_nombre: string | null;
+  rechazado_por: "oficina" | "empresa";
+  fecha_rechazo: string;
+};
 
+/** Fila común a las cuatro secciones. */
+type Fila = {
+  postulacionId: string;
+  postulante: PostulanteEmbebido;
+  oferta: OfertaEmbebida;
+  fecha: string;
+  badge: BadgePostulacion;
+};
+
+const RUTA = "/admin/postulaciones";
 
 export default async function PostulacionesPage({
   searchParams,
@@ -67,35 +120,29 @@ export default async function PostulacionesPage({
     estado?: string;
     oferta_id?: string;
     q?: string;
-    page?: string;
+    pagina?: string;
   }>;
 }) {
-  const {
-    estado: rawEstado,
-    oferta_id: rawOfertaId = "",
-    q: rawQ = "",
-    page: rawPage = "1",
-  } = await searchParams;
+  const sp = await searchParams;
 
   const estado: EstadoFiltro = ESTADOS_FILTRO.includes(
-    rawEstado as EstadoFiltro
+    sp.estado as EstadoFiltro
   )
-    ? (rawEstado as EstadoFiltro)
+    ? (sp.estado as EstadoFiltro)
     : "pendiente";
 
-  const ofertaId = rawOfertaId.trim();
-  const q = rawQ.trim();
-  const page = Math.max(1, parseInt(rawPage, 10) || 1);
-  const from = (page - 1) * PAGE_SIZE;
-  const to = from + PAGE_SIZE - 1;
+  const ofertaId = (sp.oferta_id ?? "").trim();
+  const q = limpiarBusqueda(sp.q);
+  const pagina = leerPagina(sp.pagina);
 
   const supabase = await createSupabaseServerClient();
 
-  // Contadores por estado
+  // Contadores por sección
   const [
     { count: cRecibidas },
     { count: cRevision },
     { count: cDerivadas },
+    { count: cContratados },
     { count: cRechazadas },
   ] = await Promise.all([
     supabase
@@ -108,12 +155,17 @@ export default async function PostulacionesPage({
       .eq("estado", "en_revision"),
     supabase
       .from("postulaciones")
-      .select("*", { count: "exact", head: true })
-      .eq("estado", "derivada"),
+      .select("id, derivaciones!inner(estado_empresa)", { count: "exact", head: true })
+      .eq("estado", "derivada")
+      .in("derivaciones.estado_empresa", DERIVACION_ABIERTA),
     supabase
-      .from("postulaciones")
+      .from("derivaciones")
       .select("*", { count: "exact", head: true })
-      .eq("estado", "rechazada_municipalidad"),
+      .eq("estado_empresa", "contratado"),
+    supabase.rpc("postulaciones_no_seleccionadas", undefined, {
+      count: "exact",
+      head: true,
+    }),
   ]);
 
   // Ofertas que tienen al menos una postulación (para el selector de filtro)
@@ -131,23 +183,170 @@ export default async function PostulacionesPage({
         .order("titulo")
     : { data: [] };
 
+  const pendientesTotal = (cRecibidas ?? 0) + (cRevision ?? 0);
+
+  const contadores: { label: string; valor: number; color: string }[] = [
+    { label: "Recibidas", valor: cRecibidas ?? 0, color: "text-foreground" },
+    { label: "En revisión", valor: cRevision ?? 0, color: "text-blue-700" },
+    { label: "Derivadas", valor: cDerivadas ?? 0, color: "text-primary" },
+    { label: "Contratado", valor: cContratados ?? 0, color: "text-emerald-700" },
+    { label: "No seleccionado", valor: cRechazadas ?? 0, color: "text-red-600" },
+  ];
+
+  return (
+    <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Link href="/admin" className="hover:text-foreground">
+          Panel
+        </Link>
+        <span>/</span>
+        <span className="text-foreground">Postulaciones</span>
+      </div>
+
+      <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+        Postulaciones
+      </h1>
+
+      {/* Contadores */}
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {contadores.map((c) => (
+          <div
+            key={c.label}
+            className="rounded-[var(--radius-lg)] border border-border bg-surface p-4"
+          >
+            <p className="text-xs font-medium text-muted-foreground">{c.label}</p>
+            <p className={`mt-1 text-2xl font-bold ${c.color}`}>{c.valor}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Barra de pestañas de estado */}
+      <div className="mt-6 flex gap-1 overflow-x-auto rounded-[var(--radius-md)] border border-border bg-surface p-1">
+        {ESTADOS_FILTRO.map((tab) => (
+          <Link
+            key={tab}
+            href={hrefConParams(RUTA, {}, {
+              estado: tab,
+              oferta_id: ofertaId || null,
+              q: sp.q ?? null,
+            })}
+            className={
+              tab === estado
+                ? "flex-1 whitespace-nowrap rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
+                : "flex-1 whitespace-nowrap rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+            }
+          >
+            {LABEL_FILTRO[tab]}
+            {tab === "pendiente" && pendientesTotal > 0 && (
+              <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/20 px-1 text-xs font-semibold text-primary">
+                {pendientesTotal}
+              </span>
+            )}
+          </Link>
+        ))}
+      </div>
+
+      {/* Filtros de búsqueda */}
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+        <Buscador
+          className="flex-1 sm:min-w-[180px]"
+          placeholder="Nombre, apellido o DNI…"
+        />
+        <form method="GET" action={RUTA} className="flex gap-3">
+          <input type="hidden" name="estado" value={estado} />
+          {sp.q && <input type="hidden" name="q" value={sp.q} />}
+          <select
+            name="oferta_id"
+            defaultValue={ofertaId}
+            aria-label="Filtrar por oferta"
+            className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 sm:max-w-xs"
+          >
+            <option value="">Todas las ofertas</option>
+            {(ofertasDisponibles ?? []).map(
+              (o: { id: string; titulo: string; empresa_nombre: string }) => (
+                <option key={o.id} value={o.id}>
+                  {o.titulo} — {o.empresa_nombre}
+                </option>
+              )
+            )}
+          </select>
+          <button
+            type="submit"
+            className="h-11 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+          >
+            Filtrar
+          </button>
+        </form>
+      </div>
+      {(q || ofertaId) && (
+        <Link
+          href={hrefConParams(RUTA, {}, { estado })}
+          className="mt-2 inline-flex min-h-11 items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          Limpiar filtros
+        </Link>
+      )}
+
+      {/* Resultados */}
+      <Suspense
+        key={JSON.stringify({ estado, ofertaId, q, pagina })}
+        fallback={<EsqueletoLista filas={5} className="mt-4" />}
+      >
+        <ListadoPostulaciones
+          estado={estado}
+          ofertaId={ofertaId}
+          q={q}
+          pagina={pagina}
+          searchParams={sp}
+        />
+      </Suspense>
+    </section>
+  );
+}
+
+const TEXTO_VACIO: Record<EstadoFiltro, string> = {
+  pendiente: "No hay postulaciones pendientes de revisión en este momento.",
+  derivada: "No hay postulaciones derivadas esperando el resultado de la empresa.",
+  contratado: "Todavía ninguna empresa marcó a un postulante como contratado.",
+  rechazada_municipalidad: "No hay postulaciones no seleccionadas en este momento.",
+};
+
+async function ListadoPostulaciones({
+  estado,
+  ofertaId,
+  q,
+  pagina,
+  searchParams,
+}: {
+  estado: EstadoFiltro;
+  ofertaId: string;
+  q: string;
+  pagina: number;
+  searchParams: ParamsUrl;
+}) {
+  const supabase = await createSupabaseServerClient();
+
   // Pre-filtro por texto: buscar postulante_ids que coincidan
   let filtroPostulanteIds: string[] | null = null;
   if (q) {
-    const [{ data: usuariosMatch }, { data: postulantesMatch }] =
-      await Promise.all([
-        supabase
-          .from("usuarios")
-          .select("id")
-          .or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%`),
-        supabase
-          .from("postulantes")
-          .select("id")
-          .ilike("dni", `%${q}%`),
-      ]);
+    const patron = patronIlike(q);
+    const [usuariosRes, postulantesRes] = await Promise.all([
+      supabase
+        .from("usuarios")
+        .select("id")
+        .or(`nombre.ilike.${patron},apellido.ilike.${patron}`),
+      supabase.from("postulantes").select("id").ilike("dni", patron),
+    ]);
 
-    const idsFromNombre = usuariosMatch?.map((u) => u.id) ?? [];
-    let idsFromDni = postulantesMatch?.map((p) => p.id) ?? [];
+    const errorPrefiltro = usuariosRes.error ?? postulantesRes.error;
+    if (errorPrefiltro) {
+      const ref = logError("admin_postulaciones_busqueda", errorPrefiltro);
+      return <ErrorListado className="mt-4" refError={ref} />;
+    }
+
+    const idsFromNombre = usuariosRes.data?.map((u) => u.id) ?? [];
+    let idsFromDni = postulantesRes.data?.map((p) => p.id) ?? [];
 
     // Agregar postulantes cuyo usuario_id coincide con un nombre/apellido
     if (idsFromNombre.length > 0) {
@@ -162,56 +361,207 @@ export default async function PostulacionesPage({
     filtroPostulanteIds = idsFromDni;
   }
 
-  // Query principal
-  let query = supabase
-    .from("postulaciones")
-    .select(
-      `
-      id,
-      estado,
-      created_at,
-      postulante_id,
-      postulantes!postulante_id(
-        id,
-        usuario_id,
-        dni,
-        usuarios!usuario_id(nombre, apellido)
-      ),
-      ofertas!oferta_id(id, titulo, empresa_nombre)
-    `,
-      { count: "exact" }
-    )
-    .order("created_at", { ascending: false })
-    .range(from, to);
-
-  // Filtro de estado
-  if (estado === "pendiente") {
-    query = query.in("estado", ["recibida", "en_revision"]);
-  } else {
-    query = query.eq("estado", estado);
-  }
-
-  if (ofertaId) {
-    query = query.eq("oferta_id", ofertaId);
-  }
-
-  if (filtroPostulanteIds !== null) {
-    // Si la búsqueda no encontró coincidencias, forzar resultado vacío
-    const ids =
-      filtroPostulanteIds.length > 0
+  // Si la búsqueda no encontró coincidencias, forzar resultado vacío
+  const idsBusqueda =
+    filtroPostulanteIds === null
+      ? null
+      : filtroPostulanteIds.length > 0
         ? filtroPostulanteIds
-        : ["00000000-0000-0000-0000-000000000000"];
-    query = query.in("postulante_id", ids);
+        : [ID_INEXISTENTE];
+
+  let filas: Fila[];
+  let paginaActual: number;
+  let total: number;
+
+  if (estado === "contratado") {
+    const resultado = await consultarPagina<ContratacionRow>(pagina, (desde, hasta) => {
+      let query = supabase
+        .from("derivaciones")
+        .select(
+          `
+          id,
+          fecha_respuesta,
+          updated_at,
+          postulaciones!inner(
+            id,
+            postulante_id,
+            oferta_id,
+            postulantes!postulante_id(
+              id,
+              usuario_id,
+              dni,
+              usuarios!usuario_id(nombre, apellido)
+            ),
+            ofertas!oferta_id(id, titulo, empresa_nombre)
+          )
+        `,
+          { count: "exact" }
+        )
+        .eq("estado_empresa", "contratado");
+
+      if (ofertaId) query = query.eq("postulaciones.oferta_id", ofertaId);
+      if (idsBusqueda) query = query.in("postulaciones.postulante_id", idsBusqueda);
+
+      // fecha_respuesta es la fecha de contratación (la fija el trigger de
+      // derivaciones); updated_at cubre filas viejas que no la tengan.
+      return query
+        .order("fecha_respuesta", { ascending: false, nullsFirst: false })
+        .order("updated_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(desde, hasta)
+        .overrideTypes<ContratacionRow[], { merge: false }>();
+    });
+
+    if (!resultado.ok) {
+      const ref = logError("admin_postulaciones_contratados", resultado.error);
+      return <ErrorListado className="mt-4" refError={ref} />;
+    }
+
+    filas = resultado.filas.map((d) => ({
+      postulacionId: d.postulaciones.id,
+      postulante: d.postulaciones.postulantes,
+      oferta: d.postulaciones.ofertas,
+      fecha: d.fecha_respuesta ?? d.updated_at,
+      badge: BADGE_ESTADO_VISIBLE.contratado,
+    }));
+    paginaActual = resultado.pagina;
+    total = resultado.total;
+  } else if (estado === "rechazada_municipalidad") {
+    const resultado = await consultarPagina<NoSeleccionadaRow>(pagina, async (desde, hasta) => {
+      let query = supabase.rpc("postulaciones_no_seleccionadas", undefined, {
+        count: "exact",
+      });
+
+      if (ofertaId) query = query.eq("oferta_id", ofertaId);
+      if (idsBusqueda) query = query.in("postulante_id", idsBusqueda);
+
+      const respuesta = await query
+        .order("fecha_rechazo", { ascending: false })
+        .order("postulacion_id", { ascending: false })
+        .range(desde, hasta);
+      const data: NoSeleccionadaRow[] | null = respuesta.data;
+      return { data, count: respuesta.count, error: respuesta.error };
+    });
+
+    if (!resultado.ok) {
+      const ref = logError("admin_postulaciones_no_seleccionadas", resultado.error);
+      return <ErrorListado className="mt-4" refError={ref} />;
+    }
+
+    filas = resultado.filas.map((r) => ({
+      postulacionId: r.postulacion_id,
+      postulante: r.usuario_id
+        ? {
+            id: r.postulante_id,
+            usuario_id: r.usuario_id,
+            dni: r.dni,
+            usuarios:
+              r.nombre !== null && r.apellido !== null
+                ? { nombre: r.nombre, apellido: r.apellido }
+                : null,
+          }
+        : null,
+      oferta: {
+        id: r.oferta_id,
+        titulo: r.oferta_titulo,
+        empresa_nombre: r.empresa_nombre ?? "",
+      },
+      fecha: r.fecha_rechazo,
+      badge:
+        BADGE_ESTADO_VISIBLE[
+          r.rechazado_por === "empresa" ? "no_seleccionado_empresa" : "no_seleccionado_oficina"
+        ],
+    }));
+    paginaActual = resultado.pagina;
+    total = resultado.total;
+  } else {
+    const resultado = await consultarPagina<PostulacionRow>(pagina, (desde, hasta) => {
+      const columnas = `
+        id,
+        estado,
+        created_at,
+        postulante_id,
+        postulantes!postulante_id(
+          id,
+          usuario_id,
+          dni,
+          usuarios!usuario_id(nombre, apellido)
+        ),
+        ofertas!oferta_id(id, titulo, empresa_nombre)
+      `;
+
+      // "Derivadas" se filtra por el estado de la derivación (relación 1 a 1).
+      let query = supabase
+        .from("postulaciones")
+        .select(
+          estado === "derivada"
+            ? `${columnas}, derivaciones!inner(estado_empresa)`
+            : `${columnas}, derivaciones(estado_empresa)`,
+          { count: "exact" }
+        );
+
+      if (estado === "pendiente") {
+        query = query.in("estado", ["recibida", "en_revision"]);
+      } else {
+        query = query
+          .eq("estado", "derivada")
+          .in("derivaciones.estado_empresa", DERIVACION_ABIERTA);
+      }
+
+      if (ofertaId) query = query.eq("oferta_id", ofertaId);
+      if (idsBusqueda) query = query.in("postulante_id", idsBusqueda);
+
+      return query
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(desde, hasta)
+        .overrideTypes<PostulacionRow[], { merge: false }>();
+    });
+
+    if (!resultado.ok) {
+      const ref = logError("admin_postulaciones_listado", resultado.error, { estado });
+      return <ErrorListado className="mt-4" refError={ref} />;
+    }
+
+    filas = resultado.filas.map((r) => ({
+      postulacionId: r.id,
+      postulante: r.postulantes,
+      oferta: r.ofertas,
+      fecha: r.created_at,
+      badge: badgePostulacion(r.estado, r.derivaciones?.estado_empresa),
+    }));
+    paginaActual = resultado.pagina;
+    total = resultado.total;
   }
 
-  const { data, count } = await query;
-  const rows = (data ?? []) as unknown as PostulacionRow[];
-  const total = count ?? 0;
-  const totalPages = Math.ceil(total / PAGE_SIZE);
+  if (filas.length === 0) {
+    return q || ofertaId ? (
+      <EstadoVacio
+        tipo="sin-resultados"
+        className="mt-4"
+        titulo="No se encontraron postulaciones con los filtros aplicados"
+        hrefLimpiar={hrefConParams(RUTA, {}, { estado })}
+      />
+    ) : (
+      <EstadoVacio
+        tipo="sin-registros"
+        className="mt-4"
+        icono={ClipboardList}
+        titulo={TEXTO_VACIO[estado]}
+      />
+    );
+  }
+
+  const etiquetaFecha =
+    estado === "contratado"
+      ? "Contratado el"
+      : estado === "rechazada_municipalidad"
+        ? "Rechazado el"
+        : "Fecha";
 
   // Avatares en batch
-  const usuarioIds = rows
-    .map((r) => r.postulantes?.usuario_id)
+  const usuarioIds = filas
+    .map((f) => f.postulante?.usuario_id)
     .filter((id): id is string => Boolean(id));
 
   const avatarMap = new Map<
@@ -253,140 +603,8 @@ export default async function PostulacionesPage({
     }
   }
 
-  const pendientesTotal = (cRecibidas ?? 0) + (cRevision ?? 0);
-
   return (
-    <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/admin" className="hover:text-foreground">
-          Panel
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">Postulaciones</span>
-      </div>
-
-      <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-        Postulaciones
-      </h1>
-
-      {/* Contadores */}
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
-          <p className="text-xs font-medium text-muted-foreground">Recibidas</p>
-          <p className="mt-1 text-2xl font-bold text-foreground">
-            {cRecibidas ?? 0}
-          </p>
-        </div>
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
-          <p className="text-xs font-medium text-muted-foreground">
-            En revisión
-          </p>
-          <p className="mt-1 text-2xl font-bold text-blue-700">
-            {cRevision ?? 0}
-          </p>
-        </div>
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
-          <p className="text-xs font-medium text-muted-foreground">Derivadas</p>
-          <p className="mt-1 text-2xl font-bold text-primary">
-            {cDerivadas ?? 0}
-          </p>
-        </div>
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
-          <p className="text-xs font-medium text-muted-foreground">
-            No seleccionadas
-          </p>
-          <p className="mt-1 text-2xl font-bold text-red-600">
-            {cRechazadas ?? 0}
-          </p>
-        </div>
-      </div>
-
-      {/* Barra de pestañas de estado */}
-      <div className="mt-6 flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
-        {ESTADOS_FILTRO.map((tab) => (
-          <Link
-            key={tab}
-            href={buildHref({
-              estado: tab,
-              oferta_id: ofertaId || undefined,
-              q: q || undefined,
-            })}
-            className={
-              tab === estado
-                ? "flex-1 rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
-                : "flex-1 rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
-            }
-          >
-            {LABEL_FILTRO[tab]}
-            {tab === "pendiente" && pendientesTotal > 0 && (
-              <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/20 px-1 text-xs font-semibold text-primary">
-                {pendientesTotal}
-              </span>
-            )}
-          </Link>
-        ))}
-      </div>
-
-      {/* Filtros de búsqueda */}
-      <form
-        method="GET"
-        action="/admin/postulaciones"
-        className="mt-4 flex flex-wrap gap-3"
-      >
-        <input type="hidden" name="estado" value={estado} />
-        <input
-          type="search"
-          name="q"
-          defaultValue={q}
-          placeholder="Nombre, apellido o DNI…"
-          className="h-9 flex-1 min-w-[180px] rounded-lg border border-border bg-surface px-3 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
-        />
-        <select
-          name="oferta_id"
-          defaultValue={ofertaId}
-          className="h-9 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-        >
-          <option value="">Todas las ofertas</option>
-          {(ofertasDisponibles ?? []).map(
-            (o: { id: string; titulo: string; empresa_nombre: string }) => (
-              <option key={o.id} value={o.id}>
-                {o.titulo} — {o.empresa_nombre}
-              </option>
-            )
-          )}
-        </select>
-        <button
-          type="submit"
-          className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
-        >
-          Buscar
-        </button>
-        {(q || ofertaId) && (
-          <Link
-            href={buildHref({ estado })}
-            className="flex h-9 items-center px-3 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Limpiar
-          </Link>
-        )}
-      </form>
-
-      {/* Resultados */}
-      {rows.length === 0 ? (
-        <p className="py-16 text-center text-sm text-muted-foreground">
-          {q || ofertaId
-            ? "No se encontraron postulaciones con los filtros aplicados."
-            : `No hay postulaciones ${
-                estado === "pendiente"
-                  ? "pendientes de revisión"
-                  : estado === "derivada"
-                    ? "derivadas"
-                    : "no seleccionadas"
-              } en este momento.`}
-        </p>
-      ) : (
-        <>
+    <>
           {/* Tabla desktop */}
           <div className="mt-4 hidden overflow-x-auto md:block">
             <table className="w-full border-collapse text-sm">
@@ -405,7 +623,11 @@ export default async function PostulacionesPage({
                     Empresa
                   </th>
                   <th className="py-3 pr-4 font-medium text-muted-foreground">
-                    Fecha
+                    {estado === "contratado"
+                      ? "Fecha de contratación"
+                      : estado === "rechazada_municipalidad"
+                        ? "Fecha de rechazo"
+                        : "Fecha"}
                   </th>
                   <th className="py-3 pr-4 font-medium text-muted-foreground">
                     Estado
@@ -414,14 +636,13 @@ export default async function PostulacionesPage({
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => {
-                  const usuario = row.postulantes?.usuarios;
-                  const usuarioId = row.postulantes?.usuario_id ?? "";
+                {filas.map((fila) => {
+                  const usuario = fila.postulante?.usuarios;
+                  const usuarioId = fila.postulante?.usuario_id ?? "";
                   const avatar = avatarMap.get(usuarioId);
-                  const badge = BADGE_CONFIG[row.estado];
                   return (
                     <tr
-                      key={row.id}
+                      key={fila.postulacionId}
                       className="border-b border-border last:border-0"
                     >
                       <td className="py-4 pr-4">
@@ -444,33 +665,33 @@ export default async function PostulacionesPage({
                         </div>
                       </td>
                       <td className="py-4 pr-4 font-mono text-muted-foreground">
-                        {row.postulantes?.dni ?? "—"}
+                        {fila.postulante?.dni ?? "—"}
                       </td>
                       <td className="py-4 pr-4 text-foreground">
-                        {row.ofertas?.titulo ?? "—"}
+                        {fila.oferta?.titulo ?? "—"}
                       </td>
                       <td className="py-4 pr-4 text-muted-foreground">
-                        {row.ofertas?.empresa_nombre ?? "—"}
+                        {fila.oferta?.empresa_nombre ?? "—"}
                       </td>
                       <td className="py-4 pr-4 text-muted-foreground">
-                        {formatFechaCorta(row.created_at)}
+                        {formatFechaCorta(fila.fecha)}
                       </td>
                       <td className="py-4 pr-4">
                         <Badge
-                          variant={badge.variant}
-                          className={badge.className}
+                          variant={fila.badge.variant}
+                          className={fila.badge.className}
                         >
-                          {badge.label}
+                          {fila.badge.label}
                         </Badge>
                       </td>
                       <td className="py-4">
-                        <form action={abrirFicha.bind(null, row.id)}>
-                          <button
-                            type="submit"
-                            className="inline-flex h-8 items-center rounded-lg border border-border px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface-tinted"
+                        <form action={abrirFicha.bind(null, fila.postulacionId)}>
+                          <BotonFormulario
+                            textoPendiente="Abriendo…"
+                            className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface-tinted disabled:opacity-60"
                           >
                             Ver ficha
-                          </button>
+                          </BotonFormulario>
                         </form>
                       </td>
                     </tr>
@@ -482,17 +703,16 @@ export default async function PostulacionesPage({
 
           {/* Cards mobile */}
           <div className="mt-4 space-y-3 md:hidden">
-            {rows.map((row) => {
-              const usuario = row.postulantes?.usuarios;
-              const usuarioId = row.postulantes?.usuario_id ?? "";
+            {filas.map((fila) => {
+              const usuario = fila.postulante?.usuarios;
+              const usuarioId = fila.postulante?.usuario_id ?? "";
               const avatar = avatarMap.get(usuarioId);
-              const badge = BADGE_CONFIG[row.estado];
               return (
                 <div
-                  key={row.id}
+                  key={fila.postulacionId}
                   className="rounded-[var(--radius-lg)] border border-border bg-surface p-4"
                 >
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <AvatarAjustado
                         src={avatar?.url ?? null}
@@ -510,52 +730,52 @@ export default async function PostulacionesPage({
                           : "—"}
                       </p>
                     </div>
-                    <Badge variant={badge.variant} className={badge.className}>
-                      {badge.label}
+                    <Badge variant={fila.badge.variant} className={fila.badge.className}>
+                      {fila.badge.label}
                     </Badge>
                   </div>
                   <dl className="mt-3 space-y-1.5 text-sm">
                     <div className="flex gap-2">
-                      <dt className="w-20 flex-shrink-0 text-muted-foreground">
+                      <dt className="w-24 flex-shrink-0 text-muted-foreground">
                         DNI
                       </dt>
                       <dd className="font-mono text-foreground">
-                        {row.postulantes?.dni ?? "—"}
+                        {fila.postulante?.dni ?? "—"}
                       </dd>
                     </div>
                     <div className="flex gap-2">
-                      <dt className="w-20 flex-shrink-0 text-muted-foreground">
+                      <dt className="w-24 flex-shrink-0 text-muted-foreground">
                         Oferta
                       </dt>
                       <dd className="text-foreground">
-                        {row.ofertas?.titulo ?? "—"}
+                        {fila.oferta?.titulo ?? "—"}
                       </dd>
                     </div>
                     <div className="flex gap-2">
-                      <dt className="w-20 flex-shrink-0 text-muted-foreground">
+                      <dt className="w-24 flex-shrink-0 text-muted-foreground">
                         Empresa
                       </dt>
                       <dd className="text-muted-foreground">
-                        {row.ofertas?.empresa_nombre ?? "—"}
+                        {fila.oferta?.empresa_nombre ?? "—"}
                       </dd>
                     </div>
                     <div className="flex gap-2">
-                      <dt className="w-20 flex-shrink-0 text-muted-foreground">
-                        Fecha
+                      <dt className="w-24 flex-shrink-0 text-muted-foreground">
+                        {etiquetaFecha}
                       </dt>
                       <dd className="text-muted-foreground">
-                        {formatFechaCorta(row.created_at)}
+                        {formatFechaCorta(fila.fecha)}
                       </dd>
                     </div>
                   </dl>
                   <div className="mt-4">
-                    <form action={abrirFicha.bind(null, row.id)}>
-                      <button
-                        type="submit"
-                        className="inline-flex h-9 items-center rounded-lg border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-tinted"
+                    <form action={abrirFicha.bind(null, fila.postulacionId)}>
+                      <BotonFormulario
+                        textoPendiente="Abriendo…"
+                        className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-tinted disabled:opacity-60"
                       >
                         Ver ficha
-                      </button>
+                      </BotonFormulario>
                     </form>
                   </div>
                 </div>
@@ -563,44 +783,13 @@ export default async function PostulacionesPage({
             })}
           </div>
 
-          {/* Paginación */}
-          {totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-between text-sm">
-              <p className="text-muted-foreground">
-                Mostrando {from + 1}–{Math.min(to + 1, total)} de {total}
-              </p>
-              <div className="flex gap-2">
-                {page > 1 && (
-                  <Link
-                    href={buildHref({
-                      estado,
-                      oferta_id: ofertaId || undefined,
-                      q: q || undefined,
-                      page: page - 1,
-                    })}
-                    className="inline-flex h-9 items-center rounded-lg border border-border px-4 text-foreground transition-colors hover:bg-surface-tinted"
-                  >
-                    Anterior
-                  </Link>
-                )}
-                {page < totalPages && (
-                  <Link
-                    href={buildHref({
-                      estado,
-                      oferta_id: ofertaId || undefined,
-                      q: q || undefined,
-                      page: page + 1,
-                    })}
-                    className="inline-flex h-9 items-center rounded-lg border border-border px-4 text-foreground transition-colors hover:bg-surface-tinted"
-                  >
-                    Siguiente
-                  </Link>
-                )}
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </section>
+          <Paginacion
+            className="mt-6"
+            ruta={RUTA}
+            searchParams={searchParams}
+            pagina={paginaActual}
+            total={total}
+          />
+    </>
   );
 }

@@ -2,16 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { logError } from "@/lib/logger";
+import { err, errConRef, okMsg, type Resultado, type ResultadoError } from "@/lib/resultado";
 
-type ActionResult = { error?: string };
-
-async function verificarMunicipalidad(): Promise<{ error: string } | { userId: string }> {
+async function verificarMunicipalidad(): Promise<{ ok: true; userId: string } | ResultadoError> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return { error: "No autenticado." };
+  if (!user) return err("NO_AUTENTICADO");
 
   const { data: usuario } = await supabase
     .from("usuarios")
@@ -19,11 +19,9 @@ async function verificarMunicipalidad(): Promise<{ error: string } | { userId: s
     .eq("id", user.id)
     .single();
 
-  if (!usuario || usuario.rol !== "municipalidad") {
-    return { error: "No tenés permiso para realizar esta acción." };
-  }
+  if (!usuario || usuario.rol !== "municipalidad") return err("SIN_PERMISO");
 
-  return { userId: user.id };
+  return { ok: true, userId: user.id };
 }
 
 function revalidarOfertas(ofertaId: string) {
@@ -35,9 +33,9 @@ function revalidarOfertas(ofertaId: string) {
   revalidatePath("/admin/postulaciones");
 }
 
-export async function aprobarOferta(ofertaId: string): Promise<ActionResult> {
+export async function aprobarOferta(ofertaId: string): Promise<Resultado<void>> {
   const auth = await verificarMunicipalidad();
-  if ("error" in auth) return auth;
+  if (!auth.ok) return auth;
 
   const supabase = await createSupabaseServerClient();
 
@@ -47,9 +45,9 @@ export async function aprobarOferta(ofertaId: string): Promise<ActionResult> {
     .eq("id", ofertaId)
     .single();
 
-  if (!oferta) return { error: "Oferta no encontrada." };
+  if (!oferta) return err("NO_ENCONTRADO", "Oferta no encontrada.");
   if (oferta.estado !== "pendiente_aprobacion") {
-    return { error: "Solo se puede aprobar una oferta pendiente de revisión." };
+    return err("ESTADO_INVALIDO", "Solo se puede aprobar una oferta pendiente de revisión.");
   }
 
   const ahora = new Date().toISOString();
@@ -68,26 +66,27 @@ export async function aprobarOferta(ofertaId: string): Promise<ActionResult> {
     .select("id");
 
   if (error) {
-    console.error("[aprobarOferta]", error);
-    return { error: "No se pudo aprobar la oferta. Intentá de nuevo." };
+    const ref = logError("aprobarOferta", error, { ofertaId });
+    return errConRef("ERROR_INTERNO", "No se pudo aprobar la oferta. Intentá de nuevo.", ref);
   }
   if (!data || data.length === 0) {
-    return { error: "No se pudo completar la acción." };
+    const ref = logError("aprobarOferta:noRow", null, { ofertaId });
+    return errConRef("ERROR_INTERNO", "No se pudo completar la acción.", ref);
   }
 
   revalidarOfertas(ofertaId);
-  return {};
+  return okMsg("Oferta aprobada.");
 }
 
 export async function rechazarOferta(
   ofertaId: string,
   motivo: string
-): Promise<ActionResult> {
+): Promise<Resultado<void>> {
   const auth = await verificarMunicipalidad();
-  if ("error" in auth) return auth;
+  if (!auth.ok) return auth;
 
   const motivoTrimmed = motivo.trim();
-  if (!motivoTrimmed) return { error: "El motivo del rechazo es obligatorio." };
+  if (!motivoTrimmed) return err("DATOS_INVALIDOS", "El motivo del rechazo es obligatorio.");
 
   const supabase = await createSupabaseServerClient();
 
@@ -97,9 +96,9 @@ export async function rechazarOferta(
     .eq("id", ofertaId)
     .single();
 
-  if (!oferta) return { error: "Oferta no encontrada." };
+  if (!oferta) return err("NO_ENCONTRADO", "Oferta no encontrada.");
   if (oferta.estado !== "pendiente_aprobacion") {
-    return { error: "Solo se puede rechazar una oferta pendiente de revisión." };
+    return err("ESTADO_INVALIDO", "Solo se puede rechazar una oferta pendiente de revisión.");
   }
 
   const ahora = new Date().toISOString();
@@ -117,13 +116,14 @@ export async function rechazarOferta(
     .select("id");
 
   if (error) {
-    console.error("[rechazarOferta]", error);
-    return { error: "No se pudo rechazar la oferta. Intentá de nuevo." };
+    const ref = logError("rechazarOferta", error, { ofertaId });
+    return errConRef("ERROR_INTERNO", "No se pudo rechazar la oferta. Intentá de nuevo.", ref);
   }
   if (!data || data.length === 0) {
-    return { error: "No se pudo completar la acción." };
+    const ref = logError("rechazarOferta:noRow", null, { ofertaId });
+    return errConRef("ERROR_INTERNO", "No se pudo completar la acción.", ref);
   }
 
   revalidarOfertas(ofertaId);
-  return {};
+  return okMsg("Oferta rechazada.");
 }

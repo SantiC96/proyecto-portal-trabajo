@@ -1,17 +1,37 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { logError } from "@/lib/logger";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { DatosCandidato } from "@/components/admin/datos-candidato";
 import { obtenerCandidato } from "@/lib/admin/candidato";
 import {
-  BADGE_CONFIG,
+  badgePostulacion,
   type EstadoPostulacion,
 } from "@/lib/admin/postulacion-estados";
+import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 import { AsignarCursoDialog } from "../asignar-curso-dialog";
+import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
 import { formatFechaCorta } from "@/lib/fechas";
+import {
+  consultarPagina,
+  leerPagina,
+  type ParamsUrl,
+  type ResultadoPagina,
+} from "@/lib/paginacion";
+import { Paginacion } from "@/components/ui/paginacion";
+import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
+import { BookOpen, Briefcase, ThumbsDown } from "lucide-react";
+import {
+  UMBRAL_RECHAZOS_CURSO,
+  VENTANA_RECHAZOS_DIAS,
+  rechazoCuentaParaCurso,
+  textoRechazos,
+  type EstadoAsignacionCurso,
+  type EstadoCursosPostulante,
+} from "@/lib/cursos";
 
 export const metadata: Metadata = {
   title: "Ficha postulante | Panel municipal | Portal de Empleo Funes",
@@ -25,17 +45,58 @@ function formatearFecha(iso: string) {
   });
 }
 
+const TAMANO_HISTORIAL = 10;
+
+type PostulacionHistorial = {
+  id: string;
+  estado: EstadoPostulacion;
+  created_at: string;
+  ofertas: {
+    id: string;
+    titulo: string;
+    empresa_nombre: string;
+  } | null;
+  derivaciones: { estado_empresa: EstadoDerivacionEmpresa } | null;
+};
+
+type AsignacionRow = {
+  id: string;
+  created_at: string;
+  nota: string | null;
+  estado: EstadoAsignacionCurso;
+  iniciado_en: string | null;
+  completado_en: string | null;
+  abandonado_en: string | null;
+  cursos: { id: string; nombre: string } | null;
+};
+
+type RechazoRow = {
+  id: string;
+  fecha_respuesta: string | null;
+  updated_at: string;
+  postulaciones: {
+    ofertas: { id: string; titulo: string; empresa_nombre: string } | null;
+  } | null;
+};
+
 export default async function PostulanteFichaPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ volver?: string }>;
+  searchParams: Promise<{
+    volver?: string;
+    pagina_cursos?: string;
+    pagina_postulaciones?: string;
+    pagina_rechazos?: string;
+  }>;
 }) {
-  const [{ id: postulanteId }, { volver: rawVolver }] = await Promise.all([
-    params,
-    searchParams,
-  ]);
+  const [{ id: postulanteId }, sp] = await Promise.all([params, searchParams]);
+  const rawVolver = sp.volver;
+  const paginaCursos = leerPagina(sp.pagina_cursos);
+  const paginaPostulaciones = leerPagina(sp.pagina_postulaciones);
+  const paginaRechazos = leerPagina(sp.pagina_rechazos);
+  const rutaFicha = `/admin/postulantes/${postulanteId}`;
 
   // Validar que volver solo apunte a /admin/postulantes
   const volverHref =
@@ -45,71 +106,97 @@ export default async function PostulanteFichaPage({
       : "/admin/postulantes";
 
   const supabase = await createSupabaseServerClient();
-  const [candidato, postulacionesResult, rechazosResult, asignacionesResult, cursosResult] =
-    await Promise.all([
-      obtenerCandidato(postulanteId),
-      supabase
-        .from("postulaciones")
-        .select(
-          "id, estado, created_at, ofertas!oferta_id(id, titulo, empresa_nombre)"
-        )
-        .eq("postulante_id", postulanteId)
-        .order("created_at", { ascending: false }),
-      supabase.rpc("rechazos_desde_ultimo_curso", {
-        p_postulante_id: postulanteId,
-      }),
-      supabase
-        .from("asignaciones_curso")
-        .select(
-          "id, created_at, nota, cursos!curso_id(id, nombre, descripcion, link, activo)"
-        )
-        .eq("postulante_id", postulanteId)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("cursos")
-        .select("id, nombre, descripcion")
-        .eq("activo", true)
-        .order("nombre"),
-    ]);
+  const [
+    candidato,
+    postulacionesResult,
+    estadoCursosResult,
+    asignacionesResult,
+    cursosResult,
+    rechazosResult,
+  ] = await Promise.all([
+    obtenerCandidato(postulanteId),
+    consultarPagina<PostulacionHistorial>(
+      paginaPostulaciones,
+      (desde, hasta) =>
+        supabase
+          .from("postulaciones")
+          .select(
+            "id, estado, created_at, ofertas!oferta_id(id, titulo, empresa_nombre), derivaciones(estado_empresa)",
+            { count: "exact" }
+          )
+          .eq("postulante_id", postulanteId)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(desde, hasta)
+          .overrideTypes<PostulacionHistorial[], { merge: false }>(),
+      TAMANO_HISTORIAL
+    ),
+    supabase.rpc("estado_cursos_postulantes", {
+      p_postulante_ids: [postulanteId],
+    }),
+    consultarPagina<AsignacionRow>(
+      paginaCursos,
+      (desde, hasta) =>
+        supabase
+          .from("asignaciones_curso")
+          .select(
+            "id, created_at, nota, estado, iniciado_en, completado_en, abandonado_en, cursos!curso_id(id, nombre)",
+            { count: "exact" }
+          )
+          .eq("postulante_id", postulanteId)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(desde, hasta)
+          .overrideTypes<AsignacionRow[], { merge: false }>(),
+      TAMANO_HISTORIAL
+    ),
+    supabase
+      .from("cursos")
+      .select("id, nombre, descripcion")
+      .eq("activo", true)
+      .order("nombre"),
+    // La fecha del rechazo es fecha_respuesta, o updated_at si falta (igual
+    // que en la base); las filas sin fecha_respuesta son las más viejas.
+    consultarPagina<RechazoRow>(
+      paginaRechazos,
+      (desde, hasta) =>
+        supabase
+          .from("derivaciones")
+          .select(
+            "id, fecha_respuesta, updated_at, postulaciones!inner(postulante_id, ofertas!oferta_id(id, titulo, empresa_nombre))",
+            { count: "exact" }
+          )
+          .eq("estado_empresa", "rechazado")
+          .eq("postulaciones.postulante_id", postulanteId)
+          .order("fecha_respuesta", { ascending: false, nullsFirst: false })
+          .order("updated_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(desde, hasta)
+          .overrideTypes<RechazoRow[], { merge: false }>(),
+      TAMANO_HISTORIAL
+    ),
+  ]);
 
   if (!candidato) notFound();
 
-  type PostulacionHistorial = {
-    id: string;
-    estado: EstadoPostulacion;
-    created_at: string;
-    ofertas: {
-      id: string;
-      titulo: string;
-      empresa_nombre: string;
-    } | null;
-  };
-
-  type AsignacionRow = {
-    id: string;
-    created_at: string;
-    nota: string | null;
-    cursos: {
-      id: string;
-      nombre: string;
-      descripcion: string | null;
-      link: string | null;
-      activo: boolean;
-    } | null;
-  };
-
-  const postulaciones = (postulacionesResult.data ??
-    []) as unknown as PostulacionHistorial[];
-  if (rechazosResult.error)
-    console.error("[rechazos_desde_ultimo_curso]", rechazosResult.error);
-  const rechazos = Number(rechazosResult.data ?? 0);
-  const asignaciones = (asignacionesResult.data ?? []) as unknown as AsignacionRow[];
+  if (estadoCursosResult.error)
+    logError("estado_cursos_postulantes", estadoCursosResult.error);
+  if (!postulacionesResult.ok)
+    logError("admin_postulante_postulaciones", postulacionesResult.error);
+  if (!asignacionesResult.ok)
+    logError("admin_postulante_asignaciones", asignacionesResult.error);
+  if (!rechazosResult.ok) logError("admin_postulante_rechazos", rechazosResult.error);
+  const estadoCursos =
+    ((estadoCursosResult.data ?? []) as EstadoCursosPostulante[])[0] ?? null;
+  const rechazosVentana = Number(estadoCursos?.rechazos_ventana ?? 0);
+  const rechazosTotales = Number(estadoCursos?.rechazos_totales ?? 0);
+  const asignacionActivaEstado = estadoCursos?.asignacion_activa_estado ?? null;
   const cursosActivos = (cursosResult.data ?? []) as {
     id: string;
     nombre: string;
     descripcion: string | null;
   }[];
-  const necesitaCurso = rechazos >= 3;
+  const necesitaCurso = estadoCursos?.necesita_curso ?? false;
   const nombreCompleto = `${candidato.usuario.nombre} ${candidato.usuario.apellido}`;
 
   return (
@@ -140,19 +227,34 @@ export default async function PostulanteFichaPage({
             <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
               {nombreCompleto}
             </h1>
-            {necesitaCurso && (
+            {necesitaCurso ? (
               <span className="mt-1 inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
-                Necesita curso · {rechazos} rechazo{rechazos !== 1 ? "s" : ""} desde el último
+                Necesita curso · {textoRechazos(rechazosVentana)} en {VENTANA_RECHAZOS_DIAS} días
               </span>
+            ) : (
+              asignacionActivaEstado && (
+                <EstadoCursoBadge estado={asignacionActivaEstado} className="mt-1" />
+              )
             )}
           </div>
         </div>
-        <AsignarCursoDialog
-          postulanteId={postulanteId}
-          postulanteNombre={nombreCompleto}
-          cursosActivos={cursosActivos}
-          destacado={necesitaCurso}
-        />
+        {asignacionActivaEstado ? (
+          <a
+            href="#rechazos-y-cursos"
+            className="inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground"
+          >
+            Ya tiene un curso pendiente
+          </a>
+        ) : (
+          necesitaCurso && (
+            <AsignarCursoDialog
+              postulanteId={postulanteId}
+              postulanteNombre={nombreCompleto}
+              cursosActivos={cursosActivos}
+              destacado
+            />
+          )
+        )}
       </div>
 
       <div className="mt-8 space-y-6">
@@ -165,229 +267,332 @@ export default async function PostulanteFichaPage({
           cvUrl={candidato.cvUrl}
         />
 
-        {/* Cursos asignados */}
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="font-semibold text-foreground">
-              Cursos asignados ({asignaciones.length})
-            </h2>
-            {rechazos > 0 && (
-              <span className="text-sm text-muted-foreground">
-                {rechazos} rechazo{rechazos !== 1 ? "s" : ""} desde el último curso
-              </span>
-            )}
-          </div>
+        {/* Rechazos y cursos */}
+        <div
+          id="rechazos-y-cursos"
+          className="rounded-[var(--radius-lg)] border border-border bg-surface p-5"
+        >
+          <h2 className="font-semibold text-foreground">Rechazos y cursos</h2>
 
-          {asignaciones.length === 0 ? (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Todavía no se asignó ningún curso a este postulante.
-            </p>
-          ) : (
-            <>
-              {/* Tabla md+ */}
-              <div className="mt-4 hidden overflow-x-auto md:block">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left">
-                      <th className="pb-2 pr-4 font-medium text-muted-foreground">
-                        Curso
-                      </th>
-                      <th className="pb-2 pr-4 font-medium text-muted-foreground">
-                        Fecha
-                      </th>
-                      <th className="pb-2 pr-4 font-medium text-muted-foreground">
-                        Estado
-                      </th>
-                      <th className="pb-2 font-medium text-muted-foreground">
-                        Nota interna
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {asignaciones.map((a) => {
-                      const curso = a.cursos;
-                      return (
-                        <tr key={a.id}>
-                          <td className="py-3 pr-4 font-medium text-foreground">
-                            {curso ? (
-                              <Link
-                                href={`/admin/cursos/${curso.id}`}
-                                className="text-primary hover:underline"
-                              >
-                                {curso.nombre}
-                              </Link>
-                            ) : (
-                              "Curso eliminado"
-                            )}
-                          </td>
-                          <td className="py-3 pr-4 text-muted-foreground">
-                            {formatFechaCorta(a.created_at)}
-                          </td>
-                          <td className="py-3 pr-4">
-                            {curso ? (
-                              <span
-                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                                  curso.activo
-                                    ? "bg-emerald-100 text-emerald-800"
-                                    : "bg-gray-100 text-gray-600"
-                                }`}
-                              >
-                                {curso.activo ? "Activo" : "Inactivo"}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </td>
-                          <td className="py-3 text-xs text-muted-foreground">
-                            {a.nota ?? "—"}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+          <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-[var(--radius-md)] bg-surface-tinted p-3">
+              <dt className="text-xs text-muted-foreground">
+                Rechazos en los últimos {VENTANA_RECHAZOS_DIAS} días
+              </dt>
+              <dd
+                className={`mt-1 text-2xl font-bold ${
+                  rechazosVentana >= UMBRAL_RECHAZOS_CURSO ? "text-amber-700" : "text-foreground"
+                }`}
+              >
+                {rechazosVentana}
+              </dd>
+              <dd className="mt-0.5 text-xs text-muted-foreground">
+                {estadoCursos?.ultimo_completado_en
+                  ? `Desde el último curso completado (${formatFechaCorta(estadoCursos.ultimo_completado_en)})`
+                  : `Con ${UMBRAL_RECHAZOS_CURSO} o más necesita curso`}
+              </dd>
+            </div>
+            <div className="rounded-[var(--radius-md)] bg-surface-tinted p-3">
+              <dt className="text-xs text-muted-foreground">Rechazos totales</dt>
+              <dd className="mt-1 text-2xl font-bold text-foreground">{rechazosTotales}</dd>
+            </div>
+            <div className="rounded-[var(--radius-md)] bg-surface-tinted p-3">
+              <dt className="text-xs text-muted-foreground">Curso</dt>
+              <dd className="mt-1.5">
+                {necesitaCurso ? (
+                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                    Necesita curso
+                  </span>
+                ) : asignacionActivaEstado ? (
+                  <EstadoCursoBadge estado={asignacionActivaEstado} />
+                ) : (
+                  <span className="text-sm text-muted-foreground">Sin curso pendiente</span>
+                )}
+              </dd>
+            </div>
+          </dl>
 
-              {/* Cards mobile */}
-              <div className="mt-4 space-y-3 md:hidden">
-                {asignaciones.map((a) => {
-                  const curso = a.cursos;
-                  return (
-                    <div
-                      key={a.id}
-                      className="rounded-[var(--radius-md)] border border-border p-3 space-y-1"
-                    >
-                      <p className="text-sm font-medium text-foreground">
-                        {curso ? (
-                          <Link
-                            href={`/admin/cursos/${curso.id}`}
-                            className="text-primary hover:underline"
-                          >
-                            {curso.nombre}
-                          </Link>
-                        ) : (
-                          "Curso eliminado"
-                        )}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatFechaCorta(a.created_at)}
-                        {a.nota ? ` · ${a.nota}` : ""}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
+          {/* Rechazos */}
+          <HistorialRechazos
+            resultado={rechazosResult}
+            ultimoCompletadoEn={estadoCursos?.ultimo_completado_en ?? null}
+            ruta={rutaFicha}
+            searchParams={sp}
+          />
+
+          {/* Historial de cursos */}
+          <HistorialCursos resultado={asignacionesResult} ruta={rutaFicha} searchParams={sp} />
         </div>
 
         {/* Historial de postulaciones */}
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
-          <h2 className="font-semibold text-foreground">
-            Historial de postulaciones
-          </h2>
-
-          {postulaciones.length === 0 ? (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Todavía no se postuló a ninguna oferta.
-            </p>
-          ) : (
-            <>
-              {/* Tabla md+ */}
-              <div className="mt-4 hidden overflow-x-auto md:block">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left">
-                      <th className="pb-2 pr-4 font-medium text-muted-foreground">
-                        Oferta
-                      </th>
-                      <th className="pb-2 pr-4 font-medium text-muted-foreground">
-                        Empresa
-                      </th>
-                      <th className="pb-2 pr-4 font-medium text-muted-foreground">
-                        Fecha
-                      </th>
-                      <th className="pb-2 pr-4 font-medium text-muted-foreground">
-                        Estado
-                      </th>
-                      <th className="pb-2"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {postulaciones.map((p) => {
-                      const badgeCfg = BADGE_CONFIG[p.estado];
-                      return (
-                        <tr key={p.id}>
-                          <td className="py-3 pr-4 font-medium text-foreground">
-                            {p.ofertas?.titulo ?? "Oferta eliminada"}
-                          </td>
-                          <td className="py-3 pr-4 text-foreground">
-                            {p.ofertas?.empresa_nombre ?? "—"}
-                          </td>
-                          <td className="py-3 pr-4 text-muted-foreground">
-                            {formatearFecha(p.created_at)}
-                          </td>
-                          <td className="py-3 pr-4">
-                            <Badge
-                              variant={badgeCfg.variant}
-                              className={badgeCfg.className}
-                            >
-                              {badgeCfg.label}
-                            </Badge>
-                          </td>
-                          <td className="py-3 w-px whitespace-nowrap">
-                            <Link
-                              href={`/admin/postulaciones/${p.id}`}
-                              className="btn-secundario inline-flex items-center gap-1 whitespace-nowrap px-3 py-1.5 text-xs"
-                            >
-                              Ver ficha
-                            </Link>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Cards mobile */}
-              <div className="mt-4 space-y-3 md:hidden">
-                {postulaciones.map((p) => {
-                  const badgeCfg = BADGE_CONFIG[p.estado];
-                  return (
-                    <div
-                      key={p.id}
-                      className="rounded-[var(--radius-md)] border border-border p-3 space-y-2"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="font-medium text-foreground text-sm">
-                          {p.ofertas?.titulo ?? "Oferta eliminada"}
-                        </p>
-                        <Badge
-                          variant={badgeCfg.variant}
-                          className={badgeCfg.className}
-                        >
-                          {badgeCfg.label}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {p.ofertas?.empresa_nombre ?? "—"} ·{" "}
-                        {formatearFecha(p.created_at)}
-                      </p>
-                      <Link
-                        href={`/admin/postulaciones/${p.id}`}
-                        className="btn-secundario inline-flex items-center gap-1 whitespace-nowrap px-3 py-1.5 text-xs"
-                      >
-                        Ver ficha →
-                      </Link>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
+        <HistorialPostulaciones
+          resultado={postulacionesResult}
+          ruta={rutaFicha}
+          searchParams={sp}
+        />
       </div>
     </section>
+  );
+}
+
+type PropsHistorial<T> = {
+  resultado: ResultadoPagina<T>;
+  ruta: string;
+  searchParams: ParamsUrl;
+};
+
+const TITULO_HISTORIAL = "scroll-mt-20 text-sm font-semibold text-foreground";
+
+function HistorialRechazos({
+  resultado,
+  ultimoCompletadoEn,
+  ruta,
+  searchParams,
+}: PropsHistorial<RechazoRow> & { ultimoCompletadoEn: string | null }) {
+  const ancla = "historial-rechazos";
+  return (
+    <>
+      <h3 id={ancla} className={`mt-6 ${TITULO_HISTORIAL}`}>
+        Rechazos de empresas{resultado.ok && ` (${resultado.total})`}
+      </h3>
+      {!resultado.ok ? (
+        <ErrorListado className="mt-2" mensaje="No pudimos cargar los rechazos." />
+      ) : resultado.filas.length === 0 ? (
+        <EstadoVacio
+          tipo="sin-registros"
+          className="mt-2"
+          icono={ThumbsDown}
+          titulo="Ninguna empresa rechazó a este postulante."
+        />
+      ) : (
+        <>
+          <ul className="mt-2 divide-y divide-border rounded-[var(--radius-md)] border border-border">
+            {resultado.filas.map((r) => {
+              const fecha = r.fecha_respuesta ?? r.updated_at;
+              const oferta = r.postulaciones?.ofertas ?? null;
+              return (
+                <li
+                  key={r.id}
+                  className="flex flex-col gap-1 px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-foreground">
+                      {oferta?.titulo ?? "Oferta eliminada"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {oferta?.empresa_nombre ?? "—"}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+                    {formatFechaCorta(fecha)}
+                    {rechazoCuentaParaCurso(fecha, ultimoCompletadoEn) && (
+                      <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-800">
+                        Cuenta para el curso
+                      </span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <Paginacion
+            className="mt-3"
+            ruta={ruta}
+            searchParams={searchParams}
+            pagina={resultado.pagina}
+            total={resultado.total}
+            tamano={TAMANO_HISTORIAL}
+            parametro="pagina_rechazos"
+            ancla={ancla}
+          />
+        </>
+      )}
+    </>
+  );
+}
+
+function HistorialCursos({ resultado, ruta, searchParams }: PropsHistorial<AsignacionRow>) {
+  const ancla = "historial-cursos";
+  return (
+    <>
+      <h3 id={ancla} className={`mt-6 ${TITULO_HISTORIAL}`}>
+        Historial de cursos{resultado.ok && ` (${resultado.total})`}
+      </h3>
+      {!resultado.ok ? (
+        <ErrorListado className="mt-2" mensaje="No pudimos cargar el historial de cursos." />
+      ) : resultado.filas.length === 0 ? (
+        <EstadoVacio
+          tipo="sin-registros"
+          className="mt-2"
+          icono={BookOpen}
+          titulo="Todavía no se asignó ningún curso a este postulante."
+        />
+      ) : (
+        <>
+          <ul className="mt-2 divide-y divide-border rounded-[var(--radius-md)] border border-border">
+            {resultado.filas.map((a) => {
+              const curso = a.cursos;
+              return (
+                <li key={a.id} className="space-y-1 px-3 py-3 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {curso ? (
+                      <Link
+                        href={`/admin/cursos/${curso.id}`}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {curso.nombre}
+                      </Link>
+                    ) : (
+                      <span className="font-medium text-foreground">Curso eliminado</span>
+                    )}
+                    <EstadoCursoBadge estado={a.estado} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Asignado el {formatFechaCorta(a.created_at)}
+                    {a.iniciado_en && ` · Empezado el ${formatFechaCorta(a.iniciado_en)}`}
+                    {a.completado_en && ` · Completado el ${formatFechaCorta(a.completado_en)}`}
+                    {a.estado === "abandonado" &&
+                      a.abandonado_en &&
+                      ` · Abandonado el ${formatFechaCorta(a.abandonado_en)}`}
+                  </p>
+                  {a.nota && (
+                    <p className="text-xs text-muted-foreground">Nota interna: {a.nota}</p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <Paginacion
+            className="mt-3"
+            ruta={ruta}
+            searchParams={searchParams}
+            pagina={resultado.pagina}
+            total={resultado.total}
+            tamano={TAMANO_HISTORIAL}
+            parametro="pagina_cursos"
+            ancla={ancla}
+          />
+        </>
+      )}
+    </>
+  );
+}
+
+function HistorialPostulaciones({
+  resultado,
+  ruta,
+  searchParams,
+}: PropsHistorial<PostulacionHistorial>) {
+  const ancla = "historial-postulaciones";
+  return (
+    <div
+      id={ancla}
+      className="scroll-mt-20 rounded-[var(--radius-lg)] border border-border bg-surface p-5"
+    >
+      <h2 className="font-semibold text-foreground">
+        Historial de postulaciones{resultado.ok && ` (${resultado.total})`}
+      </h2>
+
+      {!resultado.ok ? (
+        <ErrorListado className="mt-3" mensaje="No pudimos cargar el historial de postulaciones." />
+      ) : resultado.filas.length === 0 ? (
+        <EstadoVacio
+          tipo="sin-registros"
+          className="mt-3"
+          icono={Briefcase}
+          titulo="Todavía no se postuló a ninguna oferta."
+        />
+      ) : (
+        <>
+          {/* Tabla md+ */}
+          <div className="mt-4 hidden md:block">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left">
+                  <th className="pb-2 pr-4 font-medium text-muted-foreground">Oferta</th>
+                  <th className="pb-2 pr-4 font-medium text-muted-foreground">Empresa</th>
+                  <th className="pb-2 pr-4 font-medium text-muted-foreground">Fecha</th>
+                  <th className="pb-2 pr-4 font-medium text-muted-foreground">Estado</th>
+                  <th className="pb-2"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {resultado.filas.map((p) => {
+                  const badgeCfg = badgePostulacion(p.estado, p.derivaciones?.estado_empresa);
+                  return (
+                    <tr key={p.id}>
+                      <td className="py-3 pr-4 font-medium text-foreground">
+                        {p.ofertas?.titulo ?? "Oferta eliminada"}
+                      </td>
+                      <td className="py-3 pr-4 text-foreground">
+                        {p.ofertas?.empresa_nombre ?? "—"}
+                      </td>
+                      <td className="py-3 pr-4 text-muted-foreground">
+                        {formatearFecha(p.created_at)}
+                      </td>
+                      <td className="py-3 pr-4">
+                        <Badge variant={badgeCfg.variant} className={badgeCfg.className}>
+                          {badgeCfg.label}
+                        </Badge>
+                      </td>
+                      <td className="py-3 w-px whitespace-nowrap">
+                        <Link
+                          href={`/admin/postulaciones/${p.id}`}
+                          className="btn-secundario inline-flex items-center gap-1 whitespace-nowrap px-3 py-1.5 text-xs"
+                        >
+                          Ver ficha
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Cards mobile */}
+          <div className="mt-4 space-y-3 md:hidden">
+            {resultado.filas.map((p) => {
+              const badgeCfg = badgePostulacion(p.estado, p.derivaciones?.estado_empresa);
+              return (
+                <div
+                  key={p.id}
+                  className="rounded-[var(--radius-md)] border border-border p-3 space-y-2"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <p className="font-medium text-foreground text-sm">
+                      {p.ofertas?.titulo ?? "Oferta eliminada"}
+                    </p>
+                    <Badge variant={badgeCfg.variant} className={badgeCfg.className}>
+                      {badgeCfg.label}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {p.ofertas?.empresa_nombre ?? "—"} · {formatearFecha(p.created_at)}
+                  </p>
+                  <Link
+                    href={`/admin/postulaciones/${p.id}`}
+                    className="btn-secundario inline-flex items-center gap-1 whitespace-nowrap px-3 py-1.5 text-xs"
+                  >
+                    Ver ficha →
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+
+          <Paginacion
+            className="mt-4"
+            ruta={ruta}
+            searchParams={searchParams}
+            pagina={resultado.pagina}
+            total={resultado.total}
+            tamano={TAMANO_HISTORIAL}
+            parametro="pagina_postulaciones"
+            ancla={ancla}
+          />
+        </>
+      )}
+    </div>
   );
 }

@@ -1,18 +1,37 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
+import { Briefcase } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { formatFechaCorta } from "@/lib/fechas";
+import { logError } from "@/lib/logger";
+import { dentroDeDiasISO, formatFechaCorta } from "@/lib/fechas";
+import { VencimientoOferta } from "@/components/ofertas/vencimiento-oferta";
+import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 import { getOfertaEstadoLabel } from "@/lib/oferta-estados";
+import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
+import {
+  consultarPagina,
+  hrefConParams,
+  leerPagina,
+  type ParamsUrl,
+} from "@/lib/paginacion";
+import { Buscador } from "@/components/ui/buscador";
+import { Paginacion } from "@/components/ui/paginacion";
+import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
+import { EsqueletoLista } from "@/components/ui/esqueleto";
 
 export const metadata: Metadata = {
   title: "Ofertas | Panel municipal | Portal de Empleo Funes",
 };
 
-type EstadoFiltro = "pendiente_aprobacion" | "activa" | "rechazada" | "cerrada";
+// "vencida" no es un estado de la base: es una oferta 'activa' con vence_en
+// vencido (migration_036). Se muestra aparte porque ya no se ve en el portal.
+type EstadoFiltro = "pendiente_aprobacion" | "activa" | "vencida" | "rechazada" | "cerrada";
 
 const ESTADOS_FILTRO: EstadoFiltro[] = [
   "pendiente_aprobacion",
   "activa",
+  "vencida",
   "rechazada",
   "cerrada",
 ];
@@ -20,6 +39,7 @@ const ESTADOS_FILTRO: EstadoFiltro[] = [
 const LABEL_FILTRO: Record<EstadoFiltro, string> = {
   pendiente_aprobacion: "Pendientes",
   activa: "Activas",
+  vencida: "Vencidas",
   rechazada: "Rechazadas",
   cerrada: "Cerradas",
 };
@@ -27,6 +47,7 @@ const LABEL_FILTRO: Record<EstadoFiltro, string> = {
 const ESTADO_STYLE: Record<EstadoFiltro, string> = {
   pendiente_aprobacion: "bg-amber-100 text-amber-800",
   activa: "bg-emerald-100 text-emerald-800",
+  vencida: "bg-red-100 text-red-700",
   rechazada: "bg-red-100 text-red-700",
   cerrada: "bg-gray-100 text-gray-600",
 };
@@ -38,50 +59,34 @@ type OfertaRow = {
   created_at: string;
   estado: string;
   contenido_editado_en: string | null;
+  vence_en: string | null;
 };
 
-function buildHref(params: {
-  estado?: string;
-  q?: string;
-  page?: number;
-}) {
-  const url = new URLSearchParams();
-  if (params.estado) url.set("estado", params.estado);
-  if (params.q) url.set("q", params.q);
-  if (params.page && params.page > 1) url.set("page", String(params.page));
-  const qs = url.toString();
-  return `/admin/ofertas${qs ? `?${qs}` : ""}`;
-}
-
-const PAGE_SIZE = 20;
+const RUTA = "/admin/ofertas";
 
 export default async function AdminOfertasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ estado?: string; q?: string; page?: string }>;
+  searchParams: Promise<{ estado?: string; q?: string; pagina?: string }>;
 }) {
-  const {
-    estado: rawEstado,
-    q: rawQ = "",
-    page: rawPage = "1",
-  } = await searchParams;
+  const sp = await searchParams;
 
   const estado: EstadoFiltro = ESTADOS_FILTRO.includes(
-    rawEstado as EstadoFiltro
+    sp.estado as EstadoFiltro
   )
-    ? (rawEstado as EstadoFiltro)
+    ? (sp.estado as EstadoFiltro)
     : "pendiente_aprobacion";
 
-  const q = rawQ.trim();
-  const page = Math.max(1, parseInt(rawPage, 10) || 1);
-  const from = (page - 1) * PAGE_SIZE;
-  const to = from + PAGE_SIZE - 1;
+  const q = limpiarBusqueda(sp.q);
+  const pagina = leerPagina(sp.pagina);
 
   const supabase = await createSupabaseServerClient();
 
+  const ahora = dentroDeDiasISO(0);
   const [
     { count: cPendientes },
     { count: cActivas },
+    { count: cVencidas },
     { count: cRechazadas },
     { count: cCerradas },
   ] = await Promise.all([
@@ -92,7 +97,13 @@ export default async function AdminOfertasPage({
     supabase
       .from("ofertas")
       .select("*", { count: "exact", head: true })
-      .eq("estado", "activa"),
+      .eq("estado", "activa")
+      .gt("vence_en", ahora),
+    supabase
+      .from("ofertas")
+      .select("*", { count: "exact", head: true })
+      .eq("estado", "activa")
+      .lte("vence_en", ahora),
     supabase
       .from("ofertas")
       .select("*", { count: "exact", head: true })
@@ -102,26 +113,6 @@ export default async function AdminOfertasPage({
       .select("*", { count: "exact", head: true })
       .eq("estado", "cerrada"),
   ]);
-
-  let query = supabase
-    .from("ofertas")
-    .select(
-      "id, titulo, empresa_nombre, created_at, estado, contenido_editado_en",
-      { count: "exact" }
-    )
-    .eq("estado", estado)
-    // Pendientes: de más vieja a más nueva (más urgentes primero)
-    .order("created_at", { ascending: estado === "pendiente_aprobacion" })
-    .range(from, to);
-
-  if (q) {
-    query = query.ilike("titulo", `%${q}%`);
-  }
-
-  const { data, count } = await query;
-  const rows = (data ?? []) as unknown as OfertaRow[];
-  const total = count ?? 0;
-  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
@@ -139,7 +130,7 @@ export default async function AdminOfertasPage({
       </h1>
 
       {/* Contadores */}
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
         <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
           <p className="text-xs font-medium text-muted-foreground">Pendientes</p>
           <p className="mt-1 text-2xl font-bold text-amber-700">
@@ -150,6 +141,12 @@ export default async function AdminOfertasPage({
           <p className="text-xs font-medium text-muted-foreground">Activas</p>
           <p className="mt-1 text-2xl font-bold text-emerald-700">
             {cActivas ?? 0}
+          </p>
+        </div>
+        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
+          <p className="text-xs font-medium text-muted-foreground">Vencidas</p>
+          <p className="mt-1 text-2xl font-bold text-red-600">
+            {cVencidas ?? 0}
           </p>
         </div>
         <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
@@ -167,15 +164,15 @@ export default async function AdminOfertasPage({
       </div>
 
       {/* Barra de pestañas */}
-      <div className="mt-6 flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
+      <div className="mt-6 flex gap-1 overflow-x-auto rounded-[var(--radius-md)] border border-border bg-surface p-1">
         {ESTADOS_FILTRO.map((tab) => (
           <Link
             key={tab}
-            href={buildHref({ estado: tab, q: q || undefined })}
+            href={hrefConParams(RUTA, {}, { estado: tab, q: sp.q ?? null })}
             className={
               tab === estado
-                ? "flex-1 rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
-                : "flex-1 rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+                ? "flex-1 whitespace-nowrap rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
+                : "flex-1 whitespace-nowrap rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
             }
           >
             {LABEL_FILTRO[tab]}
@@ -184,44 +181,84 @@ export default async function AdminOfertasPage({
       </div>
 
       {/* Búsqueda */}
-      <form
-        method="GET"
-        action="/admin/ofertas"
-        className="mt-4 flex gap-3"
-      >
-        <input type="hidden" name="estado" value={estado} />
-        <input
-          type="search"
-          name="q"
-          defaultValue={q}
-          placeholder="Buscar por título…"
-          className="h-9 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
-        />
-        <button
-          type="submit"
-          className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
-        >
-          Buscar
-        </button>
-        {q && (
-          <Link
-            href={buildHref({ estado })}
-            className="flex h-9 items-center px-3 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Limpiar
-          </Link>
-        )}
-      </form>
+      <Buscador className="mt-4" placeholder="Buscar por título…" />
 
       {/* Resultados */}
-      {rows.length === 0 ? (
-        <p className="py-16 text-center text-sm text-muted-foreground">
-          {q
-            ? "No se encontraron ofertas con ese título."
-            : `No hay ofertas ${LABEL_FILTRO[estado].toLowerCase()} en este momento.`}
-        </p>
-      ) : (
-        <>
+      <Suspense
+        key={JSON.stringify({ estado, q, pagina })}
+        fallback={<EsqueletoLista filas={5} className="mt-4" />}
+      >
+        <ListadoOfertas estado={estado} q={q} pagina={pagina} searchParams={sp} />
+      </Suspense>
+    </section>
+  );
+}
+
+async function ListadoOfertas({
+  estado,
+  q,
+  pagina,
+  searchParams,
+}: {
+  estado: EstadoFiltro;
+  q: string;
+  pagina: number;
+  searchParams: ParamsUrl;
+}) {
+  const supabase = await createSupabaseServerClient();
+  // Pendientes: de más vieja a más nueva (más urgentes primero)
+  const ascendente = estado === "pendiente_aprobacion";
+
+  const resultado = await consultarPagina<OfertaRow>(pagina, (desde, hasta) => {
+    let query = supabase
+      .from("ofertas")
+      .select(
+        "id, titulo, empresa_nombre, created_at, estado, contenido_editado_en, vence_en",
+        { count: "exact" }
+      );
+    if (estado === "activa") {
+      query = query.eq("estado", "activa").gt("vence_en", dentroDeDiasISO(0));
+    } else if (estado === "vencida") {
+      query = query.eq("estado", "activa").lte("vence_en", dentroDeDiasISO(0));
+    } else {
+      query = query.eq("estado", estado);
+    }
+    if (q) query = query.ilike("titulo", patronIlike(q));
+    return query
+      .order("created_at", { ascending: ascendente })
+      .order("id", { ascending: ascendente })
+      .range(desde, hasta)
+      .overrideTypes<OfertaRow[], { merge: false }>();
+  });
+
+  if (!resultado.ok) {
+    const ref = logError("admin_ofertas_listado", resultado.error, { estado });
+    return <ErrorListado className="mt-4" refError={ref} />;
+  }
+
+  const rows = resultado.filas;
+
+  if (rows.length === 0) {
+    return q ? (
+      <EstadoVacio
+        tipo="sin-resultados"
+        className="mt-4"
+        titulo="No se encontraron ofertas con ese título"
+        hrefLimpiar={hrefConParams(RUTA, {}, { estado })}
+        textoLimpiar="Limpiar búsqueda"
+      />
+    ) : (
+      <EstadoVacio
+        tipo="sin-registros"
+        className="mt-4"
+        icono={Briefcase}
+        titulo={`No hay ofertas ${LABEL_FILTRO[estado].toLowerCase()} en este momento.`}
+      />
+    );
+  }
+
+  return (
+    <>
           {/* Tabla desktop */}
           <div className="mt-4 hidden overflow-x-auto md:block">
             <table className="w-full border-collapse text-sm">
@@ -257,6 +294,11 @@ export default async function AdminOfertasPage({
                           </span>
                         )}
                       </div>
+                      <VencimientoOferta
+                        className="mt-1 font-normal"
+                        estado={row.estado}
+                        venceEn={row.vence_en}
+                      />
                     </td>
                     <td className="py-4 pr-4 text-muted-foreground">
                       {row.empresa_nombre}
@@ -266,9 +308,9 @@ export default async function AdminOfertasPage({
                     </td>
                     <td className="py-4 pr-4">
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ESTADO_STYLE[row.estado as EstadoFiltro] ?? "bg-gray-100 text-gray-600"}`}
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ESTADO_STYLE[estadoVisible(row)] ?? "bg-gray-100 text-gray-600"}`}
                       >
-                        {getOfertaEstadoLabel(row.estado)}
+                        {etiquetaEstado(row)}
                       </span>
                     </td>
                     <td className="py-4">
@@ -300,11 +342,16 @@ export default async function AdminOfertasPage({
                         Modificada
                       </span>
                     )}
+                    <VencimientoOferta
+                      className="mt-1"
+                      estado={row.estado}
+                      venceEn={row.vence_en}
+                    />
                   </div>
                   <span
-                    className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ESTADO_STYLE[row.estado as EstadoFiltro] ?? "bg-gray-100 text-gray-600"}`}
+                    className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ESTADO_STYLE[estadoVisible(row)] ?? "bg-gray-100 text-gray-600"}`}
                   >
-                    {getOfertaEstadoLabel(row.estado)}
+                    {etiquetaEstado(row)}
                   </span>
                 </div>
                 <dl className="mt-3 space-y-1.5 text-sm">
@@ -335,42 +382,22 @@ export default async function AdminOfertasPage({
             ))}
           </div>
 
-          {/* Paginación */}
-          {totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-between text-sm">
-              <p className="text-muted-foreground">
-                Mostrando {from + 1}–{Math.min(to + 1, total)} de {total}
-              </p>
-              <div className="flex gap-2">
-                {page > 1 && (
-                  <Link
-                    href={buildHref({
-                      estado,
-                      q: q || undefined,
-                      page: page - 1,
-                    })}
-                    className="inline-flex h-9 items-center rounded-lg border border-border px-4 text-foreground transition-colors hover:bg-surface-tinted"
-                  >
-                    Anterior
-                  </Link>
-                )}
-                {page < totalPages && (
-                  <Link
-                    href={buildHref({
-                      estado,
-                      q: q || undefined,
-                      page: page + 1,
-                    })}
-                    className="inline-flex h-9 items-center rounded-lg border border-border px-4 text-foreground transition-colors hover:bg-surface-tinted"
-                  >
-                    Siguiente
-                  </Link>
-                )}
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </section>
+          <Paginacion
+            className="mt-6"
+            ruta={RUTA}
+            searchParams={searchParams}
+            pagina={resultado.pagina}
+            total={resultado.total}
+          />
+    </>
   );
+}
+
+function estadoVisible(row: OfertaRow): EstadoFiltro {
+  if (estadoVencimiento(row.estado, row.vence_en).vencida) return "vencida";
+  return row.estado as EstadoFiltro;
+}
+
+function etiquetaEstado(row: OfertaRow): string {
+  return estadoVisible(row) === "vencida" ? "Vencida" : getOfertaEstadoLabel(row.estado);
 }

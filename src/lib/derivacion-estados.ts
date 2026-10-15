@@ -24,3 +24,10 @@ export const DERIVACION_ESTADO_STYLE: Record<
 export function esFinalEmpresa(estado: EstadoDerivacionEmpresa): boolean {
   return estado === "contratado" || estado === "rechazado";
 }
+
+/**
+ * Días después de la entrevista a partir de los cuales una derivación que
+ * sigue en "Por contactar" o "Entrevista coordinada" se considera sin
+ * resultado de la empresa (recordatorio de contratación, migration_037).
+ */
+export const DIAS_SIN_RESULTADO = 3;

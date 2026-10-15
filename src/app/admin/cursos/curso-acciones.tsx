@@ -1,7 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { toggleActivoCurso, eliminarCurso } from "./actions";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
+import { useAccion } from "@/lib/use-accion";
+import { Spinner } from "@/components/ui/spinner";
 
 type Props = {
   cursoId: string;
@@ -10,14 +14,15 @@ type Props = {
 };
 
 export function CursoAcciones({ cursoId, activo, tieneAsignaciones }: Props) {
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<ErrorAccion | null>(null);
+  const { pendiente: isPending, ejecutar } = useAccion();
 
   function handleToggle() {
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const res = await toggleActivoCurso(cursoId, !activo);
-      if (res.error) setError(res.error);
+      mostrarAviso(res);
+      if (!res.ok) setError(toErrorAccion(res));
     });
   }
 
@@ -25,15 +30,27 @@ export function CursoAcciones({ cursoId, activo, tieneAsignaciones }: Props) {
     if (!confirm("¿Seguro querés eliminar este curso? Esta acción no se puede deshacer."))
       return;
     setError(null);
-    startTransition(async () => {
+    ejecutar(async () => {
       const res = await eliminarCurso(cursoId);
-      if (res.error) setError(res.error);
+      if (!res.ok) {
+        mostrarAviso(res);
+        setError(toErrorAccion(res));
+      }
     });
   }
 
   return (
     <div className="space-y-2">
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <div>
+          <p className="text-sm text-red-600">{error.mensaje}</p>
+          {error.ref && (
+            <p className="mt-0.5 text-xs text-gray-500">
+              Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+            </p>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -41,6 +58,7 @@ export function CursoAcciones({ cursoId, activo, tieneAsignaciones }: Props) {
           disabled={isPending}
           className="btn-secundario inline-flex items-center justify-center whitespace-nowrap px-4 py-2 text-sm font-medium disabled:opacity-60"
         >
+          {isPending && <Spinner className="mr-1" />}
           {isPending ? "Guardando..." : activo ? "Desactivar" : "Activar"}
         </button>
         {!tieneAsignaciones && (

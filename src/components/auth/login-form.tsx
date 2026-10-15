@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle, CheckCircle } from "lucide-react";
 import { RegisterModal } from "@/components/auth/register-modal";
 import { login } from "@/app/auth/actions";
+import type { ErrorAccion } from "@/lib/resultado";
+import { toErrorAccion } from "@/lib/resultado";
 
 export function LoginForm({
   confirmacionError,
@@ -26,7 +28,7 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorAccion | null>(null);
 
   // Belt-and-suspenders: force the root layout to re-render after an inactivity signOut
   // so the navbar reflects the cleared session without needing a manual F5.
@@ -39,8 +41,8 @@ export function LoginForm({
     setIsLoading(true);
     setError(null);
     const result = await login({ email, password, redirectTo: redirect });
-    if (result?.error) {
-      setError(result.error);
+    if (result && !result.ok) {
+      setError(toErrorAccion(result));
       setIsLoading(false);
     }
   };
@@ -166,9 +168,16 @@ export function LoginForm({
 
           {/* Error */}
           {error && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{error}</span>
+            <div className="flex flex-col gap-1 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{error.mensaje}</span>
+              </div>
+              {error.ref && (
+                <p className="ml-6 text-xs text-gray-500">
+                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                </p>
+              )}
             </div>
           )}
 

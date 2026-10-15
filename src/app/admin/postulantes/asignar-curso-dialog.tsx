@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { asignarCurso } from "@/app/admin/cursos/actions";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
+import { useAccion } from "@/lib/use-accion";
+import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
 
 type Curso = { id: string; nombre: string; descripcion: string | null };
 
@@ -21,6 +26,8 @@ type Props = {
   postulanteNombre: string;
   cursosActivos: Curso[];
   destacado?: boolean;
+  /** Clases extra para el botón que abre el diálogo. */
+  claseBoton?: string;
 };
 
 export function AsignarCursoDialog({
@@ -28,12 +35,13 @@ export function AsignarCursoDialog({
   postulanteNombre,
   cursosActivos,
   destacado = false,
+  claseBoton,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [cursoId, setCursoId] = useState(cursosActivos[0]?.id ?? "");
   const [nota, setNota] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<ErrorAccion | null>(null);
+  const { pendiente: isPending, ejecutar } = useAccion();
 
   function handleOpen() {
     setCursoId(cursosActivos[0]?.id ?? "");
@@ -45,13 +53,14 @@ export function AsignarCursoDialog({
   function handleAsignar() {
     setError(null);
     if (!cursoId) {
-      setError("Seleccioná un curso.");
+      setError({ mensaje: "Seleccioná un curso." });
       return;
     }
-    startTransition(async () => {
+    ejecutar(async () => {
       const res = await asignarCurso(postulanteId, cursoId, nota);
-      if (res.error) {
-        setError(res.error);
+      mostrarAviso(res);
+      if (!res.ok) {
+        setError(toErrorAccion(res));
       } else {
         setOpen(false);
         setNota("");
@@ -68,7 +77,7 @@ export function AsignarCursoDialog({
 
   return (
     <>
-      <button type="button" onClick={handleOpen} className={triggerClass}>
+      <button type="button" onClick={handleOpen} className={cn(triggerClass, claseBoton)}>
         Asignar curso
       </button>
 
@@ -142,7 +151,16 @@ export function AsignarCursoDialog({
             </div>
           )}
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && (
+            <div>
+              <p className="text-sm text-red-600">{error.mensaje}</p>
+              {error.ref && (
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                </p>
+              )}
+            </div>
+          )}
 
           <DialogFooter>
             <button
@@ -158,6 +176,7 @@ export function AsignarCursoDialog({
             </button>
             {cursosActivos.length > 0 && (
               <Button onClick={handleAsignar} disabled={isPending}>
+                {isPending && <Spinner className="mr-1" />}
                 {isPending ? "Asignando..." : "Asignar curso"}
               </Button>
             )}

@@ -1,45 +1,44 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { Plus, BookOpen } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { logError } from "@/lib/logger";
+import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
+import {
+  consultarPagina,
+  hrefConParams,
+  leerPagina,
+  type ParamsUrl,
+} from "@/lib/paginacion";
+import { Buscador } from "@/components/ui/buscador";
+import { Paginacion } from "@/components/ui/paginacion";
+import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
+import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { UMBRAL_RECHAZOS_CURSO, VENTANA_RECHAZOS_DIAS } from "@/lib/cursos";
 
 export const metadata: Metadata = {
   title: "Cursos | Panel municipal | Portal de Empleo Funes",
 };
 
+const RUTA = "/admin/cursos";
+
+type CursoRow = {
+  id: string;
+  nombre: string;
+  link: string | null;
+  activo: boolean;
+};
+
 export default async function CursosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ estado?: string }>;
+  searchParams: Promise<{ estado?: string; q?: string; pagina?: string }>;
 }) {
-  const { estado: rawEstado = "activos" } = await searchParams;
-  const soloActivos = rawEstado !== "inactivos";
-
-  const supabase = await createSupabaseServerClient();
-
-  type CursoRow = {
-    id: string;
-    nombre: string;
-    link: string | null;
-    activo: boolean;
-  };
-
-  const [cursosRes, conteosRes] = await Promise.all([
-    supabase
-      .from("cursos")
-      .select("id, nombre, link, activo")
-      .eq("activo", soloActivos)
-      .order("nombre"),
-    supabase.from("asignaciones_curso").select("curso_id"),
-  ]);
-
-  const cursos = (cursosRes.data ?? []) as CursoRow[];
-
-  const conteosAsignaciones: Record<string, number> = {};
-  for (const row of (conteosRes.data ?? []) as { curso_id: string }[]) {
-    conteosAsignaciones[row.curso_id] =
-      (conteosAsignaciones[row.curso_id] ?? 0) + 1;
-  }
+  const sp = await searchParams;
+  const soloActivos = sp.estado !== "inactivos";
+  const q = limpiarBusqueda(sp.q);
+  const pagina = leerPagina(sp.pagina);
 
   return (
     <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
@@ -57,7 +56,11 @@ export default async function CursosPage({
             Cursos de inserción laboral
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Cursos asignables a postulantes con 3 o más rechazos de empresas.
+            Cursos asignables a postulantes con {UMBRAL_RECHAZOS_CURSO} o más rechazos de
+            empresas en los últimos {VENTANA_RECHAZOS_DIAS} días.{" "}
+            <Link href="/admin/cursos/completados" className="text-primary hover:underline">
+              Ver cursos completados
+            </Link>
           </p>
         </div>
         <Link href="/admin/cursos/nuevo" className="btn-primario">
@@ -69,7 +72,7 @@ export default async function CursosPage({
       {/* Filtro activo / inactivo */}
       <div className="mt-6 flex gap-2">
         <Link
-          href="/admin/cursos"
+          href={hrefConParams(RUTA, {}, { q: sp.q ?? null })}
           className={
             soloActivos
               ? "btn-primario px-4 py-1.5 text-sm"
@@ -79,7 +82,7 @@ export default async function CursosPage({
           Activos
         </Link>
         <Link
-          href="/admin/cursos?estado=inactivos"
+          href={hrefConParams(RUTA, {}, { estado: "inactivos", q: sp.q ?? null })}
           className={
             !soloActivos
               ? "btn-primario px-4 py-1.5 text-sm"
@@ -90,20 +93,100 @@ export default async function CursosPage({
         </Link>
       </div>
 
-      {cursos.length === 0 ? (
-        <div className="mt-6 rounded-[var(--radius-lg)] border border-border bg-surface p-8 text-center">
-          <BookOpen className="mx-auto h-10 w-10 text-muted-icon" />
-          <p className="mt-3 font-medium text-foreground">
-            {soloActivos ? "No hay cursos activos" : "No hay cursos inactivos"}
-          </p>
-          {soloActivos && (
-            <Link href="/admin/cursos/nuevo" className="btn-primario mt-4 inline-flex">
+      <Buscador className="mt-4" placeholder="Buscar por nombre…" />
+
+      <Suspense
+        key={JSON.stringify({ soloActivos, q, pagina })}
+        fallback={<EsqueletoLista filas={4} className="mt-6" />}
+      >
+        <ListadoCursos
+          soloActivos={soloActivos}
+          q={q}
+          pagina={pagina}
+          searchParams={sp}
+        />
+      </Suspense>
+    </section>
+  );
+}
+
+async function ListadoCursos({
+  soloActivos,
+  q,
+  pagina,
+  searchParams,
+}: {
+  soloActivos: boolean;
+  q: string;
+  pagina: number;
+  searchParams: ParamsUrl;
+}) {
+  const supabase = await createSupabaseServerClient();
+
+  const resultado = await consultarPagina<CursoRow>(pagina, (desde, hasta) => {
+    let query = supabase
+      .from("cursos")
+      .select("id, nombre, link, activo", { count: "exact" })
+      .eq("activo", soloActivos);
+    if (q) query = query.ilike("nombre", patronIlike(q));
+    return query
+      .order("nombre", { ascending: true })
+      .order("id", { ascending: true })
+      .range(desde, hasta)
+      .overrideTypes<CursoRow[], { merge: false }>();
+  });
+
+  if (!resultado.ok) {
+    const ref = logError("admin_cursos_listado", resultado.error);
+    return <ErrorListado className="mt-6" refError={ref} />;
+  }
+
+  const cursos = resultado.filas;
+
+  if (cursos.length === 0) {
+    return q ? (
+      <EstadoVacio
+        tipo="sin-resultados"
+        className="mt-6"
+        titulo="No se encontraron cursos con ese nombre"
+        hrefLimpiar={hrefConParams(RUTA, {}, { estado: soloActivos ? null : "inactivos" })}
+        textoLimpiar="Limpiar búsqueda"
+      />
+    ) : (
+      <EstadoVacio
+        tipo="sin-registros"
+        className="mt-6"
+        icono={BookOpen}
+        titulo={soloActivos ? "No hay cursos activos" : "No hay cursos inactivos"}
+        accion={
+          soloActivos ? (
+            <Link href="/admin/cursos/nuevo" className="btn-primario inline-flex">
               Crear primer curso
             </Link>
-          )}
-        </div>
-      ) : (
-        <>
+          ) : undefined
+        }
+      />
+    );
+  }
+
+  // Asignaciones solo de los cursos de esta página.
+  const { data: conteosData, error: conteosError } = await supabase
+    .from("asignaciones_curso")
+    .select("curso_id")
+    .in(
+      "curso_id",
+      cursos.map((c) => c.id)
+    );
+  if (conteosError) logError("admin_cursos_conteo_asignaciones", conteosError);
+
+  const conteosAsignaciones: Record<string, number> = {};
+  for (const row of (conteosData ?? []) as { curso_id: string }[]) {
+    conteosAsignaciones[row.curso_id] =
+      (conteosAsignaciones[row.curso_id] ?? 0) + 1;
+  }
+
+  return (
+    <>
           {/* Tabla md+ */}
           <div className="mt-6 hidden overflow-x-auto rounded-[var(--radius-lg)] border border-border bg-surface md:block">
             <table className="w-full text-sm">
@@ -203,8 +286,13 @@ export default async function CursosPage({
               </div>
             ))}
           </div>
-        </>
-      )}
-    </section>
+          <Paginacion
+            className="mt-6"
+            ruta={RUTA}
+            searchParams={searchParams}
+            pagina={resultado.pagina}
+            total={resultado.total}
+          />
+    </>
   );
 }

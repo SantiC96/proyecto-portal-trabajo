@@ -2,14 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { logError } from "@/lib/logger";
+import { err, errConRef, okMsg, type Resultado, type ResultadoError } from "@/lib/resultado";
 
-async function verificarMunicipalidad(): Promise<{ error: string } | { userId: string }> {
+async function verificarMunicipalidad(): Promise<{ ok: true; userId: string } | ResultadoError> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return { error: "No autenticado." };
+  if (!user) return err("NO_AUTENTICADO");
 
   const { data: usuario } = await supabase
     .from("usuarios")
@@ -17,18 +19,16 @@ async function verificarMunicipalidad(): Promise<{ error: string } | { userId: s
     .eq("id", user.id)
     .single();
 
-  if (!usuario || usuario.rol !== "municipalidad") {
-    return { error: "No tenés permiso para realizar esta acción." };
-  }
+  if (!usuario || usuario.rol !== "municipalidad") return err("SIN_PERMISO");
 
-  return { userId: user.id };
+  return { ok: true, userId: user.id };
 }
 
 export async function aprobarEmpresa(
   empresaId: string
-): Promise<{ error?: string }> {
+): Promise<Resultado<void>> {
   const auth = await verificarMunicipalidad();
-  if ("error" in auth) return auth;
+  if (!auth.ok) return auth;
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -42,28 +42,28 @@ export async function aprobarEmpresa(
     .select("id");
 
   if (error) {
-    console.error("[aprobarEmpresa]", error);
-    return { error: "Error al aprobar la empresa. Intentá de nuevo." };
+    const ref = logError("aprobarEmpresa", error, { empresaId });
+    return errConRef("ERROR_INTERNO", "Error al aprobar la empresa. Intentá de nuevo.", ref);
   }
   if (!data || data.length === 0) {
-    console.error("[aprobarEmpresa] update no afectó ninguna fila", { empresaId });
-    return { error: "No se pudo completar la acción." };
+    const ref = logError("aprobarEmpresa:noRow", null, { empresaId });
+    return errConRef("ERROR_INTERNO", "No se pudo completar la acción.", ref);
   }
 
   revalidatePath("/admin/empresas");
   revalidatePath("/admin");
-  return {};
+  return okMsg("Empresa aprobada.");
 }
 
 export async function rechazarEmpresa(
   empresaId: string,
   motivo: string
-): Promise<{ error?: string }> {
+): Promise<Resultado<void>> {
   const auth = await verificarMunicipalidad();
-  if ("error" in auth) return auth;
+  if (!auth.ok) return auth;
 
   if (!motivo.trim()) {
-    return { error: "El motivo de rechazo es obligatorio." };
+    return err("DATOS_INVALIDOS", "El motivo de rechazo es obligatorio.");
   }
 
   const supabase = await createSupabaseServerClient();
@@ -78,15 +78,15 @@ export async function rechazarEmpresa(
     .select("id");
 
   if (error) {
-    console.error("[rechazarEmpresa]", error);
-    return { error: "Error al rechazar la empresa. Intentá de nuevo." };
+    const ref = logError("rechazarEmpresa", error, { empresaId });
+    return errConRef("ERROR_INTERNO", "Error al rechazar la empresa. Intentá de nuevo.", ref);
   }
   if (!data || data.length === 0) {
-    console.error("[rechazarEmpresa] update no afectó ninguna fila", { empresaId });
-    return { error: "No se pudo completar la acción." };
+    const ref = logError("rechazarEmpresa:noRow", null, { empresaId });
+    return errConRef("ERROR_INTERNO", "No se pudo completar la acción.", ref);
   }
 
   revalidatePath("/admin/empresas");
   revalidatePath("/admin");
-  return {};
+  return okMsg("Empresa rechazada.");
 }

@@ -4,7 +4,17 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { traducirErrorAuth } from "@/lib/auth-errors";
+import { logError } from "@/lib/logger";
+import { err, errConRef, okMsg, type Resultado } from "@/lib/resultado";
 import { validarNombre, validarDNI, validarTelefono, validarPassword } from "@/lib/validaciones";
+import {
+  AVATAR_MAX_SIZE,
+  CV_MAX_SIZE,
+  ERRORES_ARCHIVO,
+  validarTipoAvatar,
+  validarTipoCV,
+  detectarMimeType,
+} from "@/lib/archivos";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Actualizar datos personales
@@ -16,21 +26,21 @@ export async function actualizarPerfil(data: {
   telefono: string;
   domicilio: string;
   dni: string;
-}): Promise<{ error?: string; exito?: boolean }> {
+}): Promise<Resultado<void>> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado." };
+  if (!user) return err("NO_AUTENTICADO");
 
   const errNombre = validarNombre(data.nombre);
-  if (errNombre) return { error: errNombre };
+  if (errNombre) return err("DATOS_INVALIDOS", errNombre);
   const errApellido = validarNombre(data.apellido);
-  if (errApellido) return { error: errApellido };
+  if (errApellido) return err("DATOS_INVALIDOS", errApellido);
   const errDni = validarDNI(data.dni);
-  if (errDni) return { error: errDni };
+  if (errDni) return err("DATOS_INVALIDOS", errDni);
   const errTelefono = validarTelefono(data.telefono);
-  if (errTelefono) return { error: errTelefono };
+  if (errTelefono) return err("DATOS_INVALIDOS", errTelefono);
 
   const dniLimpio = data.dni.replace(/\D/g, "");
 
@@ -52,25 +62,27 @@ export async function actualizarPerfil(data: {
   ]);
 
   if (usuariosResult.error) {
-    return { error: "Error al guardar los datos. Intentá de nuevo." };
+    const ref = logError("actualizarPerfil:usuarios", usuariosResult.error, { userId: user.id });
+    return errConRef("ERROR_INTERNO", "Error al guardar los datos. Intentá de nuevo.", ref);
   }
   if (!usuariosResult.data || usuariosResult.data.length === 0) {
-    console.error("[actualizarPerfil] usuarios update no afectó ninguna fila", { userId: user.id });
-    return { error: "No se pudo completar la acción." };
+    const ref = logError("actualizarPerfil:usuarios:noRow", null, { userId: user.id });
+    return errConRef("ERROR_INTERNO", "No se pudo completar la acción.", ref);
   }
   if (postulanteResult.error) {
     if (postulanteResult.error.code === "23505") {
-      return { error: "Ese DNI ya está registrado en otra cuenta." };
+      return err("CONFLICTO", "Ese DNI ya está registrado en otra cuenta.");
     }
-    return { error: "Error al guardar el DNI. Intentá de nuevo." };
+    const ref = logError("actualizarPerfil:postulante", postulanteResult.error, { userId: user.id });
+    return errConRef("ERROR_INTERNO", "Error al guardar el DNI. Intentá de nuevo.", ref);
   }
   if (!postulanteResult.data || postulanteResult.data.length === 0) {
-    console.error("[actualizarPerfil] postulantes update no afectó ninguna fila", { userId: user.id });
-    return { error: "No se pudo completar la acción." };
+    const ref = logError("actualizarPerfil:postulante:noRow", null, { userId: user.id });
+    return errConRef("ERROR_INTERNO", "No se pudo completar la acción.", ref);
   }
 
   revalidatePath("/perfil");
-  return { exito: true };
+  return okMsg("Perfil actualizado.");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -79,12 +91,12 @@ export async function actualizarPerfil(data: {
 
 export async function actualizarRubros(
   categoriaIds: string[]
-): Promise<{ error?: string; exito?: boolean }> {
+): Promise<Resultado<void>> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado." };
+  if (!user) return err("NO_AUTENTICADO");
 
   const ids = [...new Set(categoriaIds)];
 
@@ -95,7 +107,7 @@ export async function actualizarRubros(
     .single();
 
   if (postulanteError || !postulante) {
-    return { error: "No se encontró el perfil del postulante." };
+    return err("SIN_PERMISO", "No se encontró el perfil del postulante.");
   }
 
   if (ids.length > 0) {
@@ -105,7 +117,7 @@ export async function actualizarRubros(
       .in("id", ids);
 
     if (!categoriasExistentes || categoriasExistentes.length !== ids.length) {
-      return { error: "Algunas categorías no son válidas." };
+      return err("DATOS_INVALIDOS", "Algunas categorías no son válidas.");
     }
   }
 
@@ -115,7 +127,8 @@ export async function actualizarRubros(
     .eq("postulante_id", postulante.id);
 
   if (deleteError) {
-    return { error: "Error al actualizar los rubros. Intentá de nuevo." };
+    const ref = logError("actualizarRubros:delete", deleteError, { postulanteId: postulante.id });
+    return errConRef("ERROR_INTERNO", "Error al actualizar los rubros. Intentá de nuevo.", ref);
   }
 
   if (ids.length > 0) {
@@ -127,12 +140,13 @@ export async function actualizarRubros(
       .from("postulante_categorias")
       .insert(filas);
     if (insertError) {
-      return { error: "Error al guardar los rubros. Intentá de nuevo." };
+      const ref = logError("actualizarRubros:insert", insertError, { postulanteId: postulante.id });
+      return errConRef("ERROR_INTERNO", "Error al guardar los rubros. Intentá de nuevo.", ref);
     }
   }
 
   revalidatePath("/perfil");
-  return { exito: true };
+  return okMsg("Rubros actualizados.");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -141,37 +155,44 @@ export async function actualizarRubros(
 
 export async function subirAvatar(
   formData: FormData
-): Promise<{ error?: string }> {
+): Promise<Resultado<void>> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado." };
+  if (!user) return err("NO_AUTENTICADO");
 
   const file = formData.get("avatar") as File | null;
-  if (!file || file.size === 0) return { error: "No se recibió ningún archivo." };
+  if (!file || file.size === 0) return err("ARCHIVO_INVALIDO", ERRORES_ARCHIVO.vacio);
 
-  const tiposPermitidos = ["image/jpeg", "image/png", "image/webp"];
-  if (!tiposPermitidos.includes(file.type)) {
-    return { error: "Solo se aceptan imágenes JPG, PNG o WEBP." };
+  if (file.name.length > 200) return err("ARCHIVO_INVALIDO", ERRORES_ARCHIVO.nombreLargo);
+  const nombreLimpio = file.name.replace(/[\x00-\x1f\x7f]/g, "");
+
+  if (!validarTipoAvatar(file.type)) {
+    return err("ARCHIVO_INVALIDO", ERRORES_ARCHIVO.avatarTipo);
   }
-  if (file.size > 2 * 1024 * 1024) {
-    return { error: "La imagen no puede superar los 2 MB." };
+  if (file.size > AVATAR_MAX_SIZE) {
+    return err("ARCHIVO_INVALIDO", ERRORES_ARCHIVO.avatarTamano);
   }
 
-  const ext =
-    file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : "webp";
+  const buffer = await file.arrayBuffer();
+  const inicio = new Uint8Array(buffer, 0, Math.min(12, buffer.byteLength));
+  const tipoVerificado = detectarMimeType(inicio);
+
+  if (!tipoVerificado || !validarTipoAvatar(tipoVerificado)) {
+    return err("ARCHIVO_INVALIDO", ERRORES_ARCHIVO.avatarFirma);
+  }
+
+  const ext = tipoVerificado === "image/jpeg" ? "jpg" : tipoVerificado === "image/png" ? "png" : "webp";
   const nuevaRuta = `${user.id}/avatar-${Date.now()}.${ext}`;
 
-  // Subir al storage (nombre único, sin upsert)
-  const buffer = await file.arrayBuffer();
   const { error: uploadError } = await supabaseAdmin.storage
     .from("avatares")
-    .upload(nuevaRuta, buffer, { contentType: file.type });
+    .upload(nuevaRuta, buffer, { contentType: tipoVerificado });
 
   if (uploadError) {
-    console.error("subirAvatar: fallo upload a Storage:", uploadError);
-    return { error: "Error al subir la imagen. Intentá de nuevo." };
+    const ref = logError("subirAvatar:upload", uploadError, { userId: user.id });
+    return errConRef("ERROR_INTERNO", "Error al subir la imagen. Intentá de nuevo.", ref);
   }
 
   // Activar nuevo y desactivar anterior en una sola transacción
@@ -179,33 +200,34 @@ export async function subirAvatar(
     p_usuario_id: user.id,
     p_tipo: "avatar",
     p_ruta: nuevaRuta,
-    p_nombre_original: file.name,
+    p_nombre_original: nombreLimpio,
     p_tamano: file.size,
+    p_mime_type: tipoVerificado,
   });
 
   if (rpcError) {
-    console.error("subirAvatar: fallo RPC activar_archivo_usuario:", rpcError);
-    return { error: "Error al guardar la foto. Intentá de nuevo." };
+    const ref = logError("subirAvatar:rpc", rpcError, { userId: user.id });
+    return errConRef("ERROR_INTERNO", "Error al guardar la foto. Intentá de nuevo.", ref);
   }
 
   revalidatePath("/perfil");
-  return {};
+  return okMsg("Foto de perfil actualizada.");
 }
 
 export async function ajustarAvatar(data: {
   x: number;
   y: number;
   zoom: number;
-}): Promise<{ error?: string }> {
+}): Promise<Resultado<void>> {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado." };
+  if (!user) return err("NO_AUTENTICADO");
 
   if (data.x < 0 || data.x > 100 || data.y < 0 || data.y > 100) {
-    return { error: "Posición fuera de rango." };
+    return err("DATOS_INVALIDOS", "Posición fuera de rango.");
   }
   if (data.zoom < 1 || data.zoom > 3) {
-    return { error: "Zoom fuera de rango." };
+    return err("DATOS_INVALIDOS", "Zoom fuera de rango.");
   }
 
   const { error } = await supabaseAdmin
@@ -215,19 +237,22 @@ export async function ajustarAvatar(data: {
     .eq("tipo", "avatar")
     .eq("activo", true);
 
-  if (error) return { error: "Error al guardar el ajuste. Intentá de nuevo." };
+  if (error) {
+    const ref = logError("ajustarAvatar", error, { userId: user.id });
+    return errConRef("ERROR_INTERNO", "Error al guardar el ajuste. Intentá de nuevo.", ref);
+  }
 
   revalidatePath("/perfil");
   revalidatePath("/", "layout");
-  return {};
+  return okMsg("Ajuste guardado.");
 }
 
-export async function quitarAvatar(): Promise<{ error?: string }> {
+export async function quitarAvatar(): Promise<Resultado<void>> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado." };
+  if (!user) return err("NO_AUTENTICADO");
 
   // Eliminación lógica: marcar el activo como inactivo, no borrar del bucket
   const { error } = await supabaseAdmin
@@ -237,10 +262,13 @@ export async function quitarAvatar(): Promise<{ error?: string }> {
     .eq("tipo", "avatar")
     .eq("activo", true);
 
-  if (error) return { error: "Error al quitar la foto. Intentá de nuevo." };
+  if (error) {
+    const ref = logError("quitarAvatar", error, { userId: user.id });
+    return errConRef("ERROR_INTERNO", "Error al quitar la foto. Intentá de nuevo.", ref);
+  }
 
   revalidatePath("/perfil");
-  return {};
+  return okMsg("Foto de perfil quitada.");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -249,34 +277,44 @@ export async function quitarAvatar(): Promise<{ error?: string }> {
 
 export async function subirCV(
   formData: FormData
-): Promise<{ error?: string }> {
+): Promise<Resultado<void>> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado." };
+  if (!user) return err("NO_AUTENTICADO");
 
   const file = formData.get("cv") as File | null;
-  if (!file || file.size === 0) return { error: "No se recibió ningún archivo." };
+  if (!file || file.size === 0) return err("ARCHIVO_INVALIDO", ERRORES_ARCHIVO.vacio);
 
-  if (file.type !== "application/pdf") {
-    return { error: "El CV debe ser un archivo PDF." };
+  if (file.name.length > 200) return err("ARCHIVO_INVALIDO", ERRORES_ARCHIVO.nombreLargo);
+  const nombreLimpio = file.name.replace(/[\x00-\x1f\x7f]/g, "");
+
+  if (!validarTipoCV(file.type)) {
+    return err("ARCHIVO_INVALIDO", ERRORES_ARCHIVO.cvTipo);
   }
-  if (file.size > 5 * 1024 * 1024) {
-    return { error: "El CV no puede superar los 5 MB." };
+  if (file.size > CV_MAX_SIZE) {
+    return err("ARCHIVO_INVALIDO", ERRORES_ARCHIVO.cvTamano);
+  }
+
+  const buffer = await file.arrayBuffer();
+  const inicio = new Uint8Array(buffer, 0, Math.min(12, buffer.byteLength));
+  const tipoVerificado = detectarMimeType(inicio);
+
+  if (tipoVerificado !== "application/pdf") {
+    return err("ARCHIVO_INVALIDO", ERRORES_ARCHIVO.cvFirma);
   }
 
   // Nombre único por timestamp para no sobrescribir archivos anteriores
   const nuevaRuta = `${user.id}/cv-${Date.now()}.pdf`;
-  const buffer = await file.arrayBuffer();
 
   const { error: uploadError } = await supabaseAdmin.storage
     .from("cvs")
-    .upload(nuevaRuta, buffer, { contentType: "application/pdf" });
+    .upload(nuevaRuta, buffer, { contentType: tipoVerificado });
 
   if (uploadError) {
-    console.error("subirCV: fallo upload a Storage:", uploadError);
-    return { error: "Error al subir el CV. Intentá de nuevo." };
+    const ref = logError("subirCV:upload", uploadError, { userId: user.id });
+    return errConRef("ERROR_INTERNO", "Error al subir el CV. Intentá de nuevo.", ref);
   }
 
   // Activar nuevo y desactivar anterior en una sola transacción
@@ -284,25 +322,26 @@ export async function subirCV(
     p_usuario_id: user.id,
     p_tipo: "cv",
     p_ruta: nuevaRuta,
-    p_nombre_original: file.name,
+    p_nombre_original: nombreLimpio,
     p_tamano: file.size,
+    p_mime_type: tipoVerificado,
   });
 
   if (rpcError) {
-    console.error("subirCV: fallo RPC activar_archivo_usuario:", rpcError);
-    return { error: "Error al guardar la ruta del CV. Intentá de nuevo." };
+    const ref = logError("subirCV:rpc", rpcError, { userId: user.id });
+    return errConRef("ERROR_INTERNO", "Error al guardar la ruta del CV. Intentá de nuevo.", ref);
   }
 
   revalidatePath("/perfil");
-  return {};
+  return okMsg("CV actualizado.");
 }
 
-export async function eliminarCV(): Promise<{ error?: string }> {
+export async function eliminarCV(): Promise<Resultado<void>> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado." };
+  if (!user) return err("NO_AUTENTICADO");
 
   // Eliminación lógica: marcar el activo como inactivo, no borrar del bucket
   const { error } = await supabaseAdmin
@@ -312,10 +351,13 @@ export async function eliminarCV(): Promise<{ error?: string }> {
     .eq("tipo", "cv")
     .eq("activo", true);
 
-  if (error) return { error: "Error al eliminar el CV. Intentá de nuevo." };
+  if (error) {
+    const ref = logError("eliminarCV", error, { userId: user.id });
+    return errConRef("ERROR_INTERNO", "Error al eliminar el CV. Intentá de nuevo.", ref);
+  }
 
   revalidatePath("/perfil");
-  return {};
+  return okMsg("CV eliminado.");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -324,38 +366,45 @@ export async function eliminarCV(): Promise<{ error?: string }> {
 
 export async function cambiarContrasena(
   formData: FormData
-): Promise<{ error?: string }> {
+): Promise<Resultado<void>> {
   const contrasenaActual = formData.get("contrasenaActual") as string;
   const contrasenaNueva = formData.get("contrasenaNueva") as string;
   const repetirContrasena = formData.get("repetirContrasena") as string;
 
   if (!contrasenaActual || !contrasenaNueva || !repetirContrasena)
-    return { error: "Completá todos los campos." };
+    return err("DATOS_INVALIDOS", "Completá todos los campos.");
   const errPwd = validarPassword(contrasenaNueva);
-  if (errPwd) return { error: errPwd };
+  if (errPwd) return err("DATOS_INVALIDOS", errPwd);
   if (contrasenaNueva !== repetirContrasena)
-    return { error: "Las contraseñas nuevas no coinciden." };
+    return err("DATOS_INVALIDOS", "Las contraseñas nuevas no coinciden.");
   if (contrasenaNueva === contrasenaActual)
-    return { error: "La contraseña nueva debe ser distinta de la actual." };
+    return err("DATOS_INVALIDOS", "La contraseña nueva debe ser distinta de la actual.");
 
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
     error: authError,
   } = await supabase.auth.getUser();
-  if (authError || !user?.email) return { error: "No autenticado." };
+  if (authError || !user?.email) return err("NO_AUTENTICADO");
 
   // Verificar contraseña actual con el cliente admin (no toca la sesión de cookies)
   const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
     email: user.email,
     password: contrasenaActual,
   });
-  if (signInError) return { error: "La contraseña actual es incorrecta." };
+  if (signInError) return err("DATOS_INVALIDOS", "La contraseña actual es incorrecta.");
 
   const { error: updateError } = await supabase.auth.updateUser({
     password: contrasenaNueva,
   });
-  if (updateError) return { error: traducirErrorAuth(updateError) };
+  if (updateError) {
+    const r = traducirErrorAuth(updateError);
+    if (!r.ok && r.codigo === "ERROR_INTERNO") {
+      const ref = logError("cambiarContrasena", updateError, { userId: user.id });
+      return errConRef("ERROR_INTERNO", r.mensaje, ref);
+    }
+    return r;
+  }
 
-  return {};
+  return okMsg("Contraseña actualizada.");
 }

@@ -32,6 +32,19 @@ import {
   cambiarContrasena,
 } from "./actions";
 import { validarNombre, validarDNI, validarTelefono } from "@/lib/validaciones";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
+import {
+  AVATAR_ACCEPT,
+  AVATAR_HELP_TEXT,
+  AVATAR_MAX_SIZE,
+  CV_ACCEPT,
+  CV_HELP_TEXT,
+  CV_MAX_SIZE,
+  ERRORES_ARCHIVO,
+  validarTipoAvatar,
+  validarTipoCV,
+} from "@/lib/archivos";
 
 type AjusteAvatar = { x: number; y: number; zoom: number };
 
@@ -71,11 +84,18 @@ function CampoLectura({ label, valor }: { label: string; valor: string }) {
   );
 }
 
-function MensajeError({ texto }: { texto: string }) {
+function MensajeError({ error }: { error: ErrorAccion }) {
   return (
-    <div className="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-      <span>{texto}</span>
+    <div className="flex flex-col gap-1 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+      <div className="flex items-start gap-2.5">
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+        <span>{error.mensaje}</span>
+      </div>
+      {error.ref && (
+        <p className="ml-7 text-xs text-gray-500">
+          Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+        </p>
+      )}
     </div>
   );
 }
@@ -130,7 +150,7 @@ export function PerfilForm({
   // Modo edición — datos personales
   const [modoEdicionDatos, setModoEdicionDatos] = useState(false);
   const [guardandoDatos, setGuardandoDatos] = useState(false);
-  const [errorDatos, setErrorDatos] = useState<string | null>(null);
+  const [errorDatos, setErrorDatos] = useState<ErrorAccion | null>(null);
   const [exitoDatos, setExitoDatos] = useState(false);
 
   // Datos personales
@@ -143,7 +163,7 @@ export function PerfilForm({
   // Modo edición — rubros de interés
   const [modoEdicionRubros, setModoEdicionRubros] = useState(false);
   const [guardandoRubros, setGuardandoRubros] = useState(false);
-  const [errorRubros, setErrorRubros] = useState<string | null>(null);
+  const [errorRubros, setErrorRubros] = useState<ErrorAccion | null>(null);
   const [exitoRubros, setExitoRubros] = useState(false);
 
   const [categoriaIds, setCategoriaIds] = useState<string[]>(categoriasIniciales);
@@ -153,7 +173,7 @@ export function PerfilForm({
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [guardandoAvatar, setGuardandoAvatar] = useState(false);
-  const [errorAvatar, setErrorAvatar] = useState<string | null>(null);
+  const [errorAvatar, setErrorAvatar] = useState<ErrorAccion | null>(null);
 
   // Modal foto
   const [modalFotoAbierto, setModalFotoAbierto] = useState(false);
@@ -169,7 +189,7 @@ export function PerfilForm({
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [subiendoCV, setSubiendoCV] = useState(false);
   const [eliminandoCV, setEliminandoCV] = useState(false);
-  const [errorCV, setErrorCV] = useState<string | null>(null);
+  const [errorCV, setErrorCV] = useState<ErrorAccion | null>(null);
   const [mensajeCV, setMensajeCV] = useState<string | null>(null);
 
   // Contraseña
@@ -181,7 +201,7 @@ export function PerfilForm({
   const [mostrarNueva, setMostrarNueva] = useState(false);
   const [mostrarRepetir, setMostrarRepetir] = useState(false);
   const [cargandoContrasena, setCargandoContrasena] = useState(false);
-  const [errorContrasena, setErrorContrasena] = useState("");
+  const [errorContrasena, setErrorContrasena] = useState<ErrorAccion | null>(null);
   const [exitoContrasena, setExitoContrasena] = useState("");
 
   // Limpiar blob URL al desmontar
@@ -226,13 +246,12 @@ export function PerfilForm({
   // ── avatar handlers ─────────────────────────────────────────────────────────
 
   const handleAvatarSelect = (file: File) => {
-    const tipos = ["image/jpeg", "image/png", "image/webp"];
-    if (!tipos.includes(file.type)) {
-      setErrorAvatar("Solo se aceptan imágenes JPG, PNG o WEBP.");
+    if (!validarTipoAvatar(file.type)) {
+      setErrorAvatar({ mensaje: ERRORES_ARCHIVO.avatarTipo });
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      setErrorAvatar("La imagen no puede superar los 2 MB.");
+    if (file.size > AVATAR_MAX_SIZE) {
+      setErrorAvatar({ mensaje: ERRORES_ARCHIVO.avatarTamano });
       return;
     }
     setErrorAvatar(null);
@@ -249,8 +268,9 @@ export function PerfilForm({
     fd.append("avatar", avatarFile);
     try {
       const result = await subirAvatar(fd);
-      if (result?.error) {
-        setErrorAvatar(result.error);
+      mostrarAviso(result);
+      if (!result.ok) {
+        setErrorAvatar(toErrorAccion(result));
       } else {
         if (avatarPreview) URL.revokeObjectURL(avatarPreview);
         setAvatarPreview(null);
@@ -260,7 +280,7 @@ export function PerfilForm({
         router.refresh();
       }
     } catch {
-      setErrorAvatar("Ocurrió un error inesperado al subir la foto. Intentá de nuevo.");
+      setErrorAvatar({ mensaje: "Ocurrió un error inesperado al subir la foto. Intentá de nuevo." });
     }
     setGuardandoAvatar(false);
   };
@@ -276,8 +296,9 @@ export function PerfilForm({
     setGuardandoAvatar(true);
     setErrorAvatar(null);
     const result = await quitarAvatar();
-    if (result?.error) {
-      setErrorAvatar(result.error);
+    mostrarAviso(result);
+    if (!result.ok) {
+      setErrorAvatar(toErrorAccion(result));
     } else {
       router.refresh();
     }
@@ -293,15 +314,16 @@ export function PerfilForm({
     const errorTel = validarTelefono(telefono);
     const clientError = errorNombre ?? errorDni ?? errorTel;
     if (clientError) {
-      setErrorDatos(clientError);
+      setErrorDatos({ mensaje: clientError });
       return;
     }
     setGuardandoDatos(true);
     setErrorDatos(null);
     setExitoDatos(false);
     const result = await actualizarPerfil({ nombre, apellido, telefono, domicilio, dni });
-    if (result?.error) {
-      setErrorDatos(result.error);
+    mostrarAviso(result);
+    if (!result.ok) {
+      setErrorDatos(toErrorAccion(result));
     } else {
       setNombre(nombre.trim());
       setApellido(apellido.trim());
@@ -323,8 +345,9 @@ export function PerfilForm({
     setErrorRubros(null);
     setExitoRubros(false);
     const result = await actualizarRubros(categoriaIds);
-    if (result?.error) {
-      setErrorRubros(result.error);
+    mostrarAviso(result);
+    if (!result.ok) {
+      setErrorRubros(toErrorAccion(result));
     } else {
       setExitoRubros(true);
       setModoEdicionRubros(false);
@@ -338,12 +361,12 @@ export function PerfilForm({
   const handleSeleccionarCV = async (file: File) => {
     setErrorCV(null);
     setMensajeCV(null);
-    if (file.type !== "application/pdf") {
-      setErrorCV("El CV debe ser un archivo PDF.");
+    if (!validarTipoCV(file.type)) {
+      setErrorCV({ mensaje: ERRORES_ARCHIVO.cvTipo });
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorCV("El CV no puede superar los 5 MB.");
+    if (file.size > CV_MAX_SIZE) {
+      setErrorCV({ mensaje: ERRORES_ARCHIVO.cvTamano });
       return;
     }
     setCvFile(file);
@@ -352,8 +375,9 @@ export function PerfilForm({
     fd.append("cv", file);
     try {
       const result = await subirCV(fd);
-      if (result?.error) {
-        setErrorCV(result.error);
+      mostrarAviso(result);
+      if (!result.ok) {
+        setErrorCV(toErrorAccion(result));
         setCvFile(null);
       } else {
         setCvFile(null);
@@ -362,7 +386,7 @@ export function PerfilForm({
         setTimeout(() => setMensajeCV(null), 4000);
       }
     } catch {
-      setErrorCV("Ocurrió un error inesperado al subir el CV. Intentá de nuevo.");
+      setErrorCV({ mensaje: "Ocurrió un error inesperado al subir el CV. Intentá de nuevo." });
       setCvFile(null);
     } finally {
       setSubiendoCV(false);
@@ -374,8 +398,9 @@ export function PerfilForm({
     setErrorCV(null);
     setMensajeCV(null);
     const result = await eliminarCV();
-    if (result?.error) {
-      setErrorCV(result.error);
+    mostrarAviso(result);
+    if (!result.ok) {
+      setErrorCV(toErrorAccion(result));
     } else {
       router.refresh();
     }
@@ -387,15 +412,16 @@ export function PerfilForm({
   const handleCambiarContrasena = async (e: React.FormEvent) => {
     e.preventDefault();
     setCargandoContrasena(true);
-    setErrorContrasena("");
+    setErrorContrasena(null);
     const fd = new FormData();
     fd.append("contrasenaActual", contrasenaActual);
     fd.append("contrasenaNueva", contrasenaNueva);
     fd.append("repetirContrasena", repetirContrasena);
     const res = await cambiarContrasena(fd);
     setCargandoContrasena(false);
-    if (res.error) {
-      setErrorContrasena(res.error);
+    mostrarAviso(res);
+    if (!res.ok) {
+      setErrorContrasena(toErrorAccion(res));
     } else {
       setExitoContrasena("Tu contraseña se actualizó correctamente.");
       setMostrarFormContrasena(false);
@@ -410,7 +436,7 @@ export function PerfilForm({
     setContrasenaActual("");
     setContrasenaNueva("");
     setRepetirContrasena("");
-    setErrorContrasena("");
+    setErrorContrasena(null);
   };
 
   // ── render ──────────────────────────────────────────────────────────────────
@@ -512,8 +538,8 @@ export function PerfilForm({
                 )}
               </div>
             )}
-            <p className="text-xs text-muted-icon">JPG, PNG o WEBP · Máximo 2 MB</p>
-            {errorAvatar && <MensajeError texto={errorAvatar} />}
+            <p className="text-xs text-muted-icon">{AVATAR_HELP_TEXT}</p>
+            {errorAvatar && <MensajeError error={errorAvatar} />}
           </div>
         </div>
         <p className="mt-2 text-xs text-muted-icon">
@@ -522,7 +548,7 @@ export function PerfilForm({
         <input
           ref={avatarInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept={AVATAR_ACCEPT}
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
@@ -678,7 +704,7 @@ export function PerfilForm({
 
           {modoEdicionDatos && (
             <div className="mt-6 flex flex-col gap-4">
-              {errorDatos && <MensajeError texto={errorDatos} />}
+              {errorDatos && <MensajeError error={errorDatos} />}
               <div className="flex flex-wrap gap-3">
                 <button
                   type="submit"
@@ -760,7 +786,7 @@ export function PerfilForm({
                 placeholder="Buscá o elegí rubros…"
                 id="rubros-combobox"
               />
-              {errorRubros && <MensajeError texto={errorRubros} />}
+              {errorRubros && <MensajeError error={errorRubros} />}
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   type="submit"
@@ -829,13 +855,13 @@ export function PerfilForm({
                   <p className="text-sm font-medium text-foreground">
                     Hacé clic para seleccionar tu CV. Se sube automáticamente.
                   </p>
-                  <p className="mt-1 text-xs text-muted-icon">Solo PDF · Máximo 5 MB</p>
+                  <p className="mt-1 text-xs text-muted-icon">{CV_HELP_TEXT}</p>
                 </div>
               </button>
             )}
 
             <div aria-live="polite">
-              {errorCV && <MensajeError texto={errorCV} />}
+              {errorCV && <MensajeError error={errorCV} />}
             </div>
           </div>
         ) : (
@@ -890,22 +916,25 @@ export function PerfilForm({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => cvInputRef.current?.click()}
-              disabled={subiendoCV || eliminandoCV}
-              className="flex h-9 w-fit items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
-            >
-              {subiendoCV ? (
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              ) : (
-                <Upload className="h-4 w-4" />
-              )}
-              {subiendoCV ? "Subiendo…" : "Reemplazar CV"}
-            </button>
+            <div className="flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={() => cvInputRef.current?.click()}
+                disabled={subiendoCV || eliminandoCV}
+                className="flex h-9 w-fit items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
+              >
+                {subiendoCV ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                {subiendoCV ? "Subiendo…" : "Reemplazar CV"}
+              </button>
+              <p className="text-xs text-muted-icon">{CV_HELP_TEXT}</p>
+            </div>
 
             <div aria-live="polite">
-              {errorCV && <MensajeError texto={errorCV} />}
+              {errorCV && <MensajeError error={errorCV} />}
             </div>
           </div>
         )}
@@ -919,7 +948,7 @@ export function PerfilForm({
         <input
           ref={cvInputRef}
           type="file"
-          accept="application/pdf"
+          accept={CV_ACCEPT}
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
@@ -1052,7 +1081,7 @@ export function PerfilForm({
               </InputWrapper>
             </div>
 
-            {errorContrasena && <MensajeError texto={errorContrasena} />}
+            {errorContrasena && <MensajeError error={errorContrasena} />}
 
             <div className="flex flex-col gap-2 sm:flex-row">
               <button

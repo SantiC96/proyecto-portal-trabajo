@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { crearCurso, editarCurso } from "./actions";
+import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { useAccion } from "@/lib/use-accion";
+import { Spinner } from "@/components/ui/spinner";
 
 type CursoData = {
   nombre: string;
@@ -21,9 +24,9 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
   const [descripcion, setDescripcion] = useState(inicial?.descripcion ?? "");
   const [link, setLink] = useState(inicial?.link ?? "");
   const [indicaciones, setIndicaciones] = useState(inicial?.indicaciones ?? "");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorAccion | null>(null);
   const [guardado, setGuardado] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const { pendiente: isPending, ejecutar } = useAccion();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,11 +34,11 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
     setGuardado(false);
 
     if (!nombre.trim()) {
-      setError("El nombre del curso es obligatorio.");
+      setError({ mensaje: "El nombre del curso es obligatorio." });
       return;
     }
     if (link.trim() && !link.trim().startsWith("https://")) {
-      setError("El link debe comenzar con https://");
+      setError({ mensaje: "El link debe comenzar con https://" });
       return;
     }
 
@@ -46,13 +49,13 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
       indicaciones: indicaciones.trim() || null,
     };
 
-    startTransition(async () => {
+    ejecutar(async () => {
       const res =
         modo === "crear"
           ? await crearCurso(data)
           : await editarCurso(cursoId!, data);
-      if (res.error) {
-        setError(res.error);
+      if (!res.ok) {
+        setError(toErrorAccion(res));
       } else {
         setGuardado(true);
       }
@@ -119,19 +122,29 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
           id="cf-indicaciones"
           value={indicaciones}
           onChange={(e) => setIndicaciones(e.target.value)}
-          placeholder="Lugar, días, horarios u otras indicaciones para el postulante..."
+          placeholder="Cómo inscribirse, qué tener a mano u otras indicaciones para el postulante..."
           rows={3}
           className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
           disabled={isPending}
         />
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <div>
+          <p className="text-sm text-red-600">{error.mensaje}</p>
+          {error.ref && (
+            <p className="mt-0.5 text-xs text-gray-500">
+              Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+            </p>
+          )}
+        </div>
+      )}
       {guardado && (
         <p className="text-sm text-primary">Cambios guardados.</p>
       )}
 
-      <button type="submit" disabled={isPending} className="btn-primario">
+      <button type="submit" disabled={isPending} aria-busy={isPending} className="btn-primario">
+        {isPending && <Spinner />}
         {isPending
           ? modo === "crear"
             ? "Creando..."
