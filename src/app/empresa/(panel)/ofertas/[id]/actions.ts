@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirEmpresa } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errConRef, okMsg, type Resultado } from "@/lib/resultado";
+import { err, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
 import { esUuid, LARGO_MAXIMO, validarTextoOpcional } from "@/lib/validaciones";
 
 function validarEntrevista(fechaEntrevistaISO: string, lugarEntrevista: string): string | null {
@@ -40,6 +40,9 @@ export async function coordinarEntrevista(
   const errEntrevista = validarEntrevista(fechaEntrevistaISO, lugarEntrevista);
   if (errEntrevista) return err("DATOS_INVALIDOS", errEntrevista);
 
+  // El trigger derivaciones_empresa_update (028/029) valida la transición; sus
+  // mensajes (P0001) llegan al usuario, por ejemplo si otra pestaña ya cerró
+  // el proceso.
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase
     .from("derivaciones")
@@ -51,6 +54,7 @@ export async function coordinarEntrevista(
     .eq("id", derivacionId);
 
   if (error) {
+    if (error.code === "P0001") return fromSupabaseError(error);
     const ref = logError("coordinarEntrevista", error, { derivacionId });
     return errConRef("ERROR_INTERNO", "No se pudo coordinar la entrevista.", ref);
   }
@@ -84,6 +88,7 @@ export async function reprogramarEntrevista(
     .eq("id", derivacionId);
 
   if (error) {
+    if (error.code === "P0001") return fromSupabaseError(error);
     const ref = logError("reprogramarEntrevista", error, { derivacionId });
     return errConRef("ERROR_INTERNO", "No se pudo reprogramar la entrevista.", ref);
   }
@@ -108,6 +113,7 @@ export async function seleccionarCandidato(
     .eq("id", derivacionId);
 
   if (error) {
+    if (error.code === "P0001") return fromSupabaseError(error);
     const ref = logError("seleccionarCandidato", error, { derivacionId });
     return errConRef("ERROR_INTERNO", "No se pudo seleccionar al candidato.", ref);
   }
@@ -145,6 +151,7 @@ export async function rechazarCandidato(
     .eq("id", derivacionId);
 
   if (error) {
+    if (error.code === "P0001") return fromSupabaseError(error);
     const ref = logError("rechazarCandidato", error, { derivacionId });
     return errConRef("ERROR_INTERNO", "No se pudo registrar la decisión.", ref);
   }

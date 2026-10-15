@@ -7,6 +7,10 @@ import { logError } from "@/lib/logger";
 import { err, errConRef, okMsg, type Resultado } from "@/lib/resultado";
 import { esUuid, LARGO_MAXIMO, validarTextoOpcional } from "@/lib/validaciones";
 
+// Aprobar y rechazar son updates condicionales: repetir la misma decisión
+// (doble envío, dos pestañas) no afecta filas, así que no sobrescribe
+// fecha_decision ni el motivo que ya quedó en el historial (migration_031).
+
 export async function aprobarEmpresa(
   empresaId: string
 ): Promise<Resultado<void>> {
@@ -24,6 +28,7 @@ export async function aprobarEmpresa(
       motivo_rechazo: null,
     })
     .eq("id", empresaId)
+    .neq("estado_aprobacion", "aprobada")
     .select("id");
 
   if (error) {
@@ -31,8 +36,7 @@ export async function aprobarEmpresa(
     return errConRef("ERROR_INTERNO", "Error al aprobar la empresa. Intentá de nuevo.", ref);
   }
   if (!data || data.length === 0) {
-    const ref = logError("aprobarEmpresa:noRow", null, { empresaId });
-    return errConRef("ERROR_INTERNO", "No se pudo completar la acción.", ref);
+    return err("ESTADO_INVALIDO", "La empresa ya está aprobada. Actualizá la página para ver su estado.");
   }
 
   revalidatePath("/admin/empresas");
@@ -63,6 +67,7 @@ export async function rechazarEmpresa(
       motivo_rechazo: motivo.trim(),
     })
     .eq("id", empresaId)
+    .neq("estado_aprobacion", "rechazada")
     .select("id");
 
   if (error) {
@@ -70,8 +75,7 @@ export async function rechazarEmpresa(
     return errConRef("ERROR_INTERNO", "Error al rechazar la empresa. Intentá de nuevo.", ref);
   }
   if (!data || data.length === 0) {
-    const ref = logError("rechazarEmpresa:noRow", null, { empresaId });
-    return errConRef("ERROR_INTERNO", "No se pudo completar la acción.", ref);
+    return err("ESTADO_INVALIDO", "La empresa ya está rechazada. Actualizá la página para ver su estado.");
   }
 
   revalidatePath("/admin/empresas");

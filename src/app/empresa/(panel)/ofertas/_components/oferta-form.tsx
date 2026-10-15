@@ -31,6 +31,9 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
   const [error, setError] = useState<ErrorAccion | null>(null);
   const [errorRequisitos, setErrorRequisitos] = useState<string | null>(null);
   const errorRef = useRef<HTMLDivElement>(null);
+  // Una clave por formulario abierto: si el mismo envío llega dos veces, la
+  // base crea una sola oferta (migration_040).
+  const [claveEnvio] = useState(() => crypto.randomUUID());
 
   const [titulo, setTitulo] = useState(valorInicial?.titulo ?? "");
   const [descripcion, setDescripcion] = useState(valorInicial?.descripcion ?? "");
@@ -125,7 +128,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
     ejecutar(async () => {
       const result = ofertaId
         ? await editarOferta(ofertaId, data)
-        : await crearOferta(data);
+        : await crearOferta(data, claveEnvio);
 
       if (!result.ok) {
         if (result.mensaje.toLowerCase().includes("requisito")) {
