@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   Mail,
@@ -11,40 +11,19 @@ import {
   User,
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirEmpresaPagina } from "@/lib/auth";
 import { formatFecha } from "@/lib/fechas";
-import {
-  DERIVACION_ESTADO_LABEL,
-  DERIVACION_ESTADO_STYLE,
-  type EstadoDerivacionEmpresa,
-} from "@/lib/derivacion-estados";
+import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_STYLE } from "@/lib/derivacion-estados";
+import { esUuid } from "@/lib/validaciones";
+import type {
+  FilaCandidatoParaEmpresaCompleto,
+  FilaDerivacionDePostulanteEmpresa,
+} from "@/types/db";
 import { NotaGuardadoEditor } from "@/app/empresa/(panel)/candidatos-guardados/_components/nota-editor";
 import { FotoPrivada } from "@/components/ui/foto-privada";
 
 export const metadata: Metadata = {
   title: "Perfil de candidato | Portal de Empleo Funes",
-};
-
-type CandidatoCompleto = {
-  nombre: string;
-  apellido: string;
-  email: string;
-  telefono: string | null;
-  cv_ruta: string | null;
-  foto_ruta: string | null;
-  rubros_interes: string[];
-};
-
-type HistorialRow = {
-  derivacion_id: string;
-  oferta_id: string;
-  oferta_titulo: string;
-  estado_empresa: EstadoDerivacionEmpresa;
-  fecha_respuesta: string | null;
-};
-
-type GuardadoRow = {
-  id: string;
-  nota: string | null;
 };
 
 export default async function PerfilCandidatoPage({
@@ -53,19 +32,9 @@ export default async function PerfilCandidatoPage({
   params: Promise<{ postulanteId: string }>;
 }) {
   const { postulanteId } = await params;
+  await requerirEmpresaPagina("/empresa");
+  if (!esUuid(postulanteId)) notFound();
   const supabase = await createSupabaseServerClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
-
-  const { data: empresa } = await supabase
-    .from("empresas")
-    .select("id")
-    .eq("usuario_id", user.id)
-    .maybeSingle();
-  if (!empresa) redirect("/empresa");
 
   const [candidatoResult, historialResult, guardadoResult] = await Promise.all([
     supabase.rpc("candidato_para_empresa_completo", { p_postulante_id: postulanteId }),
@@ -77,11 +46,11 @@ export default async function PerfilCandidatoPage({
       .maybeSingle(),
   ]);
 
-  const candidato = ((candidatoResult.data as CandidatoCompleto[] | null) ?? [])[0] ?? null;
+  const candidato: FilaCandidatoParaEmpresaCompleto | null = candidatoResult.data?.[0] ?? null;
   if (!candidato) notFound();
 
-  const historial = (historialResult.data as HistorialRow[] | null) ?? [];
-  const guardado = guardadoResult.data as GuardadoRow | null;
+  const historial: FilaDerivacionDePostulanteEmpresa[] = historialResult.data ?? [];
+  const guardado = guardadoResult.data;
 
   // Signed URL for CV (10 min)
   let cvUrl: string | null = null;

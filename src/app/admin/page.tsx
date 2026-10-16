@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { UMBRAL_RECHAZOS_CURSO } from "@/lib/cursos";
+import { requerirRolPagina } from "@/lib/auth";
+import { idsEmpresasSinConfirmar } from "@/lib/admin/empresas-sin-confirmar";
 
 export const metadata: Metadata = {
   title: "Panel municipal | Portal de Empleo Funes",
@@ -23,10 +25,11 @@ function textoEstado(hayPendientes: boolean): string {
 }
 
 export default async function AdminDashboardPage() {
+  await requerirRolPagina("municipalidad");
   const supabase = await createSupabaseServerClient();
 
   const [
-    { count: pendientes },
+    { count: pendientesTotales },
     { count: aprobadas },
     { count: rechazadas },
     { count: postulacionesPendientes },
@@ -34,6 +37,7 @@ export default async function AdminDashboardPage() {
     { count: ofertasPendientes },
     esperandoCursoRes,
     { count: cursosActivos },
+    empresasSinConfirmar,
   ] = await Promise.all([
     supabase
       .from("empresas")
@@ -61,7 +65,16 @@ export default async function AdminDashboardPage() {
       .from("cursos")
       .select("*", { count: "exact", head: true })
       .eq("activo", true),
+    idsEmpresasSinConfirmar(supabase),
   ]);
+
+  // Las empresas que no confirmaron el email no están pendientes de revisión.
+  if (empresasSinConfirmar.error)
+    logError("empresas_email_sin_confirmar", empresasSinConfirmar.error);
+  const pendientes = Math.max(
+    0,
+    (pendientesTotales ?? 0) - (empresasSinConfirmar.ids?.length ?? 0)
+  );
 
   if (esperandoCursoRes.error)
     logError("contar_postulantes_esperando_curso", esperandoCursoRes.error);

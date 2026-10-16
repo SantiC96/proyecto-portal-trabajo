@@ -9,32 +9,10 @@ import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 import { VencimientoOferta } from "@/components/ofertas/vencimiento-oferta";
 import { OfertaAcciones } from "./oferta-acciones";
 import { RequisitosList, BeneficiosList } from "@/components/ofertas/requisitos-beneficios";
+import { requerirRolPagina } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Oferta | Panel municipal | Portal de Empleo Funes",
-};
-
-type OfertaDetalle = {
-  id: string;
-  titulo: string;
-  descripcion: string;
-  empresa_nombre: string;
-  empresa_id: string | null;
-  ubicacion: string;
-  modalidad: string;
-  jornada: string;
-  requisitos: string[];
-  beneficios: string[];
-  estado: string;
-  created_at: string;
-  contenido_editado_en: string | null;
-  motivo_rechazo: string | null;
-  publicado_en: string | null;
-  revisado_por: string | null;
-  revisado_en: string | null;
-  vence_en: string | null;
-  duracion_dias: number;
-  oferta_categorias: Array<{ categorias: { nombre: string } | null }>;
 };
 
 export default async function AdminOfertaDetallePage({
@@ -42,10 +20,11 @@ export default async function AdminOfertaDetallePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requerirRolPagina("municipalidad");
   const { id: ofertaId } = await params;
   const supabase = await createSupabaseServerClient();
 
-  const { data: raw } = await supabase
+  const { data: oferta } = await supabase
     .from("ofertas")
     .select(
       `
@@ -60,9 +39,7 @@ export default async function AdminOfertaDetallePage({
     .eq("id", ofertaId)
     .single();
 
-  if (!raw) notFound();
-
-  const oferta = raw as unknown as OfertaDetalle;
+  if (!oferta) notFound();
 
   const [empresaResult, revisorResult, postulacionesResult, vacantesResult, contratadosResult] = await Promise.all([
     oferta.empresa_id
@@ -91,22 +68,15 @@ export default async function AdminOfertaDetallePage({
     supabase.rpc("contratados_en_oferta", { p_oferta_id: ofertaId }),
   ]);
 
-  const empresa = empresaResult.data as {
-    razon_social: string;
-    rubro: string;
-    descripcion: string | null;
-  } | null;
-  const revisor = revisorResult.data as {
-    nombre: string;
-    apellido: string;
-  } | null;
+  const empresa = empresaResult.data;
+  const revisor = revisorResult.data;
   const totalPostulaciones = postulacionesResult.count ?? 0;
-  const vacantes = (vacantesResult.data?.cantidad as number | null) ?? null;
-  const contratados = (contratadosResult.data as number | null) ?? 0;
+  const vacantes = vacantesResult.data?.cantidad ?? null;
+  const contratados = contratadosResult.data ?? 0;
 
   const categorias = oferta.oferta_categorias
     .map((oc) => oc.categorias?.nombre)
-    .filter(Boolean) as string[];
+    .filter((n): n is string => Boolean(n));
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">

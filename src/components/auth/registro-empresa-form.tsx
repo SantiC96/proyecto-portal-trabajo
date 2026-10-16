@@ -4,7 +4,8 @@ import { useState } from "react";
 import { registrarEmpresa } from "@/app/auth/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { formatearCUIT } from "@/lib/cuit";
-import { validarCuitConMensaje } from "@/lib/validaciones";
+import { LARGO_MAXIMO, validarCuitConMensaje } from "@/lib/validaciones";
+import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import Link from "next/link";
 import {
   Building2,
@@ -19,6 +20,28 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
+import type { Tabla } from "@/types/db";
+import {
+  CLASE_CONTROL_INVALIDO,
+  ErrorCampo,
+  Obligatorio,
+  ariaErrorCampo,
+} from "@/components/ui/obligatorio";
+import { useErroresCampo } from "@/lib/use-errores-campo";
+
+const CAMPOS = [
+  "razonSocial",
+  "cuit",
+  "rubro",
+  "descripcion",
+  "nombre",
+  "apellido",
+  "telefono",
+  "email",
+  "password",
+  "passwordRepeat",
+] as const;
+type Campo = (typeof CAMPOS)[number];
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -33,10 +56,12 @@ function FieldIcon({ icon: Icon }: { icon: React.ElementType }) {
 }
 
 const inputClass =
-  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60";
+  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 " +
+  CLASE_CONTROL_INVALIDO;
 
 const selectClass =
-  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-8 text-sm text-foreground outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 appearance-none cursor-pointer";
+  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-8 text-sm text-foreground outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 appearance-none cursor-pointer " +
+  CLASE_CONTROL_INVALIDO;
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -49,7 +74,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 // ─── component ──────────────────────────────────────────────────────────────
 
 interface Props {
-  categorias: { id: string; nombre: string }[];
+  categorias: Tabla<"categorias">[];
 }
 
 export function RegistroEmpresaForm({ categorias }: Props) {
@@ -72,6 +97,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
   // Submit state
   const [isLoading, setIsLoading] = useState(false);
   const [submitError, setSubmitError] = useState<ErrorAccion | null>(null);
+  const campos = useErroresCampo<Campo>();
 
   // ── derived ────────────────────────────────────────────────────────────────
   const passwordRepeatError =
@@ -83,6 +109,13 @@ export function RegistroEmpresaForm({ categorias }: Props) {
   // ── handlers ───────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setSubmitError(null);
+
+    const completos = campos.validar(
+      { razonSocial, cuit, rubro, nombre, apellido, telefono, email, password, passwordRepeat },
+      e.currentTarget
+    );
+    if (!completos) return;
 
     if (password !== passwordRepeat) {
       setSubmitError({ mensaje: "Las contraseñas no coinciden." });
@@ -90,7 +123,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
     }
     const cuitErrMsg = validarCuitConMensaje(cuit);
     if (cuitErrMsg) {
-      setSubmitError({ mensaje: cuitErrMsg });
+      campos.marcar("cuit", cuitErrMsg);
       return;
     }
 
@@ -108,7 +141,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
       password,
     });
     if (result && !result.ok) {
-      setSubmitError(toErrorAccion(result));
+      if (!campos.tomarDelServidor(result, CAMPOS)) setSubmitError(toErrorAccion(result));
       setIsLoading(false);
     }
   };
@@ -144,7 +177,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                 htmlFor="reg-razon-social"
                 className="text-sm font-medium text-foreground"
               >
-                Razón social <span className="text-red-500">*</span>
+                Razón social <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Building2} />
@@ -154,11 +187,16 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                   autoComplete="organization"
                   required
                   value={razonSocial}
-                  onChange={(e) => setRazonSocial(e.target.value)}
+                  onChange={(e) => {
+                    setRazonSocial(e.target.value);
+                    campos.limpiar("razonSocial");
+                  }}
                   placeholder="Ej: Construcciones del Sur S.R.L."
                   className={inputClass}
+                  {...ariaErrorCampo("reg-razon-social", campos.errores.razonSocial)}
                 />
               </InputWrapper>
+              <ErrorCampo idCampo="reg-razon-social" mensaje={campos.errores.razonSocial} />
             </div>
 
             {/* CUIT */}
@@ -167,7 +205,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                 htmlFor="reg-cuit"
                 className="text-sm font-medium text-foreground"
               >
-                CUIT <span className="text-red-500">*</span>
+                CUIT <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Hash} />
@@ -177,17 +215,20 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                   inputMode="numeric"
                   required
                   value={formatearCUIT(cuit)}
-                  onChange={(e) =>
-                    setCuit(e.target.value.replace(/\D/g, "").slice(0, 11))
-                  }
+                  onChange={(e) => {
+                    setCuit(e.target.value.replace(/\D/g, "").slice(0, 11));
+                    campos.limpiar("cuit");
+                  }}
                   placeholder="30-12345678-9"
                   className={`${inputClass} ${
                     cuitError
                       ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
                       : ""
                   }`}
+                  {...ariaErrorCampo("reg-cuit", campos.errores.cuit)}
                 />
               </InputWrapper>
+              <ErrorCampo idCampo="reg-cuit" mensaje={campos.errores.cuit} />
               {cuitError && (
                 <p className="flex items-center gap-1.5 text-xs text-red-500">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
@@ -208,7 +249,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                 htmlFor="reg-rubro"
                 className="text-sm font-medium text-foreground"
               >
-                Rubro <span className="text-red-500">*</span>
+                Rubro <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Briefcase} />
@@ -216,7 +257,11 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                   id="reg-rubro"
                   required
                   value={rubro}
-                  onChange={(e) => setRubro(e.target.value)}
+                  onChange={(e) => {
+                    setRubro(e.target.value);
+                    campos.limpiar("rubro");
+                  }}
+                  {...ariaErrorCampo("reg-rubro", campos.errores.rubro)}
                   className={selectClass}
                 >
                   <option value="" disabled>
@@ -229,6 +274,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                   ))}
                 </select>
               </InputWrapper>
+              <ErrorCampo idCampo="reg-rubro" mensaje={campos.errores.rubro} />
             </div>
 
             {/* Descripción */}
@@ -246,10 +292,17 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                 id="reg-descripcion"
                 rows={3}
                 value={descripcion}
-                onChange={(e) => setDescripcion(e.target.value)}
+                onChange={(e) => {
+                  setDescripcion(e.target.value);
+                  campos.limpiar("descripcion");
+                }}
                 placeholder="Contanos brevemente a qué se dedica tu empresa…"
-                className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20"
+                maxLength={LARGO_MAXIMO.descripcion}
+                className={`w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 ${CLASE_CONTROL_INVALIDO}`}
+                {...ariaErrorCampo("reg-descripcion", campos.errores.descripcion)}
               />
+              <ErrorCampo idCampo="reg-descripcion" mensaje={campos.errores.descripcion} />
+              <ContadorCaracteres actual={descripcion.length} maximo={LARGO_MAXIMO.descripcion} />
             </div>
           </div>
         </section>
@@ -267,7 +320,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                   htmlFor="reg-nombre"
                   className="text-sm font-medium text-foreground"
                 >
-                  Nombre <span className="text-red-500">*</span>
+                  Nombre <Obligatorio />
                 </label>
                 <InputWrapper>
                   <FieldIcon icon={User} />
@@ -277,18 +330,23 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                     autoComplete="given-name"
                     required
                     value={nombre}
-                    onChange={(e) => setNombre(e.target.value)}
+                    onChange={(e) => {
+                      setNombre(e.target.value);
+                      campos.limpiar("nombre");
+                    }}
                     placeholder="Ej: Carlos"
                     className={inputClass}
+                    {...ariaErrorCampo("reg-nombre", campos.errores.nombre)}
                   />
                 </InputWrapper>
+                <ErrorCampo idCampo="reg-nombre" mensaje={campos.errores.nombre} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="reg-apellido"
                   className="text-sm font-medium text-foreground"
                 >
-                  Apellido <span className="text-red-500">*</span>
+                  Apellido <Obligatorio />
                 </label>
                 <InputWrapper>
                   <FieldIcon icon={User} />
@@ -298,11 +356,16 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                     autoComplete="family-name"
                     required
                     value={apellido}
-                    onChange={(e) => setApellido(e.target.value)}
+                    onChange={(e) => {
+                      setApellido(e.target.value);
+                      campos.limpiar("apellido");
+                    }}
                     placeholder="Ej: Ramírez"
                     className={inputClass}
+                    {...ariaErrorCampo("reg-apellido", campos.errores.apellido)}
                   />
                 </InputWrapper>
+                <ErrorCampo idCampo="reg-apellido" mensaje={campos.errores.apellido} />
               </div>
             </div>
 
@@ -312,7 +375,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                 htmlFor="reg-telefono"
                 className="text-sm font-medium text-foreground"
               >
-                Teléfono / Celular <span className="text-red-500">*</span>
+                Teléfono / Celular <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Phone} />
@@ -322,11 +385,16 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                   autoComplete="tel"
                   required
                   value={telefono}
-                  onChange={(e) => setTelefono(e.target.value)}
+                  onChange={(e) => {
+                    setTelefono(e.target.value);
+                    campos.limpiar("telefono");
+                  }}
                   placeholder="Ej: 341 5678901"
                   className={inputClass}
+                  {...ariaErrorCampo("reg-telefono", campos.errores.telefono)}
                 />
               </InputWrapper>
+              <ErrorCampo idCampo="reg-telefono" mensaje={campos.errores.telefono} />
             </div>
 
             {/* Email */}
@@ -335,7 +403,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                 htmlFor="reg-email"
                 className="text-sm font-medium text-foreground"
               >
-                Correo electrónico <span className="text-red-500">*</span>
+                Correo electrónico <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Mail} />
@@ -345,11 +413,16 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                   autoComplete="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    campos.limpiar("email");
+                  }}
                   placeholder="empresa@ejemplo.com"
                   className={inputClass}
+                  {...ariaErrorCampo("reg-email", campos.errores.email)}
                 />
               </InputWrapper>
+              <ErrorCampo idCampo="reg-email" mensaje={campos.errores.email} />
             </div>
 
             {/* Contraseña */}
@@ -358,7 +431,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                 htmlFor="reg-password"
                 className="text-sm font-medium text-foreground"
               >
-                Contraseña <span className="text-red-500">*</span>
+                Contraseña <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Lock} />
@@ -369,9 +442,13 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                   required
                   minLength={6}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    campos.limpiar("password");
+                  }}
                   placeholder="Mínimo 8 caracteres"
                   className={`${inputClass} pr-10`}
+                  {...ariaErrorCampo("reg-password", campos.errores.password)}
                 />
                 <button
                   type="button"
@@ -388,6 +465,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                   )}
                 </button>
               </InputWrapper>
+              <ErrorCampo idCampo="reg-password" mensaje={campos.errores.password} />
             </div>
 
             {/* Repetir contraseña */}
@@ -396,7 +474,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                 htmlFor="reg-password-repeat"
                 className="text-sm font-medium text-foreground"
               >
-                Repetir contraseña <span className="text-red-500">*</span>
+                Repetir contraseña <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Lock} />
@@ -406,13 +484,17 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                   autoComplete="new-password"
                   required
                   value={passwordRepeat}
-                  onChange={(e) => setPasswordRepeat(e.target.value)}
+                  onChange={(e) => {
+                    setPasswordRepeat(e.target.value);
+                    campos.limpiar("passwordRepeat");
+                  }}
                   placeholder="Repetí tu contraseña"
                   className={`${inputClass} pr-10 ${
                     passwordRepeatError
                       ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
                       : ""
                   }`}
+                  {...ariaErrorCampo("reg-password-repeat", campos.errores.passwordRepeat)}
                 />
                 <button
                   type="button"
@@ -431,6 +513,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                   )}
                 </button>
               </InputWrapper>
+              <ErrorCampo idCampo="reg-password-repeat" mensaje={campos.errores.passwordRepeat} />
               {passwordRepeatError && (
                 <p className="flex items-center gap-1.5 text-xs text-red-500">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />

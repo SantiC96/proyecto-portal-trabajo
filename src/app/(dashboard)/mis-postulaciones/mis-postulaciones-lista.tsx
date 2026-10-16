@@ -12,27 +12,19 @@ import { mostrarAviso } from "@/lib/avisos";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { getOfertaEstadoBadge } from "@/lib/oferta-estados";
 import { useAccion } from "@/lib/use-accion";
+import type { Enum, FilaEstadoDerivacionPostulante, FilaMiPreEntrevista, Tabla } from "@/types/db";
 
-type EstadoPostulacion = "recibida" | "en_revision" | "derivada" | "rechazada_municipalidad";
+type EstadoPostulacion = Enum<"estado_postulacion">;
 
-type DerivacionEstado = {
-  estado_empresa: string;
-  fecha_entrevista: string | null;
-  lugar_entrevista: string | null;
-};
-
-type Postulacion = {
-  id: string;
-  estado: EstadoPostulacion;
-  created_at: string;
-  oferta: {
-    id: string;
-    titulo: string;
-    empresa_nombre: string;
-    estado: string;
-    contenido_editado_en: string | null;
-  } | null;
-  derivacion: DerivacionEstado | null;
+export type Postulacion = Pick<Tabla<"postulaciones">, "id" | "estado" | "created_at"> & {
+  /** null cuando RLS no deja ver la oferta (por ejemplo, si está cerrada). */
+  oferta: Pick<
+    Tabla<"ofertas">,
+    "id" | "titulo" | "empresa_nombre" | "estado" | "contenido_editado_en"
+  > | null;
+  derivacion: FilaEstadoDerivacionPostulante | null;
+  /** Pre-entrevista con la oficina (sin la nota interna). */
+  preEntrevista: FilaMiPreEntrevista | null;
 };
 
 function getBadgeEstado(estado: EstadoPostulacion) {
@@ -280,6 +272,20 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
             )}
 
             <p className="mt-2 text-xs text-muted-foreground">Postulado el {fecha}</p>
+
+            {(p.estado === "recibida" || p.estado === "en_revision") &&
+              p.preEntrevista?.estado === "coordinada" && (
+                <div className="mt-3 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm text-blue-800">
+                  <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                  <div className="min-w-0">
+                    <span className="font-medium">Pre-entrevista con la Oficina de Empleo: </span>
+                    {formatFechaHora(p.preEntrevista.fecha_hora)}
+                    <span className="mt-0.5 block break-words text-blue-700">
+                      {p.preEntrevista.lugar}
+                    </span>
+                  </div>
+                </div>
+              )}
 
             {/* Derivacion: estado de la empresa (nunca notas) */}
             {p.estado === "derivada" && p.derivacion && (() => {

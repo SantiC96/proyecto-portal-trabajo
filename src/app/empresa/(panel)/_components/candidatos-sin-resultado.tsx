@@ -5,17 +5,6 @@ import { logError } from "@/lib/logger";
 import { formatFechaHora } from "@/lib/fechas";
 import { DIAS_SIN_RESULTADO } from "@/lib/derivacion-estados";
 
-type FilaSinResultado = {
-  derivacion_id: string;
-  oferta_id: string;
-  oferta_titulo: string;
-  postulante_id: string;
-  nombre: string;
-  apellido: string;
-  estado_empresa: "pendiente" | "en_proceso";
-  fecha_entrevista: string;
-};
-
 /**
  * Recordatorio de contratación: candidatos cuya entrevista pasó hace más de
  * DIAS_SIN_RESULTADO días y siguen sin respuesta. Cada fila lleva a la ficha
@@ -32,7 +21,7 @@ export async function CandidatosSinResultado() {
     return null;
   }
 
-  const filas = (data ?? []) as FilaSinResultado[];
+  const filas = data ?? [];
   if (filas.length === 0) return null;
 
   const visibles = filas.slice(0, 10);

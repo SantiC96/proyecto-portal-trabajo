@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { ClipboardList } from "lucide-react";
+import { CalendarClock, ClipboardList } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
 import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
@@ -23,10 +23,12 @@ import {
   BADGE_ESTADO_VISIBLE,
   badgePostulacion,
   type BadgePostulacion,
-  type EstadoPostulacion,
 } from "@/lib/admin/postulacion-estados";
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
-import { formatFechaCorta } from "@/lib/fechas";
+import type { FilaPostulacionNoSeleccionada, Tabla } from "@/types/db";
+import { formatFechaCorta, formatFechaHoraCorta } from "@/lib/fechas";
+import { requerirRolPagina } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Postulaciones | Panel municipal | Portal de Empleo Funes",
@@ -54,53 +56,19 @@ const LABEL_FILTRO: Record<EstadoFiltro, string> = {
   rechazada_municipalidad: "No seleccionado",
 };
 
-const DERIVACION_ABIERTA = ["pendiente", "en_proceso"];
+const DERIVACION_ABIERTA: EstadoDerivacionEmpresa[] = ["pendiente", "en_proceso"];
 
 const ID_INEXISTENTE = "00000000-0000-0000-0000-000000000000";
 
-type PostulanteEmbebido = {
-  id: string;
-  usuario_id: string;
-  dni: string | null;
-  usuarios: { nombre: string; apellido: string } | null;
-} | null;
+type PostulanteEmbebido =
+  | (Pick<Tabla<"postulantes">, "id" | "usuario_id" | "dni"> & {
+      usuarios: Pick<Tabla<"usuarios">, "nombre" | "apellido"> | null;
+    })
+  | null;
 
-type OfertaEmbebida = { id: string; titulo: string; empresa_nombre: string } | null;
+type OfertaEmbebida = Pick<Tabla<"ofertas">, "id" | "titulo" | "empresa_nombre"> | null;
 
-type PostulacionRow = {
-  id: string;
-  estado: EstadoPostulacion;
-  created_at: string;
-  postulante_id: string;
-  postulantes: PostulanteEmbebido;
-  ofertas: OfertaEmbebida;
-  derivaciones: { estado_empresa: EstadoDerivacionEmpresa } | null;
-};
-
-type ContratacionRow = {
-  id: string;
-  fecha_respuesta: string | null;
-  updated_at: string;
-  postulaciones: {
-    id: string;
-    postulantes: PostulanteEmbebido;
-    ofertas: OfertaEmbebida;
-  };
-};
-
-type NoSeleccionadaRow = {
-  postulacion_id: string;
-  postulante_id: string;
-  oferta_id: string;
-  usuario_id: string | null;
-  nombre: string | null;
-  apellido: string | null;
-  dni: string | null;
-  oferta_titulo: string;
-  empresa_nombre: string | null;
-  rechazado_por: "oficina" | "empresa";
-  fecha_rechazo: string;
-};
+type PreEntrevistaEmbebida = Pick<Tabla<"pre_entrevistas">, "estado" | "fecha_hora"> | null;
 
 /** Fila común a las cuatro secciones. */
 type Fila = {
@@ -109,6 +77,8 @@ type Fila = {
   oferta: OfertaEmbebida;
   fecha: string;
   badge: BadgePostulacion;
+  /** Solo en Pendientes (migration_044). */
+  preEntrevista?: PreEntrevistaEmbebida;
 };
 
 const RUTA = "/admin/postulaciones";
@@ -123,13 +93,10 @@ export default async function PostulacionesPage({
     pagina?: string;
   }>;
 }) {
+  await requerirRolPagina("municipalidad");
   const sp = await searchParams;
 
-  const estado: EstadoFiltro = ESTADOS_FILTRO.includes(
-    sp.estado as EstadoFiltro
-  )
-    ? (sp.estado as EstadoFiltro)
-    : "pendiente";
+  const estado: EstadoFiltro = ESTADOS_FILTRO.find((e) => e === sp.estado) ?? "pendiente";
 
   const ofertaId = (sp.oferta_id ?? "").trim();
   const q = limpiarBusqueda(sp.q);
@@ -374,7 +341,7 @@ async function ListadoPostulaciones({
   let total: number;
 
   if (estado === "contratado") {
-    const resultado = await consultarPagina<ContratacionRow>(pagina, (desde, hasta) => {
+    const resultado = await consultarPagina(pagina, (desde, hasta) => {
       let query = supabase
         .from("derivaciones")
         .select(
@@ -408,8 +375,7 @@ async function ListadoPostulaciones({
         .order("fecha_respuesta", { ascending: false, nullsFirst: false })
         .order("updated_at", { ascending: false })
         .order("id", { ascending: false })
-        .range(desde, hasta)
-        .overrideTypes<ContratacionRow[], { merge: false }>();
+        .range(desde, hasta);
     });
 
     if (!resultado.ok) {
@@ -427,7 +393,7 @@ async function ListadoPostulaciones({
     paginaActual = resultado.pagina;
     total = resultado.total;
   } else if (estado === "rechazada_municipalidad") {
-    const resultado = await consultarPagina<NoSeleccionadaRow>(pagina, async (desde, hasta) => {
+    const resultado = await consultarPagina(pagina, async (desde, hasta) => {
       let query = supabase.rpc("postulaciones_no_seleccionadas", undefined, {
         count: "exact",
       });
@@ -439,7 +405,7 @@ async function ListadoPostulaciones({
         .order("fecha_rechazo", { ascending: false })
         .order("postulacion_id", { ascending: false })
         .range(desde, hasta);
-      const data: NoSeleccionadaRow[] | null = respuesta.data;
+      const data: FilaPostulacionNoSeleccionada[] | null = respuesta.data;
       return { data, count: respuesta.count, error: respuesta.error };
     });
 
@@ -475,7 +441,7 @@ async function ListadoPostulaciones({
     paginaActual = resultado.pagina;
     total = resultado.total;
   } else {
-    const resultado = await consultarPagina<PostulacionRow>(pagina, (desde, hasta) => {
+    const resultado = await consultarPagina(pagina, (desde, hasta) => {
       const columnas = `
         id,
         estado,
@@ -487,7 +453,8 @@ async function ListadoPostulaciones({
           dni,
           usuarios!usuario_id(nombre, apellido)
         ),
-        ofertas!oferta_id(id, titulo, empresa_nombre)
+        ofertas!oferta_id(id, titulo, empresa_nombre),
+        pre_entrevistas(estado, fecha_hora)
       `;
 
       // "Derivadas" se filtra por el estado de la derivación (relación 1 a 1).
@@ -514,8 +481,7 @@ async function ListadoPostulaciones({
       return query
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
-        .range(desde, hasta)
-        .overrideTypes<PostulacionRow[], { merge: false }>();
+        .range(desde, hasta);
     });
 
     if (!resultado.ok) {
@@ -529,6 +495,7 @@ async function ListadoPostulaciones({
       oferta: r.ofertas,
       fecha: r.created_at,
       badge: badgePostulacion(r.estado, r.derivaciones?.estado_empresa),
+      preEntrevista: estado === "pendiente" ? r.pre_entrevistas : undefined,
     }));
     paginaActual = resultado.pagina;
     total = resultado.total;
@@ -683,6 +650,7 @@ async function ListadoPostulaciones({
                         >
                           {fila.badge.label}
                         </Badge>
+                        <PreEntrevistaCoordinada pre={fila.preEntrevista} className="mt-1.5" />
                       </td>
                       <td className="py-4">
                         <form action={abrirFicha.bind(null, fila.postulacionId)}>
@@ -768,6 +736,7 @@ async function ListadoPostulaciones({
                       </dd>
                     </div>
                   </dl>
+                  <PreEntrevistaCoordinada pre={fila.preEntrevista} className="mt-3" />
                   <div className="mt-4">
                     <form action={abrirFicha.bind(null, fila.postulacionId)}>
                       <BotonFormulario
@@ -791,5 +760,24 @@ async function ListadoPostulaciones({
             total={total}
           />
     </>
+  );
+}
+
+/** Solo la pre-entrevista coordinada; el resto del detalle está en la ficha. */
+function PreEntrevistaCoordinada({
+  pre,
+  className,
+}: {
+  pre: PreEntrevistaEmbebida | undefined;
+  className?: string;
+}) {
+  if (pre?.estado !== "coordinada") return null;
+  return (
+    <p
+      className={cn("flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground", className)}
+    >
+      <CalendarClock className="h-3.5 w-3.5 flex-shrink-0 text-primary" aria-hidden="true" />
+      Pre-entrevista: {formatFechaHoraCorta(pre.fecha_hora)}
+    </p>
   );
 }

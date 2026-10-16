@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirUsuarioPagina } from "@/lib/auth";
 import { PublicFooter } from "@/components/public/public-footer";
 
 export default async function DashboardLayout({
@@ -7,14 +6,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/auth/login");
-  }
+  await requerirUsuarioPagina();
 
   return (
     <>

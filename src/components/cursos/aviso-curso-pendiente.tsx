@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BookOpen, ChevronRight } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
-import { UMBRAL_RECHAZOS_CURSO, type MiCurso } from "@/lib/cursos";
+import { aMisCursos, UMBRAL_RECHAZOS_CURSO } from "@/lib/cursos";
 import { cn } from "@/lib/utils";
 
 /**
@@ -22,7 +22,7 @@ export async function AvisoCursoPendiente({ className }: { className?: string })
     return null;
   }
 
-  const curso = ((data ?? []) as MiCurso[])[0];
+  const curso = aMisCursos(data ?? [])[0];
   if (!curso) return null;
 
   return (

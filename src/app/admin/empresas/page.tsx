@@ -18,6 +18,9 @@ import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { EmpresaAcciones } from "./acciones";
+import type { Tabla } from "@/types/db";
+import { requerirRolPagina } from "@/lib/auth";
+import { idsEmpresasSinConfirmar, listaIn } from "@/lib/admin/empresas-sin-confirmar";
 
 export const metadata: Metadata = {
   title: "Empresas | Panel municipal | Portal de Empleo Funes",
@@ -26,23 +29,17 @@ export const metadata: Metadata = {
 const ESTADOS = ["pendiente", "aprobada", "rechazada"] as const;
 type EstadoAprobacion = (typeof ESTADOS)[number];
 
-type EmpresaRow = {
-  id: string;
-  razon_social: string;
-  cuit: string;
-  rubro: string;
-  created_at: string;
-  usuario_id: string;
-  usuarios: { nombre: string; apellido: string; telefono: string } | null;
-};
+// historial_aprobacion_empresa.evento es text con un CHECK (migration_031).
+const EVENTOS_HISTORIAL = ["aprobada", "rechazada", "reenviada"] as const;
 
-export type HistorialEntry = {
-  id: string;
-  empresa_id: string;
-  evento: "aprobada" | "rechazada" | "reenviada";
-  motivo: string | null;
-  created_at: string;
-};
+export type HistorialEntry = Pick<
+  Tabla<"historial_aprobacion_empresa">,
+  "id" | "empresa_id" | "motivo" | "created_at"
+> & { evento: (typeof EVENTOS_HISTORIAL)[number] };
+
+function esEventoHistorial(valor: string): valor is HistorialEntry["evento"] {
+  return EVENTOS_HISTORIAL.some((e) => e === valor);
+}
 
 const LABELS: Record<EstadoAprobacion, string> = {
   pendiente: "Pendientes",
@@ -71,10 +68,9 @@ export default async function AdminEmpresasPage({
 }: {
   searchParams: Promise<{ estado?: string; q?: string; pagina?: string }>;
 }) {
+  await requerirRolPagina("municipalidad");
   const sp = await searchParams;
-  const estado: EstadoAprobacion = ESTADOS.includes(sp.estado as EstadoAprobacion)
-    ? (sp.estado as EstadoAprobacion)
-    : "pendiente";
+  const estado: EstadoAprobacion = ESTADOS.find((e) => e === sp.estado) ?? "pendiente";
   const q = limpiarBusqueda(sp.q);
   const pagina = leerPagina(sp.pagina);
 
@@ -100,8 +96,8 @@ export default async function AdminEmpresasPage({
             href={hrefConParams(RUTA, {}, { estado: tab, q: sp.q ?? null })}
             className={
               tab === estado
-                ? "flex-1 rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
-                : "flex-1 rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+                ? "flex min-h-11 flex-1 items-center justify-center rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
+                : "flex min-h-11 flex-1 items-center justify-center rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
             }
           >
             {LABELS[tab]}
@@ -136,7 +132,20 @@ async function ListadoEmpresas({
   const supabase = await createSupabaseServerClient();
   const ascendente = estado === "pendiente";
 
-  const resultado = await consultarPagina<EmpresaRow>(pagina, (desde, hasta) => {
+  // Para la oficina, una empresa que no confirmó su email todavía no existe.
+  // Solo pueden estar pendientes: la base no deja aprobarlas ni rechazarlas
+  // (migration_042).
+  let sinConfirmar: string[] = [];
+  if (estado === "pendiente") {
+    const res = await idsEmpresasSinConfirmar(supabase);
+    if (res.error) {
+      const ref = logError("admin_empresas_sin_confirmar", res.error, { estado });
+      return <ErrorListado className="mt-4" refError={ref} />;
+    }
+    sinConfirmar = res.ids;
+  }
+
+  const resultado = await consultarPagina(pagina, (desde, hasta) => {
     let query = supabase
       .from("empresas")
       .select(
@@ -144,6 +153,10 @@ async function ListadoEmpresas({
         { count: "exact" }
       )
       .eq("estado_aprobacion", estado);
+
+    if (sinConfirmar.length > 0) {
+      query = query.not("id", "in", listaIn(sinConfirmar));
+    }
 
     if (q) {
       // El CUIT se guarda como XX-XXXXXXXX-X: además del texto tal cual se
@@ -162,8 +175,7 @@ async function ListadoEmpresas({
     return query
       .order("created_at", { ascending: ascendente })
       .order("id", { ascending: ascendente })
-      .range(desde, hasta)
-      .overrideTypes<EmpresaRow[], { merge: false }>();
+      .range(desde, hasta);
   });
 
   if (!resultado.ok) {
@@ -216,15 +228,18 @@ async function ListadoEmpresas({
   ]);
 
   const emailMap = new Map<string, string>(
-    ((emailRows ?? []) as { id: string; email: string }[]).map((r) => [
-      r.id,
-      r.email,
-    ])
+    (emailRows ?? []).map((r) => [r.id, r.email])
   );
+
+  // Descarta eventos desconocidos (el CHECK de la base no los permite).
+  const historial: HistorialEntry[] = (historialRows ?? []).flatMap((entry) => {
+    const { evento } = entry;
+    return esEventoHistorial(evento) ? [{ ...entry, evento }] : [];
+  });
 
   // Agrupar historial por empresa (ya viene ordenado DESC por created_at).
   const historialPorEmpresa = new Map<string, HistorialEntry[]>();
-  for (const entry of (historialRows ?? []) as HistorialEntry[]) {
+  for (const entry of historial) {
     const list = historialPorEmpresa.get(entry.empresa_id) ?? [];
     list.push(entry);
     historialPorEmpresa.set(entry.empresa_id, list);
@@ -233,7 +248,7 @@ async function ListadoEmpresas({
   // Para la pestaña pendiente: fecha del último reenvío de cada empresa.
   const reenviadas = new Map<string, string>();
   if (estado === "pendiente") {
-    for (const entry of (historialRows ?? []) as HistorialEntry[]) {
+    for (const entry of historial) {
       if (entry.evento === "reenviada" && !reenviadas.has(entry.empresa_id)) {
         reenviadas.set(entry.empresa_id, entry.created_at);
       }

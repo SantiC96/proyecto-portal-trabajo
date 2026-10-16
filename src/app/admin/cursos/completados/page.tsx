@@ -10,6 +10,7 @@ import { DIAS_CURSOS_COMPLETADOS_RECIENTES } from "@/lib/cursos";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { requerirRolPagina } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Cursos completados | Panel municipal | Portal de Empleo Funes",
@@ -17,21 +18,12 @@ export const metadata: Metadata = {
 
 const RUTA = "/admin/cursos/completados";
 
-type CompletadoRow = {
-  id: string;
-  completado_en: string;
-  cursos: { id: string; nombre: string } | null;
-  postulantes: {
-    id: string;
-    usuarios: { nombre: string; apellido: string } | null;
-  } | null;
-};
-
 export default async function CursosCompletadosPage({
   searchParams,
 }: {
   searchParams: Promise<{ pagina?: string }>;
 }) {
+  await requerirRolPagina("municipalidad");
   const sp = await searchParams;
   const pagina = leerPagina(sp.pagina);
 
@@ -75,7 +67,7 @@ async function ListadoCompletados({
   const supabase = await createSupabaseServerClient();
   const desde = haceDiasISO(DIAS_CURSOS_COMPLETADOS_RECIENTES);
 
-  const resultado = await consultarPagina<CompletadoRow>(pagina, (inicio, fin) =>
+  const resultado = await consultarPagina(pagina, (inicio, fin) =>
     supabase
       .from("asignaciones_curso")
       .select(
@@ -87,7 +79,6 @@ async function ListadoCompletados({
       .order("completado_en", { ascending: false })
       .order("id", { ascending: false })
       .range(inicio, fin)
-      .overrideTypes<CompletadoRow[], { merge: false }>()
   );
 
   if (!resultado.ok) {

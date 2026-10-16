@@ -33,7 +33,7 @@ export const ERRORES_ARCHIVO = {
 } as const;
 
 export function validarTipoAvatar(mimeType: string): mimeType is AvatarMimeType {
-  return (AVATAR_MIME_TYPES as readonly string[]).includes(mimeType);
+  return AVATAR_MIME_TYPES.some((tipo) => tipo === mimeType);
 }
 
 export function validarTipoCV(mimeType: string): mimeType is CvMimeType {

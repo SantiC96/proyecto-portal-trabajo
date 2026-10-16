@@ -2,27 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirRol } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errConRef, okMsg, type Resultado, type ResultadoError } from "@/lib/resultado";
+import { err, errCampo, errConRef, okMsg, type Resultado } from "@/lib/resultado";
+import { esUuid, LARGO_MAXIMO, MENSAJE_OBLIGATORIO, validarTextoOpcional } from "@/lib/validaciones";
 
-async function verificarMunicipalidad(): Promise<{ ok: true; userId: string } | ResultadoError> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return err("NO_AUTENTICADO");
-
-  const { data: usuario } = await supabase
-    .from("usuarios")
-    .select("rol")
-    .eq("id", user.id)
-    .single();
-
-  if (!usuario || usuario.rol !== "municipalidad") return err("SIN_PERMISO");
-
-  return { ok: true, userId: user.id };
-}
+// Aprobar y rechazar son updates condicionales (estado = 'pendiente_aprobacion'):
+// si otra pestaña ya la resolvió o la empresa la cerró entre la lectura y el
+// update, no se pisa ese estado.
+const MENSAJE_YA_NO_PENDIENTE =
+  "La oferta ya no está pendiente de revisión. Actualizá la página para ver su estado.";
 
 function revalidarOfertas(ofertaId: string) {
   revalidatePath("/admin/ofertas");
@@ -34,8 +23,10 @@ function revalidarOfertas(ofertaId: string) {
 }
 
 export async function aprobarOferta(ofertaId: string): Promise<Resultado<void>> {
-  const auth = await verificarMunicipalidad();
+  const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
+
+  if (!esUuid(ofertaId)) return err("DATOS_INVALIDOS");
 
   const supabase = await createSupabaseServerClient();
 
@@ -57,22 +48,20 @@ export async function aprobarOferta(ofertaId: string): Promise<Resultado<void>> 
     .update({
       estado: "activa",
       // publicado_en solo se fija la primera vez; en re-aprobaciones se conserva.
-      publicado_en: (oferta as { publicado_en: string | null }).publicado_en ?? ahora,
-      revisado_por: auth.userId,
+      publicado_en: oferta.publicado_en ?? ahora,
+      revisado_por: auth.usuario.id,
       revisado_en: ahora,
       updated_at: ahora,
     })
     .eq("id", ofertaId)
+    .eq("estado", "pendiente_aprobacion")
     .select("id");
 
   if (error) {
     const ref = logError("aprobarOferta", error, { ofertaId });
     return errConRef("ERROR_INTERNO", "No se pudo aprobar la oferta. Intentá de nuevo.", ref);
   }
-  if (!data || data.length === 0) {
-    const ref = logError("aprobarOferta:noRow", null, { ofertaId });
-    return errConRef("ERROR_INTERNO", "No se pudo completar la acción.", ref);
-  }
+  if (!data || data.length === 0) return err("ESTADO_INVALIDO", MENSAJE_YA_NO_PENDIENTE);
 
   revalidarOfertas(ofertaId);
   return okMsg("Oferta aprobada.");
@@ -82,11 +71,14 @@ export async function rechazarOferta(
   ofertaId: string,
   motivo: string
 ): Promise<Resultado<void>> {
-  const auth = await verificarMunicipalidad();
+  const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
 
-  const motivoTrimmed = motivo.trim();
-  if (!motivoTrimmed) return err("DATOS_INVALIDOS", "El motivo del rechazo es obligatorio.");
+  if (!esUuid(ofertaId)) return err("DATOS_INVALIDOS");
+  const motivoTrimmed = typeof motivo === "string" ? motivo.trim() : "";
+  if (!motivoTrimmed) return errCampo("motivo", MENSAJE_OBLIGATORIO);
+  const errMotivo = validarTextoOpcional(motivoTrimmed, LARGO_MAXIMO.motivo);
+  if (errMotivo) return errCampo("motivo", errMotivo);
 
   const supabase = await createSupabaseServerClient();
 
@@ -108,21 +100,19 @@ export async function rechazarOferta(
     .update({
       estado: "rechazada",
       motivo_rechazo: motivoTrimmed,
-      revisado_por: auth.userId,
+      revisado_por: auth.usuario.id,
       revisado_en: ahora,
       updated_at: ahora,
     })
     .eq("id", ofertaId)
+    .eq("estado", "pendiente_aprobacion")
     .select("id");
 
   if (error) {
     const ref = logError("rechazarOferta", error, { ofertaId });
     return errConRef("ERROR_INTERNO", "No se pudo rechazar la oferta. Intentá de nuevo.", ref);
   }
-  if (!data || data.length === 0) {
-    const ref = logError("rechazarOferta:noRow", null, { ofertaId });
-    return errConRef("ERROR_INTERNO", "No se pudo completar la acción.", ref);
-  }
+  if (!data || data.length === 0) return err("ESTADO_INVALIDO", MENSAJE_YA_NO_PENDIENTE);
 
   revalidarOfertas(ofertaId);
   return okMsg("Oferta rechazada.");

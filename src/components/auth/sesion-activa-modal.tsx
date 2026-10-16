@@ -6,6 +6,7 @@ import { X, UserCheck } from "lucide-react";
 import { logout } from "@/app/auth/actions";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { useMounted } from "@/lib/use-mounted";
+import type { Rol } from "@/types/db";
 
 const ROL_LABEL: Record<string, string> = {
   empresa: "Empresa",
@@ -14,7 +15,7 @@ const ROL_LABEL: Record<string, string> = {
 
 interface Props {
   nombre: string;
-  rol: string | null;
+  rol: Rol | null;
   redirectTo: string;
   accion: "registro" | "login";
   profileHref?: string;

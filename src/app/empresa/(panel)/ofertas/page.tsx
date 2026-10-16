@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Plus, Briefcase } from "lucide-react";
 import { AvisoUrl } from "@/components/ui/aviso-url";
 import { Buscador } from "@/components/ui/buscador";
@@ -9,6 +8,7 @@ import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirEmpresaPagina } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { logError } from "@/lib/logger";
 import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
@@ -25,12 +25,15 @@ import { VencimientoOferta } from "@/components/ofertas/vencimiento-oferta";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 import { formatFecha } from "@/lib/fechas";
 import { accionesDisponibles } from "@/lib/oferta-estados";
+import type { Enum } from "@/types/db";
 
 export const metadata: Metadata = {
   title: "Mis ofertas | Portal de Empleo Funes",
 };
 
-const ESTADO_LABEL: Record<string, string> = {
+type EstadoVisible = Enum<"estado_oferta"> | "vencida";
+
+const ESTADO_LABEL: Record<EstadoVisible, string> = {
   pendiente_aprobacion: "Pendiente de revisión",
   activa: "Publicada",
   rechazada: "Rechazada",
@@ -39,24 +42,13 @@ const ESTADO_LABEL: Record<string, string> = {
   vencida: "Vencida",
 };
 
-const ESTADO_STYLE: Record<string, string> = {
+const ESTADO_STYLE: Record<EstadoVisible, string> = {
   pendiente_aprobacion: "bg-amber-100 text-amber-800",
   activa: "bg-emerald-100 text-emerald-800",
   rechazada: "bg-red-100 text-red-700",
   cerrada: "bg-gray-100 text-gray-600",
   borrador: "bg-gray-100 text-gray-500",
   vencida: "bg-red-100 text-red-700",
-};
-
-type OfertaRow = {
-  id: string;
-  titulo: string;
-  estado: string;
-  motivo_rechazo: string | null;
-  created_at: string;
-  vence_en: string | null;
-  duracion_dias: number;
-  oferta_categorias: Array<{ categorias: { nombre: string } | null }>;
 };
 
 const RUTA = "/empresa/ofertas";
@@ -69,20 +61,7 @@ export default async function MisOfertasPage({
   const sp = await searchParams;
   const q = limpiarBusqueda(sp.q);
   const pagina = leerPagina(sp.pagina);
-  const supabase = await createSupabaseServerClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
-
-  const { data: empresa } = await supabase
-    .from("empresas")
-    .select("id")
-    .eq("usuario_id", user.id)
-    .maybeSingle();
-
-  if (!empresa) redirect("/empresa");
+  const empresa = await requerirEmpresaPagina("/empresa");
 
   return (
     <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
@@ -136,7 +115,7 @@ async function ListadoMisOfertas({
 }) {
   const supabase = await createSupabaseServerClient();
 
-  const resultado = await consultarPagina<OfertaRow>(pagina, (desde, hasta) => {
+  const resultado = await consultarPagina(pagina, (desde, hasta) => {
     let query = supabase
       .from("ofertas")
       .select(
@@ -148,8 +127,7 @@ async function ListadoMisOfertas({
     return query
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
-      .range(desde, hasta)
-      .overrideTypes<OfertaRow[], { merge: false }>();
+      .range(desde, hasta);
   });
 
   if (!resultado.ok) {
@@ -217,7 +195,7 @@ async function ListadoMisOfertas({
       lista.map((o) => o.id)
     );
   if (pendientesRows) {
-    for (const row of pendientesRows as Array<{ oferta_id: string }>) {
+    for (const row of pendientesRows) {
       ofertasConPendientesSet.add(row.oferta_id);
     }
   }
@@ -228,7 +206,7 @@ async function ListadoMisOfertas({
           {lista.map((oferta) => {
             const categorias = oferta.oferta_categorias
               .map((oc) => oc.categorias?.nombre)
-              .filter(Boolean) as string[];
+              .filter((n): n is string => Boolean(n));
             const fecha = formatFecha(oferta.created_at);
             const cantPost = postulacionesPorOferta[oferta.id] ?? 0;
             const puedeEditar = oferta.estado === "activa" || oferta.estado === "rechazada";
@@ -236,7 +214,7 @@ async function ListadoMisOfertas({
 
             const tienePendientes = mostrarCandidatosPorContactar && ofertasConPendientesSet.has(oferta.id);
             const { vencida } = estadoVencimiento(oferta.estado, oferta.vence_en);
-            const estadoVisible = vencida ? "vencida" : oferta.estado;
+            const estadoVisible: EstadoVisible = vencida ? "vencida" : oferta.estado;
 
             return (
               <li

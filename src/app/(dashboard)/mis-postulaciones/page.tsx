@@ -4,29 +4,18 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Briefcase } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { obtenerPostulanteActual, requerirRolPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
-import { MisPostulacionesLista } from "./mis-postulaciones-lista";
+import { MisPostulacionesLista, type Postulacion } from "./mis-postulaciones-lista";
+import type { FilaEstadoDerivacionPostulante, FilaMiPreEntrevista } from "@/types/db";
 import { AvisoCursoPendiente } from "@/components/cursos/aviso-curso-pendiente";
 
 export const metadata: Metadata = {
   title: "Mis postulaciones | Portal de Empleo Funes",
-};
-
-type DbPostulacion = {
-  id: string;
-  estado: "recibida" | "en_revision" | "derivada" | "rechazada_municipalidad";
-  created_at: string;
-  ofertas: {
-    id: string;
-    titulo: string;
-    empresa_nombre: string;
-    estado: string;
-    contenido_editado_en: string | null;
-  } | null;
 };
 
 const RUTA = "/mis-postulaciones";
@@ -38,31 +27,8 @@ export default async function MisPostulacionesPage({
 }) {
   const sp = await searchParams;
   const pagina = leerPagina(sp.pagina);
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/auth/login");
-
-  const { data: usuario } = await supabase
-    .from("usuarios")
-    .select("rol")
-    .eq("id", user.id)
-    .single();
-
-  if (!usuario || usuario.rol !== "postulante") {
-    if (usuario?.rol === "empresa") redirect("/empresa");
-    if (usuario?.rol === "municipalidad") redirect("/admin");
-    redirect("/");
-  }
-
-  const { data: postulante } = await supabase
-    .from("postulantes")
-    .select("id")
-    .eq("usuario_id", user.id)
-    .maybeSingle();
-
+  await requerirRolPagina("postulante", { siNoCorresponde: "panel" });
+  const postulante = await obtenerPostulanteActual();
   if (!postulante) redirect("/");
 
   return (
@@ -112,7 +78,7 @@ async function ListadoMisPostulaciones({
   // LEFT JOIN a ofertas: las ofertas cerradas no son visibles al postulante vía RLS
   // (no se puede agregar política porque migration_014 las reserva).
   // La UI muestra "Oferta no disponible" cuando oferta es null.
-  const resultado = await consultarPagina<DbPostulacion>(pagina, (desde, hasta) =>
+  const resultado = await consultarPagina(pagina, (desde, hasta) =>
     supabase
       .from("postulaciones")
       .select(
@@ -123,7 +89,6 @@ async function ListadoMisPostulaciones({
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .range(desde, hasta)
-      .overrideTypes<DbPostulacion[], { merge: false }>()
   );
 
   if (!resultado.ok) {
@@ -164,13 +129,7 @@ async function ListadoMisPostulaciones({
     .filter((r) => r.estado === "derivada")
     .map((r) => r.id);
 
-  type EstadoDerivacionRow = {
-    estado_empresa: string;
-    fecha_entrevista: string | null;
-    lugar_entrevista: string | null;
-  };
-
-  const derivacionEstados: Record<string, EstadoDerivacionRow> = {};
+  const derivacionEstados: Record<string, FilaEstadoDerivacionPostulante> = {};
   if (derivadasIds.length > 0) {
     const results = await Promise.all(
       derivadasIds.map((pid) =>
@@ -178,17 +137,33 @@ async function ListadoMisPostulaciones({
       )
     );
     derivadasIds.forEach((pid, i) => {
-      const row = (results[i].data as EstadoDerivacionRow[] | null)?.[0];
+      const row = results[i].data?.[0];
       if (row) derivacionEstados[pid] = row;
     });
   }
 
-  const postulaciones = rawList.map((r) => ({
+  // Pre-entrevista con la oficina de las postulaciones pendientes, sin la
+  // nota interna (mis_pre_entrevistas, migration_044).
+  const pendientesIds = rawList
+    .filter((r) => r.estado === "recibida" || r.estado === "en_revision")
+    .map((r) => r.id);
+
+  const preEntrevistas: Record<string, FilaMiPreEntrevista> = {};
+  if (pendientesIds.length > 0) {
+    const { data, error } = await supabase.rpc("mis_pre_entrevistas", {
+      p_postulacion_ids: pendientesIds,
+    });
+    if (error) logError("mis_pre_entrevistas", error);
+    for (const fila of data ?? []) preEntrevistas[fila.postulacion_id] = fila;
+  }
+
+  const postulaciones: Postulacion[] = rawList.map((r) => ({
     id: r.id,
     estado: r.estado,
     created_at: r.created_at,
     oferta: r.ofertas,
     derivacion: derivacionEstados[r.id] ?? null,
+    preEntrevista: preEntrevistas[r.id] ?? null,
   }));
 
   return (

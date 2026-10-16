@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { obtenerEmpresaActual, requerirRolPagina } from "@/lib/auth";
 import { PublicFooter } from "@/components/public/public-footer";
 import { CorregirSolicitudForm } from "./_components/corregir-form";
 
@@ -9,29 +10,14 @@ export const metadata: Metadata = {
 };
 
 export default async function SolicitudEmpresaPage() {
+  const { perfil: usuario } = await requerirRolPagina("empresa");
+
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [empresa, { data: categoriasData }] = await Promise.all([
+    obtenerEmpresaActual(),
+    supabase.from("categorias").select("id, nombre").order("nombre"),
+  ]);
 
-  if (!user) redirect("/auth/login");
-
-  const [{ data: usuario }, { data: empresa }, { data: categoriasData }] =
-    await Promise.all([
-      supabase
-        .from("usuarios")
-        .select("nombre, apellido, telefono, rol")
-        .eq("id", user.id)
-        .single(),
-      supabase
-        .from("empresas")
-        .select("estado_aprobacion, razon_social, cuit, rubro, descripcion, motivo_rechazo")
-        .eq("usuario_id", user.id)
-        .maybeSingle(),
-      supabase.from("categorias").select("id, nombre").order("nombre"),
-    ]);
-
-  if (!usuario || usuario.rol !== "empresa") redirect("/");
   if (!empresa) redirect("/");
 
   // Si no está rechazada, redirigir a la pantalla correspondiente.

@@ -2,33 +2,22 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requerirRol } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errConRef, okMsg, type Resultado, type ResultadoError } from "@/lib/resultado";
+import { err, errCampo, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
+import { esUuid, LARGO_MAXIMO, MENSAJE_OBLIGATORIO, validarTextoOpcional } from "@/lib/validaciones";
 
-async function verificarMunicipalidad(): Promise<{ ok: true; userId: string } | ResultadoError> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return err("NO_AUTENTICADO");
-
-  const { data: usuario } = await supabase
-    .from("usuarios")
-    .select("rol")
-    .eq("id", user.id)
-    .single();
-
-  if (!usuario || usuario.rol !== "municipalidad") return err("SIN_PERMISO");
-
-  return { ok: true, userId: user.id };
-}
+// Aprobar y rechazar son updates condicionales: repetir la misma decisión
+// (doble envío, dos pestañas) no afecta filas, así que no sobrescribe
+// fecha_decision ni el motivo que ya quedó en el historial (migration_031).
 
 export async function aprobarEmpresa(
   empresaId: string
 ): Promise<Resultado<void>> {
-  const auth = await verificarMunicipalidad();
+  const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
+
+  if (!esUuid(empresaId)) return err("DATOS_INVALIDOS");
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -39,15 +28,17 @@ export async function aprobarEmpresa(
       motivo_rechazo: null,
     })
     .eq("id", empresaId)
+    .neq("estado_aprobacion", "aprobada")
     .select("id");
 
   if (error) {
+    // P0001: la empresa todavía no confirmó su email (migration_042).
+    if (error.code === "P0001") return fromSupabaseError(error);
     const ref = logError("aprobarEmpresa", error, { empresaId });
     return errConRef("ERROR_INTERNO", "Error al aprobar la empresa. Intentá de nuevo.", ref);
   }
   if (!data || data.length === 0) {
-    const ref = logError("aprobarEmpresa:noRow", null, { empresaId });
-    return errConRef("ERROR_INTERNO", "No se pudo completar la acción.", ref);
+    return err("ESTADO_INVALIDO", "La empresa ya está aprobada. Actualizá la página para ver su estado.");
   }
 
   revalidatePath("/admin/empresas");
@@ -59,12 +50,15 @@ export async function rechazarEmpresa(
   empresaId: string,
   motivo: string
 ): Promise<Resultado<void>> {
-  const auth = await verificarMunicipalidad();
+  const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
 
-  if (!motivo.trim()) {
-    return err("DATOS_INVALIDOS", "El motivo de rechazo es obligatorio.");
+  if (!esUuid(empresaId)) return err("DATOS_INVALIDOS");
+  if (typeof motivo !== "string" || !motivo.trim()) {
+    return errCampo("motivo", MENSAJE_OBLIGATORIO);
   }
+  const errMotivo = validarTextoOpcional(motivo, LARGO_MAXIMO.motivo);
+  if (errMotivo) return errCampo("motivo", errMotivo);
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -75,15 +69,17 @@ export async function rechazarEmpresa(
       motivo_rechazo: motivo.trim(),
     })
     .eq("id", empresaId)
+    .neq("estado_aprobacion", "rechazada")
     .select("id");
 
   if (error) {
+    // P0001: la empresa todavía no confirmó su email (migration_042).
+    if (error.code === "P0001") return fromSupabaseError(error);
     const ref = logError("rechazarEmpresa", error, { empresaId });
     return errConRef("ERROR_INTERNO", "Error al rechazar la empresa. Intentá de nuevo.", ref);
   }
   if (!data || data.length === 0) {
-    const ref = logError("rechazarEmpresa:noRow", null, { empresaId });
-    return errConRef("ERROR_INTERNO", "No se pudo completar la acción.", ref);
+    return err("ESTADO_INVALIDO", "La empresa ya está rechazada. Actualizá la página para ver su estado.");
   }
 
   revalidatePath("/admin/empresas");

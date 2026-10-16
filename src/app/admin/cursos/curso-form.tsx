@@ -5,13 +5,20 @@ import { crearCurso, editarCurso } from "./actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
+import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
+import { LARGO_MAXIMO } from "@/lib/validaciones";
+import type { Tabla } from "@/types/db";
+import {
+  CLASE_CONTROL_INVALIDO,
+  ErrorCampo,
+  Obligatorio,
+  ariaErrorCampo,
+} from "@/components/ui/obligatorio";
+import { useErroresCampo } from "@/lib/use-errores-campo";
 
-type CursoData = {
-  nombre: string;
-  descripcion: string | null;
-  link: string | null;
-  indicaciones: string | null;
-};
+type CursoData = Pick<Tabla<"cursos">, "nombre" | "descripcion" | "link" | "indicaciones">;
+
+const CAMPOS = ["nombre", "descripcion", "link", "indicaciones"] as const;
 
 type Props = {
   modo: "crear" | "editar";
@@ -26,19 +33,17 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
   const [indicaciones, setIndicaciones] = useState(inicial?.indicaciones ?? "");
   const [error, setError] = useState<ErrorAccion | null>(null);
   const [guardado, setGuardado] = useState(false);
+  const campos = useErroresCampo<keyof CursoData>();
   const { pendiente: isPending, ejecutar } = useAccion();
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     setGuardado(false);
 
-    if (!nombre.trim()) {
-      setError({ mensaje: "El nombre del curso es obligatorio." });
-      return;
-    }
+    if (!campos.validar({ nombre }, e.currentTarget)) return;
     if (link.trim() && !link.trim().startsWith("https://")) {
-      setError({ mensaje: "El link debe comenzar con https://" });
+      campos.marcar("link", "El link debe comenzar con https://", e.currentTarget);
       return;
     }
 
@@ -55,7 +60,7 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
           ? await crearCurso(data)
           : await editarCurso(cursoId!, data);
       if (!res.ok) {
-        setError(toErrorAccion(res));
+        if (!campos.tomarDelServidor(res, CAMPOS)) setError(toErrorAccion(res));
       } else {
         setGuardado(true);
       }
@@ -63,20 +68,26 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
       <div className="space-y-1.5">
         <label htmlFor="cf-nombre" className="text-sm font-medium text-foreground">
-          Nombre <span className="text-red-500">*</span>
+          Nombre <Obligatorio />
         </label>
         <input
           id="cf-nombre"
           type="text"
           value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
+          onChange={(e) => {
+            setNombre(e.target.value);
+            campos.limpiar("nombre");
+          }}
           placeholder="Ej: Preparación para entrevistas"
-          className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
+          maxLength={LARGO_MAXIMO.nombreCurso}
+          className={"w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30 " + CLASE_CONTROL_INVALIDO}
           disabled={isPending}
+          {...ariaErrorCampo("cf-nombre", campos.errores.nombre)}
         />
+        <ErrorCampo idCampo="cf-nombre" mensaje={campos.errores.nombre} />
       </div>
 
       <div className="space-y-1.5">
@@ -87,12 +98,19 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
         <textarea
           id="cf-descripcion"
           value={descripcion}
-          onChange={(e) => setDescripcion(e.target.value)}
+          onChange={(e) => {
+            setDescripcion(e.target.value);
+            campos.limpiar("descripcion");
+          }}
           placeholder="Breve descripción del contenido del curso..."
           rows={3}
-          className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+          maxLength={LARGO_MAXIMO.descripcion}
+          className={"w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none " + CLASE_CONTROL_INVALIDO}
           disabled={isPending}
+          {...ariaErrorCampo("cf-descripcion", campos.errores.descripcion)}
         />
+        <ErrorCampo idCampo="cf-descripcion" mensaje={campos.errores.descripcion} />
+        <ContadorCaracteres actual={descripcion.length} maximo={LARGO_MAXIMO.descripcion} />
       </div>
 
       <div className="space-y-1.5">
@@ -106,11 +124,17 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
           id="cf-link"
           type="url"
           value={link}
-          onChange={(e) => setLink(e.target.value)}
+          onChange={(e) => {
+            setLink(e.target.value);
+            campos.limpiar("link");
+          }}
           placeholder="https://..."
-          className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30"
+          maxLength={LARGO_MAXIMO.linkCurso}
+          className={"w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30 " + CLASE_CONTROL_INVALIDO}
           disabled={isPending}
+          {...ariaErrorCampo("cf-link", campos.errores.link)}
         />
+        <ErrorCampo idCampo="cf-link" mensaje={campos.errores.link} />
       </div>
 
       <div className="space-y-1.5">
@@ -121,12 +145,19 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
         <textarea
           id="cf-indicaciones"
           value={indicaciones}
-          onChange={(e) => setIndicaciones(e.target.value)}
+          onChange={(e) => {
+            setIndicaciones(e.target.value);
+            campos.limpiar("indicaciones");
+          }}
           placeholder="Cómo inscribirse, qué tener a mano u otras indicaciones para el postulante..."
           rows={3}
-          className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+          maxLength={LARGO_MAXIMO.descripcion}
+          className={"w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none " + CLASE_CONTROL_INVALIDO}
           disabled={isPending}
+          {...ariaErrorCampo("cf-indicaciones", campos.errores.indicaciones)}
         />
+        <ErrorCampo idCampo="cf-indicaciones" mensaje={campos.errores.indicaciones} />
+        <ContadorCaracteres actual={indicaciones.length} maximo={LARGO_MAXIMO.descripcion} />
       </div>
 
       {error && (

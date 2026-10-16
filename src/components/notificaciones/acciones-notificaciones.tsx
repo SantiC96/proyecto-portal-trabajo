@@ -1,10 +1,14 @@
 "use client";
 
 import { CheckCheck } from "lucide-react";
-import { marcarNotificacionLeida, marcarTodasLeidas } from "./actions";
+import {
+  marcarNotificacionLeida,
+  marcarTodasLeidas,
+} from "@/app/(dashboard)/notificaciones/actions";
 import { Spinner } from "@/components/ui/spinner";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
+import { avisarCambioNotificaciones } from "./eventos";
 
 export function MarcarTodasLeidasBtn() {
   const { pendiente, ejecutar } = useAccion();
@@ -13,7 +17,12 @@ export function MarcarTodasLeidasBtn() {
       type="button"
       onClick={() =>
         ejecutar(async () => {
-          mostrarAviso(await marcarTodasLeidas());
+          const res = await marcarTodasLeidas();
+          if (!res.ok) {
+            mostrarAviso(res);
+            return;
+          }
+          avisarCambioNotificaciones();
         })
       }
       disabled={pendiente}
@@ -34,7 +43,11 @@ export function MarcarLeidaBtn({ id }: { id: string }) {
       onClick={() =>
         ejecutar(async () => {
           const res = await marcarNotificacionLeida(id);
-          if (!res.ok) mostrarAviso(res);
+          if (!res.ok) {
+            mostrarAviso(res);
+            return;
+          }
+          avisarCambioNotificaciones();
         })
       }
       disabled={pendiente}

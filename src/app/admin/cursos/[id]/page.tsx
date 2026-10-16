@@ -16,26 +16,15 @@ import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
 import {
   ESTADO_CURSO_LABEL,
   ESTADOS_ASIGNACION_CURSO,
+  conEstadoCurso,
   esEstadoCurso,
   type EstadoAsignacionCurso,
 } from "@/lib/cursos";
+import type { Tabla } from "@/types/db";
+import { requerirRolPagina } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Detalle del curso | Panel municipal | Portal de Empleo Funes",
-};
-
-type AsignacionRow = {
-  id: string;
-  created_at: string;
-  nota: string | null;
-  estado: EstadoAsignacionCurso;
-  iniciado_en: string | null;
-  completado_en: string | null;
-  abandonado_en: string | null;
-  postulantes: {
-    id: string;
-    usuarios: { nombre: string; apellido: string } | null;
-  } | null;
 };
 
 export default async function CursoDetallePage({
@@ -45,22 +34,13 @@ export default async function CursoDetallePage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ pagina?: string; estado?: string }>;
 }) {
+  await requerirRolPagina("municipalidad");
   const { id: cursoId } = await params;
   const sp = await searchParams;
   const pagina = leerPagina(sp.pagina);
   const estadoFiltro = esEstadoCurso(sp.estado) ? sp.estado : null;
 
   const supabase = await createSupabaseServerClient();
-
-  type CursoRow = {
-    id: string;
-    nombre: string;
-    descripcion: string | null;
-    link: string | null;
-    indicaciones: string | null;
-    activo: boolean;
-    created_at: string;
-  };
 
   const [cursoRes, ...conteosRes] = await Promise.all([
     supabase
@@ -79,8 +59,13 @@ export default async function CursoDetallePage({
 
   if (!cursoRes.data) notFound();
 
-  const curso = cursoRes.data as unknown as CursoRow;
-  const conteoPorEstado = {} as Record<EstadoAsignacionCurso, number>;
+  const curso = cursoRes.data;
+  const conteoPorEstado: Record<EstadoAsignacionCurso, number> = {
+    asignado: 0,
+    en_curso: 0,
+    completado: 0,
+    abandonado: 0,
+  };
   ESTADOS_ASIGNACION_CURSO.forEach((estado, i) => {
     const res = conteosRes[i];
     if (res.error) logError("admin_curso_conteo_asignaciones", res.error, { estado });
@@ -90,9 +75,12 @@ export default async function CursoDetallePage({
   const tieneAsignaciones = totalAsignaciones > 0;
   // La oficina ya no puede marcar cursos como abandonados (migration_038):
   // el filtro solo aparece si quedan asignaciones históricas en ese estado.
-  const estadosFiltro = ESTADOS_ASIGNACION_CURSO.filter(
-    (estado) => estado !== "abandonado" || conteoPorEstado.abandonado > 0
-  );
+  const estadosFiltro: (EstadoAsignacionCurso | null)[] = [
+    null,
+    ...ESTADOS_ASIGNACION_CURSO.filter(
+      (estado) => estado !== "abandonado" || conteoPorEstado.abandonado > 0
+    ),
+  ];
   const rutaCurso = `/admin/cursos/${curso.id}`;
 
   return (
@@ -174,7 +162,7 @@ export default async function CursoDetallePage({
 
         {tieneAsignaciones && (
           <nav aria-label="Filtrar por estado" className="mt-4 flex flex-wrap gap-2">
-            {([null, ...estadosFiltro] as (EstadoAsignacionCurso | null)[]).map(
+            {estadosFiltro.map(
               (estado) => {
                 const activo = estado === estadoFiltro;
                 const cantidad = estado ? conteoPorEstado[estado] : totalAsignaciones;
@@ -228,7 +216,7 @@ async function ListadoAsignados({
 }) {
   const supabase = await createSupabaseServerClient();
 
-  const resultado = await consultarPagina<AsignacionRow>(pagina, (desde, hasta) => {
+  const resultado = await consultarPagina(pagina, (desde, hasta) => {
     let query = supabase
       .from("asignaciones_curso")
       .select(
@@ -240,8 +228,7 @@ async function ListadoAsignados({
     return query
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
-      .range(desde, hasta)
-      .overrideTypes<AsignacionRow[], { merge: false }>();
+      .range(desde, hasta);
   });
 
   if (!resultado.ok) {
@@ -255,7 +242,7 @@ async function ListadoAsignados({
     );
   }
 
-  const asignaciones = resultado.filas;
+  const asignaciones = conEstadoCurso(resultado.filas);
 
   if (asignaciones.length === 0) {
     return (
@@ -359,7 +346,14 @@ async function ListadoAsignados({
   );
 }
 
-function FechasAsignacion({ asignacion: a }: { asignacion: AsignacionRow }) {
+function FechasAsignacion({
+  asignacion: a,
+}: {
+  asignacion: Pick<
+    Tabla<"asignaciones_curso">,
+    "created_at" | "iniciado_en" | "completado_en" | "abandonado_en"
+  > & { estado: EstadoAsignacionCurso };
+}) {
   return (
     <ul className="space-y-0.5">
       <li>Asignado: {formatFechaCorta(a.created_at)}</li>

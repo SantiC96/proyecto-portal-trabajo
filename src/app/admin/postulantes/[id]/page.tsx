@@ -1,17 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { QueryData } from "@supabase/supabase-js";
 import { logError } from "@/lib/logger";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { DatosCandidato } from "@/components/admin/datos-candidato";
 import { obtenerCandidato } from "@/lib/admin/candidato";
-import {
-  badgePostulacion,
-  type EstadoPostulacion,
-} from "@/lib/admin/postulacion-estados";
-import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
+import { badgePostulacion } from "@/lib/admin/postulacion-estados";
 import { AsignarCursoDialog } from "../asignar-curso-dialog";
 import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
 import { formatFechaCorta } from "@/lib/fechas";
@@ -27,11 +24,14 @@ import { BookOpen, Briefcase, ThumbsDown } from "lucide-react";
 import {
   UMBRAL_RECHAZOS_CURSO,
   VENTANA_RECHAZOS_DIAS,
+  aEstadoCursos,
+  conEstadoCurso,
   rechazoCuentaParaCurso,
   textoRechazos,
   type EstadoAsignacionCurso,
-  type EstadoCursosPostulante,
 } from "@/lib/cursos";
+import type { ClienteSupabase } from "@/types/db";
+import { requerirRolPagina } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Ficha postulante | Panel municipal | Portal de Empleo Funes",
@@ -47,37 +47,44 @@ function formatearFecha(iso: string) {
 
 const TAMANO_HISTORIAL = 10;
 
-type PostulacionHistorial = {
-  id: string;
-  estado: EstadoPostulacion;
-  created_at: string;
-  ofertas: {
-    id: string;
-    titulo: string;
-    empresa_nombre: string;
-  } | null;
-  derivaciones: { estado_empresa: EstadoDerivacionEmpresa } | null;
-};
+function consultaPostulaciones(supabase: ClienteSupabase, postulanteId: string) {
+  return supabase
+    .from("postulaciones")
+    .select(
+      "id, estado, created_at, ofertas!oferta_id(id, titulo, empresa_nombre), derivaciones(estado_empresa)",
+      { count: "exact" }
+    )
+    .eq("postulante_id", postulanteId);
+}
 
-type AsignacionRow = {
-  id: string;
-  created_at: string;
-  nota: string | null;
+function consultaAsignaciones(supabase: ClienteSupabase, postulanteId: string) {
+  return supabase
+    .from("asignaciones_curso")
+    .select(
+      "id, created_at, nota, estado, iniciado_en, completado_en, abandonado_en, cursos!curso_id(id, nombre)",
+      { count: "exact" }
+    )
+    .eq("postulante_id", postulanteId);
+}
+
+// La fecha del rechazo es fecha_respuesta, o updated_at si falta (igual
+// que en la base); las filas sin fecha_respuesta son las más viejas.
+function consultaRechazos(supabase: ClienteSupabase, postulanteId: string) {
+  return supabase
+    .from("derivaciones")
+    .select(
+      "id, fecha_respuesta, updated_at, postulaciones!inner(postulante_id, ofertas!oferta_id(id, titulo, empresa_nombre))",
+      { count: "exact" }
+    )
+    .eq("estado_empresa", "rechazado")
+    .eq("postulaciones.postulante_id", postulanteId);
+}
+
+type PostulacionHistorial = QueryData<ReturnType<typeof consultaPostulaciones>>[number];
+type AsignacionRow = Omit<QueryData<ReturnType<typeof consultaAsignaciones>>[number], "estado"> & {
   estado: EstadoAsignacionCurso;
-  iniciado_en: string | null;
-  completado_en: string | null;
-  abandonado_en: string | null;
-  cursos: { id: string; nombre: string } | null;
 };
-
-type RechazoRow = {
-  id: string;
-  fecha_respuesta: string | null;
-  updated_at: string;
-  postulaciones: {
-    ofertas: { id: string; titulo: string; empresa_nombre: string } | null;
-  } | null;
-};
+type RechazoRow = QueryData<ReturnType<typeof consultaRechazos>>[number];
 
 export default async function PostulanteFichaPage({
   params,
@@ -91,6 +98,7 @@ export default async function PostulanteFichaPage({
     pagina_rechazos?: string;
   }>;
 }) {
+  await requerirRolPagina("municipalidad");
   const [{ id: postulanteId }, sp] = await Promise.all([params, searchParams]);
   const rawVolver = sp.volver;
   const paginaCursos = leerPagina(sp.pagina_cursos);
@@ -115,39 +123,25 @@ export default async function PostulanteFichaPage({
     rechazosResult,
   ] = await Promise.all([
     obtenerCandidato(postulanteId),
-    consultarPagina<PostulacionHistorial>(
+    consultarPagina(
       paginaPostulaciones,
       (desde, hasta) =>
-        supabase
-          .from("postulaciones")
-          .select(
-            "id, estado, created_at, ofertas!oferta_id(id, titulo, empresa_nombre), derivaciones(estado_empresa)",
-            { count: "exact" }
-          )
-          .eq("postulante_id", postulanteId)
+        consultaPostulaciones(supabase, postulanteId)
           .order("created_at", { ascending: false })
           .order("id", { ascending: false })
-          .range(desde, hasta)
-          .overrideTypes<PostulacionHistorial[], { merge: false }>(),
+          .range(desde, hasta),
       TAMANO_HISTORIAL
     ),
     supabase.rpc("estado_cursos_postulantes", {
       p_postulante_ids: [postulanteId],
     }),
-    consultarPagina<AsignacionRow>(
+    consultarPagina(
       paginaCursos,
       (desde, hasta) =>
-        supabase
-          .from("asignaciones_curso")
-          .select(
-            "id, created_at, nota, estado, iniciado_en, completado_en, abandonado_en, cursos!curso_id(id, nombre)",
-            { count: "exact" }
-          )
-          .eq("postulante_id", postulanteId)
+        consultaAsignaciones(supabase, postulanteId)
           .order("created_at", { ascending: false })
           .order("id", { ascending: false })
-          .range(desde, hasta)
-          .overrideTypes<AsignacionRow[], { merge: false }>(),
+          .range(desde, hasta),
       TAMANO_HISTORIAL
     ),
     supabase
@@ -155,24 +149,14 @@ export default async function PostulanteFichaPage({
       .select("id, nombre, descripcion")
       .eq("activo", true)
       .order("nombre"),
-    // La fecha del rechazo es fecha_respuesta, o updated_at si falta (igual
-    // que en la base); las filas sin fecha_respuesta son las más viejas.
-    consultarPagina<RechazoRow>(
+    consultarPagina(
       paginaRechazos,
       (desde, hasta) =>
-        supabase
-          .from("derivaciones")
-          .select(
-            "id, fecha_respuesta, updated_at, postulaciones!inner(postulante_id, ofertas!oferta_id(id, titulo, empresa_nombre))",
-            { count: "exact" }
-          )
-          .eq("estado_empresa", "rechazado")
-          .eq("postulaciones.postulante_id", postulanteId)
+        consultaRechazos(supabase, postulanteId)
           .order("fecha_respuesta", { ascending: false, nullsFirst: false })
           .order("updated_at", { ascending: false })
           .order("id", { ascending: false })
-          .range(desde, hasta)
-          .overrideTypes<RechazoRow[], { merge: false }>(),
+          .range(desde, hasta),
       TAMANO_HISTORIAL
     ),
   ]);
@@ -186,16 +170,15 @@ export default async function PostulanteFichaPage({
   if (!asignacionesResult.ok)
     logError("admin_postulante_asignaciones", asignacionesResult.error);
   if (!rechazosResult.ok) logError("admin_postulante_rechazos", rechazosResult.error);
-  const estadoCursos =
-    ((estadoCursosResult.data ?? []) as EstadoCursosPostulante[])[0] ?? null;
+  const filaEstadoCursos = estadoCursosResult.data?.[0];
+  const estadoCursos = filaEstadoCursos ? aEstadoCursos(filaEstadoCursos) : null;
   const rechazosVentana = Number(estadoCursos?.rechazos_ventana ?? 0);
   const rechazosTotales = Number(estadoCursos?.rechazos_totales ?? 0);
   const asignacionActivaEstado = estadoCursos?.asignacion_activa_estado ?? null;
-  const cursosActivos = (cursosResult.data ?? []) as {
-    id: string;
-    nombre: string;
-    descripcion: string | null;
-  }[];
+  const cursosActivos = cursosResult.data ?? [];
+  const asignaciones: ResultadoPagina<AsignacionRow> = asignacionesResult.ok
+    ? { ...asignacionesResult, filas: conEstadoCurso(asignacionesResult.filas) }
+    : asignacionesResult;
   const necesitaCurso = estadoCursos?.necesita_curso ?? false;
   const nombreCompleto = `${candidato.usuario.nombre} ${candidato.usuario.apellido}`;
 
@@ -321,7 +304,7 @@ export default async function PostulanteFichaPage({
           />
 
           {/* Historial de cursos */}
-          <HistorialCursos resultado={asignacionesResult} ruta={rutaFicha} searchParams={sp} />
+          <HistorialCursos resultado={asignaciones} ruta={rutaFicha} searchParams={sp} />
         </div>
 
         {/* Historial de postulaciones */}
