@@ -11,7 +11,7 @@ import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { MisPostulacionesLista, type Postulacion } from "./mis-postulaciones-lista";
-import type { FilaEstadoDerivacionPostulante } from "@/types/db";
+import type { FilaEstadoDerivacionPostulante, FilaMiPreEntrevista } from "@/types/db";
 import { AvisoCursoPendiente } from "@/components/cursos/aviso-curso-pendiente";
 
 export const metadata: Metadata = {
@@ -142,12 +142,28 @@ async function ListadoMisPostulaciones({
     });
   }
 
+  // Pre-entrevista con la oficina de las postulaciones pendientes, sin la
+  // nota interna (mis_pre_entrevistas, migration_044).
+  const pendientesIds = rawList
+    .filter((r) => r.estado === "recibida" || r.estado === "en_revision")
+    .map((r) => r.id);
+
+  const preEntrevistas: Record<string, FilaMiPreEntrevista> = {};
+  if (pendientesIds.length > 0) {
+    const { data, error } = await supabase.rpc("mis_pre_entrevistas", {
+      p_postulacion_ids: pendientesIds,
+    });
+    if (error) logError("mis_pre_entrevistas", error);
+    for (const fila of data ?? []) preEntrevistas[fila.postulacion_id] = fila;
+  }
+
   const postulaciones: Postulacion[] = rawList.map((r) => ({
     id: r.id,
     estado: r.estado,
     created_at: r.created_at,
     oferta: r.ofertas,
     derivacion: derivacionEstados[r.id] ?? null,
+    preEntrevista: preEntrevistas[r.id] ?? null,
   }));
 
   return (

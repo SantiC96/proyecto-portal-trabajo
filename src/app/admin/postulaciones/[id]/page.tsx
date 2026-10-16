@@ -18,6 +18,8 @@ import { logError } from "@/lib/logger";
 import { aEstadoCursos, avisoCursoAlDerivar } from "@/lib/cursos";
 import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_STYLE } from "@/lib/derivacion-estados";
 import { requerirRolPagina } from "@/lib/auth";
+import { preEntrevistaYaPaso } from "@/lib/pre-entrevistas";
+import { PreEntrevistaSeccion } from "./pre-entrevista-seccion";
 
 export const metadata: Metadata = {
   title: "Ficha | Postulaciones | Panel municipal | Portal de Empleo Funes",
@@ -60,7 +62,7 @@ export default async function PostulacionFichaPage({
   const puedeDerivarse =
     postulacion.estado === "recibida" || postulacion.estado === "en_revision";
 
-  const [candidato, derivacionResult, revisorResult, estadoCursosResult] = await Promise.all([
+  const [candidato, derivacionResult, revisorResult, estadoCursosResult, preEntrevistaResult] = await Promise.all([
     postulanteId ? obtenerCandidato(postulanteId) : Promise.resolve(null),
     postulacion.estado === "derivada"
       ? supabase
@@ -81,7 +83,19 @@ export default async function PostulacionFichaPage({
     postulanteId && puedeDerivarse
       ? supabase.rpc("estado_cursos_postulantes", { p_postulante_ids: [postulanteId] })
       : Promise.resolve({ data: null, error: null }),
+    supabase
+      .from("pre_entrevistas")
+      .select("id, estado, fecha_hora, lugar, nota_oficina, updated_at")
+      .eq("postulacion_id", postulacion.id)
+      .maybeSingle(),
   ]);
+
+  if (preEntrevistaResult.error)
+    logError("ficha_pre_entrevista", preEntrevistaResult.error, { postulacionId });
+  const preEntrevista = preEntrevistaResult.data;
+  const preEntrevistaFechaPasada = preEntrevista
+    ? preEntrevistaYaPaso(preEntrevista.fecha_hora)
+    : false;
 
   if (estadoCursosResult.error)
     logError("estado_cursos_postulantes", estadoCursosResult.error, { postulacionId });
@@ -325,20 +339,31 @@ export default async function PostulacionFichaPage({
           )}
         </div>
 
-        {/* Columna lateral: acciones */}
+        {/* Columna lateral: pre-entrevista y acciones */}
         <div className="lg:col-span-1">
-          <div className="sticky top-6 rounded-[var(--radius-lg)] border border-border bg-surface p-5">
-            <h2 className="font-semibold text-foreground">Acciones</h2>
-            <div className="mt-4">
-              <FichaAcciones
+          <div className="space-y-6 lg:sticky lg:top-6">
+            {(puedeDerivarse || preEntrevista) && (
+              <PreEntrevistaSeccion
+                key={preEntrevista?.updated_at ?? "sin-pre-entrevista"}
                 postulacionId={postulacion.id}
-                estado={postulacion.estado}
-                estadoVisible={estadoVisible}
-                empresaNombre={oferta?.empresa_nombre ?? null}
-                ofertaEstado={oferta?.estado}
-                derivacion={derivacion}
-                avisoCurso={avisoCurso}
+                preEntrevista={preEntrevista}
+                gestionable={puedeDerivarse}
+                fechaPasada={preEntrevistaFechaPasada}
               />
+            )}
+            <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
+              <h2 className="font-semibold text-foreground">Acciones</h2>
+              <div className="mt-4">
+                <FichaAcciones
+                  postulacionId={postulacion.id}
+                  estado={postulacion.estado}
+                  estadoVisible={estadoVisible}
+                  empresaNombre={oferta?.empresa_nombre ?? null}
+                  ofertaEstado={oferta?.estado}
+                  derivacion={derivacion}
+                  avisoCurso={avisoCurso}
+                />
+              </div>
             </div>
           </div>
         </div>
