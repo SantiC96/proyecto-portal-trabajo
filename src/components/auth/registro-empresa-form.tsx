@@ -21,6 +21,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import type { Tabla } from "@/types/db";
+import { Obligatorio } from "@/components/ui/obligatorio";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -146,7 +147,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                 htmlFor="reg-razon-social"
                 className="text-sm font-medium text-foreground"
               >
-                Razón social <span className="text-red-500">*</span>
+                Razón social <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Building2} />
@@ -169,7 +170,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                 htmlFor="reg-cuit"
                 className="text-sm font-medium text-foreground"
               >
-                CUIT <span className="text-red-500">*</span>
+                CUIT <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Hash} />
@@ -210,7 +211,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                 htmlFor="reg-rubro"
                 className="text-sm font-medium text-foreground"
               >
-                Rubro <span className="text-red-500">*</span>
+                Rubro <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Briefcase} />
@@ -271,7 +272,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                   htmlFor="reg-nombre"
                   className="text-sm font-medium text-foreground"
                 >
-                  Nombre <span className="text-red-500">*</span>
+                  Nombre <Obligatorio />
                 </label>
                 <InputWrapper>
                   <FieldIcon icon={User} />
@@ -292,7 +293,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                   htmlFor="reg-apellido"
                   className="text-sm font-medium text-foreground"
                 >
-                  Apellido <span className="text-red-500">*</span>
+                  Apellido <Obligatorio />
                 </label>
                 <InputWrapper>
                   <FieldIcon icon={User} />
@@ -316,7 +317,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                 htmlFor="reg-telefono"
                 className="text-sm font-medium text-foreground"
               >
-                Teléfono / Celular <span className="text-red-500">*</span>
+                Teléfono / Celular <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Phone} />
@@ -339,7 +340,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                 htmlFor="reg-email"
                 className="text-sm font-medium text-foreground"
               >
-                Correo electrónico <span className="text-red-500">*</span>
+                Correo electrónico <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Mail} />
@@ -362,7 +363,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                 htmlFor="reg-password"
                 className="text-sm font-medium text-foreground"
               >
-                Contraseña <span className="text-red-500">*</span>
+                Contraseña <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Lock} />
@@ -400,7 +401,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                 htmlFor="reg-password-repeat"
                 className="text-sm font-medium text-foreground"
               >
-                Repetir contraseña <span className="text-red-500">*</span>
+                Repetir contraseña <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Lock} />

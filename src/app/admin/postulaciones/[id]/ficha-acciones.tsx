@@ -33,6 +33,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { esValorEnum, type Enum, type Tabla } from "@/types/db";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
+import { Obligatorio } from "@/components/ui/obligatorio";
 
 type Props = {
   postulacionId: string;
@@ -214,7 +215,7 @@ export function FichaAcciones({
             </DialogHeader>
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">
-                Nuevo estado
+                Nuevo estado <Obligatorio />
               </label>
               <select
                 value={estadoCorreccion}

@@ -11,6 +11,7 @@ import { type ErrorAccion, toErrorAccion } from "@/lib/resultado";
 import { DURACIONES_OFERTA, DURACION_OFERTA_POR_DEFECTO } from "@/lib/ofertas-vencimiento";
 import { useAccion } from "@/lib/use-accion";
 import type { Tabla } from "@/types/db";
+import { Obligatorio } from "@/components/ui/obligatorio";
 
 type Categoria = Pick<Tabla<"categorias">, "id" | "nombre">;
 
@@ -152,7 +153,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
       {/* Título */}
       <div className="space-y-1.5">
         <label htmlFor="titulo" className="block text-sm font-semibold text-foreground">
-          Título del puesto <span className="text-red-500">*</span>
+          Título del puesto <Obligatorio />
         </label>
         <input
           id="titulo"
@@ -168,7 +169,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
       {/* Descripción */}
       <div className="space-y-1.5">
         <label htmlFor="descripcion" className="block text-sm font-semibold text-foreground">
-          Descripción del puesto <span className="text-red-500">*</span>
+          Descripción del puesto <Obligatorio />
         </label>
         <textarea
           id="descripcion"
@@ -185,7 +186,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
       {/* Categorías */}
       <div className="space-y-1.5">
         <label htmlFor="categorias" className="block text-sm font-semibold text-foreground">
-          Categorías <span className="text-red-500">*</span>
+          Categorías <Obligatorio />
           <span className="ml-2 font-normal text-muted-foreground">(1 a 5)</span>
         </label>
         <MultiCombobox
@@ -210,7 +211,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
 
         <div className="space-y-1.5">
           <label htmlFor="modalidad" className="block text-sm font-semibold text-foreground">
-            Modalidad <span className="text-red-500">*</span>
+            Modalidad <Obligatorio />
           </label>
           <select
             id="modalidad"
@@ -228,7 +229,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
 
         <div className="space-y-1.5">
           <label htmlFor="jornada" className="block text-sm font-semibold text-foreground">
-            Jornada <span className="text-red-500">*</span>
+            Jornada <Obligatorio />
           </label>
           <select
             id="jornada"
@@ -248,7 +249,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
       {/* Vacantes */}
       <div className="space-y-1.5">
         <label htmlFor="vacantes" className="block text-sm font-semibold text-foreground">
-          Cantidad de personas a contratar <span className="text-red-500">*</span>
+          Cantidad de personas a contratar <Obligatorio />
         </label>
         <input
           id="vacantes"
@@ -272,7 +273,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
       {/* Duración de la publicación */}
       <div className="space-y-1.5">
         <label htmlFor="duracion" className="block text-sm font-semibold text-foreground">
-          Duración de la publicación <span className="text-red-500">*</span>
+          Duración de la publicación <Obligatorio />
         </label>
         <select
           id="duracion"
@@ -296,7 +297,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
       {/* Requisitos */}
       <div className="space-y-1.5">
         <label className="block text-sm font-semibold text-foreground">
-          Requisitos <span className="text-red-500">*</span>
+          Requisitos <Obligatorio />
           <span className="ml-2 font-normal text-muted-foreground">(hasta 15)</span>
         </label>
         {requisitos.length > 0 && (

@@ -873,6 +873,25 @@ export type Database = {
       }
       empresa_puede_ver_avatar: { Args: { p_ruta: string }; Returns: boolean }
       empresa_puede_ver_cv: { Args: { p_ruta: string }; Returns: boolean }
+      empresas_email_sin_confirmar: {
+        Args: never
+        Returns: {
+          empresa_id: string
+        }[]
+      }
+      estado_cursos_calculo: {
+        Args: { p_postulante_ids: string[] }
+        Returns: {
+          asignacion_activa_estado: string
+          asignacion_activa_id: string
+          necesita_curso: boolean
+          postulante_id: string
+          rechazos_totales: number
+          rechazos_ventana: number
+          ultima_asignacion_estado: string
+          ultimo_completado_en: string
+        }[]
+      }
       estado_cursos_postulantes: {
         Args: { p_postulante_ids?: string[] }
         Returns: {
@@ -893,6 +912,10 @@ export type Database = {
           fecha_entrevista: string
           lugar_entrevista: string
         }[]
+      }
+      generar_avisos_vencimiento_empresa: {
+        Args: { p_dias_aviso: number }
+        Returns: number
       }
       mi_empresa_id: { Args: never; Returns: string }
       mis_cursos_asignados: {
@@ -925,6 +948,32 @@ export type Database = {
         }[]
       }
       normalizar_busqueda: { Args: { p_texto: string }; Returns: string }
+      notificaciones_fecha: {
+        Args: { p_con_hora?: boolean; p_momento: string }
+        Returns: string
+      }
+      notificaciones_marca: { Args: { p_momento: string }; Returns: string }
+      notificar_oficina: {
+        Args: {
+          p_clave: string
+          p_link: string
+          p_mensaje: string
+          p_tipo: string
+          p_titulo: string
+        }
+        Returns: undefined
+      }
+      notificar_usuario: {
+        Args: {
+          p_clave: string
+          p_link: string
+          p_mensaje: string
+          p_tipo: string
+          p_titulo: string
+          p_usuario_id: string
+        }
+        Returns: undefined
+      }
       oferta_acepta_postulaciones: {
         Args: { p_oferta_id: string }
         Returns: boolean

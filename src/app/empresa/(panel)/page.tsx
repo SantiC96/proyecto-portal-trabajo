@@ -7,6 +7,7 @@ import { requerirEmpresaPagina } from "@/lib/auth";
 import { AvisoUrl } from "@/components/ui/aviso-url";
 import { CandidatosSinResultado } from "./_components/candidatos-sin-resultado";
 import { DIAS_AVISO_VENCIMIENTO } from "@/lib/ofertas-vencimiento";
+import { generarAvisosVencimientoEmpresa } from "@/lib/notificaciones";
 import { dentroDeDiasISO } from "@/lib/fechas";
 
 export const metadata: Metadata = {
@@ -16,6 +17,10 @@ export const metadata: Metadata = {
 export default async function EmpresaDashboardPage() {
   const empresa = await requerirEmpresaPagina();
   const supabase = await createSupabaseServerClient();
+
+  // Sin cron: los avisos de vencimiento se generan al entrar al panel. Antes
+  // del render, para que la campanita ya los cuente.
+  await generarAvisosVencimientoEmpresa();
 
   // Conteo de ofertas por estado. Una oferta activa con vence_en vencido se
   // cuenta como "Vencida": sigue en estado 'activa' pero ya no se ve en el portal.

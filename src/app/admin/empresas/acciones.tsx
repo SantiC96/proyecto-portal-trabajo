@@ -21,6 +21,7 @@ import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
+import { Obligatorio } from "@/components/ui/obligatorio";
 
 type Props = {
   empresaId: string;
@@ -250,7 +251,7 @@ export function EmpresaAcciones({
               htmlFor={`motivo-${empresaId}`}
               className="text-sm font-medium text-foreground"
             >
-              Motivo del rechazo
+              Motivo del rechazo <Obligatorio />
             </label>
             <Textarea
               id={`motivo-${empresaId}`}

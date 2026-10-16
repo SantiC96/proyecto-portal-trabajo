@@ -28,6 +28,7 @@ import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
+import { Obligatorio } from "@/components/ui/obligatorio";
 
 // Genera intervalos de 15 min de 08:00 a 20:00
 function generarHorarios(): string[] {
@@ -178,7 +179,7 @@ function EntrevistaDialog({
           {/* Calendario */}
           <div>
             <p className="mb-2 text-sm font-medium text-foreground">
-              Seleccioná el día
+              Seleccioná el día <Obligatorio />
             </p>
             <div className="flex justify-center">
               <Calendar
@@ -198,7 +199,7 @@ function EntrevistaDialog({
               htmlFor="horario-select"
               className="mb-1.5 block text-sm font-medium text-foreground"
             >
-              Horario
+              Horario <Obligatorio />
             </label>
             <select
               id="horario-select"
@@ -226,7 +227,7 @@ function EntrevistaDialog({
               htmlFor="lugar-input"
               className="mb-1.5 block text-sm font-medium text-foreground"
             >
-              Lugar o indicaciones <span className="text-red-500">*</span>
+              Lugar o indicaciones <Obligatorio />
             </label>
             <input
               id="lugar-input"
@@ -517,7 +518,7 @@ export function AccionesDerivacion({
               htmlFor="motivo-rechazo"
               className="text-sm font-medium text-foreground"
             >
-              Motivo <span className="font-normal text-muted-foreground">(requerido)</span>
+              Motivo <Obligatorio />
             </label>
             <Textarea
               id="motivo-rechazo"

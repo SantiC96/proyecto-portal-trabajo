@@ -19,6 +19,7 @@ import { reenviarSolicitudEmpresa } from "@/app/empresa/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { useAccion } from "@/lib/use-accion";
 import type { Tabla } from "@/types/db";
+import { Obligatorio } from "@/components/ui/obligatorio";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -140,7 +141,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                 htmlFor="sol-razon-social"
                 className="text-sm font-medium text-foreground"
               >
-                Razón social <span className="text-red-500">*</span>
+                Razón social <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Building2} />
@@ -164,7 +165,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                 htmlFor="sol-cuit"
                 className="text-sm font-medium text-foreground"
               >
-                CUIT <span className="text-red-500">*</span>
+                CUIT <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Hash} />
@@ -206,7 +207,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                 htmlFor="sol-rubro"
                 className="text-sm font-medium text-foreground"
               >
-                Rubro <span className="text-red-500">*</span>
+                Rubro <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Briefcase} />
@@ -268,7 +269,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                   htmlFor="sol-nombre"
                   className="text-sm font-medium text-foreground"
                 >
-                  Nombre <span className="text-red-500">*</span>
+                  Nombre <Obligatorio />
                 </label>
                 <InputWrapper>
                   <FieldIcon icon={User} />
@@ -290,7 +291,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                   htmlFor="sol-apellido"
                   className="text-sm font-medium text-foreground"
                 >
-                  Apellido <span className="text-red-500">*</span>
+                  Apellido <Obligatorio />
                 </label>
                 <InputWrapper>
                   <FieldIcon icon={User} />
@@ -314,7 +315,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                 htmlFor="sol-telefono"
                 className="text-sm font-medium text-foreground"
               >
-                Teléfono / Celular <span className="text-red-500">*</span>
+                Teléfono / Celular <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Phone} />

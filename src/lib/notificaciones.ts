@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
-import type { Tabla } from "@/types/db";
+import { DIAS_AVISO_VENCIMIENTO } from "@/lib/ofertas-vencimiento";
+import type { Rol, Tabla } from "@/types/db";
 
 /** Fila de public.notificaciones (migration_038). */
 export type Notificacion = Pick<
@@ -18,6 +19,13 @@ export const NOTIFICACIONES_EN_CAMPANA = 5;
 
 export const COLUMNAS_NOTIFICACION =
   "id, tipo, titulo, mensaje, link, leida_en, created_at";
+
+/** Listado completo de notificaciones dentro del panel de cada rol. */
+export function rutaNotificaciones(rol: Rol): string {
+  if (rol === "empresa") return "/empresa/notificaciones";
+  if (rol === "municipalidad") return "/admin/notificaciones";
+  return "/notificaciones";
+}
 
 /**
  * Solo rutas internas ("/admin/..."). La base ya lo exige con un CHECK; se
@@ -54,4 +62,17 @@ export async function obtenerResumenNotificaciones(
     noLeidas: conteo.count ?? 0,
     ultimas: ultimas.data ?? [],
   };
+}
+
+/**
+ * Crea los avisos de "por vencer" y "vencida" que le falten a la empresa del
+ * usuario actual (migration_041; no hay cron). Si falla, se registra y la
+ * página sigue cargando.
+ */
+export async function generarAvisosVencimientoEmpresa(): Promise<void> {
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("generar_avisos_vencimiento_empresa", {
+    p_dias_aviso: DIAS_AVISO_VENCIMIENTO,
+  });
+  if (error) logError("generarAvisosVencimientoEmpresa", error);
 }

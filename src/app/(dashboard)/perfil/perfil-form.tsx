@@ -46,6 +46,7 @@ import {
   validarTipoAvatar,
   validarTipoCV,
 } from "@/lib/archivos";
+import { Obligatorio } from "@/components/ui/obligatorio";
 
 type AjusteAvatar = { x: number; y: number; zoom: number };
 
@@ -592,7 +593,7 @@ export function PerfilForm({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="p-nombre" className="text-sm font-medium text-foreground">
-                    Nombre <span className="text-red-500">*</span>
+                    Nombre <Obligatorio />
                   </label>
                   <InputWrapper>
                     <FieldIcon icon={User} />
@@ -610,7 +611,7 @@ export function PerfilForm({
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="p-apellido" className="text-sm font-medium text-foreground">
-                    Apellido <span className="text-red-500">*</span>
+                    Apellido <Obligatorio />
                   </label>
                   <InputWrapper>
                     <FieldIcon icon={User} />
@@ -667,7 +668,7 @@ export function PerfilForm({
 
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="p-dni" className="text-sm font-medium text-foreground">
-                  DNI <span className="text-red-500">*</span>
+                  DNI <Obligatorio />
                 </label>
                 <InputWrapper>
                   <FieldIcon icon={CreditCard} />
@@ -1004,7 +1005,7 @@ export function PerfilForm({
           <form onSubmit={handleCambiarContrasena} className="mt-5 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="p-contrasena-actual" className="text-sm font-medium text-foreground">
-                Contraseña actual
+                Contraseña actual <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={KeyRound} />
@@ -1031,7 +1032,7 @@ export function PerfilForm({
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="p-contrasena-nueva" className="text-sm font-medium text-foreground">
-                Contraseña nueva
+                Contraseña nueva <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={KeyRound} />
@@ -1058,7 +1059,7 @@ export function PerfilForm({
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="p-repetir-contrasena" className="text-sm font-medium text-foreground">
-                Repetir contraseña nueva
+                Repetir contraseña nueva <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={KeyRound} />

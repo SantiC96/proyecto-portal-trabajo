@@ -4,6 +4,7 @@ import { Mail, AlertCircle, Send } from "lucide-react";
 import { PublicFooter } from "@/components/public/public-footer";
 import { solicitarResetContrasena } from "@/app/auth/actions";
 import { SubmitButton } from "@/components/auth/submit-button";
+import { Obligatorio } from "@/components/ui/obligatorio";
 
 export const metadata: Metadata = {
   title: "Recuperar contraseña | Portal de Empleo Funes",
@@ -48,7 +49,7 @@ export default async function RecuperarContrasenaPage({
                 htmlFor="reset-email"
                 className="text-sm font-medium text-foreground"
               >
-                Correo electrónico
+                Correo electrónico <Obligatorio />
               </label>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-icon" />

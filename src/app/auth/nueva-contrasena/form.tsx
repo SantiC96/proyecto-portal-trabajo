@@ -4,6 +4,7 @@ import { useActionState, useState, useEffect } from "react";
 import Link from "next/link";
 import { Lock, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
 import { restablecerContrasena } from "@/app/auth/actions";
+import { Obligatorio } from "@/components/ui/obligatorio";
 
 export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
   const [state, action, isPending] = useActionState(restablecerContrasena, null);
@@ -67,7 +68,7 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
             htmlFor="nueva-password"
             className="text-sm font-medium text-foreground"
           >
-            Nueva contraseña
+            Nueva contraseña <Obligatorio />
           </label>
           <div className="relative">
             <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-icon" />
@@ -103,7 +104,7 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
             htmlFor="confirmar-password"
             className="text-sm font-medium text-foreground"
           >
-            Repetir contraseña
+            Repetir contraseña <Obligatorio />
           </label>
           <div className="relative">
             <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-icon" />

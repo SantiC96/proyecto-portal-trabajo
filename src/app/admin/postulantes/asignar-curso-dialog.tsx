@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import type { Tabla } from "@/types/db";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
+import { Obligatorio } from "@/components/ui/obligatorio";
 
 type Curso = Pick<Tabla<"cursos">, "id" | "nombre" | "descripcion">;
 
@@ -115,7 +116,7 @@ export function AsignarCursoDialog({
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-foreground">
-                  Curso
+                  Curso <Obligatorio />
                 </label>
                 <select
                   value={cursoId}

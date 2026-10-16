@@ -20,6 +20,7 @@ import { Spinner } from "@/components/ui/spinner";
 import type { Enum } from "@/types/db";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
+import { Obligatorio } from "@/components/ui/obligatorio";
 
 type Props = {
   ofertaId: string;
@@ -194,7 +195,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
               className="text-sm font-medium text-foreground"
             >
               Motivo del rechazo{" "}
-              <span className="font-normal text-red-600">(obligatorio)</span>
+              <Obligatorio />
             </label>
             <Textarea
               id="motivo-rechazo"

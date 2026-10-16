@@ -18,6 +18,7 @@ import {
   AlertCircle,
   UserPlus,
 } from "lucide-react";
+import { Obligatorio } from "@/components/ui/obligatorio";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -134,7 +135,7 @@ export function RegistroPostulanteForm() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="reg-nombre" className="text-sm font-medium text-foreground">
-                  Nombre <span className="text-red-500">*</span>
+                  Nombre <Obligatorio />
                 </label>
                 <InputWrapper>
                   <FieldIcon icon={User} />
@@ -152,7 +153,7 @@ export function RegistroPostulanteForm() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="reg-apellido" className="text-sm font-medium text-foreground">
-                  Apellido <span className="text-red-500">*</span>
+                  Apellido <Obligatorio />
                 </label>
                 <InputWrapper>
                   <FieldIcon icon={User} />
@@ -173,7 +174,7 @@ export function RegistroPostulanteForm() {
             {/* DNI */}
             <div className="flex flex-col gap-1.5">
               <label htmlFor="reg-dni" className="text-sm font-medium text-foreground">
-                DNI <span className="text-red-500">*</span>
+                DNI <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={CreditCard} />
@@ -196,7 +197,7 @@ export function RegistroPostulanteForm() {
             {/* Dirección */}
             <div className="flex flex-col gap-1.5">
               <label htmlFor="reg-domicilio" className="text-sm font-medium text-foreground">
-                Dirección <span className="text-red-500">*</span>
+                Dirección <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={MapPin} />
@@ -233,7 +234,7 @@ export function RegistroPostulanteForm() {
             {/* Teléfono */}
             <div className="flex flex-col gap-1.5">
               <label htmlFor="reg-telefono" className="text-sm font-medium text-foreground">
-                Teléfono / Celular <span className="text-red-500">*</span>
+                Teléfono / Celular <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Phone} />
@@ -261,7 +262,7 @@ export function RegistroPostulanteForm() {
             {/* Email */}
             <div className="flex flex-col gap-1.5">
               <label htmlFor="reg-email" className="text-sm font-medium text-foreground">
-                Correo electrónico <span className="text-red-500">*</span>
+                Correo electrónico <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Mail} />
@@ -281,7 +282,7 @@ export function RegistroPostulanteForm() {
             {/* Contraseña */}
             <div className="flex flex-col gap-1.5">
               <label htmlFor="reg-password" className="text-sm font-medium text-foreground">
-                Contraseña <span className="text-red-500">*</span>
+                Contraseña <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Lock} />
@@ -310,7 +311,7 @@ export function RegistroPostulanteForm() {
             {/* Repetir contraseña */}
             <div className="flex flex-col gap-1.5">
               <label htmlFor="reg-password-repeat" className="text-sm font-medium text-foreground">
-                Repetir contraseña <span className="text-red-500">*</span>
+                Repetir contraseña <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Lock} />

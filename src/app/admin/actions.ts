@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirRol } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errConRef, okMsg, type Resultado } from "@/lib/resultado";
+import { err, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
 import { esUuid, LARGO_MAXIMO, validarTextoOpcional } from "@/lib/validaciones";
 
 // Aprobar y rechazar son updates condicionales: repetir la misma decisión
@@ -32,6 +32,8 @@ export async function aprobarEmpresa(
     .select("id");
 
   if (error) {
+    // P0001: la empresa todavía no confirmó su email (migration_042).
+    if (error.code === "P0001") return fromSupabaseError(error);
     const ref = logError("aprobarEmpresa", error, { empresaId });
     return errConRef("ERROR_INTERNO", "Error al aprobar la empresa. Intentá de nuevo.", ref);
   }
@@ -71,6 +73,8 @@ export async function rechazarEmpresa(
     .select("id");
 
   if (error) {
+    // P0001: la empresa todavía no confirmó su email (migration_042).
+    if (error.code === "P0001") return fromSupabaseError(error);
     const ref = logError("rechazarEmpresa", error, { empresaId });
     return errConRef("ERROR_INTERNO", "Error al rechazar la empresa. Intentá de nuevo.", ref);
   }
