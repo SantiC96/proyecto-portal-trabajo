@@ -674,6 +674,57 @@ export type Database = {
           },
         ]
       }
+      pre_entrevistas: {
+        Row: {
+          coordinada_por: string | null
+          created_at: string
+          estado: string
+          fecha_hora: string
+          id: string
+          lugar: string
+          nota_oficina: string | null
+          postulacion_id: string
+          updated_at: string
+        }
+        Insert: {
+          coordinada_por?: string | null
+          created_at?: string
+          estado?: string
+          fecha_hora: string
+          id?: string
+          lugar: string
+          nota_oficina?: string | null
+          postulacion_id: string
+          updated_at?: string
+        }
+        Update: {
+          coordinada_por?: string | null
+          created_at?: string
+          estado?: string
+          fecha_hora?: string
+          id?: string
+          lugar?: string
+          nota_oficina?: string | null
+          postulacion_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pre_entrevistas_coordinada_por_fkey"
+            columns: ["coordinada_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pre_entrevistas_postulacion_id_fkey"
+            columns: ["postulacion_id"]
+            isOneToOne: true
+            referencedRelation: "postulaciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       usuarios: {
         Row: {
           apellido: string
@@ -731,6 +782,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      bloquear_pre_entrevista: {
+        Args: { p_pre_entrevista_id: string }
+        Returns: Record<string, unknown>
+      }
       buscar_ofertas_publicas: {
         Args: {
           p_categoria?: string
@@ -783,6 +838,15 @@ export type Database = {
       }
       contar_postulantes_esperando_curso: { Args: never; Returns: number }
       contratados_en_oferta: { Args: { p_oferta_id: string }; Returns: number }
+      coordinar_pre_entrevista: {
+        Args: {
+          p_fecha_hora: string
+          p_lugar: string
+          p_nota: string
+          p_postulacion_id: string
+        }
+        Returns: string
+      }
       crear_oferta_empresa: {
         Args: {
           p_beneficios: string[]
@@ -947,6 +1011,15 @@ export type Database = {
           por_rechazos: boolean
         }[]
       }
+      mis_pre_entrevistas: {
+        Args: { p_postulacion_ids: string[] }
+        Returns: {
+          estado: string
+          fecha_hora: string
+          lugar: string
+          postulacion_id: string
+        }[]
+      }
       normalizar_busqueda: { Args: { p_texto: string }; Returns: string }
       notificaciones_fecha: {
         Args: { p_con_hora?: boolean; p_momento: string }
@@ -1048,10 +1121,31 @@ export type Database = {
         }
         Returns: undefined
       }
+      registrar_resultado_pre_entrevista: {
+        Args: {
+          p_nota: string
+          p_pre_entrevista_id: string
+          p_resultado: string
+        }
+        Returns: undefined
+      }
       renovar_oferta: { Args: { p_oferta_id: string }; Returns: string }
+      reprogramar_pre_entrevista: {
+        Args: {
+          p_fecha_hora: string
+          p_lugar: string
+          p_nota: string
+          p_pre_entrevista_id: string
+        }
+        Returns: undefined
+      }
       rol_actual: {
         Args: never
         Returns: Database["public"]["Enums"]["rol_usuario"]
+      }
+      validar_datos_pre_entrevista: {
+        Args: { p_fecha_hora: string; p_lugar: string; p_nota: string }
+        Returns: undefined
       }
     }
     Enums: {
