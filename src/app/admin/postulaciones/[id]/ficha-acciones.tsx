@@ -33,7 +33,14 @@ import { Spinner } from "@/components/ui/spinner";
 import { esValorEnum, type Enum, type Tabla } from "@/types/db";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
-import { Obligatorio } from "@/components/ui/obligatorio";
+import {
+  CLASE_CONTROL_INVALIDO,
+  ErrorCampo,
+  Obligatorio,
+  ariaErrorCampo,
+} from "@/components/ui/obligatorio";
+import { useErroresCampo } from "@/lib/use-errores-campo";
+import { cn } from "@/lib/utils";
 
 type Props = {
   postulacionId: string;
@@ -82,6 +89,7 @@ export function FichaAcciones({
   const [notaDescartar, setNotaDescartar] = useState("");
   const [notaDerivar, setNotaDerivar] = useState("");
   const [error, setError] = useState<ErrorAccion | null>(null);
+  const camposCorregir = useErroresCampo<"estado">();
   const { pendiente: isPending, ejecutar } = useAccion();
 
   function cerrarTodo() {
@@ -136,11 +144,12 @@ export function FichaAcciones({
   function handleCorregir() {
     if (!derivacion) return;
     setError(null);
+    if (!camposCorregir.validar({ estado: estadoCorreccion })) return;
     ejecutar(async () => {
       const res = await corregirEstadoDerivacion(postulacionId, derivacion.id, estadoCorreccion);
       mostrarAviso(res);
       if (!res.ok) {
-        setError(toErrorAccion(res));
+        if (!camposCorregir.tomarDelServidor(res, ["estado"])) setError(toErrorAccion(res));
       } else {
         setAbrirCorregir(false);
       }
@@ -189,6 +198,7 @@ export function FichaAcciones({
             onClick={() => {
               setEstadoCorreccion(derivacion.estado_empresa);
               setError(null);
+              camposCorregir.limpiarTodos();
               setAbrirCorregir(true);
             }}
             className="btn-secundario inline-flex w-full items-center justify-center gap-2 min-h-9 px-4 text-sm font-medium"
@@ -214,16 +224,22 @@ export function FichaAcciones({
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
+              <label htmlFor="corregir-estado" className="text-sm font-medium text-foreground">
                 Nuevo estado <Obligatorio />
               </label>
               <select
+                id="corregir-estado"
                 value={estadoCorreccion}
                 onChange={(e) => {
                   const valor = e.target.value;
                   if (esValorEnum("estado_empresa", valor)) setEstadoCorreccion(valor);
+                  camposCorregir.limpiar("estado");
                 }}
-                className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                {...ariaErrorCampo("corregir-estado", camposCorregir.errores.estado)}
+                className={cn(
+                  "w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring",
+                  CLASE_CONTROL_INVALIDO
+                )}
                 disabled={isPending}
               >
                 {ESTADOS_CORREGUIBLES.map((e) => (
@@ -232,6 +248,7 @@ export function FichaAcciones({
                   </option>
                 ))}
               </select>
+              <ErrorCampo idCampo="corregir-estado" mensaje={camposCorregir.errores.estado} />
             </div>
             {error && (
               <div>

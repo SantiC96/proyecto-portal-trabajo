@@ -30,7 +30,17 @@ const MENSAJES_DEFAULT: Record<CodigoError, string> = {
   ERROR_INTERNO: "Ocurrió un error inesperado. Intentá de nuevo.",
 };
 
-export type ResultadoError = { ok: false; codigo: CodigoError; mensaje: string; ref?: string };
+/**
+ * `campo`: el error es de un campo del formulario (el nombre de la propiedad
+ * que recibe la acción); la pantalla lo muestra debajo de ese campo.
+ */
+export type ResultadoError = {
+  ok: false;
+  codigo: CodigoError;
+  mensaje: string;
+  ref?: string;
+  campo?: string;
+};
 
 export type Resultado<T = void> =
   | { ok: true; data?: T; mensaje?: string }
@@ -52,6 +62,11 @@ export function err(codigo: CodigoError, mensaje?: string): ResultadoError {
     codigo,
     mensaje: mensaje ?? MENSAJES_DEFAULT[codigo],
   };
+}
+
+/** Error de validación de un campo del formulario. */
+export function errCampo(campo: string, mensaje: string): ResultadoError {
+  return { ok: false, codigo: "DATOS_INVALIDOS", mensaje, campo };
 }
 
 export function errConRef(codigo: CodigoError, mensaje: string, ref: string): ResultadoError {

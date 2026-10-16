@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirRol } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
-import { esUuid, LARGO_MAXIMO, validarTextoOpcional } from "@/lib/validaciones";
+import { err, errCampo, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
+import { esUuid, LARGO_MAXIMO, MENSAJE_OBLIGATORIO, validarTextoOpcional } from "@/lib/validaciones";
 
 // Aprobar y rechazar son updates condicionales: repetir la misma decisión
 // (doble envío, dos pestañas) no afecta filas, así que no sobrescribe
@@ -55,10 +55,10 @@ export async function rechazarEmpresa(
 
   if (!esUuid(empresaId)) return err("DATOS_INVALIDOS");
   if (typeof motivo !== "string" || !motivo.trim()) {
-    return err("DATOS_INVALIDOS", "El motivo de rechazo es obligatorio.");
+    return errCampo("motivo", MENSAJE_OBLIGATORIO);
   }
   const errMotivo = validarTextoOpcional(motivo, LARGO_MAXIMO.motivo);
-  if (errMotivo) return err("DATOS_INVALIDOS", `Motivo: ${errMotivo}`);
+  if (errMotivo) return errCampo("motivo", errMotivo);
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase

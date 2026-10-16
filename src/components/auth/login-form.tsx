@@ -10,7 +10,17 @@ import { RegisterModal } from "@/components/auth/register-modal";
 import { login } from "@/app/auth/actions";
 import type { ErrorAccion } from "@/lib/resultado";
 import { toErrorAccion } from "@/lib/resultado";
-import { Obligatorio } from "@/components/ui/obligatorio";
+import {
+  CLASE_CONTROL_INVALIDO,
+  ErrorCampo,
+  Obligatorio,
+  ariaErrorCampo,
+} from "@/components/ui/obligatorio";
+import { useErroresCampo } from "@/lib/use-errores-campo";
+import { cn } from "@/lib/utils";
+
+const inputClass =
+  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20";
 
 export function LoginForm({
   confirmacionError,
@@ -30,6 +40,7 @@ export function LoginForm({
   const [isLoading, setIsLoading] = useState(false);
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const [error, setError] = useState<ErrorAccion | null>(null);
+  const campos = useErroresCampo<"email" | "password">();
 
   // Belt-and-suspenders: force the root layout to re-render after an inactivity signOut
   // so the navbar reflects the cleared session without needing a manual F5.
@@ -39,8 +50,9 @@ export function LoginForm({
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
+    if (!campos.validar({ email, password }, e.currentTarget)) return;
+    setIsLoading(true);
     const result = await login({ email, password, redirectTo: redirect });
     if (result && !result.ok) {
       setError(toErrorAccion(result));
@@ -117,11 +129,16 @@ export function LoginForm({
                 autoComplete="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  campos.limpiar("email");
+                }}
                 placeholder="tucorreo@ejemplo.com"
-                className="w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20"
+                {...ariaErrorCampo("login-email", campos.errores.email)}
+                className={cn(inputClass, "pr-4", CLASE_CONTROL_INVALIDO)}
               />
             </div>
+            <ErrorCampo idCampo="login-email" mensaje={campos.errores.email} />
           </div>
 
           {/* Password */}
@@ -148,9 +165,13 @@ export function LoginForm({
                 autoComplete="current-password"
                 required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  campos.limpiar("password");
+                }}
                 placeholder="••••••••"
-                className="w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-10 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20"
+                {...ariaErrorCampo("login-password", campos.errores.password)}
+                className={cn(inputClass, "pr-10", CLASE_CONTROL_INVALIDO)}
               />
               <button
                 type="button"
@@ -165,6 +186,7 @@ export function LoginForm({
                 )}
               </button>
             </div>
+            <ErrorCampo idCampo="login-password" mensaje={campos.errores.password} />
           </div>
 
           {/* Error */}

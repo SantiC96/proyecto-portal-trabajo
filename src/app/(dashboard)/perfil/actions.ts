@@ -6,7 +6,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requerirPostulante, requerirRol, requerirUsuario } from "@/lib/auth";
 import { traducirErrorAuth } from "@/lib/auth-errors";
 import { logError } from "@/lib/logger";
-import { err, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
+import { err, errCampo, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
 import {
   LARGO_MAXIMO,
   leerArchivo,
@@ -53,15 +53,15 @@ export async function actualizarPerfil(data: {
   }
 
   const errNombre = validarNombre(data.nombre);
-  if (errNombre) return err("DATOS_INVALIDOS", errNombre);
+  if (errNombre) return errCampo("nombre", errNombre);
   const errApellido = validarNombre(data.apellido);
-  if (errApellido) return err("DATOS_INVALIDOS", errApellido);
+  if (errApellido) return errCampo("apellido", errApellido);
   const errDni = validarDNI(data.dni);
-  if (errDni) return err("DATOS_INVALIDOS", errDni);
+  if (errDni) return errCampo("dni", errDni);
   const errTelefono = validarTelefono(data.telefono);
-  if (errTelefono) return err("DATOS_INVALIDOS", errTelefono);
+  if (errTelefono) return errCampo("telefono", errTelefono);
   const errDomicilio = validarTextoOpcional(data.domicilio, LARGO_MAXIMO.domicilio);
-  if (errDomicilio) return err("DATOS_INVALIDOS", `Domicilio: ${errDomicilio}`);
+  if (errDomicilio) return errCampo("domicilio", errDomicilio);
 
   const dniLimpio = data.dni.replace(/\D/g, "");
 
@@ -382,11 +382,11 @@ export async function cambiarContrasena(
   if (!contrasenaActual || !contrasenaNueva || !repetirContrasena)
     return err("DATOS_INVALIDOS", "Completá todos los campos.");
   const errPwd = validarPassword(contrasenaNueva);
-  if (errPwd) return err("DATOS_INVALIDOS", errPwd);
+  if (errPwd) return errCampo("contrasenaNueva", errPwd);
   if (contrasenaNueva !== repetirContrasena)
-    return err("DATOS_INVALIDOS", "Las contraseñas nuevas no coinciden.");
+    return errCampo("repetirContrasena", "Las contraseñas nuevas no coinciden.");
   if (contrasenaNueva === contrasenaActual)
-    return err("DATOS_INVALIDOS", "La contraseña nueva debe ser distinta de la actual.");
+    return errCampo("contrasenaNueva", "La contraseña nueva debe ser distinta de la actual.");
 
   const auth = await requerirUsuario();
   if (!auth.ok) return auth;
@@ -398,7 +398,7 @@ export async function cambiarContrasena(
     email: user.email,
     password: contrasenaActual,
   });
-  if (signInError) return err("DATOS_INVALIDOS", "La contraseña actual es incorrecta.");
+  if (signInError) return errCampo("contrasenaActual", "La contraseña actual es incorrecta.");
 
   const supabase = await createSupabaseServerClient();
   const { error: updateError } = await supabase.auth.updateUser({

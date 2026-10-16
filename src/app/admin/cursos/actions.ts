@@ -5,29 +5,38 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirRol } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
+import {
+  err,
+  errCampo,
+  errConRef,
+  fromSupabaseError,
+  okMsg,
+  type Resultado,
+  type ResultadoError,
+} from "@/lib/resultado";
 import { MENSAJE_CURSO_ACTIVO, MENSAJE_SOLO_SI_NECESITA_CURSO } from "@/lib/cursos";
-import { esUuid, LARGO_MAXIMO, validarTextoOpcional } from "@/lib/validaciones";
+import { esUuid, LARGO_MAXIMO, MENSAJE_OBLIGATORIO, validarTextoOpcional } from "@/lib/validaciones";
 import type { Tabla } from "@/types/db";
 
 type CursoData = Pick<Tabla<"cursos">, "nombre" | "descripcion" | "link" | "indicaciones">;
 
 const MENSAJE_CURSO_REPETIDO = "Ya existe un curso con ese nombre.";
 
-function validarCursoData(data: CursoData): string | null {
-  if (typeof data !== "object" || data === null) return "Los datos del curso no son válidos.";
+function validarCursoData(data: CursoData): ResultadoError | null {
+  if (typeof data !== "object" || data === null)
+    return err("DATOS_INVALIDOS", "Los datos del curso no son válidos.");
   if (typeof data.nombre !== "string" || !data.nombre.trim())
-    return "El nombre del curso es obligatorio.";
+    return errCampo("nombre", MENSAJE_OBLIGATORIO);
   const errNombre = validarTextoOpcional(data.nombre, LARGO_MAXIMO.nombreCurso);
-  if (errNombre) return `Nombre: ${errNombre}`;
+  if (errNombre) return errCampo("nombre", errNombre);
   const errDescripcion = validarTextoOpcional(data.descripcion, LARGO_MAXIMO.descripcion);
-  if (errDescripcion) return `Descripción: ${errDescripcion}`;
+  if (errDescripcion) return errCampo("descripcion", errDescripcion);
   const errIndicaciones = validarTextoOpcional(data.indicaciones, LARGO_MAXIMO.descripcion);
-  if (errIndicaciones) return `Indicaciones: ${errIndicaciones}`;
+  if (errIndicaciones) return errCampo("indicaciones", errIndicaciones);
   const errLink = validarTextoOpcional(data.link, LARGO_MAXIMO.linkCurso);
-  if (errLink) return `Link: ${errLink}`;
+  if (errLink) return errCampo("link", errLink);
   if (data.link && !data.link.startsWith("https://"))
-    return "El link debe comenzar con https://";
+    return errCampo("link", "El link debe comenzar con https://");
   return null;
 }
 
@@ -42,7 +51,7 @@ export async function crearCurso(data: CursoData): Promise<Resultado<void>> {
   if (!auth.ok) return auth;
 
   const errVal = validarCursoData(data);
-  if (errVal) return err("DATOS_INVALIDOS", errVal);
+  if (errVal) return errVal;
 
   const supabase = await createSupabaseServerClient();
   const { data: nuevo, error } = await supabase
@@ -76,7 +85,7 @@ export async function editarCurso(
 
   if (!esUuid(cursoId)) return err("DATOS_INVALIDOS");
   const errVal = validarCursoData(data);
-  if (errVal) return err("DATOS_INVALIDOS", errVal);
+  if (errVal) return errVal;
 
   const supabase = await createSupabaseServerClient();
   const { data: updated, error } = await supabase
@@ -166,10 +175,10 @@ export async function asignarCurso(
   const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
 
-  if (!cursoId) return err("DATOS_INVALIDOS", "Debés seleccionar un curso.");
+  if (!cursoId) return errCampo("cursoId", MENSAJE_OBLIGATORIO);
   if (!esUuid(cursoId) || !esUuid(postulanteId)) return err("DATOS_INVALIDOS");
   const errNota = validarTextoOpcional(nota, LARGO_MAXIMO.nota);
-  if (errNota) return err("DATOS_INVALIDOS", `Nota: ${errNota}`);
+  if (errNota) return errCampo("nota", errNota);
 
   const supabase = await createSupabaseServerClient();
 

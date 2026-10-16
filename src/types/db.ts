@@ -82,3 +82,4 @@ export type FilaPostulacionNoSeleccionada = ConNulos<
   "usuario_id" | "nombre" | "apellido" | "dni" | "empresa_nombre"
 >;
 export type FilaEmailDeUsuario = FilaRpc<"emails_de_usuarios">;
+export type FilaMiPreEntrevista = FilaRpc<"mis_pre_entrevistas">;

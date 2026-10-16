@@ -21,7 +21,12 @@ import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
-import { Obligatorio } from "@/components/ui/obligatorio";
+import {
+  ErrorCampo,
+  Obligatorio,
+  ariaErrorCampo,
+} from "@/components/ui/obligatorio";
+import { useErroresCampo } from "@/lib/use-errores-campo";
 
 type Props = {
   empresaId: string;
@@ -66,6 +71,7 @@ export function EmpresaAcciones({
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [error, setError] = useState<ErrorAccion | null>(null);
+  const campos = useErroresCampo<"motivo">();
   const { pendiente: isPending, ejecutar } = useAccion();
 
   function handleAbrirRechazar(open: boolean) {
@@ -73,6 +79,7 @@ export function EmpresaAcciones({
     if (!open) {
       setMotivo("");
       setError(null);
+      campos.limpiarTodos();
     }
   }
 
@@ -95,16 +102,13 @@ export function EmpresaAcciones({
   }
 
   function handleRechazar() {
-    if (!motivo.trim()) {
-      setError({ mensaje: "El motivo de rechazo es obligatorio." });
-      return;
-    }
     setError(null);
+    if (!campos.validar({ motivo })) return;
     ejecutar(async () => {
       const resultado = await rechazarEmpresa(empresaId, motivo.trim());
       mostrarAviso(resultado);
       if (!resultado.ok) {
-        setError(toErrorAccion(resultado));
+        if (!campos.tomarDelServidor(resultado, ["motivo"])) setError(toErrorAccion(resultado));
       } else {
         setAbrirRechazar(false);
         setMotivo("");
@@ -256,12 +260,17 @@ export function EmpresaAcciones({
             <Textarea
               id={`motivo-${empresaId}`}
               value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
+              onChange={(e) => {
+                setMotivo(e.target.value);
+                campos.limpiar("motivo");
+              }}
               placeholder="Explicá por qué se rechaza esta empresa…"
               maxLength={LARGO_MAXIMO.motivo}
               className="min-h-24"
               disabled={isPending}
+              {...ariaErrorCampo(`motivo-${empresaId}`, campos.errores.motivo)}
             />
+            <ErrorCampo idCampo={`motivo-${empresaId}`} mensaje={campos.errores.motivo} />
             <ContadorCaracteres actual={motivo.length} maximo={LARGO_MAXIMO.motivo} />
           </div>
           {error && (

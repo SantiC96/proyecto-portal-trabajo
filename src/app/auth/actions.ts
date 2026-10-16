@@ -9,7 +9,7 @@ import { createSupabaseEphemeralClient } from "@/lib/supabase-ephemeral";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { traducirErrorAuth } from "@/lib/auth-errors";
 import { logError } from "@/lib/logger";
-import { err, errConRef, type Resultado } from "@/lib/resultado";
+import { err, errCampo, errConRef, type Resultado } from "@/lib/resultado";
 import { formatearCUIT } from "@/lib/cuit";
 import {
   LARGO_MAXIMO,
@@ -125,19 +125,19 @@ export async function registrarPostulante(data: {
   }
 
   const errNombre = validarNombre(data.nombre);
-  if (errNombre) return err("DATOS_INVALIDOS", errNombre);
+  if (errNombre) return errCampo("nombre", errNombre);
   const errApellido = validarNombre(data.apellido);
-  if (errApellido) return err("DATOS_INVALIDOS", errApellido);
+  if (errApellido) return errCampo("apellido", errApellido);
   const errDni = validarDNI(data.dni);
-  if (errDni) return err("DATOS_INVALIDOS", errDni);
+  if (errDni) return errCampo("dni", errDni);
   const errTelefono = validarTelefono(data.telefono);
-  if (errTelefono) return err("DATOS_INVALIDOS", errTelefono);
+  if (errTelefono) return errCampo("telefono", errTelefono);
   const errEmail = validarEmail(data.email);
-  if (errEmail) return err("DATOS_INVALIDOS", errEmail);
+  if (errEmail) return errCampo("email", errEmail);
   const errPassword = validarPassword(data.password);
-  if (errPassword) return err("DATOS_INVALIDOS", errPassword);
+  if (errPassword) return errCampo("password", errPassword);
   const errDomicilio = validarTextoOpcional(data.domicilio, LARGO_MAXIMO.domicilio);
-  if (errDomicilio) return err("DATOS_INVALIDOS", `Domicilio: ${errDomicilio}`);
+  if (errDomicilio) return errCampo("domicilio", errDomicilio);
 
   const dniLimpio = data.dni.replace(/\D/g, "");
 
@@ -212,23 +212,23 @@ export async function registrarEmpresa(data: {
   }
 
   const errRazonSocial = validarNombre(data.razonSocial);
-  if (errRazonSocial) return err("DATOS_INVALIDOS", errRazonSocial);
+  if (errRazonSocial) return errCampo("razonSocial", errRazonSocial);
   const errCuit = validarCuitConMensaje(data.cuit);
-  if (errCuit) return err("DATOS_INVALIDOS", errCuit);
+  if (errCuit) return errCampo("cuit", errCuit);
   const errNombreEmp = validarNombre(data.nombre);
-  if (errNombreEmp) return err("DATOS_INVALIDOS", errNombreEmp);
+  if (errNombreEmp) return errCampo("nombre", errNombreEmp);
   const errApellidoEmp = validarNombre(data.apellido);
-  if (errApellidoEmp) return err("DATOS_INVALIDOS", errApellidoEmp);
+  if (errApellidoEmp) return errCampo("apellido", errApellidoEmp);
   const errTelefonoEmp = validarTelefono(data.telefono);
-  if (errTelefonoEmp) return err("DATOS_INVALIDOS", errTelefonoEmp);
+  if (errTelefonoEmp) return errCampo("telefono", errTelefonoEmp);
   const errEmailEmp = validarEmail(data.email);
-  if (errEmailEmp) return err("DATOS_INVALIDOS", errEmailEmp);
+  if (errEmailEmp) return errCampo("email", errEmailEmp);
   const errPasswordEmp = validarPassword(data.password);
-  if (errPasswordEmp) return err("DATOS_INVALIDOS", errPasswordEmp);
+  if (errPasswordEmp) return errCampo("password", errPasswordEmp);
   const errRubroEmp = validarTextoOpcional(data.rubro, LARGO_MAXIMO.rubro);
-  if (errRubroEmp) return err("DATOS_INVALIDOS", `Rubro: ${errRubroEmp}`);
+  if (errRubroEmp) return errCampo("rubro", errRubroEmp);
   const errDescripcionEmp = validarTextoOpcional(data.descripcion, LARGO_MAXIMO.descripcion);
-  if (errDescripcionEmp) return err("DATOS_INVALIDOS", `Descripción: ${errDescripcionEmp}`);
+  if (errDescripcionEmp) return errCampo("descripcion", errDescripcionEmp);
 
   const cuitNormalizado = formatearCUIT(data.cuit);
 
@@ -315,9 +315,9 @@ export async function restablecerContrasena(
 
   // 1. Server-side validation — no OTP consumed yet
   const errPwd = validarPassword(password);
-  if (errPwd) return err("DATOS_INVALIDOS", errPwd);
+  if (errPwd) return errCampo("password", errPwd);
   if (password !== confirmar) {
-    return err("DATOS_INVALIDOS", "Las contraseñas no coinciden.");
+    return errCampo("confirmar", "Las contraseñas no coinciden.");
   }
 
   const client = createSupabaseEphemeralClient();

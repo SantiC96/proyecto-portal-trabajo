@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { ClipboardList } from "lucide-react";
+import { CalendarClock, ClipboardList } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
 import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
@@ -26,8 +26,9 @@ import {
 } from "@/lib/admin/postulacion-estados";
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 import type { FilaPostulacionNoSeleccionada, Tabla } from "@/types/db";
-import { formatFechaCorta } from "@/lib/fechas";
+import { formatFechaCorta, formatFechaHoraCorta } from "@/lib/fechas";
 import { requerirRolPagina } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Postulaciones | Panel municipal | Portal de Empleo Funes",
@@ -67,6 +68,8 @@ type PostulanteEmbebido =
 
 type OfertaEmbebida = Pick<Tabla<"ofertas">, "id" | "titulo" | "empresa_nombre"> | null;
 
+type PreEntrevistaEmbebida = Pick<Tabla<"pre_entrevistas">, "estado" | "fecha_hora"> | null;
+
 /** Fila común a las cuatro secciones. */
 type Fila = {
   postulacionId: string;
@@ -74,6 +77,8 @@ type Fila = {
   oferta: OfertaEmbebida;
   fecha: string;
   badge: BadgePostulacion;
+  /** Solo en Pendientes (migration_044). */
+  preEntrevista?: PreEntrevistaEmbebida;
 };
 
 const RUTA = "/admin/postulaciones";
@@ -448,7 +453,8 @@ async function ListadoPostulaciones({
           dni,
           usuarios!usuario_id(nombre, apellido)
         ),
-        ofertas!oferta_id(id, titulo, empresa_nombre)
+        ofertas!oferta_id(id, titulo, empresa_nombre),
+        pre_entrevistas(estado, fecha_hora)
       `;
 
       // "Derivadas" se filtra por el estado de la derivación (relación 1 a 1).
@@ -489,6 +495,7 @@ async function ListadoPostulaciones({
       oferta: r.ofertas,
       fecha: r.created_at,
       badge: badgePostulacion(r.estado, r.derivaciones?.estado_empresa),
+      preEntrevista: estado === "pendiente" ? r.pre_entrevistas : undefined,
     }));
     paginaActual = resultado.pagina;
     total = resultado.total;
@@ -643,6 +650,7 @@ async function ListadoPostulaciones({
                         >
                           {fila.badge.label}
                         </Badge>
+                        <PreEntrevistaCoordinada pre={fila.preEntrevista} className="mt-1.5" />
                       </td>
                       <td className="py-4">
                         <form action={abrirFicha.bind(null, fila.postulacionId)}>
@@ -728,6 +736,7 @@ async function ListadoPostulaciones({
                       </dd>
                     </div>
                   </dl>
+                  <PreEntrevistaCoordinada pre={fila.preEntrevista} className="mt-3" />
                   <div className="mt-4">
                     <form action={abrirFicha.bind(null, fila.postulacionId)}>
                       <BotonFormulario
@@ -751,5 +760,24 @@ async function ListadoPostulaciones({
             total={total}
           />
     </>
+  );
+}
+
+/** Solo la pre-entrevista coordinada; el resto del detalle está en la ficha. */
+function PreEntrevistaCoordinada({
+  pre,
+  className,
+}: {
+  pre: PreEntrevistaEmbebida | undefined;
+  className?: string;
+}) {
+  if (pre?.estado !== "coordinada") return null;
+  return (
+    <p
+      className={cn("flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground", className)}
+    >
+      <CalendarClock className="h-3.5 w-3.5 flex-shrink-0 text-primary" aria-hidden="true" />
+      Pre-entrevista: {formatFechaHoraCorta(pre.fecha_hora)}
+    </p>
   );
 }

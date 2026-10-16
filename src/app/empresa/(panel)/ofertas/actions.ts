@@ -5,7 +5,15 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requerirEmpresa } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
+import {
+  err,
+  errCampo,
+  errConRef,
+  fromSupabaseError,
+  okMsg,
+  type Resultado,
+  type ResultadoError,
+} from "@/lib/resultado";
 import {
   esUuid,
   validarOfertaRecibida,
@@ -37,6 +45,12 @@ function contenidoOferta(data: OfertaValidada) {
   };
 }
 
+function errorDeValidacion(validacion: { mensaje: string; campo?: string }): ResultadoError {
+  return validacion.campo
+    ? errCampo(validacion.campo, validacion.mensaje)
+    : err("DATOS_INVALIDOS", validacion.mensaje);
+}
+
 /**
  * `claveEnvio` la genera el formulario al abrirse: un segundo envío del mismo
  * formulario (doble click, reintento) trae la misma clave y la base lo
@@ -49,7 +63,7 @@ export async function crearOferta(datos: OfertaData, claveEnvio: string): Promis
 
   if (!esUuid(claveEnvio)) return err("DATOS_INVALIDOS");
   const validacion = validarOfertaRecibida(datos);
-  if (!validacion.ok) return err("DATOS_INVALIDOS", validacion.mensaje);
+  if (!validacion.ok) return errorDeValidacion(validacion);
 
   // La función crea la oferta, sus categorías y sus vacantes en una sola
   // transacción y valida las categorías.
@@ -81,7 +95,7 @@ export async function editarOferta(id: string, datos: OfertaData): Promise<Resul
   if (!esUuid(id)) return err("NO_ENCONTRADO", "No se encontró la oferta o no tenés permiso para editarla.");
 
   const validacion = validarOfertaRecibida(datos);
-  if (!validacion.ok) return err("DATOS_INVALIDOS", validacion.mensaje);
+  if (!validacion.ok) return errorDeValidacion(validacion);
 
   // La función verifica que la oferta sea propia y no esté cerrada, que las
   // vacantes no queden por debajo de los seleccionados y que las categorías

@@ -26,7 +26,7 @@ const ERROR = "bg-red-100 text-red-700";
 const NEUTRO = "bg-gray-100 text-gray-600";
 const MARCA = "bg-secondary text-primary";
 
-// Tipos del CHECK notificaciones_tipo_check (migration_041 y 043).
+// Tipos del CHECK notificaciones_tipo_check (migration_041, 043 y 044).
 const ESTILO_POR_TIPO: Record<string, EstiloTipo> = {
   // Oficina
   contratacion: { Icono: BadgeCheck, className: EXITO },
@@ -42,6 +42,8 @@ const ESTILO_POR_TIPO: Record<string, EstiloTipo> = {
   no_seleccionado_empresa: { Icono: XCircle, className: NEUTRO },
   no_seleccionado_oficina: { Icono: XCircle, className: NEUTRO },
   curso_asignado: { Icono: BookOpen, className: INFO },
+  pre_entrevista_coordinada: { Icono: CalendarClock, className: INFO },
+  pre_entrevista_reprogramada: { Icono: CalendarClock, className: INFO },
   // Empresa
   solicitud_aprobada: { Icono: BadgeCheck, className: EXITO },
   solicitud_rechazada: { Icono: XCircle, className: ERROR },
