@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, CheckCheck } from "lucide-react";
@@ -9,33 +9,60 @@ import {
   marcarNotificacionLeida,
   marcarTodasLeidas,
   obtenerNotificacionesRecientes,
-} from "@/app/admin/notificaciones/actions";
+} from "@/app/(dashboard)/notificaciones/actions";
 import type { Notificacion, ResumenNotificaciones } from "@/lib/notificaciones";
 import { BotonFormulario } from "@/components/ui/boton-formulario";
 import { Spinner } from "@/components/ui/spinner";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
-import { formatFechaHora } from "@/lib/fechas";
+import { formatFechaHora, formatFechaRelativa } from "@/lib/fechas";
 import { cn } from "@/lib/utils";
+import { IconoNotificacion } from "./icono-notificacion";
+import { EVENTO_NOTIFICACIONES_CAMBIARON } from "./eventos";
 
-export function CampanaNotificaciones({ resumen: inicial }: { resumen: ResumenNotificaciones }) {
+const RESUMEN_VACIO: ResumenNotificaciones = { noLeidas: 0, ultimas: [] };
+
+function marcarLeidaLocal(r: ResumenNotificaciones, id: string): ResumenNotificaciones {
+  const ahora = new Date().toISOString();
+  const eraNoLeida = r.ultimas.some((n) => n.id === id && !n.leida_en);
+  return {
+    noLeidas: eraNoLeida ? Math.max(0, r.noLeidas - 1) : r.noLeidas,
+    ultimas: r.ultimas.map((n) => (n.id === id && !n.leida_en ? { ...n, leida_en: ahora } : n)),
+  };
+}
+
+/**
+ * Campanita de la navbar para los tres roles. Los layouts no se vuelven a
+ * ejecutar al navegar, así que el contador no viene del layout: se pide con
+ * una server action al montar, en cada cambio de ruta, al abrir el panel y
+ * cuando el listado avisa que marcó notificaciones como leídas.
+ */
+export function CampanaNotificaciones({ rutaListado }: { rutaListado: string }) {
   const pathname = usePathname();
   // Ruta en la que se abrió: al navegar, el panel se cierra solo.
   const [abiertaEn, setAbiertaEn] = useState<string | null>(null);
   const abierta = abiertaEn === pathname;
 
-  // Los datos llegan del layout raíz; cuando el servidor los revalida se
-  // reemplaza el estado local.
-  const [resumen, setResumen] = useState(inicial);
-  const [inicialPrevio, setInicialPrevio] = useState(inicial);
-  if (inicial !== inicialPrevio) {
-    setInicialPrevio(inicial);
-    setResumen(inicial);
-  }
-
+  const [resumen, setResumen] = useState<ResumenNotificaciones | null>(null);
   const [cargando, startCarga] = useTransition();
   const { pendiente, ejecutar } = useAccion();
   const contenedorRef = useRef<HTMLDivElement>(null);
+
+  const refrescar = useCallback(() => {
+    startCarga(async () => {
+      const res = await obtenerNotificacionesRecientes();
+      if (res.ok && res.data) setResumen(res.data);
+    });
+  }, []);
+
+  useEffect(() => {
+    refrescar();
+  }, [pathname, refrescar]);
+
+  useEffect(() => {
+    window.addEventListener(EVENTO_NOTIFICACIONES_CAMBIARON, refrescar);
+    return () => window.removeEventListener(EVENTO_NOTIFICACIONES_CAMBIARON, refrescar);
+  }, [refrescar]);
 
   useEffect(() => {
     if (!abierta) return;
@@ -61,10 +88,7 @@ export function CampanaNotificaciones({ resumen: inicial }: { resumen: ResumenNo
       return;
     }
     setAbiertaEn(pathname);
-    startCarga(async () => {
-      const res = await obtenerNotificacionesRecientes();
-      if (res.ok && res.data) setResumen(res.data);
-    });
+    refrescar();
   }
 
   function marcarUna(id: string) {
@@ -74,28 +98,26 @@ export function CampanaNotificaciones({ resumen: inicial }: { resumen: ResumenNo
         mostrarAviso(res);
         return;
       }
-      const ahora = new Date().toISOString();
-      setResumen((r) => ({
-        noLeidas: Math.max(0, r.noLeidas - 1),
-        ultimas: r.ultimas.map((n) => (n.id === id ? { ...n, leida_en: ahora } : n)),
-      }));
+      setResumen((r) => marcarLeidaLocal(r ?? RESUMEN_VACIO, id));
     });
   }
 
   function marcarTodas() {
     ejecutar(async () => {
       const res = await marcarTodasLeidas();
-      mostrarAviso(res);
-      if (!res.ok) return;
+      if (!res.ok) {
+        mostrarAviso(res);
+        return;
+      }
       const ahora = new Date().toISOString();
       setResumen((r) => ({
         noLeidas: 0,
-        ultimas: r.ultimas.map((n) => (n.leida_en ? n : { ...n, leida_en: ahora })),
+        ultimas: (r ?? RESUMEN_VACIO).ultimas.map((n) => (n.leida_en ? n : { ...n, leida_en: ahora })),
       }));
     });
   }
 
-  const { noLeidas, ultimas } = resumen;
+  const { noLeidas, ultimas } = resumen ?? RESUMEN_VACIO;
 
   return (
     <div ref={contenedorRef} className="relative">
@@ -109,7 +131,7 @@ export function CampanaNotificaciones({ resumen: inicial }: { resumen: ResumenNo
             ? `Notificaciones: ${noLeidas} sin leer`
             : "Notificaciones"
         }
-        className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-white text-foreground transition hover:bg-surface-tinted focus:outline-none focus:ring-2 focus:ring-primary/30"
+        className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-white text-foreground transition hover:bg-surface-tinted focus:outline-none focus:ring-2 focus:ring-primary/30"
       >
         <Bell className="h-5 w-5" aria-hidden="true" />
         {noLeidas > 0 && (
@@ -146,7 +168,11 @@ export function CampanaNotificaciones({ resumen: inicial }: { resumen: ResumenNo
             )}
           </div>
 
-          {ultimas.length === 0 ? (
+          {resumen === null ? (
+            <div className="flex justify-center px-4 py-8">
+              <Spinner className="h-5 w-5 text-muted-foreground" />
+            </div>
+          ) : ultimas.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-muted-foreground">
               No tenés notificaciones.
             </p>
@@ -157,6 +183,7 @@ export function CampanaNotificaciones({ resumen: inicial }: { resumen: ResumenNo
                   key={n.id}
                   notificacion={n}
                   deshabilitado={pendiente}
+                  onAbrir={() => setResumen((r) => r && marcarLeidaLocal(r, n.id))}
                   onMarcarLeida={() => marcarUna(n.id)}
                 />
               ))}
@@ -165,7 +192,7 @@ export function CampanaNotificaciones({ resumen: inicial }: { resumen: ResumenNo
 
           <div className="border-t border-border px-2 py-1">
             <Link
-              href="/admin/notificaciones"
+              href={rutaListado}
               className="flex min-h-11 items-center justify-center rounded-lg text-sm font-medium text-primary transition hover:bg-surface-tinted"
             >
               Ver todas las notificaciones
@@ -180,35 +207,40 @@ export function CampanaNotificaciones({ resumen: inicial }: { resumen: ResumenNo
 function ItemNotificacion({
   notificacion: n,
   deshabilitado,
+  onAbrir,
   onMarcarLeida,
 }: {
   notificacion: Notificacion;
   deshabilitado: boolean;
+  onAbrir: () => void;
   onMarcarLeida: () => void;
 }) {
   const noLeida = !n.leida_en;
   return (
     <li className={cn("px-2 py-1", noLeida && "bg-secondary/40")}>
-      <form action={abrirNotificacion.bind(null, n.id)}>
-        <BotonFormulario className="flex w-full items-start gap-2 rounded-lg px-2 py-2 text-left transition hover:bg-surface-tinted disabled:opacity-60">
-          <span
-            aria-hidden="true"
-            className={cn(
-              "mt-1.5 h-2 w-2 shrink-0 rounded-full",
-              noLeida ? "bg-amber-500" : "bg-transparent",
-            )}
-          />
+      <form action={abrirNotificacion.bind(null, n.id)} onSubmit={onAbrir}>
+        <BotonFormulario className="flex w-full items-start gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-surface-tinted disabled:opacity-60">
+          <IconoNotificacion tipo={n.tipo} />
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-medium text-foreground">
-              {n.titulo}
-              {noLeida && <span className="sr-only"> (sin leer)</span>}
+            <span className="flex items-start gap-2">
+              <span className="block flex-1 text-sm font-medium text-foreground">
+                {n.titulo}
+                {noLeida && <span className="sr-only"> (sin leer)</span>}
+              </span>
+              {noLeida && (
+                <span aria-hidden="true" className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+              )}
             </span>
             <span className="block break-words text-sm text-muted-foreground-strong">
               {n.mensaje}
             </span>
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              {formatFechaHora(n.created_at)}
-            </span>
+            <time
+              dateTime={n.created_at}
+              title={formatFechaHora(n.created_at)}
+              className="mt-0.5 block text-xs text-muted-foreground"
+            >
+              {formatFechaRelativa(n.created_at)}
+            </time>
           </span>
         </BotonFormulario>
       </form>

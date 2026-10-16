@@ -14,7 +14,6 @@ import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { logout } from "@/app/auth/actions";
 import { BotonFormulario } from "@/components/ui/boton-formulario";
 import { CampanaNotificaciones } from "@/components/notificaciones/campana-notificaciones";
-import type { ResumenNotificaciones } from "@/lib/notificaciones";
 import type { Rol } from "@/types/db";
 
 type NavbarSession = {
@@ -25,7 +24,7 @@ type NavbarSession = {
   ajuste?: { x: number; y: number; zoom: number } | null;
   profileHref: string;
   cursosPendientes?: number;
-  notificaciones?: ResumenNotificaciones | null;
+  notificacionesHref?: string | null;
 };
 
 interface NavbarProps {
@@ -240,8 +239,8 @@ export function Navbar({ session = null }: NavbarProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            {session?.rol === "municipalidad" && session.notificaciones && (
-              <CampanaNotificaciones resumen={session.notificaciones} />
+            {session?.notificacionesHref && (
+              <CampanaNotificaciones rutaListado={session.notificacionesHref} />
             )}
 
             {/* Desktop actions */}

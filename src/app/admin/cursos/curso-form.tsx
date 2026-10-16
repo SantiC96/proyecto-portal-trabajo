@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
 import type { Tabla } from "@/types/db";
+import { Obligatorio } from "@/components/ui/obligatorio";
 
 type CursoData = Pick<Tabla<"cursos">, "nombre" | "descripcion" | "link" | "indicaciones">;
 
@@ -64,7 +65,7 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
         <label htmlFor="cf-nombre" className="text-sm font-medium text-foreground">
-          Nombre <span className="text-red-500">*</span>
+          Nombre <Obligatorio />
         </label>
         <input
           id="cf-nombre"

@@ -10,6 +10,7 @@ import { RegisterModal } from "@/components/auth/register-modal";
 import { login } from "@/app/auth/actions";
 import type { ErrorAccion } from "@/lib/resultado";
 import { toErrorAccion } from "@/lib/resultado";
+import { Obligatorio } from "@/components/ui/obligatorio";
 
 export function LoginForm({
   confirmacionError,
@@ -106,7 +107,7 @@ export function LoginForm({
               htmlFor="login-email"
               className="text-sm font-medium text-foreground"
             >
-              Correo electrónico
+              Correo electrónico <Obligatorio />
             </label>
             <div className="relative">
               <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-icon" />
@@ -130,7 +131,7 @@ export function LoginForm({
                 htmlFor="login-password"
                 className="text-sm font-medium text-foreground"
               >
-                Contraseña
+                Contraseña <Obligatorio />
               </label>
               <Link
                 href="/auth/recuperar-contrasena"

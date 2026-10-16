@@ -1,9 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { obtenerUsuarioActual, panelDeRol, type Rol } from "@/lib/auth";
-import {
-  obtenerResumenNotificaciones,
-  type ResumenNotificaciones,
-} from "@/lib/notificaciones";
+import { rutaNotificaciones } from "@/lib/notificaciones";
 
 export type SesionData = {
   nombre: string;
@@ -14,8 +11,11 @@ export type SesionData = {
   profileHref: string;
   /** Solo postulantes: cursos asignados o en curso (indicador de la navbar). */
   cursosPendientes: number;
-  /** Solo municipalidad: campanita de notificaciones de la navbar. */
-  notificaciones: ResumenNotificaciones | null;
+  /**
+   * Listado de notificaciones del rol (campanita de la navbar). El contador
+   * no se carga acá: lo pide la campanita al navegar.
+   */
+  notificacionesHref: string | null;
 };
 
 function textoDeMetadata(valor: unknown): string {
@@ -50,8 +50,7 @@ export async function obtenerSesionActual(): Promise<SesionData | null> {
     cursosPendientes = count ?? 0;
   }
 
-  const notificaciones =
-    rol === "municipalidad" ? await obtenerResumenNotificaciones(user.id) : null;
+  const notificacionesHref = rol ? rutaNotificaciones(rol) : null;
 
   let avatarUrl: string | null = null;
   if (avatarActivo?.ruta) {
@@ -77,6 +76,6 @@ export async function obtenerSesionActual(): Promise<SesionData | null> {
     ajuste,
     profileHref,
     cursosPendientes,
-    notificaciones,
+    notificacionesHref,
   };
 }

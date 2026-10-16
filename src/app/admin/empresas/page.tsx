@@ -20,6 +20,7 @@ import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { EmpresaAcciones } from "./acciones";
 import type { Tabla } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
+import { idsEmpresasSinConfirmar, listaIn } from "@/lib/admin/empresas-sin-confirmar";
 
 export const metadata: Metadata = {
   title: "Empresas | Panel municipal | Portal de Empleo Funes",
@@ -95,8 +96,8 @@ export default async function AdminEmpresasPage({
             href={hrefConParams(RUTA, {}, { estado: tab, q: sp.q ?? null })}
             className={
               tab === estado
-                ? "flex-1 rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
-                : "flex-1 rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+                ? "flex min-h-11 flex-1 items-center justify-center rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
+                : "flex min-h-11 flex-1 items-center justify-center rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
             }
           >
             {LABELS[tab]}
@@ -131,6 +132,19 @@ async function ListadoEmpresas({
   const supabase = await createSupabaseServerClient();
   const ascendente = estado === "pendiente";
 
+  // Para la oficina, una empresa que no confirmó su email todavía no existe.
+  // Solo pueden estar pendientes: la base no deja aprobarlas ni rechazarlas
+  // (migration_042).
+  let sinConfirmar: string[] = [];
+  if (estado === "pendiente") {
+    const res = await idsEmpresasSinConfirmar(supabase);
+    if (res.error) {
+      const ref = logError("admin_empresas_sin_confirmar", res.error, { estado });
+      return <ErrorListado className="mt-4" refError={ref} />;
+    }
+    sinConfirmar = res.ids;
+  }
+
   const resultado = await consultarPagina(pagina, (desde, hasta) => {
     let query = supabase
       .from("empresas")
@@ -139,6 +153,10 @@ async function ListadoEmpresas({
         { count: "exact" }
       )
       .eq("estado_aprobacion", estado);
+
+    if (sinConfirmar.length > 0) {
+      query = query.not("id", "in", listaIn(sinConfirmar));
+    }
 
     if (q) {
       // El CUIT se guarda como XX-XXXXXXXX-X: además del texto tal cual se

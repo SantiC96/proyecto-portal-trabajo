@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Users } from "lucide-react";
+import { ArrowLeft, Pencil, Users } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirEmpresaPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
@@ -36,7 +36,7 @@ export default async function OfertaDetallePage({
 
   const { data: oferta } = await supabase
     .from("ofertas")
-    .select("id, titulo, estado, empresa_nombre, vence_en, duracion_dias")
+    .select("id, titulo, estado, empresa_nombre, vence_en, duracion_dias, motivo_rechazo")
     .eq("id", ofertaId)
     .eq("empresa_id", empresa.id)
     .maybeSingle();
@@ -83,6 +83,27 @@ export default async function OfertaDetallePage({
           />
         </div>
       </div>
+
+      {oferta.estado === "rechazada" && (
+        <div className="mt-6 rounded-[var(--radius-lg)] border border-red-200 bg-red-50 p-4 sm:p-5">
+          <p className="text-sm font-semibold text-red-700">
+            La Oficina de Empleo rechazó esta oferta
+          </p>
+          {oferta.motivo_rechazo && (
+            <p className="mt-1 whitespace-pre-line text-sm text-red-700">
+              <span className="font-semibold">Motivo del rechazo:</span>{" "}
+              {oferta.motivo_rechazo}
+            </p>
+          )}
+          <Link
+            href={`/empresa/ofertas/${oferta.id}/editar`}
+            className="btn-primario mt-4 min-h-11 justify-center"
+          >
+            <Pencil className="h-4 w-4" />
+            Corregir y reenviar
+          </Link>
+        </div>
+      )}
 
       {estadoVencimiento(oferta.estado, oferta.vence_en).vencida && (
         <div className="mt-4">
