@@ -28,7 +28,17 @@ import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
-import { Obligatorio } from "@/components/ui/obligatorio";
+import {
+  CLASE_CONTROL_INVALIDO,
+  ErrorCampo,
+  Obligatorio,
+  ariaErrorCampo,
+} from "@/components/ui/obligatorio";
+import { useErroresCampo } from "@/lib/use-errores-campo";
+import { cn } from "@/lib/utils";
+
+/** "fecha" es el error de fecha y hora que devuelve el servidor; va debajo del horario. */
+type CampoEntrevista = "dia" | "hora" | "fecha" | "lugar";
 
 // Genera intervalos de 15 min de 08:00 a 20:00
 function generarHorarios(): string[] {
@@ -95,6 +105,7 @@ function EntrevistaDialog({
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [lugar, setLugar] = useState(lugarActual ?? "");
   const [error, setError] = useState<ErrorAccion | null>(null);
+  const campos = useErroresCampo<CampoEntrevista>();
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -115,6 +126,7 @@ function EntrevistaDialog({
     setSelectedTime("");
     setLugar(lugarActual ?? "");
     setError(null);
+    campos.limpiarTodos();
   }
 
   function handleClose() {
@@ -123,24 +135,19 @@ function EntrevistaDialog({
   }
 
   function handleSubmit() {
-    if (!selectedDay) { setError({ mensaje: "Seleccioná un día." }); return; }
-    if (!selectedTime) { setError({ mensaje: "Seleccioná un horario." }); return; }
-    if (isHoraDisabled(selectedTime)) {
-      setError({ mensaje: "El horario elegido ya pasó. Seleccioná uno futuro." });
-      return;
-    }
-    if (!lugar.trim()) {
-      setError({ mensaje: "El lugar o indicaciones es obligatorio." });
-      return;
-    }
     setError(null);
+    if (!campos.validar({ dia: selectedDay, hora: selectedTime, lugar }) || !selectedDay) return;
+    if (isHoraDisabled(selectedTime)) {
+      campos.marcar("hora", "El horario elegido ya pasó. Seleccioná uno futuro.", null);
+      return;
+    }
     const fechaISO = buildFechaISO(selectedDay, selectedTime);
     const action = modo === "coordinar" ? coordinarEntrevista : reprogramarEntrevista;
     ejecutar(async () => {
       const result = await action(derivacionId, ofertaId, fechaISO, lugar.trim());
       mostrarAviso(result);
       if (!result.ok) {
-        setError(toErrorAccion(result));
+        if (!campos.tomarDelServidor(result, ["fecha", "lugar"])) setError(toErrorAccion(result));
       } else {
         handleReset();
         onClose();
@@ -178,19 +185,36 @@ function EntrevistaDialog({
         <div className="space-y-4">
           {/* Calendario */}
           <div>
-            <p className="mb-2 text-sm font-medium text-foreground">
+            <p id="entrevista-dia-label" className="mb-2 text-sm font-medium text-foreground">
               Seleccioná el día <Obligatorio />
             </p>
-            <div className="flex justify-center">
+            {/* El calendario no es un control de formulario: el grupo lleva el
+                estado de error y recibe el foco cuando falta el día. */}
+            <div
+              id="entrevista-dia"
+              role="group"
+              aria-labelledby="entrevista-dia-label"
+              tabIndex={-1}
+              {...ariaErrorCampo("entrevista-dia", campos.errores.dia)}
+              className={cn(
+                "flex justify-center rounded-lg outline-none",
+                campos.errores.dia && "ring-2 ring-red-500/20"
+              )}
+            >
               <Calendar
                 mode="single"
                 selected={selectedDay}
-                onSelect={setSelectedDay}
+                onSelect={(dia) => {
+                  setSelectedDay(dia);
+                  campos.limpiar("dia");
+                  campos.limpiar("fecha");
+                }}
                 disabled={{ before: today }}
                 locale={es}
                 captionLayout="label"
               />
             </div>
+            <ErrorCampo idCampo="entrevista-dia" mensaje={campos.errores.dia} className="mt-1.5" />
           </div>
 
           {/* Selector de hora */}
@@ -204,9 +228,17 @@ function EntrevistaDialog({
             <select
               id="horario-select"
               value={selectedTime}
-              onChange={(e) => setSelectedTime(e.target.value)}
+              onChange={(e) => {
+                setSelectedTime(e.target.value);
+                campos.limpiar("hora");
+                campos.limpiar("fecha");
+              }}
               disabled={!selectedDay}
-              className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:bg-surface-tinted disabled:text-muted-foreground"
+              {...ariaErrorCampo("horario-select", campos.errores.hora ?? campos.errores.fecha)}
+              className={cn(
+                "h-10 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:bg-surface-tinted disabled:text-muted-foreground",
+                CLASE_CONTROL_INVALIDO
+              )}
             >
               <option value="">Elegí un horario…</option>
               {HORARIOS.map((slot) => (
@@ -219,6 +251,11 @@ function EntrevistaDialog({
                 </option>
               ))}
             </select>
+            <ErrorCampo
+              idCampo="horario-select"
+              mensaje={campos.errores.hora ?? campos.errores.fecha}
+              className="mt-1.5"
+            />
           </div>
 
           {/* Lugar (obligatorio) */}
@@ -233,11 +270,19 @@ function EntrevistaDialog({
               id="lugar-input"
               type="text"
               value={lugar}
-              onChange={(e) => setLugar(e.target.value)}
+              onChange={(e) => {
+                setLugar(e.target.value);
+                campos.limpiar("lugar");
+              }}
               placeholder="Dirección, piso, o link de videollamada"
               maxLength={LARGO_MAXIMO.lugarEntrevista}
-              className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              {...ariaErrorCampo("lugar-input", campos.errores.lugar)}
+              className={cn(
+                "h-10 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring",
+                CLASE_CONTROL_INVALIDO
+              )}
             />
+            <ErrorCampo idCampo="lugar-input" mensaje={campos.errores.lugar} className="mt-1.5" />
           </div>
 
           {error && (
@@ -300,6 +345,7 @@ export function AccionesDerivacion({
   const [openOfertaCerrada, setOpenOfertaCerrada] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [error, setError] = useState<ErrorAccion | null>(null);
+  const camposRechazo = useErroresCampo<"motivo">();
 
   // Entrevista ya pasada → empresa puede seleccionar
   const entrevistaYaPaso =
@@ -331,13 +377,13 @@ export function AccionesDerivacion({
   }
 
   function handleRechazar() {
-    if (!motivo.trim()) { setError({ mensaje: "El motivo es obligatorio." }); return; }
     setError(null);
+    if (!camposRechazo.validar({ motivo })) return;
     ejecutar(async () => {
       const result = await rechazarCandidato(derivacionId, ofertaId, motivo);
       mostrarAviso(result);
       if (!result.ok) {
-        setError(toErrorAccion(result));
+        if (!camposRechazo.tomarDelServidor(result, ["motivo"])) setError(toErrorAccion(result));
       } else {
         setOpenRechazo(false);
         setMotivo("");
@@ -503,7 +549,7 @@ export function AccionesDerivacion({
       <Dialog
         open={openRechazo}
         onOpenChange={(v) => {
-          if (!v && !isPending) { setOpenRechazo(false); setMotivo(""); setError(null); }
+          if (!v && !isPending) { setOpenRechazo(false); setMotivo(""); setError(null); camposRechazo.limpiarTodos(); }
         }}
       >
         <DialogContent>
@@ -523,12 +569,17 @@ export function AccionesDerivacion({
             <Textarea
               id="motivo-rechazo"
               value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
+              onChange={(e) => {
+                setMotivo(e.target.value);
+                camposRechazo.limpiar("motivo");
+              }}
               placeholder="¿Por qué no encaja este candidato?"
               maxLength={LARGO_MAXIMO.motivo}
               className="min-h-24"
               disabled={isPending}
+              {...ariaErrorCampo("motivo-rechazo", camposRechazo.errores.motivo)}
             />
+            <ErrorCampo idCampo="motivo-rechazo" mensaje={camposRechazo.errores.motivo} />
             <ContadorCaracteres actual={motivo.length} maximo={LARGO_MAXIMO.motivo} />
           </div>
           {error && (
@@ -544,7 +595,7 @@ export function AccionesDerivacion({
           <DialogFooter>
             <button
               type="button"
-              onClick={() => { setOpenRechazo(false); setMotivo(""); setError(null); }}
+              onClick={() => { setOpenRechazo(false); setMotivo(""); setError(null); camposRechazo.limpiarTodos(); }}
               disabled={isPending}
               className="btn-secundario inline-flex h-9 items-center justify-center px-4 text-sm font-medium disabled:opacity-40"
             >

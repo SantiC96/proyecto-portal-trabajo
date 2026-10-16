@@ -21,7 +21,15 @@ import { cn } from "@/lib/utils";
 import type { Tabla } from "@/types/db";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
-import { Obligatorio } from "@/components/ui/obligatorio";
+import {
+  CLASE_CONTROL_INVALIDO,
+  ErrorCampo,
+  Obligatorio,
+  ariaErrorCampo,
+} from "@/components/ui/obligatorio";
+import { useErroresCampo } from "@/lib/use-errores-campo";
+
+const CAMPOS = ["cursoId", "nota"] as const;
 
 type Curso = Pick<Tabla<"cursos">, "id" | "nombre" | "descripcion">;
 
@@ -45,26 +53,25 @@ export function AsignarCursoDialog({
   const [cursoId, setCursoId] = useState(cursosActivos[0]?.id ?? "");
   const [nota, setNota] = useState("");
   const [error, setError] = useState<ErrorAccion | null>(null);
+  const campos = useErroresCampo<(typeof CAMPOS)[number]>();
   const { pendiente: isPending, ejecutar } = useAccion();
 
   function handleOpen() {
     setCursoId(cursosActivos[0]?.id ?? "");
     setNota("");
     setError(null);
+    campos.limpiarTodos();
     setOpen(true);
   }
 
   function handleAsignar() {
     setError(null);
-    if (!cursoId) {
-      setError({ mensaje: "Seleccioná un curso." });
-      return;
-    }
+    if (!campos.validar({ cursoId })) return;
     ejecutar(async () => {
       const res = await asignarCurso(postulanteId, cursoId, nota);
       mostrarAviso(res);
       if (!res.ok) {
-        setError(toErrorAccion(res));
+        if (!campos.tomarDelServidor(res, CAMPOS)) setError(toErrorAccion(res));
       } else {
         setOpen(false);
         setNota("");
@@ -89,7 +96,10 @@ export function AsignarCursoDialog({
         open={open}
         onOpenChange={(v) => {
           setOpen(v);
-          if (!v) setError(null);
+          if (!v) {
+            setError(null);
+            campos.limpiarTodos();
+          }
         }}
       >
         <DialogContent>
@@ -115,13 +125,21 @@ export function AsignarCursoDialog({
           ) : (
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="asignar-curso" className="text-sm font-medium text-foreground">
                   Curso <Obligatorio />
                 </label>
                 <select
+                  id="asignar-curso"
                   value={cursoId}
-                  onChange={(e) => setCursoId(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  onChange={(e) => {
+                    setCursoId(e.target.value);
+                    campos.limpiar("cursoId");
+                  }}
+                  {...ariaErrorCampo("asignar-curso", campos.errores.cursoId)}
+                  className={cn(
+                    "w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30",
+                    CLASE_CONTROL_INVALIDO
+                  )}
                   disabled={isPending}
                 >
                   {cursosActivos.map((c) => (
@@ -130,6 +148,7 @@ export function AsignarCursoDialog({
                     </option>
                   ))}
                 </select>
+                <ErrorCampo idCampo="asignar-curso" mensaje={campos.errores.cursoId} />
                 {descripcionSeleccionada && (
                   <p className="text-xs text-muted-foreground">
                     {descripcionSeleccionada}
@@ -138,20 +157,26 @@ export function AsignarCursoDialog({
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="asignar-curso-nota" className="text-sm font-medium text-foreground">
                   Nota interna{" "}
                   <span className="font-normal text-muted-foreground">
                     (opcional, no la ve el postulante)
                   </span>
                 </label>
                 <Textarea
+                  id="asignar-curso-nota"
                   value={nota}
-                  onChange={(e) => setNota(e.target.value)}
+                  onChange={(e) => {
+                    setNota(e.target.value);
+                    campos.limpiar("nota");
+                  }}
                   placeholder="Observaciones sobre la asignación..."
                   maxLength={LARGO_MAXIMO.nota}
                   className="min-h-20"
                   disabled={isPending}
+                  {...ariaErrorCampo("asignar-curso-nota", campos.errores.nota)}
                 />
+                <ErrorCampo idCampo="asignar-curso-nota" mensaje={campos.errores.nota} />
                 <ContadorCaracteres actual={nota.length} maximo={LARGO_MAXIMO.nota} />
               </div>
             </div>

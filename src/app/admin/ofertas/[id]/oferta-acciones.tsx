@@ -20,7 +20,12 @@ import { Spinner } from "@/components/ui/spinner";
 import type { Enum } from "@/types/db";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
-import { Obligatorio } from "@/components/ui/obligatorio";
+import {
+  ErrorCampo,
+  Obligatorio,
+  ariaErrorCampo,
+} from "@/components/ui/obligatorio";
+import { useErroresCampo } from "@/lib/use-errores-campo";
 
 type Props = {
   ofertaId: string;
@@ -33,6 +38,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
   const [abrirRechazar, setAbrirRechazar] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [error, setError] = useState<ErrorAccion | null>(null);
+  const campos = useErroresCampo<"motivo">();
   const { pendiente: isPending, ejecutar } = useAccion();
 
   function cerrarTodo() {
@@ -40,6 +46,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
     setAbrirRechazar(false);
     setError(null);
     setMotivo("");
+    campos.limpiarTodos();
   }
 
   function handleAprobar() {
@@ -57,16 +64,13 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
   }
 
   function handleRechazar() {
-    if (!motivo.trim()) {
-      setError({ mensaje: "El motivo del rechazo es obligatorio." });
-      return;
-    }
     setError(null);
+    if (!campos.validar({ motivo })) return;
     ejecutar(async () => {
       const res = await rechazarOferta(ofertaId, motivo);
       mostrarAviso(res);
       if (!res.ok) {
-        setError(toErrorAccion(res));
+        if (!campos.tomarDelServidor(res, ["motivo"])) setError(toErrorAccion(res));
       } else {
         cerrarTodo();
         router.push("/admin/ofertas");
@@ -178,6 +182,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
           if (!open) {
             setMotivo("");
             setError(null);
+            campos.limpiarTodos();
           }
         }}
       >
@@ -200,12 +205,17 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
             <Textarea
               id="motivo-rechazo"
               value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
+              onChange={(e) => {
+                setMotivo(e.target.value);
+                campos.limpiar("motivo");
+              }}
               placeholder="Explicá brevemente por qué no se aprueba la oferta…"
               maxLength={LARGO_MAXIMO.motivo}
               className="min-h-24"
               disabled={isPending}
+              {...ariaErrorCampo("motivo-rechazo", campos.errores.motivo)}
             />
+            <ErrorCampo idCampo="motivo-rechazo" mensaje={campos.errores.motivo} />
             <ContadorCaracteres actual={motivo.length} maximo={LARGO_MAXIMO.motivo} />
           </div>
           {error && (
@@ -225,6 +235,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
                 setAbrirRechazar(false);
                 setMotivo("");
                 setError(null);
+                campos.limpiarTodos();
               }}
               disabled={isPending}
               className="btn-secundario inline-flex items-center justify-center whitespace-nowrap h-9 px-4 text-sm font-medium"
@@ -234,7 +245,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
             <button
               type="button"
               onClick={handleRechazar}
-              disabled={isPending || !motivo.trim()}
+              disabled={isPending}
               className="inline-flex items-center justify-center whitespace-nowrap h-9 rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-60"
             >
               {isPending && <Spinner className="mr-1" />}

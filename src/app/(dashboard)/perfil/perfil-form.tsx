@@ -46,17 +46,28 @@ import {
   validarTipoAvatar,
   validarTipoCV,
 } from "@/lib/archivos";
-import { Obligatorio } from "@/components/ui/obligatorio";
+import {
+  CLASE_CONTROL_INVALIDO,
+  ErrorCampo,
+  Obligatorio,
+  ariaErrorCampo,
+} from "@/components/ui/obligatorio";
+import { useErroresCampo } from "@/lib/use-errores-campo";
+
+const CAMPOS_DATOS = ["nombre", "apellido", "telefono", "domicilio", "dni"] as const;
+const CAMPOS_CONTRASENA = ["contrasenaActual", "contrasenaNueva", "repetirContrasena"] as const;
 
 type AjusteAvatar = { x: number; y: number; zoom: number };
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 const inputClass =
-  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60";
+  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 " +
+  CLASE_CONTROL_INVALIDO;
 
 const inputClassPassword =
-  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-10 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60";
+  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-10 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 " +
+  CLASE_CONTROL_INVALIDO;
 
 const inputReadonlyClass =
   "w-full rounded-lg border border-border bg-surface-tinted py-2.5 pl-10 pr-4 text-sm text-muted-foreground-strong outline-none cursor-default";
@@ -154,6 +165,7 @@ export function PerfilForm({
   const [guardandoDatos, setGuardandoDatos] = useState(false);
   const [errorDatos, setErrorDatos] = useState<ErrorAccion | null>(null);
   const [exitoDatos, setExitoDatos] = useState(false);
+  const camposDatos = useErroresCampo<(typeof CAMPOS_DATOS)[number]>();
 
   // Datos personales
   const [nombre, setNombre] = useState(usuario.nombre);
@@ -205,6 +217,7 @@ export function PerfilForm({
   const [cargandoContrasena, setCargandoContrasena] = useState(false);
   const [errorContrasena, setErrorContrasena] = useState<ErrorAccion | null>(null);
   const [exitoContrasena, setExitoContrasena] = useState("");
+  const camposContrasena = useErroresCampo<(typeof CAMPOS_CONTRASENA)[number]>();
 
   // Limpiar blob URL al desmontar
   useEffect(() => {
@@ -232,6 +245,7 @@ export function PerfilForm({
     setDomicilio(postulante.domicilio);
     setDni(postulante.dni);
     setErrorDatos(null);
+    camposDatos.limpiarTodos();
     setExitoDatos(false);
     setModoEdicionDatos(false);
   };
@@ -309,23 +323,27 @@ export function PerfilForm({
 
   // ── guardar datos personales ─────────────────────────────────────────────────
 
-  const handleGuardarDatos = async (e: React.FormEvent) => {
+  const handleGuardarDatos = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const errorNombre = validarNombre(nombre) ?? validarNombre(apellido);
-    const errorDni = validarDNI(dni);
-    const errorTel = validarTelefono(telefono);
-    const clientError = errorNombre ?? errorDni ?? errorTel;
-    if (clientError) {
-      setErrorDatos({ mensaje: clientError });
+    setErrorDatos(null);
+    if (!camposDatos.validar({ nombre, apellido, dni }, e.currentTarget)) return;
+    const erroresCliente = [
+      ["nombre", validarNombre(nombre)],
+      ["apellido", validarNombre(apellido)],
+      ["dni", validarDNI(dni)],
+      ["telefono", validarTelefono(telefono)],
+    ] as const;
+    const primerError = erroresCliente.find(([, mensaje]) => mensaje);
+    if (primerError?.[1]) {
+      camposDatos.marcar(primerError[0], primerError[1]);
       return;
     }
     setGuardandoDatos(true);
-    setErrorDatos(null);
     setExitoDatos(false);
     const result = await actualizarPerfil({ nombre, apellido, telefono, domicilio, dni });
     mostrarAviso(result);
     if (!result.ok) {
-      setErrorDatos(toErrorAccion(result));
+      if (!camposDatos.tomarDelServidor(result, CAMPOS_DATOS)) setErrorDatos(toErrorAccion(result));
     } else {
       setNombre(nombre.trim());
       setApellido(apellido.trim());
@@ -411,10 +429,15 @@ export function PerfilForm({
 
   // ── contraseña handlers ─────────────────────────────────────────────────────
 
-  const handleCambiarContrasena = async (e: React.FormEvent) => {
+  const handleCambiarContrasena = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setCargandoContrasena(true);
     setErrorContrasena(null);
+    const completos = camposContrasena.validar(
+      { contrasenaActual, contrasenaNueva, repetirContrasena },
+      e.currentTarget
+    );
+    if (!completos) return;
+    setCargandoContrasena(true);
     const fd = new FormData();
     fd.append("contrasenaActual", contrasenaActual);
     fd.append("contrasenaNueva", contrasenaNueva);
@@ -423,7 +446,8 @@ export function PerfilForm({
     setCargandoContrasena(false);
     mostrarAviso(res);
     if (!res.ok) {
-      setErrorContrasena(toErrorAccion(res));
+      if (!camposContrasena.tomarDelServidor(res, CAMPOS_CONTRASENA))
+        setErrorContrasena(toErrorAccion(res));
     } else {
       setExitoContrasena("Tu contraseña se actualizó correctamente.");
       setMostrarFormContrasena(false);
@@ -439,6 +463,7 @@ export function PerfilForm({
     setContrasenaNueva("");
     setRepetirContrasena("");
     setErrorContrasena(null);
+    camposContrasena.limpiarTodos();
   };
 
   // ── render ──────────────────────────────────────────────────────────────────
@@ -561,7 +586,7 @@ export function PerfilForm({
       </div>
 
       {/* ── 2. Datos personales ────────────────────────────────────────────── */}
-      <form onSubmit={handleGuardarDatos}>
+      <form onSubmit={handleGuardarDatos} noValidate>
         <div className="rounded-2xl border border-border bg-white px-6 py-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
             <SectionTitle>Datos personales</SectionTitle>
@@ -603,11 +628,16 @@ export function PerfilForm({
                       autoComplete="given-name"
                       required
                       value={nombre}
-                      onChange={(e) => setNombre(e.target.value)}
+                      onChange={(e) => {
+                        setNombre(e.target.value);
+                        camposDatos.limpiar("nombre");
+                      }}
                       placeholder="Ej: María"
                       className={inputClass}
+                      {...ariaErrorCampo("p-nombre", camposDatos.errores.nombre)}
                     />
                   </InputWrapper>
+                  <ErrorCampo idCampo="p-nombre" mensaje={camposDatos.errores.nombre} />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="p-apellido" className="text-sm font-medium text-foreground">
@@ -621,11 +651,16 @@ export function PerfilForm({
                       autoComplete="family-name"
                       required
                       value={apellido}
-                      onChange={(e) => setApellido(e.target.value)}
+                      onChange={(e) => {
+                        setApellido(e.target.value);
+                        camposDatos.limpiar("apellido");
+                      }}
                       placeholder="Ej: González"
                       className={inputClass}
+                      {...ariaErrorCampo("p-apellido", camposDatos.errores.apellido)}
                     />
                   </InputWrapper>
+                  <ErrorCampo idCampo="p-apellido" mensaje={camposDatos.errores.apellido} />
                 </div>
               </div>
 
@@ -640,11 +675,16 @@ export function PerfilForm({
                     type="tel"
                     autoComplete="tel"
                     value={telefono}
-                    onChange={(e) => setTelefono(e.target.value)}
+                    onChange={(e) => {
+                      setTelefono(e.target.value);
+                      camposDatos.limpiar("telefono");
+                    }}
                     placeholder="Ej: 341 5678901"
                     className={inputClass}
+                    {...ariaErrorCampo("p-telefono", camposDatos.errores.telefono)}
                   />
                 </InputWrapper>
+                <ErrorCampo idCampo="p-telefono" mensaje={camposDatos.errores.telefono} />
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -658,12 +698,17 @@ export function PerfilForm({
                     type="text"
                     autoComplete="street-address"
                     value={domicilio}
-                    onChange={(e) => setDomicilio(e.target.value)}
+                    onChange={(e) => {
+                      setDomicilio(e.target.value);
+                      camposDatos.limpiar("domicilio");
+                    }}
                     placeholder="Calle y número (Ej: San Martín 432)"
                     maxLength={LARGO_MAXIMO.domicilio}
                     className={inputClass}
+                    {...ariaErrorCampo("p-domicilio", camposDatos.errores.domicilio)}
                   />
                 </InputWrapper>
+                <ErrorCampo idCampo="p-domicilio" mensaje={camposDatos.errores.domicilio} />
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -679,11 +724,16 @@ export function PerfilForm({
                     autoComplete="off"
                     required
                     value={dni}
-                    onChange={(e) => setDni(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                    onChange={(e) => {
+                      setDni(e.target.value.replace(/\D/g, "").slice(0, 8));
+                      camposDatos.limpiar("dni");
+                    }}
                     placeholder="12345678"
                     className={inputClass}
+                    {...ariaErrorCampo("p-dni", camposDatos.errores.dni)}
                   />
                 </InputWrapper>
+                <ErrorCampo idCampo="p-dni" mensaje={camposDatos.errores.dni} />
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -1002,7 +1052,7 @@ export function PerfilForm({
         )}
 
         {mostrarFormContrasena && (
-          <form onSubmit={handleCambiarContrasena} className="mt-5 flex flex-col gap-4">
+          <form onSubmit={handleCambiarContrasena} noValidate className="mt-5 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="p-contrasena-actual" className="text-sm font-medium text-foreground">
                 Contraseña actual <Obligatorio />
@@ -1015,9 +1065,13 @@ export function PerfilForm({
                   autoComplete="current-password"
                   required
                   value={contrasenaActual}
-                  onChange={(e) => setContrasenaActual(e.target.value)}
+                  onChange={(e) => {
+                    setContrasenaActual(e.target.value);
+                    camposContrasena.limpiar("contrasenaActual");
+                  }}
                   placeholder="Tu contraseña actual"
                   className={inputClassPassword}
+                  {...ariaErrorCampo("p-contrasena-actual", camposContrasena.errores.contrasenaActual)}
                 />
                 <button
                   type="button"
@@ -1028,6 +1082,7 @@ export function PerfilForm({
                   {mostrarActual ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </InputWrapper>
+              <ErrorCampo idCampo="p-contrasena-actual" mensaje={camposContrasena.errores.contrasenaActual} />
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -1042,9 +1097,13 @@ export function PerfilForm({
                   autoComplete="new-password"
                   required
                   value={contrasenaNueva}
-                  onChange={(e) => setContrasenaNueva(e.target.value)}
+                  onChange={(e) => {
+                    setContrasenaNueva(e.target.value);
+                    camposContrasena.limpiar("contrasenaNueva");
+                  }}
                   placeholder="Mínimo 6 caracteres"
                   className={inputClassPassword}
+                  {...ariaErrorCampo("p-contrasena-nueva", camposContrasena.errores.contrasenaNueva)}
                 />
                 <button
                   type="button"
@@ -1055,6 +1114,7 @@ export function PerfilForm({
                   {mostrarNueva ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </InputWrapper>
+              <ErrorCampo idCampo="p-contrasena-nueva" mensaje={camposContrasena.errores.contrasenaNueva} />
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -1069,9 +1129,13 @@ export function PerfilForm({
                   autoComplete="new-password"
                   required
                   value={repetirContrasena}
-                  onChange={(e) => setRepetirContrasena(e.target.value)}
+                  onChange={(e) => {
+                    setRepetirContrasena(e.target.value);
+                    camposContrasena.limpiar("repetirContrasena");
+                  }}
                   placeholder="Repetí la contraseña nueva"
                   className={inputClassPassword}
+                  {...ariaErrorCampo("p-repetir-contrasena", camposContrasena.errores.repetirContrasena)}
                 />
                 <button
                   type="button"
@@ -1082,6 +1146,7 @@ export function PerfilForm({
                   {mostrarRepetir ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </InputWrapper>
+              <ErrorCampo idCampo="p-repetir-contrasena" mensaje={camposContrasena.errores.repetirContrasena} />
             </div>
 
             {errorContrasena && <MensajeError error={errorContrasena} />}

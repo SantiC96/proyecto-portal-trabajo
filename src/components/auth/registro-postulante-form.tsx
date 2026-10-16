@@ -18,7 +18,25 @@ import {
   AlertCircle,
   UserPlus,
 } from "lucide-react";
-import { Obligatorio } from "@/components/ui/obligatorio";
+import {
+  CLASE_CONTROL_INVALIDO,
+  ErrorCampo,
+  Obligatorio,
+  ariaErrorCampo,
+} from "@/components/ui/obligatorio";
+import { useErroresCampo } from "@/lib/use-errores-campo";
+
+const CAMPOS = [
+  "nombre",
+  "apellido",
+  "dni",
+  "domicilio",
+  "telefono",
+  "email",
+  "password",
+  "passwordRepeat",
+] as const;
+type Campo = (typeof CAMPOS)[number];
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -33,7 +51,8 @@ function FieldIcon({ icon: Icon }: { icon: React.ElementType }) {
 }
 
 const inputClass =
-  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60";
+  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 " +
+  CLASE_CONTROL_INVALIDO;
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -66,6 +85,7 @@ export function RegistroPostulanteForm() {
   // Submit state
   const [isLoading, setIsLoading] = useState(false);
   const [submitError, setSubmitError] = useState<ErrorAccion | null>(null);
+  const campos = useErroresCampo<Campo>();
 
   // ── derived ────────────────────────────────────────────────────────────────
   const passwordRepeatError =
@@ -74,6 +94,13 @@ export function RegistroPostulanteForm() {
   // ── handlers ───────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setSubmitError(null);
+
+    const completos = campos.validar(
+      { nombre, apellido, dni, domicilio, telefono, email, password, passwordRepeat },
+      e.currentTarget
+    );
+    if (!completos) return;
 
     if (password !== passwordRepeat) {
       setSubmitError({ mensaje: "Las contraseñas no coinciden." });
@@ -85,7 +112,7 @@ export function RegistroPostulanteForm() {
     }
     const dniError = validarDNI(dni);
     if (dniError) {
-      setSubmitError({ mensaje: dniError });
+      campos.marcar("dni", dniError);
       return;
     }
 
@@ -101,7 +128,7 @@ export function RegistroPostulanteForm() {
       password,
     });
     if (result && !result.ok) {
-      setSubmitError(toErrorAccion(result));
+      if (!campos.tomarDelServidor(result, CAMPOS)) setSubmitError(toErrorAccion(result));
       setIsLoading(false);
     }
   };
@@ -145,11 +172,16 @@ export function RegistroPostulanteForm() {
                     autoComplete="given-name"
                     required
                     value={nombre}
-                    onChange={(e) => setNombre(e.target.value)}
+                    onChange={(e) => {
+                      setNombre(e.target.value);
+                      campos.limpiar("nombre");
+                    }}
                     placeholder="Ej: María"
                     className={inputClass}
+                    {...ariaErrorCampo("reg-nombre", campos.errores.nombre)}
                   />
                 </InputWrapper>
+                <ErrorCampo idCampo="reg-nombre" mensaje={campos.errores.nombre} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="reg-apellido" className="text-sm font-medium text-foreground">
@@ -163,11 +195,16 @@ export function RegistroPostulanteForm() {
                     autoComplete="family-name"
                     required
                     value={apellido}
-                    onChange={(e) => setApellido(e.target.value)}
+                    onChange={(e) => {
+                      setApellido(e.target.value);
+                      campos.limpiar("apellido");
+                    }}
                     placeholder="Ej: González"
                     className={inputClass}
+                    {...ariaErrorCampo("reg-apellido", campos.errores.apellido)}
                   />
                 </InputWrapper>
+                <ErrorCampo idCampo="reg-apellido" mensaje={campos.errores.apellido} />
               </div>
             </div>
 
@@ -185,13 +222,16 @@ export function RegistroPostulanteForm() {
                   pattern="[0-9]{7,8}"
                   required
                   value={dni}
-                  onChange={(e) =>
-                    setDni(e.target.value.replace(/\D/g, "").slice(0, 8))
-                  }
+                  onChange={(e) => {
+                    setDni(e.target.value.replace(/\D/g, "").slice(0, 8));
+                    campos.limpiar("dni");
+                  }}
                   placeholder="12345678"
                   className={inputClass}
+                  {...ariaErrorCampo("reg-dni", campos.errores.dni)}
                 />
               </InputWrapper>
+              <ErrorCampo idCampo="reg-dni" mensaje={campos.errores.dni} />
             </div>
 
             {/* Dirección */}
@@ -207,12 +247,17 @@ export function RegistroPostulanteForm() {
                   autoComplete="street-address"
                   required
                   value={domicilio}
-                  onChange={(e) => setDomicilio(e.target.value)}
+                  onChange={(e) => {
+                    setDomicilio(e.target.value);
+                    campos.limpiar("domicilio");
+                  }}
                   placeholder="Calle y número  (Ej: San Martín 432)"
                   maxLength={LARGO_MAXIMO.domicilio}
                   className={inputClass}
+                  {...ariaErrorCampo("reg-domicilio", campos.errores.domicilio)}
                 />
               </InputWrapper>
+              <ErrorCampo idCampo="reg-domicilio" mensaje={campos.errores.domicilio} />
               {/* Ciudad/Prov/País fijo */}
               <div className="mt-1.5 grid grid-cols-3 gap-2">
                 {[
@@ -244,11 +289,16 @@ export function RegistroPostulanteForm() {
                   autoComplete="tel"
                   required
                   value={telefono}
-                  onChange={(e) => setTelefono(e.target.value)}
+                  onChange={(e) => {
+                    setTelefono(e.target.value);
+                    campos.limpiar("telefono");
+                  }}
                   placeholder="Ej: 341 5678901"
                   className={inputClass}
+                  {...ariaErrorCampo("reg-telefono", campos.errores.telefono)}
                 />
               </InputWrapper>
+              <ErrorCampo idCampo="reg-telefono" mensaje={campos.errores.telefono} />
             </div>
           </div>
         </section>
@@ -272,11 +322,16 @@ export function RegistroPostulanteForm() {
                   autoComplete="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    campos.limpiar("email");
+                  }}
                   placeholder="tucorreo@ejemplo.com"
                   className={inputClass}
+                  {...ariaErrorCampo("reg-email", campos.errores.email)}
                 />
               </InputWrapper>
+              <ErrorCampo idCampo="reg-email" mensaje={campos.errores.email} />
             </div>
 
             {/* Contraseña */}
@@ -293,9 +348,13 @@ export function RegistroPostulanteForm() {
                   required
                   minLength={6}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    campos.limpiar("password");
+                  }}
                   placeholder="Mínimo 8 caracteres"
                   className={`${inputClass} pr-10`}
+                  {...ariaErrorCampo("reg-password", campos.errores.password)}
                 />
                 <button
                   type="button"
@@ -306,6 +365,7 @@ export function RegistroPostulanteForm() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </InputWrapper>
+              <ErrorCampo idCampo="reg-password" mensaje={campos.errores.password} />
             </div>
 
             {/* Repetir contraseña */}
@@ -321,13 +381,17 @@ export function RegistroPostulanteForm() {
                   autoComplete="new-password"
                   required
                   value={passwordRepeat}
-                  onChange={(e) => setPasswordRepeat(e.target.value)}
+                  onChange={(e) => {
+                    setPasswordRepeat(e.target.value);
+                    campos.limpiar("passwordRepeat");
+                  }}
                   placeholder="Repetí tu contraseña"
                   className={`${inputClass} pr-10 ${
                     passwordRepeatError
                       ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
                       : ""
                   }`}
+                  {...ariaErrorCampo("reg-password-repeat", campos.errores.passwordRepeat)}
                 />
                 <button
                   type="button"
@@ -338,6 +402,7 @@ export function RegistroPostulanteForm() {
                   {showPasswordRepeat ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </InputWrapper>
+              <ErrorCampo idCampo="reg-password-repeat" mensaje={campos.errores.passwordRepeat} />
               {passwordRepeatError && (
                 <p className="flex items-center gap-1.5 text-xs text-red-500">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />

@@ -4,10 +4,11 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { obtenerEmpresaActual, requerirRol } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
+import { err, errCampo, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
 import { formatearCUIT } from "@/lib/cuit";
 import {
   LARGO_MAXIMO,
+  MENSAJE_OBLIGATORIO,
   validarCuitConMensaje,
   validarNombre,
   validarTelefono,
@@ -51,27 +52,27 @@ export async function reenviarSolicitudEmpresa(data: {
   }
 
   const errRazon = validarNombre(data.razonSocial);
-  if (errRazon) return err("DATOS_INVALIDOS", `Razón social: ${errRazon}`);
+  if (errRazon) return errCampo("razonSocial", errRazon);
 
   const errCuit = validarCuitConMensaje(data.cuit);
-  if (errCuit) return err("DATOS_INVALIDOS", errCuit);
+  if (errCuit) return errCampo("cuit", errCuit);
 
-  if (!data.rubro.trim()) return err("DATOS_INVALIDOS", "El rubro es obligatorio.");
+  if (!data.rubro.trim()) return errCampo("rubro", MENSAJE_OBLIGATORIO);
   const errRubro = validarTextoOpcional(data.rubro, LARGO_MAXIMO.rubro);
-  if (errRubro) return err("DATOS_INVALIDOS", `Rubro: ${errRubro}`);
+  if (errRubro) return errCampo("rubro", errRubro);
   const errDescripcion = validarTextoOpcional(data.descripcion, LARGO_MAXIMO.descripcion);
-  if (errDescripcion) return err("DATOS_INVALIDOS", `Descripción: ${errDescripcion}`);
+  if (errDescripcion) return errCampo("descripcion", errDescripcion);
 
   const errNombre = validarNombre(data.nombre);
-  if (errNombre) return err("DATOS_INVALIDOS", `Nombre: ${errNombre}`);
+  if (errNombre) return errCampo("nombre", errNombre);
 
   const errApellido = validarNombre(data.apellido);
-  if (errApellido) return err("DATOS_INVALIDOS", `Apellido: ${errApellido}`);
+  if (errApellido) return errCampo("apellido", errApellido);
 
   // Mismo criterio que el formulario de registro de empresa, que lo pide como obligatorio.
-  if (!data.telefono.trim()) return err("DATOS_INVALIDOS", "El teléfono es obligatorio.");
+  if (!data.telefono.trim()) return errCampo("telefono", MENSAJE_OBLIGATORIO);
   const errTelefono = validarTelefono(data.telefono);
-  if (errTelefono) return err("DATOS_INVALIDOS", errTelefono);
+  if (errTelefono) return errCampo("telefono", errTelefono);
 
   // ── Reenviar ─────────────────────────────────────────────────────────────
   // usuarios y empresas se actualizan en una transacción (migration_040). La

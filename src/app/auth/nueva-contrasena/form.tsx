@@ -4,7 +4,15 @@ import { useActionState, useState, useEffect } from "react";
 import Link from "next/link";
 import { Lock, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
 import { restablecerContrasena } from "@/app/auth/actions";
-import { Obligatorio } from "@/components/ui/obligatorio";
+import {
+  CLASE_CONTROL_INVALIDO,
+  ErrorCampo,
+  Obligatorio,
+  ariaErrorCampo,
+} from "@/components/ui/obligatorio";
+import { useErroresCampo } from "@/lib/use-errores-campo";
+
+type Campo = "password" | "confirmar";
 
 export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
   const [state, action, isPending] = useActionState(restablecerContrasena, null);
@@ -12,8 +20,16 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
   const [confirmar, setConfirmar] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmar, setShowConfirmar] = useState(false);
+  const campos = useErroresCampo<Campo>();
 
   const stateError = state && !state.ok ? state.mensaje : undefined;
+  // Error de un campo devuelto por el servidor: va debajo del campo, no arriba del botón.
+  const campoServidor =
+    state && !state.ok && (state.campo === "password" || state.campo === "confirmar")
+      ? state.campo
+      : null;
+  const errorCampo = (campo: Campo) =>
+    campos.errores[campo] ?? (campoServidor === campo ? stateError : undefined);
 
   // Clear fields on server error so the user doesn't re-submit stale values.
   useEffect(() => {
@@ -28,8 +44,6 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
 
   const confirmarTocado = confirmar.length > 0;
   const coinciden = password === confirmar;
-  const passwordValida = password.length >= 6;
-  const puedeEnviar = passwordValida && confirmarTocado && coinciden;
 
   const inputBase =
     "w-full rounded-lg border bg-background py-2.5 pl-10 pr-10 text-sm text-foreground placeholder:text-placeholder outline-none transition";
@@ -59,7 +73,16 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
         </p>
       </div>
 
-      <form action={action} className="flex flex-col gap-5">
+      <form
+        action={action}
+        noValidate
+        onSubmit={(e) => {
+          if (!campos.validar({ password, confirmar }, e.currentTarget) || !coinciden) {
+            e.preventDefault();
+          }
+        }}
+        className="flex flex-col gap-5"
+      >
         <input type="hidden" name="token_hash" value={tokenHash} />
 
         {/* Nueva contraseña */}
@@ -79,9 +102,13 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
               autoComplete="new-password"
               required
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                campos.limpiar("password");
+              }}
               placeholder="Mínimo 6 caracteres"
-              className={`${inputBase} ${inputNormal}`}
+              {...ariaErrorCampo("nueva-password", errorCampo("password"))}
+              className={`${inputBase} ${inputNormal} ${CLASE_CONTROL_INVALIDO}`}
             />
             <button
               type="button"
@@ -96,6 +123,7 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
               )}
             </button>
           </div>
+          <ErrorCampo idCampo="nueva-password" mensaje={errorCampo("password")} />
         </div>
 
         {/* Repetir contraseña */}
@@ -115,9 +143,13 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
               autoComplete="new-password"
               required
               value={confirmar}
-              onChange={(e) => setConfirmar(e.target.value)}
+              onChange={(e) => {
+                setConfirmar(e.target.value);
+                campos.limpiar("confirmar");
+              }}
               placeholder="Repetí la contraseña"
-              className={confirmarInputClass}
+              {...ariaErrorCampo("confirmar-password", errorCampo("confirmar"))}
+              className={`${confirmarInputClass} ${CLASE_CONTROL_INVALIDO}`}
             />
             <button
               type="button"
@@ -132,6 +164,7 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
               )}
             </button>
           </div>
+          <ErrorCampo idCampo="confirmar-password" mensaje={errorCampo("confirmar")} />
 
           {/* Feedback en vivo */}
           {confirmarTocado && (
@@ -156,7 +189,7 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
         </div>
 
         {/* Error de la server action */}
-        {stateError && (
+        {stateError && !campoServidor && (
           <div className="flex flex-col gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
             <div className="flex items-start gap-2.5">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -180,7 +213,7 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
 
         <button
           type="submit"
-          disabled={!puedeEnviar || isPending}
+          disabled={isPending}
           className="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isPending ? (
