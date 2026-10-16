@@ -1,8 +1,8 @@
 # 014 — Notificaciones
 
-**Fecha:** 2026-10-15 (actualizada 2026-10-16)
+**Fecha:** 2026-10-15 (actualizada 2026-10-16, pre-entrevista 044)
 **Estado:** Vigente
-**Migraciones:** `migration_038_cursos_sin_abandono_y_notificaciones.sql` (tabla y aviso de contratación), `migration_041_notificaciones_por_rol.sql` (avisos para los tres roles y vencimientos), `migration_042_empresas_email_confirmado.sql` (el alta de empresa espera la confirmación del email), `migration_043_avisos_oficina_y_oferta_rechazada.sql` (postulación nueva, postulante que necesita curso y link del aviso de oferta rechazada)
+**Migraciones:** `migration_038_cursos_sin_abandono_y_notificaciones.sql` (tabla y aviso de contratación), `migration_041_notificaciones_por_rol.sql` (avisos para los tres roles y vencimientos), `migration_042_empresas_email_confirmado.sql` (el alta de empresa espera la confirmación del email), `migration_043_avisos_oficina_y_oferta_rechazada.sql` (postulación nueva, postulante que necesita curso y link del aviso de oferta rechazada), `migration_044_pre_entrevistas.sql` (pre-entrevista coordinada / reprogramada)
 
 ---
 
@@ -48,7 +48,7 @@ La Oficina de Empleo se enteraba de una contratación solo si entraba a buscarla
 - **AFTER** `INSERT` / `UPDATE`, filtrados con `WHEN`. No se usa `UPDATE OF <columna>`: los resets que hacen los triggers `BEFORE` (oferta editada → `pendiente_aprobacion` en 027, empresa rechazada → `pendiente` en 031) no figuran en el `SET` del `UPDATE` y ese tipo de trigger no los vería.
 - **Un aviso que falla nunca frena la acción principal:** cada función envuelve su trabajo en `BEGIN ... EXCEPTION WHEN OTHERS` y deja un `RAISE WARNING`.
 - **No se avisa a quien hizo la acción:** `notificar_usuario` ignora al destinatario si es `auth.uid()`; `notificar_oficina` excluye a `auth.uid()`. Si la oficina corrige una derivación, el postulante recibe el aviso y la oficina no se avisa a sí misma.
-- **Solo datos que el destinatario ya ve:** título de la oferta, `empresa_nombre`, razón social, nombre del curso, fecha y lugar de la entrevista, motivo de rechazo de la propia solicitud u oferta, y el nombre del candidato derivado para la empresa (decisión 007). Nunca el DNI ni las notas internas (`nota_oficina`, `nota_municipalidad`, `nota_empresa`).
+- **Solo datos que el destinatario ya ve:** título de la oferta, `empresa_nombre`, razón social, nombre del curso, fecha y lugar de la entrevista y de la pre-entrevista, motivo de rechazo de la propia solicitud u oferta, y el nombre del candidato derivado para la empresa (decisión 007). Nunca el DNI ni las notas internas (`nota_oficina` de postulaciones y de pre-entrevistas, `nota_municipalidad`, `nota_empresa`).
 - **Sin backfill:** los hechos anteriores a la migración no generan avisos.
 - **Retirar una postulación no avisa a nadie:** es un `DELETE` de una postulación en `recibida` (todavía sin derivación) y no hay triggers de `DELETE`.
 - Las fechas del texto se escriben en hora de Argentina (`DD/MM/YYYY a las HH:MI hs`). Las marcas de las claves son milisegundos desde 1970, que no dependen de la zona horaria de la sesión.
@@ -65,6 +65,8 @@ La Oficina de Empleo se enteraba de una contratación solo si entraba a buscarla
 | `contratacion` (038) | `estado_empresa` pasa a `contratado` | oficina | Nueva contratación | `/admin/postulaciones/<postulacion_id>` | `contratacion:<derivacion_id>` |
 | `no_seleccionado_oficina` | `postulaciones.estado` pasa a `rechazada_municipalidad` | postulante | Postulación no seleccionada | `/mis-postulaciones` | `postulacion_no_seleccionada:<postulacion_id>:<updated_at>` |
 | `curso_asignado` | `INSERT` en `asignaciones_curso` | postulante | Te asignaron un curso | `/mis-cursos/<asignacion_id>` | `curso_asignado:<asignacion_id>` |
+| `pre_entrevista_coordinada` (044) | `INSERT` en `pre_entrevistas` (`coordinar_pre_entrevista`) | postulante | Pre-entrevista coordinada | `/mis-postulaciones` | `pre_entrevista_coordinada:<pre_entrevista_id>` |
+| `pre_entrevista_reprogramada` (044) | `UPDATE` en `pre_entrevistas` que la deja `coordinada` y antes no lo estaba (`no_asistio` → `coordinada`) o cambia `fecha_hora` o `lugar` (ver sección 10) | postulante | Pre-entrevista reprogramada | `/mis-postulaciones` | `pre_entrevista_reprogramada:<pre_entrevista_id>:<updated_at>` |
 | `curso_completado` | `asignaciones_curso.estado` pasa a `completado` | oficina | Curso completado | `/admin/postulantes/<postulante_id>` | `curso_completado:<asignacion_id>` |
 | `postulacion_nueva` (043) | `INSERT` en `postulaciones` | oficina | Nueva postulación | `/admin/postulaciones/<postulacion_id>` | `postulacion_nueva:<postulacion_id>` |
 | `necesita_curso` (043) | `estado_empresa` pasa a `rechazado` y el postulante queda necesitando curso (ver sección 6) | oficina | Postulante necesita curso | `/admin/postulantes/<postulante_id>` | `necesita_curso:<postulante_id>:<ultimo_completado_en o 0>` |
@@ -81,7 +83,7 @@ La Oficina de Empleo se enteraba de una contratación solo si entraba a buscarla
 
 "Oficina" = cada usuario con rol `municipalidad`. Los avisos para la empresa usan `empresas.usuario_id` de la empresa dueña de la oferta; las ofertas cargadas por la oficina sin `empresa_id` no avisan a ninguna empresa.
 
-**Por qué algunas claves llevan una fecha:** los hechos que se pueden repetir necesitan una clave distinta cada vez. Una entrevista reprogramada tiene otra fecha u otro lugar; una oferta vuelve a aprobarse con otro `revisado_en`; una empresa reenvía su solicitud después de un rechazo con otra `fecha_decision`; la oficina puede volver a descartar una postulación con otro `updated_at`. Los hechos que ocurren una sola vez (derivación, contratación, curso asignado o completado, alta de empresa, oferta o postulación) usan solo el id.
+**Por qué algunas claves llevan una fecha:** los hechos que se pueden repetir necesitan una clave distinta cada vez. Una entrevista reprogramada tiene otra fecha u otro lugar; una pre-entrevista reprogramada tiene otro `updated_at`; una oferta vuelve a aprobarse con otro `revisado_en`; una empresa reenvía su solicitud después de un rechazo con otra `fecha_decision`; la oficina puede volver a descartar una postulación con otro `updated_at`. Los hechos que ocurren una sola vez (derivación, contratación, curso asignado o completado, alta de empresa, oferta o postulación) usan solo el id.
 
 El aviso de contratación (038) conserva su comportamiento, textos, link y clave. La 041 reemplaza `derivaciones_notificar_contratacion_fn` solo para envolverla en `EXCEPTION WHEN OTHERS` como los triggers nuevos. A diferencia de ellos, sigue avisando a **todos** los usuarios de la oficina, incluido quien corrige la derivación (por eso no usa `notificar_oficina`, que excluye a quien hizo la acción).
 
@@ -135,6 +137,14 @@ No hay cron (decisión 013): una oferta vencida sigue en estado `activa`. Los av
 - Las server actions (`src/app/(dashboard)/notificaciones/actions.ts`) son las mismas para los tres roles: exigen uno de los tres roles con `requerirRol` / `requerirRolPagina` y filtran por el usuario de la sesión.
 - Íconos y colores por tipo en un solo lugar: `src/components/notificaciones/icono-notificacion.tsx`.
 
+### 10. Pre-entrevista (044)
+
+La pre-entrevista de la oficina con el postulante (decisión 017) avisa al postulante cuando se coordina y cada vez que se reprograma, con la oferta, la fecha y hora (hora de Argentina) y el lugar. Trigger `AFTER INSERT` / `AFTER UPDATE` sobre `pre_entrevistas`, filtrado con `WHEN`, con `EXCEPTION WHEN OTHERS` + `RAISE WARNING` y `notificar_usuario` (la oficina, que hace la acción, no se avisa).
+
+- **Clave de la reprogramación con `updated_at`**, no con la fecha y el lugar como la entrevista de la empresa: `reprogramar_pre_entrevista` fija `updated_at = now()`, así que cada reprogramación tiene su aviso aunque vuelva a una fecha y un lugar anteriores.
+- **Sin aviso** cuando se marca `realizada` ni `no_asistio`.
+- La nota interna de la pre-entrevista nunca va en el mensaje.
+
 ---
 
 ## Cómo agregar un aviso nuevo
@@ -152,6 +162,7 @@ src/migrations/migration_038_cursos_sin_abandono_y_notificaciones.sql
 src/migrations/migration_041_notificaciones_por_rol.sql
 src/migrations/migration_042_empresas_email_confirmado.sql
 src/migrations/migration_043_avisos_oficina_y_oferta_rechazada.sql
+src/migrations/migration_044_pre_entrevistas.sql          — BLOQUE 9: avisos de pre-entrevista
 src/lib/admin/empresas-sin-confirmar.ts                  — ids de empresas pendientes sin email confirmado
 src/lib/notificaciones.ts                                — tipos, resumen, rutaNotificaciones, esLinkInterno, generarAvisosVencimientoEmpresa
 src/app/(dashboard)/notificaciones/actions.ts           — refrescar, marcar leída(s), abrir (tres roles)

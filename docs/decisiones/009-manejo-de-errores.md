@@ -15,10 +15,10 @@ Antes de este cambio, cada server action devolvía estructuras ad-hoc: algunos r
 ```ts
 type Resultado<T = void> =
   | { ok: true; data?: T; mensaje?: string }
-  | { ok: false; codigo: CodigoError; mensaje: string; ref?: string }
+  | { ok: false; codigo: CodigoError; mensaje: string; ref?: string; campo?: string }
 ```
 
-Los helpers `ok()`, `err()`, `errConRef()` y `fromSupabaseError()` construyen los valores. El tipo `ResultadoError` nombra la rama error; permite que funciones internas con payload custom en el ok (`{ ok: true; userId: string }`) devuelvan la misma rama error sin forzar a TypeScript a incluir la rama ok genérica en la unión.
+Los helpers `ok()`, `err()`, `errCampo()`, `errConRef()` y `fromSupabaseError()` construyen los valores. `errCampo(campo, mensaje)` marca un error de validación (`DATOS_INVALIDOS`) de un campo del formulario: `campo` es el nombre de la propiedad que recibe la action (ver 7d). El tipo `ResultadoError` nombra la rama error; permite que funciones internas con payload custom en el ok (`{ ok: true; userId: string }`) devuelvan la misma rama error sin forzar a TypeScript a incluir la rama ok genérica en la unión.
 
 **Razonamiento:**
 - Un contrato uniforme elimina la necesidad de conocer la forma exacta de cada action.
@@ -162,6 +162,13 @@ Cuando una acción termina en una redirección a otra página (alta de oferta, r
 
 Los formularios mantienen errores de validación inline (junto al campo o debajo del form). El éxito se muestra via toast (`mostrarAviso`) y no como banner persistente en pantalla.
 
+**Campos obligatorios** (`src/components/ui/obligatorio.tsx`, `src/lib/use-errores-campo.ts`):
+
+- El label lleva `<Obligatorio />`: un asterisco rojo con "(obligatorio)" oculto para lectores de pantalla. No se agrega una leyenda "* Campo obligatorio" en el formulario.
+- Los formularios llevan `noValidate` (los diálogos sin `<form>` validan igual) y no usan el globo del navegador: al enviar, `useErroresCampo().validar({...})` marca "Este campo es obligatorio." (`MENSAJE_OBLIGATORIO`) debajo de cada obligatorio vacío o solo con espacios, enfoca el primero y no envía.
+- El mensaje va en `<ErrorCampo />`, y el control lleva `aria-invalid` y `aria-describedby` (`ariaErrorCampo()`); el error se borra cuando el usuario cambia el campo.
+- El servidor sigue validando lo mismo. Si devuelve `campo`, `tomarDelServidor(resultado, campos)` lo muestra debajo de ese campo; si no, el error va donde iba (arriba del botón).
+
 ---
 
 ## Archivos clave
@@ -170,6 +177,8 @@ Los formularios mantienen errores de validación inline (junto al campo o debajo
 src/lib/resultado.ts           — tipos y helpers (incluye okMsg)
 src/lib/logger.ts              — logger server-only
 src/lib/avisos.ts              — helper mostrarAviso (client-side)
+src/lib/use-errores-campo.ts   — errores por campo y validación de obligatorios (client-side)
+src/components/ui/obligatorio.tsx — asterisco y mensaje de error de campo
 src/components/ui/aviso-url.tsx — toasts en páginas destino de redirecciones
 src/lib/auth-errors.ts         — traducción de errores de Supabase Auth
 eslint.config.mjs              — regla no-console
