@@ -27,7 +27,7 @@ export default async function MisCursosPage({
 }) {
   const sp = await searchParams;
   const pagina = leerPagina(sp.pagina);
-  await requerirRolPagina("postulante", { siNoCorresponde: "panel" });
+  await requerirRolPagina("postulante");
 
   return (
     <main className="flex-1 px-4 py-8 sm:px-6 sm:py-12">

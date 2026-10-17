@@ -6,8 +6,13 @@ import {
   LAST_ACTIVITY_COOKIE,
   sessionCookieOptions,
 } from "@/lib/session-config";
+import { HEADER_RUTA_ACTUAL, urlLogin } from "@/lib/redirect";
 
 export async function proxy(request: NextRequest) {
+  // Siempre se pisa: el valor que mande el cliente no se usa.
+  const rutaActual = request.nextUrl.pathname + request.nextUrl.search;
+  request.headers.set(HEADER_RUTA_ACTUAL, rutaActual);
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient<Database>(
@@ -41,7 +46,9 @@ export async function proxy(request: NextRequest) {
   const isPublic =
     pathname === "/" ||
     pathname.startsWith("/ofertas") ||
-    pathname.startsWith("/auth");
+    pathname.startsWith("/auth") ||
+    // Cron de emails: sin sesión, lo protege CRON_SECRET en la ruta.
+    pathname === "/api/emails/procesar";
 
   // Routes only accessible to guests — logged-in users are bounced to home
   const AUTH_GUEST_ONLY = [
@@ -53,6 +60,11 @@ export async function proxy(request: NextRequest) {
   );
   // Don't redirect Server Action POSTs — a redirect there breaks the action
   const isServerAction = request.headers.get("next-action") !== null;
+
+  // Ruta a la que se vuelve después del login. Las APIs no son una página a
+  // la que volver.
+  const rutaDeVuelta =
+    pathname.startsWith("/api/") || isServerAction ? null : rutaActual;
 
   // Auth exchange routes must not trigger the inactivity check mid-flow
   const INACTIVITY_EXEMPT_PATHS = ["/auth/callback", "/auth/nueva-contrasena"];
@@ -92,9 +104,10 @@ export async function proxy(request: NextRequest) {
           return jsonResponse;
         }
 
-        const timeoutUrl = request.nextUrl.clone();
-        timeoutUrl.pathname = "/auth/login";
-        timeoutUrl.searchParams.set("motivo", "inactividad");
+        const timeoutUrl = new URL(
+          urlLogin(rutaDeVuelta, { motivo: "inactividad" }),
+          request.url
+        );
         const timeoutResponse = NextResponse.redirect(timeoutUrl);
 
         // Transfer auth cookie deletions to the redirect response.
@@ -147,9 +160,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!user && !isPublic) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/auth/login";
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(new URL(urlLogin(rutaDeVuelta), request.url));
   }
 
   return supabaseResponse;

@@ -1,6 +1,8 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
 import { DIAS_AVISO_VENCIMIENTO } from "@/lib/ofertas-vencimiento";
+import { programarEnvioEmails } from "@/lib/emails/cola";
+import { esRutaInterna } from "@/lib/redirect";
 import type { Rol, Tabla } from "@/types/db";
 
 /** Fila de public.notificaciones (migration_038). */
@@ -32,7 +34,7 @@ export function rutaNotificaciones(rol: Rol): string {
  * vuelve a validar antes de redirigir.
  */
 export function esLinkInterno(link: string | null | undefined): link is string {
-  return typeof link === "string" && link.startsWith("/") && !link.startsWith("//");
+  return esRutaInterna(link);
 }
 
 /** No leídas y últimos avisos del usuario de la sesión (RLS: solo los suyos). */
@@ -71,8 +73,9 @@ export async function obtenerResumenNotificaciones(
  */
 export async function generarAvisosVencimientoEmpresa(): Promise<void> {
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.rpc("generar_avisos_vencimiento_empresa", {
+  const { data: creados, error } = await supabase.rpc("generar_avisos_vencimiento_empresa", {
     p_dias_aviso: DIAS_AVISO_VENCIMIENTO,
   });
   if (error) logError("generarAvisosVencimientoEmpresa", error);
+  else if (creados > 0) programarEnvioEmails();
 }

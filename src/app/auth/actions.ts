@@ -28,11 +28,8 @@ import {
   RECOVERY_COOKIE_PATH,
   recoveryCookieOptions,
 } from "@/lib/session-config";
-
-function safeRedirect(to?: string): string {
-  if (to && to.startsWith("/") && !to.startsWith("//")) return to;
-  return "/";
-}
+import { programarEnvioEmails } from "@/lib/emails/cola";
+import { rutaInterna } from "@/lib/redirect";
 
 function sonTextos(...valores: unknown[]): boolean {
   return valores.every((v) => typeof v === "string");
@@ -102,7 +99,7 @@ export async function login(credentials: {
 
   if (error) return wrapAuthError("login", error);
 
-  redirect(safeRedirect(credentials.redirectTo));
+  redirect(rutaInterna(credentials.redirectTo));
 }
 
 export async function registrarPostulante(data: {
@@ -274,6 +271,7 @@ export async function registrarEmpresa(data: {
     return errConRef("ERROR_INTERNO", "Error al crear el perfil de empresa. Intentá de nuevo.", ref);
   }
 
+  programarEnvioEmails();
   redirect("/auth/verificar-email-empresa");
 }
 
@@ -302,7 +300,7 @@ export async function logout(formData?: FormData): Promise<void> {
   cookieStore.delete(LAST_ACTIVITY_COOKIE);
 
   const rawTo = formData instanceof FormData ? leerTexto(formData, "redirectTo") : null;
-  redirect(rawTo ? safeRedirect(rawTo) : "/auth/login");
+  redirect(rawTo ? rutaInterna(rawTo) : "/auth/login");
 }
 
 export async function restablecerContrasena(

@@ -20,6 +20,7 @@ import {
   type OfertaData,
   type OfertaValidada,
 } from "@/lib/validaciones";
+import { programarEnvioEmails } from "@/lib/emails/cola";
 
 function getEmpresaAprobada() {
   return requerirEmpresa({
@@ -83,6 +84,7 @@ export async function crearOferta(datos: OfertaData, claveEnvio: string): Promis
     return errConRef("ERROR_INTERNO", "No se pudo crear la oferta. Intentá de nuevo.", ref);
   }
 
+  programarEnvioEmails();
   revalidatePath("/empresa/ofertas");
   revalidatePath("/ofertas");
   return okMsg("Oferta enviada a revisión.");
@@ -114,6 +116,7 @@ export async function editarOferta(id: string, datos: OfertaData): Promise<Resul
     return errConRef("ERROR_INTERNO", "No se pudo guardar la oferta. Intentá de nuevo.", ref);
   }
 
+  programarEnvioEmails();
   revalidatePath("/empresa/ofertas");
   revalidatePath(`/empresa/ofertas/${id}/editar`);
   revalidatePath("/ofertas");

@@ -288,6 +288,75 @@ export type Database = {
           },
         ]
       }
+      emails_pendientes: {
+        Row: {
+          asunto: string
+          bloqueado_hasta: string | null
+          created_at: string
+          destinatario: string
+          enviado_en: string | null
+          estado: string
+          id: string
+          intentos: number
+          link: string | null
+          mensaje: string
+          notificacion_id: string | null
+          proximo_intento: string
+          tipo: string
+          ultimo_error: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          asunto: string
+          bloqueado_hasta?: string | null
+          created_at?: string
+          destinatario: string
+          enviado_en?: string | null
+          estado?: string
+          id?: string
+          intentos?: number
+          link?: string | null
+          mensaje: string
+          notificacion_id?: string | null
+          proximo_intento?: string
+          tipo: string
+          ultimo_error?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          asunto?: string
+          bloqueado_hasta?: string | null
+          created_at?: string
+          destinatario?: string
+          enviado_en?: string | null
+          estado?: string
+          id?: string
+          intentos?: number
+          link?: string | null
+          mensaje?: string
+          notificacion_id?: string | null
+          proximo_intento?: string
+          tipo?: string
+          ultimo_error?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emails_pendientes_notificacion_id_fkey"
+            columns: ["notificacion_id"]
+            isOneToOne: true
+            referencedRelation: "notificaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emails_pendientes_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       empresas: {
         Row: {
           created_at: string
@@ -955,6 +1024,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      email_tipo_con_envio: { Args: { p_tipo: string }; Returns: boolean }
       emails_de_usuarios: {
         Args: { ids: string[] }
         Returns: {
@@ -977,6 +1047,17 @@ export type Database = {
         Returns: {
           empresa_id: string
         }[]
+      }
+      encolar_email: {
+        Args: {
+          p_asunto: string
+          p_link: string
+          p_mensaje: string
+          p_notificacion_id: string
+          p_tipo: string
+          p_usuario_id: string
+        }
+        Returns: undefined
       }
       estado_cursos_calculo: {
         Args: { p_postulante_ids: string[] }
@@ -1177,6 +1258,18 @@ export type Database = {
         Returns: {
           postulante_id: string
           rechazos: number
+        }[]
+      }
+      reclamar_emails_pendientes: {
+        Args: { p_limite: number }
+        Returns: {
+          asunto: string
+          destinatario: string
+          id: string
+          intentos: number
+          link: string
+          mensaje: string
+          tipo: string
         }[]
       }
       reemplazar_mis_rubros: {

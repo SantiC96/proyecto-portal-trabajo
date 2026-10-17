@@ -14,6 +14,7 @@ import {
   validarTelefono,
   validarTextoOpcional,
 } from "@/lib/validaciones";
+import { programarEnvioEmails } from "@/lib/emails/cola";
 
 export async function reenviarSolicitudEmpresa(data: {
   razonSocial: string;
@@ -100,6 +101,7 @@ export async function reenviarSolicitudEmpresa(data: {
     return errConRef("ERROR_INTERNO", "Error al enviar la solicitud. Intentá de nuevo.", ref);
   }
 
+  programarEnvioEmails();
   revalidatePath("/empresa");
   revalidatePath("/empresa/solicitud");
   return okMsg("Solicitud reenviada. La Oficina de Empleo la revisará pronto.");

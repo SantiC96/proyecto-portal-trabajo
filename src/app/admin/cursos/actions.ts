@@ -17,6 +17,7 @@ import {
 import { MENSAJE_MISMO_CURSO_PENDIENTE, MENSAJE_SOLO_SI_PUEDE_RECIBIR_CURSO } from "@/lib/cursos";
 import { esUuid, LARGO_MAXIMO, MENSAJE_OBLIGATORIO, validarTextoOpcional } from "@/lib/validaciones";
 import type { Tabla } from "@/types/db";
+import { programarEnvioEmails } from "@/lib/emails/cola";
 
 type CursoData = Pick<Tabla<"cursos">, "nombre" | "descripcion" | "link" | "indicaciones">;
 
@@ -215,6 +216,7 @@ export async function asignarCurso(
     return errConRef("ERROR_INTERNO", "No se pudo asignar el curso. Intentá de nuevo.", ref);
   }
 
+  programarEnvioEmails();
   revalidarAsignaciones(cursoId, postulanteId);
   return okMsg("Curso asignado.");
 }
