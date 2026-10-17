@@ -27,7 +27,9 @@ export default async function PerfilPage() {
   ] = await Promise.all([
     supabase
       .from("postulantes")
-      .select("id, dni, domicilio, postulante_categorias(categoria_id)")
+      .select(
+        "id, dni, domicilio, nivel_educativo, situacion_laboral, disponibilidad, experiencia_laboral, postulante_categorias(categoria_id)"
+      )
       .eq("usuario_id", user.id)
       .maybeSingle(),
     supabase.from("categorias").select("id, nombre").order("nombre"),
@@ -128,6 +130,10 @@ export default async function PerfilPage() {
           id: postulante.id ?? "",
           dni: postulante.dni ?? "",
           domicilio: postulante.domicilio ?? "",
+          nivelEducativo: postulante.nivel_educativo ?? "",
+          situacionLaboral: postulante.situacion_laboral ?? "",
+          disponibilidad: postulante.disponibilidad ?? "",
+          experienciaLaboral: postulante.experiencia_laboral ?? "",
           cvActivo,
         }}
         email={user.email ?? ""}

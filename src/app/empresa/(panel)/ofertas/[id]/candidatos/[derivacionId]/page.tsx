@@ -8,6 +8,7 @@ import { logError } from "@/lib/logger";
 import { formatFechaHora } from "@/lib/fechas";
 import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_STYLE } from "@/lib/derivacion-estados";
 import type { FilaCandidatoParaEmpresa, FilaDerivacionDeOfertaEmpresa } from "@/types/db";
+import { InformacionLaboralResumen } from "@/components/postulantes/informacion-laboral-resumen";
 import { AccionesDerivacion } from "./_components/acciones-derivacion";
 
 export const metadata: Metadata = {
@@ -184,6 +185,10 @@ export default async function CandidatoFichaPage({
               </p>
             )}
           </div>
+
+          {candidato && (
+            <InformacionLaboralResumen info={candidato} className="bg-white shadow-xs" />
+          )}
 
           {/* Nota de la municipalidad */}
           {derivacion.nota_municipalidad && (

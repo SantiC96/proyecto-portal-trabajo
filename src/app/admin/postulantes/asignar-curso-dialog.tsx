@@ -37,6 +37,8 @@ type Props = {
   postulanteId: string;
   postulanteNombre: string;
   cursosActivos: Curso[];
+  /** Cursos que el postulante ya tiene asignados o en curso: no se ofrecen. */
+  cursosPendientesIds?: readonly string[];
   destacado?: boolean;
   /** Clases extra para el botón que abre el diálogo. */
   claseBoton?: string;
@@ -46,18 +48,20 @@ export function AsignarCursoDialog({
   postulanteId,
   postulanteNombre,
   cursosActivos,
+  cursosPendientesIds = [],
   destacado = false,
   claseBoton,
 }: Props) {
+  const disponibles = cursosActivos.filter((c) => !cursosPendientesIds.includes(c.id));
   const [open, setOpen] = useState(false);
-  const [cursoId, setCursoId] = useState(cursosActivos[0]?.id ?? "");
+  const [cursoId, setCursoId] = useState(disponibles[0]?.id ?? "");
   const [nota, setNota] = useState("");
   const [error, setError] = useState<ErrorAccion | null>(null);
   const campos = useErroresCampo<(typeof CAMPOS)[number]>();
   const { pendiente: isPending, ejecutar } = useAccion();
 
   function handleOpen() {
-    setCursoId(cursosActivos[0]?.id ?? "");
+    setCursoId(disponibles[0]?.id ?? "");
     setNota("");
     setError(null);
     campos.limpiarTodos();
@@ -84,7 +88,7 @@ export function AsignarCursoDialog({
     : "inline-flex items-center justify-center whitespace-nowrap rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-xs font-medium text-amber-700 transition hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30";
 
   const descripcionSeleccionada =
-    cursosActivos.find((c) => c.id === cursoId)?.descripcion ?? null;
+    disponibles.find((c) => c.id === cursoId)?.descripcion ?? null;
 
   return (
     <>
@@ -122,6 +126,15 @@ export function AsignarCursoDialog({
               </Link>
               .
             </p>
+          ) : disponibles.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Ya tiene pendientes todos los cursos activos. Cuando complete alguno, o si
+              creás un curso nuevo desde{" "}
+              <Link href="/admin/cursos" className="text-primary hover:underline">
+                la sección Cursos
+              </Link>
+              , vas a poder asignárselo.
+            </p>
           ) : (
             <div className="space-y-4">
               <div className="space-y-1.5">
@@ -142,13 +155,18 @@ export function AsignarCursoDialog({
                   )}
                   disabled={isPending}
                 >
-                  {cursosActivos.map((c) => (
+                  {disponibles.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.nombre}
                     </option>
                   ))}
                 </select>
                 <ErrorCampo idCampo="asignar-curso" mensaje={campos.errores.cursoId} />
+                {cursosPendientesIds.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    No se muestran los cursos que ya tiene pendientes.
+                  </p>
+                )}
                 {descripcionSeleccionada && (
                   <p className="text-xs text-muted-foreground">
                     {descripcionSeleccionada}
@@ -205,7 +223,7 @@ export function AsignarCursoDialog({
             >
               Cancelar
             </button>
-            {cursosActivos.length > 0 && (
+            {disponibles.length > 0 && (
               <Button onClick={handleAsignar} disabled={isPending}>
                 {isPending && <Spinner className="mr-1" />}
                 {isPending ? "Asignando..." : "Asignar curso"}

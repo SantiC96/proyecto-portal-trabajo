@@ -53,8 +53,33 @@ import {
   ariaErrorCampo,
 } from "@/components/ui/obligatorio";
 import { useErroresCampo } from "@/lib/use-errores-campo";
+import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
+import {
+  DISPONIBILIDADES,
+  DISPONIBILIDAD_LABEL,
+  LARGO_MAXIMO_EXPERIENCIA,
+  NIVELES_EDUCATIVOS,
+  NIVEL_EDUCATIVO_LABEL,
+  SIN_COMPLETAR,
+  SITUACIONES_LABORALES,
+  SITUACION_LABORAL_LABEL,
+  etiquetaDisponibilidad,
+  etiquetaNivelEducativo,
+  etiquetaSituacionLaboral,
+} from "@/lib/informacion-laboral";
+import { formatFecha } from "@/lib/fechas";
 
-const CAMPOS_DATOS = ["nombre", "apellido", "telefono", "domicilio", "dni"] as const;
+const CAMPOS_DATOS = [
+  "nombre",
+  "apellido",
+  "telefono",
+  "domicilio",
+  "dni",
+  "nivelEducativo",
+  "situacionLaboral",
+  "disponibilidad",
+  "experienciaLaboral",
+] as const;
 const CAMPOS_CONTRASENA = ["contrasenaActual", "contrasenaNueva", "repetirContrasena"] as const;
 
 type AjusteAvatar = { x: number; y: number; zoom: number };
@@ -67,6 +92,14 @@ const inputClass =
 
 const inputClassPassword =
   "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-10 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 " +
+  CLASE_CONTROL_INVALIDO;
+
+const selectClass =
+  "min-h-11 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 " +
+  CLASE_CONTROL_INVALIDO;
+
+const textareaClass =
+  "min-h-32 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 " +
   CLASE_CONTROL_INVALIDO;
 
 const inputReadonlyClass =
@@ -88,11 +121,25 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-function CampoLectura({ label, valor }: { label: string; valor: string }) {
+function CampoLectura({
+  label,
+  valor,
+  vacio = "—",
+  className,
+}: {
+  label: string;
+  valor: string;
+  vacio?: string;
+  className?: string;
+}) {
   return (
-    <div>
+    <div className={className}>
       <p className="mb-0.5 text-xs font-medium uppercase tracking-wider text-muted-icon">{label}</p>
-      <p className="text-sm text-foreground">{valor || "—"}</p>
+      <p
+        className={`whitespace-pre-line break-words text-sm ${valor ? "text-foreground" : "text-muted-foreground"}`}
+      >
+        {valor || vacio}
+      </p>
     </div>
   );
 }
@@ -113,15 +160,6 @@ function MensajeError({ error }: { error: ErrorAccion }) {
   );
 }
 
-function MensajeExito({ texto }: { texto: string }) {
-  return (
-    <div className="flex items-start gap-2.5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-      <span>{texto}</span>
-    </div>
-  );
-}
-
 // ─── tipos ───────────────────────────────────────────────────────────────────
 
 interface PerfilFormProps {
@@ -136,6 +174,10 @@ interface PerfilFormProps {
     id: string;
     dni: string;
     domicilio: string;
+    nivelEducativo: string;
+    situacionLaboral: string;
+    disponibilidad: string;
+    experienciaLaboral: string;
     cvActivo: {
       ruta: string;
       nombreOriginal: string;
@@ -164,7 +206,6 @@ export function PerfilForm({
   const [modoEdicionDatos, setModoEdicionDatos] = useState(false);
   const [guardandoDatos, setGuardandoDatos] = useState(false);
   const [errorDatos, setErrorDatos] = useState<ErrorAccion | null>(null);
-  const [exitoDatos, setExitoDatos] = useState(false);
   const camposDatos = useErroresCampo<(typeof CAMPOS_DATOS)[number]>();
 
   // Datos personales
@@ -174,11 +215,16 @@ export function PerfilForm({
   const [domicilio, setDomicilio] = useState(postulante.domicilio);
   const [dni, setDni] = useState(postulante.dni);
 
+  // Información laboral (se guarda junto con los datos personales)
+  const [nivelEducativo, setNivelEducativo] = useState(postulante.nivelEducativo);
+  const [situacionLaboral, setSituacionLaboral] = useState(postulante.situacionLaboral);
+  const [disponibilidad, setDisponibilidad] = useState(postulante.disponibilidad);
+  const [experienciaLaboral, setExperienciaLaboral] = useState(postulante.experienciaLaboral);
+
   // Modo edición — rubros de interés
   const [modoEdicionRubros, setModoEdicionRubros] = useState(false);
   const [guardandoRubros, setGuardandoRubros] = useState(false);
   const [errorRubros, setErrorRubros] = useState<ErrorAccion | null>(null);
-  const [exitoRubros, setExitoRubros] = useState(false);
 
   const [categoriaIds, setCategoriaIds] = useState<string[]>(categoriasIniciales);
 
@@ -204,7 +250,6 @@ export function PerfilForm({
   const [subiendoCV, setSubiendoCV] = useState(false);
   const [eliminandoCV, setEliminandoCV] = useState(false);
   const [errorCV, setErrorCV] = useState<ErrorAccion | null>(null);
-  const [mensajeCV, setMensajeCV] = useState<string | null>(null);
 
   // Contraseña
   const [mostrarFormContrasena, setMostrarFormContrasena] = useState(false);
@@ -216,7 +261,6 @@ export function PerfilForm({
   const [mostrarRepetir, setMostrarRepetir] = useState(false);
   const [cargandoContrasena, setCargandoContrasena] = useState(false);
   const [errorContrasena, setErrorContrasena] = useState<ErrorAccion | null>(null);
-  const [exitoContrasena, setExitoContrasena] = useState("");
   const camposContrasena = useErroresCampo<(typeof CAMPOS_CONTRASENA)[number]>();
 
   // Limpiar blob URL al desmontar
@@ -244,9 +288,12 @@ export function PerfilForm({
     setTelefono(usuario.telefono);
     setDomicilio(postulante.domicilio);
     setDni(postulante.dni);
+    setNivelEducativo(postulante.nivelEducativo);
+    setSituacionLaboral(postulante.situacionLaboral);
+    setDisponibilidad(postulante.disponibilidad);
+    setExperienciaLaboral(postulante.experienciaLaboral);
     setErrorDatos(null);
     camposDatos.limpiarTodos();
-    setExitoDatos(false);
     setModoEdicionDatos(false);
   };
 
@@ -255,7 +302,6 @@ export function PerfilForm({
   const handleCancelarRubros = () => {
     setCategoriaIds(categoriasIniciales);
     setErrorRubros(null);
-    setExitoRubros(false);
     setModoEdicionRubros(false);
   };
 
@@ -339,8 +385,17 @@ export function PerfilForm({
       return;
     }
     setGuardandoDatos(true);
-    setExitoDatos(false);
-    const result = await actualizarPerfil({ nombre, apellido, telefono, domicilio, dni });
+    const result = await actualizarPerfil({
+      nombre,
+      apellido,
+      telefono,
+      domicilio,
+      dni,
+      nivelEducativo,
+      situacionLaboral,
+      disponibilidad,
+      experienciaLaboral,
+    });
     mostrarAviso(result);
     if (!result.ok) {
       if (!camposDatos.tomarDelServidor(result, CAMPOS_DATOS)) setErrorDatos(toErrorAccion(result));
@@ -350,7 +405,7 @@ export function PerfilForm({
       setTelefono(telefono.trim());
       setDomicilio(domicilio.trim());
       setDni(dni.replace(/\D/g, ""));
-      setExitoDatos(true);
+      setExperienciaLaboral(experienciaLaboral.trim());
       setModoEdicionDatos(false);
       router.refresh();
     }
@@ -363,13 +418,11 @@ export function PerfilForm({
     e.preventDefault();
     setGuardandoRubros(true);
     setErrorRubros(null);
-    setExitoRubros(false);
     const result = await actualizarRubros(categoriaIds);
     mostrarAviso(result);
     if (!result.ok) {
       setErrorRubros(toErrorAccion(result));
     } else {
-      setExitoRubros(true);
       setModoEdicionRubros(false);
       router.refresh();
     }
@@ -380,7 +433,6 @@ export function PerfilForm({
 
   const handleSeleccionarCV = async (file: File) => {
     setErrorCV(null);
-    setMensajeCV(null);
     if (!validarTipoCV(file.type)) {
       setErrorCV({ mensaje: ERRORES_ARCHIVO.cvTipo });
       return;
@@ -401,9 +453,7 @@ export function PerfilForm({
         setCvFile(null);
       } else {
         setCvFile(null);
-        setMensajeCV(postulante.cvActivo ? "¡CV reemplazado correctamente!" : "¡CV subido correctamente!");
         router.refresh();
-        setTimeout(() => setMensajeCV(null), 4000);
       }
     } catch {
       setErrorCV({ mensaje: "Ocurrió un error inesperado al subir el CV. Intentá de nuevo." });
@@ -416,7 +466,6 @@ export function PerfilForm({
   const handleEliminarCV = async () => {
     setEliminandoCV(true);
     setErrorCV(null);
-    setMensajeCV(null);
     const result = await eliminarCV();
     mostrarAviso(result);
     if (!result.ok) {
@@ -449,7 +498,6 @@ export function PerfilForm({
       if (!camposContrasena.tomarDelServidor(res, CAMPOS_CONTRASENA))
         setErrorContrasena(toErrorAccion(res));
     } else {
-      setExitoContrasena("Tu contraseña se actualizó correctamente.");
       setMostrarFormContrasena(false);
       setContrasenaActual("");
       setContrasenaNueva("");
@@ -593,7 +641,7 @@ export function PerfilForm({
             {!modoEdicionDatos && (
               <button
                 type="button"
-                onClick={() => { setExitoDatos(false); setErrorDatos(null); setModoEdicionDatos(true); }}
+                onClick={() => { setErrorDatos(null); setModoEdicionDatos(true); }}
                 className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-medium text-muted-foreground-strong transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <Pencil className="h-3.5 w-3.5" />
@@ -755,6 +803,142 @@ export function PerfilForm({
             </div>
           )}
 
+          {/* ── Información laboral (se guarda con los datos personales) ── */}
+          <div className="mt-8 border-t border-border pt-6">
+            <SectionTitle>Información laboral</SectionTitle>
+            <p className="mt-1 text-xs text-muted-icon">
+              Opcional. La ven la Oficina de Empleo y las empresas a las que te deriven.
+            </p>
+
+            {!modoEdicionDatos ? (
+              <div className="mt-4 grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
+                <CampoLectura
+                  label="Nivel educativo"
+                  valor={etiquetaNivelEducativo(nivelEducativo) ?? ""}
+                  vacio={SIN_COMPLETAR}
+                />
+                <CampoLectura
+                  label="Situación laboral"
+                  valor={etiquetaSituacionLaboral(situacionLaboral) ?? ""}
+                  vacio={SIN_COMPLETAR}
+                />
+                <CampoLectura
+                  label="Disponibilidad horaria"
+                  valor={etiquetaDisponibilidad(disponibilidad) ?? ""}
+                  vacio={SIN_COMPLETAR}
+                />
+                <CampoLectura
+                  label="Experiencia laboral"
+                  valor={experienciaLaboral}
+                  vacio={SIN_COMPLETAR}
+                  className="sm:col-span-2"
+                />
+              </div>
+            ) : (
+              <div className="mt-4 flex flex-col gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="p-nivel-educativo" className="text-sm font-medium text-foreground">
+                      Nivel educativo
+                    </label>
+                    <select
+                      id="p-nivel-educativo"
+                      value={nivelEducativo}
+                      onChange={(e) => {
+                        setNivelEducativo(e.target.value);
+                        camposDatos.limpiar("nivelEducativo");
+                      }}
+                      className={selectClass}
+                      {...ariaErrorCampo("p-nivel-educativo", camposDatos.errores.nivelEducativo)}
+                    >
+                      <option value="">{SIN_COMPLETAR}</option>
+                      {NIVELES_EDUCATIVOS.map((v) => (
+                        <option key={v} value={v}>
+                          {NIVEL_EDUCATIVO_LABEL[v]}
+                        </option>
+                      ))}
+                    </select>
+                    <ErrorCampo idCampo="p-nivel-educativo" mensaje={camposDatos.errores.nivelEducativo} />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="p-situacion-laboral" className="text-sm font-medium text-foreground">
+                      Situación laboral
+                    </label>
+                    <select
+                      id="p-situacion-laboral"
+                      value={situacionLaboral}
+                      onChange={(e) => {
+                        setSituacionLaboral(e.target.value);
+                        camposDatos.limpiar("situacionLaboral");
+                      }}
+                      className={selectClass}
+                      {...ariaErrorCampo("p-situacion-laboral", camposDatos.errores.situacionLaboral)}
+                    >
+                      <option value="">{SIN_COMPLETAR}</option>
+                      {SITUACIONES_LABORALES.map((v) => (
+                        <option key={v} value={v}>
+                          {SITUACION_LABORAL_LABEL[v]}
+                        </option>
+                      ))}
+                    </select>
+                    <ErrorCampo idCampo="p-situacion-laboral" mensaje={camposDatos.errores.situacionLaboral} />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="p-disponibilidad" className="text-sm font-medium text-foreground">
+                      Disponibilidad horaria
+                    </label>
+                    <select
+                      id="p-disponibilidad"
+                      value={disponibilidad}
+                      onChange={(e) => {
+                        setDisponibilidad(e.target.value);
+                        camposDatos.limpiar("disponibilidad");
+                      }}
+                      className={selectClass}
+                      {...ariaErrorCampo("p-disponibilidad", camposDatos.errores.disponibilidad)}
+                    >
+                      <option value="">{SIN_COMPLETAR}</option>
+                      {DISPONIBILIDADES.map((v) => (
+                        <option key={v} value={v}>
+                          {DISPONIBILIDAD_LABEL[v]}
+                        </option>
+                      ))}
+                    </select>
+                    <ErrorCampo idCampo="p-disponibilidad" mensaje={camposDatos.errores.disponibilidad} />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="p-experiencia-laboral" className="text-sm font-medium text-foreground">
+                    Experiencia laboral
+                  </label>
+                  <textarea
+                    id="p-experiencia-laboral"
+                    value={experienciaLaboral}
+                    onChange={(e) => {
+                      setExperienciaLaboral(e.target.value);
+                      camposDatos.limpiar("experienciaLaboral");
+                    }}
+                    placeholder="Contá en qué trabajaste, dónde y durante cuánto tiempo."
+                    maxLength={LARGO_MAXIMO_EXPERIENCIA}
+                    className={textareaClass}
+                    {...ariaErrorCampo("p-experiencia-laboral", camposDatos.errores.experienciaLaboral)}
+                  />
+                  <ErrorCampo
+                    idCampo="p-experiencia-laboral"
+                    mensaje={camposDatos.errores.experienciaLaboral}
+                  />
+                  <ContadorCaracteres
+                    actual={experienciaLaboral.length}
+                    maximo={LARGO_MAXIMO_EXPERIENCIA}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           {modoEdicionDatos && (
             <div className="mt-6 flex flex-col gap-4">
               {errorDatos && <MensajeError error={errorDatos} />}
@@ -783,9 +967,6 @@ export function PerfilForm({
             </div>
           )}
 
-          {!modoEdicionDatos && exitoDatos && (
-            <MensajeExito texto="¡Datos actualizados correctamente!" />
-          )}
         </div>
       </form>
 
@@ -797,7 +978,7 @@ export function PerfilForm({
             {!modoEdicionRubros && (
               <button
                 type="button"
-                onClick={() => { setExitoRubros(false); setErrorRubros(null); setModoEdicionRubros(true); }}
+                onClick={() => { setErrorRubros(null); setModoEdicionRubros(true); }}
                 className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-medium text-muted-foreground-strong transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <Pencil className="h-3.5 w-3.5" />
@@ -865,9 +1046,6 @@ export function PerfilForm({
             </>
           )}
 
-          {!modoEdicionRubros && exitoRubros && (
-            <MensajeExito texto="¡Rubros actualizados correctamente!" />
-          )}
         </div>
       </form>
 
@@ -931,11 +1109,7 @@ export function PerfilForm({
                       ? `${(postulante.cvActivo.tamano / 1024).toFixed(0)} KB · `
                       : ""}
                     PDF · Subido el{" "}
-                    {new Date(postulante.cvActivo.creadoEn).toLocaleDateString("es-AR", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
+                    {formatFecha(postulante.cvActivo.creadoEn)}
                   </p>
                 </div>
               </div>
@@ -992,12 +1166,6 @@ export function PerfilForm({
           </div>
         )}
 
-        {mensajeCV && (
-          <div aria-live="polite">
-            <MensajeExito texto={mensajeCV} />
-          </div>
-        )}
-
         <input
           ref={cvInputRef}
           type="file"
@@ -1036,7 +1204,7 @@ export function PerfilForm({
           {!mostrarFormContrasena && (
             <button
               type="button"
-              onClick={() => { setMostrarFormContrasena(true); setExitoContrasena(""); }}
+              onClick={() => setMostrarFormContrasena(true)}
               className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary"
             >
               <KeyRound className="h-4 w-4" />
@@ -1044,12 +1212,6 @@ export function PerfilForm({
             </button>
           )}
         </div>
-
-        {exitoContrasena && !mostrarFormContrasena && (
-          <div className="mt-4">
-            <MensajeExito texto={exitoContrasena} />
-          </div>
-        )}
 
         {mostrarFormContrasena && (
           <form onSubmit={handleCambiarContrasena} noValidate className="mt-5 flex flex-col gap-4">
