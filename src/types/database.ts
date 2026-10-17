@@ -1020,6 +1020,26 @@ export type Database = {
         Args: { p_dias_aviso: number }
         Returns: number
       }
+      indicadores_portal: {
+        Args: { p_desde?: string }
+        Returns: {
+          contrataciones: number
+          cursos_asignados: number
+          cursos_completados: number
+          derivaciones_empresas: number
+          dias_promedio_derivacion: number
+          empresas_aprobadas: number
+          empresas_pendientes: number
+          empresas_rechazadas: number
+          no_seleccionados_oficina: number
+          ofertas_vigentes: number
+          postulaciones_nuevas: number
+          postulantes_registrados: number
+          pre_entrevistas_realizadas: number
+          rechazos_empresas: number
+          tasa_contratacion: number
+        }[]
+      }
       mi_empresa_id: { Args: never; Returns: string }
       mis_cursos_asignados: {
         Args: never
@@ -1121,6 +1141,21 @@ export type Database = {
           postulante_id: string
           rechazado_por: string
           usuario_id: string
+        }[]
+      }
+      postulaciones_por_mes: {
+        Args: never
+        Returns: {
+          cantidad: number
+          mes: string
+        }[]
+      }
+      postulaciones_por_rubro: {
+        Args: { p_desde?: string; p_limite?: number }
+        Returns: {
+          cantidad: number
+          es_otros: boolean
+          rubro: string
         }[]
       }
       postulante_fue_derivado_a_empresa: {

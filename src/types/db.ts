@@ -89,3 +89,9 @@ export type FilaPostulacionNoSeleccionada = ConNulos<
 >;
 export type FilaEmailDeUsuario = FilaRpc<"emails_de_usuarios">;
 export type FilaMiPreEntrevista = FilaRpc<"mis_pre_entrevistas">;
+
+/** Indicadores del dashboard (migration_047): las tasas son NULL sin datos. */
+export type FilaIndicadoresPortal = ConNulos<
+  FilaRpc<"indicadores_portal">,
+  "tasa_contratacion" | "dias_promedio_derivacion"
+>;
