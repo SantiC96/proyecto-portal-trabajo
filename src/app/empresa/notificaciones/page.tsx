@@ -16,7 +16,7 @@ export default async function NotificacionesEmpresaPage({
   searchParams: Promise<{ pagina?: string }>;
 }) {
   const sp = await searchParams;
-  const user = await requerirRolPagina("empresa", { siNoCorresponde: "panel" });
+  const user = await requerirRolPagina("empresa");
 
   return (
     <>

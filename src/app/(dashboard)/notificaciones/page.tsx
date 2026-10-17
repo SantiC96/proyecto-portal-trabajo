@@ -13,7 +13,7 @@ export default async function NotificacionesPostulantePage({
   searchParams: Promise<{ pagina?: string }>;
 }) {
   const sp = await searchParams;
-  const user = await requerirRolPagina("postulante", { siNoCorresponde: "panel" });
+  const user = await requerirRolPagina("postulante");
 
   return (
     <PaginaNotificaciones

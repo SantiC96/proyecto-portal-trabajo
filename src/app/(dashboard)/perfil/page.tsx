@@ -13,7 +13,7 @@ export default async function PerfilPage() {
   // Verify role FIRST — before querying any role-specific table.
   // Next preloads navbar links, so /perfil executes for empresa/municipalidad users too.
   // Querying postulantes before this check would generate spurious error logs.
-  const user = await requerirRolPagina("postulante", { siNoCorresponde: "panel" });
+  const user = await requerirRolPagina("postulante");
   const usuario = user.perfil;
 
   const supabase = await createSupabaseServerClient();

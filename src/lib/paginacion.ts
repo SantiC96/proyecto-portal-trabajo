@@ -6,7 +6,7 @@ const PAGINA_MAXIMA = 10_000;
 
 // Parámetros que disparan avisos o redirecciones de una sola vez; no se
 // arrastran al cambiar de página ni de búsqueda.
-const PARAMETROS_TRANSITORIOS = ["aviso", "redirectTo", "accion"];
+const PARAMETROS_TRANSITORIOS = ["aviso", "redirectTo", "accion", "rol"];
 
 export type ValorParam = string | string[] | undefined;
 export type ParamsUrl = Record<string, ValorParam>;

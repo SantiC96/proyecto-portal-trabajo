@@ -27,7 +27,7 @@ export default async function MisPostulacionesPage({
 }) {
   const sp = await searchParams;
   const pagina = leerPagina(sp.pagina);
-  await requerirRolPagina("postulante", { siNoCorresponde: "panel" });
+  await requerirRolPagina("postulante");
   const postulante = await obtenerPostulanteActual();
   if (!postulante) redirect("/");
 

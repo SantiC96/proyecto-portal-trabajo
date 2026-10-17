@@ -37,7 +37,7 @@ export default async function MiCursoDetallePage({
   params: Promise<{ asignacionId: string }>;
 }) {
   const { asignacionId } = await params;
-  await requerirRolPagina("postulante", { siNoCorresponde: "panel" });
+  await requerirRolPagina("postulante");
 
   const curso = await obtenerMiCurso(asignacionId);
 
