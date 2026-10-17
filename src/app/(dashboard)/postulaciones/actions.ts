@@ -7,6 +7,7 @@ import { logError } from "@/lib/logger";
 import { err, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
 import { esUuid } from "@/lib/validaciones";
 import type { Enum } from "@/types/db";
+import { programarEnvioEmails } from "@/lib/emails/cola";
 
 export async function postularme(
   ofertaId: string,
@@ -69,6 +70,7 @@ export async function postularme(
     return errConRef("ERROR_INTERNO", "Error al procesar la postulación. Intentá de nuevo.", ref);
   }
 
+  programarEnvioEmails();
   revalidatePath(`/ofertas/${ofertaId}`);
   revalidatePath("/mis-postulaciones");
   return okMsg("¡Te postulaste! Podés ver el estado en Mis postulaciones.");

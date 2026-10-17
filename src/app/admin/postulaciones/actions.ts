@@ -13,6 +13,7 @@ import {
   validarDatosPreEntrevista,
   type ResultadoPreEntrevista,
 } from "@/lib/pre-entrevistas";
+import { programarEnvioEmails } from "@/lib/emails/cola";
 
 function revalidarVistas(postulacionId: string) {
   revalidatePath("/admin/postulaciones");
@@ -154,6 +155,7 @@ export async function descartarPostulacion(
   }
   if (!data || data.length === 0) return err("ESTADO_INVALIDO", mensajeEstado);
 
+  programarEnvioEmails();
   revalidarVistas(postulacionId);
   return okMsg("Postulante marcado como «No seleccionado».");
 }
@@ -184,6 +186,7 @@ export async function derivarPostulacion(
     return errConRef("ERROR_INTERNO", "Error al derivar la postulación. Intentá de nuevo.", ref);
   }
 
+  programarEnvioEmails();
   revalidarVistas(postulacionId);
   return okMsg("Postulación derivada a la empresa.");
 }
@@ -221,6 +224,7 @@ export async function coordinarPreEntrevista(
     return errConRef("ERROR_INTERNO", "No se pudo coordinar la pre-entrevista. Intentá de nuevo.", ref);
   }
 
+  programarEnvioEmails();
   revalidarVistas(postulacionId);
   return okMsg("Pre-entrevista coordinada. Le avisamos al postulante.");
 }
@@ -253,6 +257,7 @@ export async function reprogramarPreEntrevista(
     return errConRef("ERROR_INTERNO", "No se pudo reprogramar la pre-entrevista. Intentá de nuevo.", ref);
   }
 
+  programarEnvioEmails();
   revalidarVistas(postulacionId);
   return okMsg("Pre-entrevista reprogramada. Le avisamos al postulante.");
 }
@@ -317,6 +322,7 @@ export async function corregirEstadoDerivacion(
     return errConRef("ERROR_INTERNO", "No se pudo corregir el estado. Intentá de nuevo.", ref);
   }
 
+  programarEnvioEmails();
   revalidarVistas(postulacionId);
   return okMsg("Estado corregido.");
 }

@@ -6,6 +6,7 @@ import { requerirRol } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { err, errCampo, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
 import { esUuid, LARGO_MAXIMO, MENSAJE_OBLIGATORIO, validarTextoOpcional } from "@/lib/validaciones";
+import { programarEnvioEmails } from "@/lib/emails/cola";
 
 // Aprobar y rechazar son updates condicionales: repetir la misma decisión
 // (doble envío, dos pestañas) no afecta filas, así que no sobrescribe
@@ -41,6 +42,7 @@ export async function aprobarEmpresa(
     return err("ESTADO_INVALIDO", "La empresa ya está aprobada. Actualizá la página para ver su estado.");
   }
 
+  programarEnvioEmails();
   revalidatePath("/admin/empresas");
   revalidatePath("/admin");
   return okMsg("Empresa aprobada.");
@@ -82,6 +84,7 @@ export async function rechazarEmpresa(
     return err("ESTADO_INVALIDO", "La empresa ya está rechazada. Actualizá la página para ver su estado.");
   }
 
+  programarEnvioEmails();
   revalidatePath("/admin/empresas");
   revalidatePath("/admin");
   return okMsg("Empresa rechazada.");
