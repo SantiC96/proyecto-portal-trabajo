@@ -120,3 +120,41 @@ export function haceDiasISO(dias: number): string {
 export function dentroDeDiasISO(dias: number): string {
   return new Date(Date.now() + dias * 24 * 60 * 60 * 1000).toISOString();
 }
+
+/**
+ * 1 de enero a las 00:00 del año en curso en Argentina, en ISO. Argentina
+ * está en UTC-3 todo el año (sin horario de verano desde 2009).
+ */
+export function inicioAnioArgentinaISO(ahora: Date = new Date()): string {
+  const anio = new Intl.DateTimeFormat("en-US", { timeZone: TZ, year: "numeric" }).format(ahora);
+  return new Date(`${anio}-01-01T00:00:00-03:00`).toISOString();
+}
+
+// Los meses llegan como fecha sin hora ("2026-10-01"): se leen en UTC para que
+// la zona horaria del servidor no los corra al mes anterior.
+function fechaSinHora(valor: string): Date | null {
+  const [anio, mes, dia] = valor.slice(0, 10).split("-").map(Number);
+  if (!anio || !mes) return null;
+  return new Date(Date.UTC(anio, mes - 1, dia || 1));
+}
+
+/** "oct": mes abreviado de una fecha sin hora. */
+export function formatMesCorto(valor: string): string {
+  const d = fechaSinHora(valor);
+  if (!d) return "—";
+  return new Intl.DateTimeFormat("es-AR", { timeZone: "UTC", month: "short" })
+    .format(d)
+    .replace(".", "");
+}
+
+/** "octubre de 2026": mes y año de una fecha sin hora. */
+export function formatMesAnio(valor: string): string {
+  const d = fechaSinHora(valor);
+  if (!d) return "—";
+  return new Intl.DateTimeFormat("es-AR", {
+    timeZone: "UTC",
+    month: "long",
+    year: "numeric",
+  }).format(d);
+}
+
