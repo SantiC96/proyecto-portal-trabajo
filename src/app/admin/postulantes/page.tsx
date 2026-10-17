@@ -21,25 +21,19 @@ import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
 import {
   VENTANA_RECHAZOS_DIAS,
   aEstadoCursos,
+  textoCursosPendientes,
   textoRechazos,
   type EstadoCursosPostulante,
 } from "@/lib/cursos";
 import type { Tabla } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
+import { formatFechaCorta } from "@/lib/fechas";
 
 export const metadata: Metadata = {
   title: "Postulantes | Panel municipal | Portal de Empleo Funes",
 };
 
 const RUTA = "/admin/postulantes";
-
-function formatearFecha(iso: string) {
-  return new Date(iso).toLocaleDateString("es-AR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 type FiltrosListado = {
   q: string;
@@ -310,7 +304,7 @@ async function ListadoPostulantes({
     }),
     supabase
       .from("asignaciones_curso")
-      .select("postulante_id")
+      .select("postulante_id, curso_id")
       .in("postulante_id", postulanteIds)
       .in("estado", ["asignado", "en_curso"]),
   ]);
@@ -373,12 +367,13 @@ async function ListadoPostulantes({
 
   if (cursosPendientesRes.error)
     logError("admin_postulantes_cursos_pendientes", cursosPendientesRes.error);
-  const cursosPendientesMap = new Map<string, number>();
+  // Cursos pendientes (asignados o en curso) de cada postulante: la cantidad
+  // para el texto y los ids para no ofrecerlos de nuevo en el diálogo.
+  const cursosPendientesMap = new Map<string, string[]>();
   for (const row of cursosPendientesRes.data ?? []) {
-    cursosPendientesMap.set(
-      row.postulante_id,
-      (cursosPendientesMap.get(row.postulante_id) ?? 0) + 1
-    );
+    const ids = cursosPendientesMap.get(row.postulante_id) ?? [];
+    ids.push(row.curso_id);
+    cursosPendientesMap.set(row.postulante_id, ids);
   }
 
   const volverUrl = hrefConParams(RUTA, searchParams, {
@@ -408,8 +403,9 @@ async function ListadoPostulantes({
           const numPostulaciones = conteosMap.get(p.id) ?? 0;
           const cursos = cursosMap.get(p.id);
           const rechazos = cursos?.rechazos_ventana ?? 0;
-          const necesitaCurso = cursos?.necesita_curso ?? false;
-          const pendientes = cursosPendientesMap.get(p.id) ?? 0;
+          const puedeRecibirCurso = cursos?.puede_recibir_curso ?? false;
+          const cursosPendientesIds = cursosPendientesMap.get(p.id) ?? [];
+          const pendientes = cursosPendientesIds.length;
           const nombreCompleto = usuario
             ? `${usuario.nombre} ${usuario.apellido}`
             : "—";
@@ -452,7 +448,7 @@ async function ListadoPostulantes({
                     </span>
                     <span aria-hidden="true"> · </span>
                     <span className="whitespace-nowrap">
-                      Registrado el {formatearFecha(p.created_at)}
+                      Registrado el {formatFechaCorta(p.created_at)}
                     </span>
                   </p>
                   <RubrosPills rubros={rubros} />
@@ -491,11 +487,12 @@ async function ListadoPostulantes({
 
               {/* Acciones */}
               <div className="flex flex-wrap gap-2 lg:w-36 lg:flex-none lg:flex-col lg:items-stretch">
-                {necesitaCurso && (
+                {puedeRecibirCurso && (
                   <AsignarCursoDialog
                     postulanteId={p.id}
                     postulanteNombre={nombreCompleto}
                     cursosActivos={cursosActivos}
+                    cursosPendientesIds={cursosPendientesIds}
                     claseBoton="min-h-11 px-4 text-sm lg:min-h-9 lg:px-3"
                   />
                 )}
@@ -519,12 +516,6 @@ async function ListadoPostulantes({
       />
     </>
   );
-}
-
-function textoCursosPendientes(cantidad: number): string {
-  return cantidad === 1
-    ? "1 curso pendiente por terminar"
-    : `${cantidad} cursos pendientes por terminar`;
 }
 
 function EtiquetaCurso({

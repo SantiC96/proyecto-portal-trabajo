@@ -20,6 +20,7 @@ import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_STYLE } from "@/lib/derivaci
 import { requerirRolPagina } from "@/lib/auth";
 import { preEntrevistaYaPaso } from "@/lib/pre-entrevistas";
 import { PreEntrevistaSeccion } from "./pre-entrevista-seccion";
+import { MarcarFichaAbierta } from "./marcar-ficha-abierta";
 
 export const metadata: Metadata = {
   title: "Ficha | Postulaciones | Panel municipal | Portal de Empleo Funes",
@@ -121,6 +122,7 @@ export default async function PostulacionFichaPage({
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+      {postulacion.estado === "recibida" && <MarcarFichaAbierta postulacionId={postulacionId} />}
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Link href="/admin" className="hover:text-foreground">

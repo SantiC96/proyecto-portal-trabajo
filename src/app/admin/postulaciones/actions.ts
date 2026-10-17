@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirRol } from "@/lib/auth";
@@ -22,40 +21,33 @@ function revalidarVistas(postulacionId: string) {
   revalidatePath("/mis-postulaciones");
 }
 
-export async function abrirFicha(postulacionId: string): Promise<void> {
-  if (!esUuid(postulacionId)) redirect("/admin/postulaciones");
+/** Idempotente y silenciosa: true si la pasó de recibida a en_revision. */
+export async function abrirFicha(postulacionId: string): Promise<boolean> {
+  if (!esUuid(postulacionId)) return false;
   const auth = await requerirRol("municipalidad");
-  if (!auth.ok) {
-    redirect(`/admin/postulaciones/${postulacionId}`);
-  }
+  if (!auth.ok) return false;
 
   const supabase = await createSupabaseServerClient();
-  const { data: postulacion } = await supabase
+  // Condicional: si entretanto se derivó o descartó, no la pisa.
+  const { data, error } = await supabase
     .from("postulaciones")
-    .select("estado")
+    .update({
+      estado: "en_revision",
+      revisado_por: auth.usuario.id,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", postulacionId)
-    .single();
+    .eq("estado", "recibida")
+    .select("id");
 
-  if (postulacion?.estado === "recibida") {
-    // Condicional: si entretanto se derivó o descartó, no la pisa.
-    const { error } = await supabase
-      .from("postulaciones")
-      .update({
-        estado: "en_revision",
-        revisado_por: auth.usuario.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", postulacionId)
-      .eq("estado", "recibida");
-
-    if (error) {
-      logError("abrirFicha", error, { postulacionId });
-    } else {
-      revalidarVistas(postulacionId);
-    }
+  if (error) {
+    logError("abrirFicha", error, { postulacionId });
+    return false;
   }
+  if (!data?.length) return false;
 
-  redirect(`/admin/postulaciones/${postulacionId}`);
+  revalidarVistas(postulacionId);
+  return true;
 }
 
 export async function marcarEnRevision(

@@ -27,6 +27,7 @@ import {
   ariaErrorCampo,
 } from "@/components/ui/obligatorio";
 import { useErroresCampo } from "@/lib/use-errores-campo";
+import { formatFechaCorta } from "@/lib/fechas";
 
 type Props = {
   empresaId: string;
@@ -35,14 +36,6 @@ type Props = {
   historial: HistorialEntry[];
   fechaReenvio?: string;
 };
-
-function formatFecha(iso: string) {
-  return new Date(iso).toLocaleDateString("es-AR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 const EVENTO_LABEL: Record<HistorialEntry["evento"], string> = {
   aprobada: "Aprobada",
@@ -125,7 +118,7 @@ export function EmpresaAcciones({
             Reenviada
           </Badge>
           <span className="text-xs text-muted-foreground">
-            {formatFecha(fechaReenvio)}
+            {formatFechaCorta(fechaReenvio)}
           </span>
         </div>
       )}
@@ -187,7 +180,7 @@ export function EmpresaAcciones({
                       {EVENTO_LABEL[entry.evento]}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
-                      {formatFecha(entry.created_at)}
+                      {formatFechaCorta(entry.created_at)}
                     </span>
                   </div>
                   {entry.motivo && (

@@ -26,6 +26,7 @@ import {
   validarTipoCV,
   detectarMimeType,
 } from "@/lib/archivos";
+import { validarInformacionLaboral } from "@/lib/informacion-laboral";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Actualizar datos personales
@@ -37,6 +38,10 @@ export async function actualizarPerfil(data: {
   telefono: string;
   domicilio: string;
   dni: string;
+  nivelEducativo: string;
+  situacionLaboral: string;
+  disponibilidad: string;
+  experienciaLaboral: string;
 }): Promise<Resultado<void>> {
   const auth = await requerirRol("postulante");
   if (!auth.ok) return auth;
@@ -62,11 +67,13 @@ export async function actualizarPerfil(data: {
   if (errTelefono) return errCampo("telefono", errTelefono);
   const errDomicilio = validarTextoOpcional(data.domicilio, LARGO_MAXIMO.domicilio);
   if (errDomicilio) return errCampo("domicilio", errDomicilio);
+  const errLaboral = validarInformacionLaboral(data);
+  if (errLaboral) return errCampo(errLaboral.campo, errLaboral.mensaje);
 
   const dniLimpio = data.dni.replace(/\D/g, "");
 
-  // usuarios y postulantes se actualizan en una transacción: si el DNI está
-  // repetido no se guarda nada (migration_040).
+  // usuarios y postulantes (con la información laboral) se actualizan en una
+  // transacción: si el DNI está repetido no se guarda nada (040 y 046).
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.rpc("actualizar_mi_perfil_postulante", {
     p_nombre: data.nombre.trim(),
@@ -74,6 +81,10 @@ export async function actualizarPerfil(data: {
     p_telefono: data.telefono.trim(),
     p_domicilio: data.domicilio.trim(),
     p_dni: dniLimpio,
+    p_nivel_educativo: data.nivelEducativo,
+    p_situacion_laboral: data.situacionLaboral,
+    p_disponibilidad: data.disponibilidad,
+    p_experiencia_laboral: data.experienciaLaboral.trim(),
   });
 
   if (error) {

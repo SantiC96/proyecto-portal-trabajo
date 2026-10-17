@@ -11,7 +11,13 @@ import { obtenerCandidato } from "@/lib/admin/candidato";
 import { badgePostulacion } from "@/lib/admin/postulacion-estados";
 import { AsignarCursoDialog } from "../asignar-curso-dialog";
 import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
-import { formatFechaCorta } from "@/lib/fechas";
+import { formatFecha, formatFechaCorta, formatFechaHoraCorta } from "@/lib/fechas";
+import { InformacionLaboralResumen } from "@/components/postulantes/informacion-laboral-resumen";
+import {
+  PRE_ENTREVISTA_LABEL,
+  PRE_ENTREVISTA_STYLE,
+  esEstadoPreEntrevista,
+} from "@/lib/pre-entrevistas";
 import {
   consultarPagina,
   leerPagina,
@@ -21,12 +27,14 @@ import {
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { BookOpen, Briefcase, ThumbsDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   UMBRAL_RECHAZOS_CURSO,
   VENTANA_RECHAZOS_DIAS,
   aEstadoCursos,
   conEstadoCurso,
   rechazoCuentaParaCurso,
+  textoCursosPendientes,
   textoRechazos,
   type EstadoAsignacionCurso,
 } from "@/lib/cursos";
@@ -37,21 +45,13 @@ export const metadata: Metadata = {
   title: "Ficha postulante | Panel municipal | Portal de Empleo Funes",
 };
 
-function formatearFecha(iso: string) {
-  return new Date(iso).toLocaleDateString("es-AR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
 const TAMANO_HISTORIAL = 10;
 
 function consultaPostulaciones(supabase: ClienteSupabase, postulanteId: string) {
   return supabase
     .from("postulaciones")
     .select(
-      "id, estado, created_at, ofertas!oferta_id(id, titulo, empresa_nombre), derivaciones(estado_empresa)",
+      "id, estado, created_at, ofertas!oferta_id(id, titulo, empresa_nombre), derivaciones(estado_empresa), pre_entrevistas(estado, fecha_hora, lugar, nota_oficina)",
       { count: "exact" }
     )
     .eq("postulante_id", postulanteId);
@@ -73,7 +73,7 @@ function consultaRechazos(supabase: ClienteSupabase, postulanteId: string) {
   return supabase
     .from("derivaciones")
     .select(
-      "id, fecha_respuesta, updated_at, postulaciones!inner(postulante_id, ofertas!oferta_id(id, titulo, empresa_nombre))",
+      "id, fecha_respuesta, updated_at, nota_empresa, postulaciones!inner(postulante_id, ofertas!oferta_id(id, titulo, empresa_nombre))",
       { count: "exact" }
     )
     .eq("estado_empresa", "rechazado")
@@ -121,6 +121,7 @@ export default async function PostulanteFichaPage({
     asignacionesResult,
     cursosResult,
     rechazosResult,
+    cursosPendientesResult,
   ] = await Promise.all([
     obtenerCandidato(postulanteId),
     consultarPagina(
@@ -159,6 +160,11 @@ export default async function PostulanteFichaPage({
           .range(desde, hasta),
       TAMANO_HISTORIAL
     ),
+    supabase
+      .from("asignaciones_curso")
+      .select("curso_id")
+      .eq("postulante_id", postulanteId)
+      .in("estado", ["asignado", "en_curso"]),
   ]);
 
   if (!candidato) notFound();
@@ -170,6 +176,8 @@ export default async function PostulanteFichaPage({
   if (!asignacionesResult.ok)
     logError("admin_postulante_asignaciones", asignacionesResult.error);
   if (!rechazosResult.ok) logError("admin_postulante_rechazos", rechazosResult.error);
+  if (cursosPendientesResult.error)
+    logError("admin_postulante_cursos_pendientes", cursosPendientesResult.error);
   const filaEstadoCursos = estadoCursosResult.data?.[0];
   const estadoCursos = filaEstadoCursos ? aEstadoCursos(filaEstadoCursos) : null;
   const rechazosVentana = Number(estadoCursos?.rechazos_ventana ?? 0);
@@ -180,6 +188,9 @@ export default async function PostulanteFichaPage({
     ? { ...asignacionesResult, filas: conEstadoCurso(asignacionesResult.filas) }
     : asignacionesResult;
   const necesitaCurso = estadoCursos?.necesita_curso ?? false;
+  const puedeRecibirCurso = estadoCursos?.puede_recibir_curso ?? false;
+  const cantidadCursosPendientes = Number(estadoCursos?.cursos_activos ?? 0);
+  const cursosPendientesIds = (cursosPendientesResult.data ?? []).map((a) => a.curso_id);
   const nombreCompleto = `${candidato.usuario.nombre} ${candidato.usuario.apellido}`;
 
   return (
@@ -221,22 +232,26 @@ export default async function PostulanteFichaPage({
             )}
           </div>
         </div>
-        {asignacionActivaEstado ? (
-          <a
-            href="#rechazos-y-cursos"
-            className="inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground"
-          >
-            Ya tiene un curso pendiente
-          </a>
-        ) : (
-          necesitaCurso && (
-            <AsignarCursoDialog
-              postulanteId={postulanteId}
-              postulanteNombre={nombreCompleto}
-              cursosActivos={cursosActivos}
-              destacado
-            />
-          )
+        {(cantidadCursosPendientes > 0 || puedeRecibirCurso) && (
+          <div className="flex flex-wrap items-center gap-3">
+            {cantidadCursosPendientes > 0 && (
+              <a
+                href="#rechazos-y-cursos"
+                className="inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground"
+              >
+                {textoCursosPendientes(cantidadCursosPendientes)}
+              </a>
+            )}
+            {puedeRecibirCurso && (
+              <AsignarCursoDialog
+                postulanteId={postulanteId}
+                postulanteNombre={nombreCompleto}
+                cursosActivos={cursosActivos}
+                cursosPendientesIds={cursosPendientesIds}
+                destacado
+              />
+            )}
+          </div>
         )}
       </div>
 
@@ -249,6 +264,8 @@ export default async function PostulanteFichaPage({
           categorias={candidato.categorias}
           cvUrl={candidato.cvUrl}
         />
+
+        <InformacionLaboralResumen info={candidato.postulante} className="bg-surface" />
 
         {/* Rechazos y cursos */}
         <div
@@ -272,7 +289,7 @@ export default async function PostulanteFichaPage({
               <dd className="mt-0.5 text-xs text-muted-foreground">
                 {estadoCursos?.ultimo_completado_en
                   ? `Desde el último curso completado (${formatFechaCorta(estadoCursos.ultimo_completado_en)})`
-                  : `Con ${UMBRAL_RECHAZOS_CURSO} o más necesita curso`}
+                  : `Con ${UMBRAL_RECHAZOS_CURSO} o más se le puede asignar un curso`}
               </dd>
             </div>
             <div className="rounded-[var(--radius-md)] bg-surface-tinted p-3">
@@ -280,18 +297,25 @@ export default async function PostulanteFichaPage({
               <dd className="mt-1 text-2xl font-bold text-foreground">{rechazosTotales}</dd>
             </div>
             <div className="rounded-[var(--radius-md)] bg-surface-tinted p-3">
-              <dt className="text-xs text-muted-foreground">Curso</dt>
+              <dt className="text-xs text-muted-foreground">Cursos</dt>
               <dd className="mt-1.5">
                 {necesitaCurso ? (
                   <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
                     Necesita curso
                   </span>
-                ) : asignacionActivaEstado ? (
-                  <EstadoCursoBadge estado={asignacionActivaEstado} />
+                ) : cantidadCursosPendientes > 0 ? (
+                  <span className="text-sm font-medium text-foreground">
+                    {textoCursosPendientes(cantidadCursosPendientes)}
+                  </span>
                 ) : (
                   <span className="text-sm text-muted-foreground">Sin curso pendiente</span>
                 )}
               </dd>
+              {cantidadCursosPendientes > 0 && puedeRecibirCurso && (
+                <dd className="mt-1 text-xs text-amber-700">
+                  Tiene {UMBRAL_RECHAZOS_CURSO} o más rechazos recientes: se le puede asignar otro curso.
+                </dd>
+              )}
             </div>
           </dl>
 
@@ -356,7 +380,7 @@ function HistorialRechazos({
               return (
                 <li
                   key={r.id}
-                  className="flex flex-col gap-1 px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+                  className="flex flex-col gap-1 px-3 py-2.5 text-sm sm:flex-row sm:items-start sm:justify-between sm:gap-3"
                 >
                   <div className="min-w-0">
                     <p className="font-medium text-foreground">
@@ -364,6 +388,14 @@ function HistorialRechazos({
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {oferta?.empresa_nombre ?? "—"}
+                    </p>
+                    <p className="mt-1 whitespace-pre-line break-words text-xs">
+                      <span className="text-muted-foreground">Motivo: </span>
+                      {r.nota_empresa?.trim() ? (
+                        <span className="text-foreground">{r.nota_empresa}</span>
+                      ) : (
+                        <span className="text-muted-foreground">Sin motivo informado</span>
+                      )}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
@@ -496,6 +528,7 @@ function HistorialPostulaciones({
                   <th className="pb-2 pr-4 font-medium text-muted-foreground">Empresa</th>
                   <th className="pb-2 pr-4 font-medium text-muted-foreground">Fecha</th>
                   <th className="pb-2 pr-4 font-medium text-muted-foreground">Estado</th>
+                  <th className="pb-2 pr-4 font-medium text-muted-foreground">Pre-entrevista</th>
                   <th className="pb-2"></th>
                 </tr>
               </thead>
@@ -503,7 +536,7 @@ function HistorialPostulaciones({
                 {resultado.filas.map((p) => {
                   const badgeCfg = badgePostulacion(p.estado, p.derivaciones?.estado_empresa);
                   return (
-                    <tr key={p.id}>
+                    <tr key={p.id} className="align-top">
                       <td className="py-3 pr-4 font-medium text-foreground">
                         {p.ofertas?.titulo ?? "Oferta eliminada"}
                       </td>
@@ -511,12 +544,15 @@ function HistorialPostulaciones({
                         {p.ofertas?.empresa_nombre ?? "—"}
                       </td>
                       <td className="py-3 pr-4 text-muted-foreground">
-                        {formatearFecha(p.created_at)}
+                        {formatFecha(p.created_at)}
                       </td>
                       <td className="py-3 pr-4">
                         <Badge variant={badgeCfg.variant} className={badgeCfg.className}>
                           {badgeCfg.label}
                         </Badge>
+                      </td>
+                      <td className="py-3 pr-4">
+                        <PreEntrevistaHistorial pre={p.pre_entrevistas} />
                       </td>
                       <td className="py-3 w-px whitespace-nowrap">
                         <Link
@@ -551,8 +587,12 @@ function HistorialPostulaciones({
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {p.ofertas?.empresa_nombre ?? "—"} · {formatearFecha(p.created_at)}
+                    {p.ofertas?.empresa_nombre ?? "—"} · {formatFecha(p.created_at)}
                   </p>
+                  <div className="text-xs">
+                    <p className="mb-1 text-muted-foreground">Pre-entrevista</p>
+                    <PreEntrevistaHistorial pre={p.pre_entrevistas} />
+                  </div>
                   <Link
                     href={`/admin/postulaciones/${p.id}`}
                     className="btn-secundario inline-flex items-center gap-1 whitespace-nowrap px-3 py-1.5 text-xs"
@@ -575,6 +615,35 @@ function HistorialPostulaciones({
             ancla={ancla}
           />
         </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Pre-entrevista de una postulación (044/045). Esta pantalla es solo de la
+ * oficina, así que muestra también la nota interna.
+ */
+function PreEntrevistaHistorial({ pre }: { pre: PostulacionHistorial["pre_entrevistas"] }) {
+  if (!pre || !esEstadoPreEntrevista(pre.estado)) {
+    return <span className="text-xs text-muted-foreground">Sin pre-entrevista</span>;
+  }
+  return (
+    <div className="space-y-1 text-xs">
+      <span
+        className={cn(
+          "inline-flex items-center rounded-full px-2 py-0.5 font-medium",
+          PRE_ENTREVISTA_STYLE[pre.estado],
+        )}
+      >
+        {PRE_ENTREVISTA_LABEL[pre.estado]}
+      </span>
+      <p className="text-foreground">{formatFechaHoraCorta(pre.fecha_hora)}</p>
+      <p className="break-words text-muted-foreground">{pre.lugar}</p>
+      {pre.nota_oficina && (
+        <p className="whitespace-pre-line break-words text-muted-foreground">
+          Nota interna: {pre.nota_oficina}
+        </p>
       )}
     </div>
   );

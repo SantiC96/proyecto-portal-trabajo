@@ -12,11 +12,9 @@ import {
   type ParamsUrl,
 } from "@/lib/paginacion";
 import { Buscador } from "@/components/ui/buscador";
-import { BotonFormulario } from "@/components/ui/boton-formulario";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
-import { abrirFicha } from "./actions";
 import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import {
@@ -653,14 +651,12 @@ async function ListadoPostulaciones({
                         <PreEntrevistaCoordinada pre={fila.preEntrevista} className="mt-1.5" />
                       </td>
                       <td className="py-4">
-                        <form action={abrirFicha.bind(null, fila.postulacionId)}>
-                          <BotonFormulario
-                            textoPendiente="Abriendo…"
-                            className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface-tinted disabled:opacity-60"
-                          >
-                            Ver ficha
-                          </BotonFormulario>
-                        </form>
+                        <Link
+                          href={`/admin/postulaciones/${fila.postulacionId}`}
+                          className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface-tinted"
+                        >
+                          Ver ficha
+                        </Link>
                       </td>
                     </tr>
                   );
@@ -738,14 +734,12 @@ async function ListadoPostulaciones({
                   </dl>
                   <PreEntrevistaCoordinada pre={fila.preEntrevista} className="mt-3" />
                   <div className="mt-4">
-                    <form action={abrirFicha.bind(null, fila.postulacionId)}>
-                      <BotonFormulario
-                        textoPendiente="Abriendo…"
-                        className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-tinted disabled:opacity-60"
-                      >
-                        Ver ficha
-                      </BotonFormulario>
-                    </form>
+                    <Link
+                      href={`/admin/postulaciones/${fila.postulacionId}`}
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-tinted"
+                    >
+                      Ver ficha
+                    </Link>
                   </div>
                 </div>
               );

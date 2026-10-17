@@ -4,7 +4,17 @@ import type { Tabla } from "@/types/db";
 type Categoria = Pick<Tabla<"categorias">, "id" | "nombre">;
 
 export type DatosCandidatoResult = {
-  postulante: Pick<Tabla<"postulantes">, "id" | "usuario_id" | "dni" | "domicilio">;
+  postulante: Pick<
+    Tabla<"postulantes">,
+    | "id"
+    | "usuario_id"
+    | "dni"
+    | "domicilio"
+    | "nivel_educativo"
+    | "situacion_laboral"
+    | "disponibilidad"
+    | "experiencia_laboral"
+  >;
   usuario: Pick<Tabla<"usuarios">, "id" | "nombre" | "apellido" | "telefono">;
   email: string | null;
   categorias: Categoria[];
@@ -23,7 +33,7 @@ export async function obtenerCandidato(
   const { data: postulante } = await supabase
     .from("postulantes")
     .select(
-      "id, usuario_id, dni, domicilio, usuarios!usuario_id(id, nombre, apellido, telefono)"
+      "id, usuario_id, dni, domicilio, nivel_educativo, situacion_laboral, disponibilidad, experiencia_laboral, usuarios!usuario_id(id, nombre, apellido, telefono)"
     )
     .eq("id", postulanteId)
     .single();
@@ -75,6 +85,10 @@ export async function obtenerCandidato(
       usuario_id: postulante.usuario_id,
       dni: postulante.dni,
       domicilio: postulante.domicilio,
+      nivel_educativo: postulante.nivel_educativo,
+      situacion_laboral: postulante.situacion_laboral,
+      disponibilidad: postulante.disponibilidad,
+      experiencia_laboral: postulante.experiencia_laboral,
     },
     usuario: {
       id: usuario.id,

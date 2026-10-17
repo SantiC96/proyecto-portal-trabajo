@@ -21,6 +21,7 @@ import type {
 } from "@/types/db";
 import { NotaGuardadoEditor } from "@/app/empresa/(panel)/candidatos-guardados/_components/nota-editor";
 import { FotoPrivada } from "@/components/ui/foto-privada";
+import { InformacionLaboralResumen } from "@/components/postulantes/informacion-laboral-resumen";
 
 export const metadata: Metadata = {
   title: "Perfil de candidato | Portal de Empleo Funes",
@@ -181,6 +182,8 @@ export default async function PerfilCandidatoPage({
             </div>
           </div>
         )}
+
+        <InformacionLaboralResumen info={candidato} className="bg-white shadow-xs" />
 
         {/* Historial en esta empresa */}
         {historial.length > 0 && (

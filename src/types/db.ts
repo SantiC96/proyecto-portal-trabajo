@@ -56,13 +56,19 @@ export type FilaOfertaPublica = ConNulos<
   FilaRpc<"buscar_ofertas_publicas">,
   "publicado_en" | "requisitos" | "beneficios" | "categorias"
 >;
+/** Columnas opcionales de información laboral de postulantes (migration_046). */
+type CamposInformacionLaboral =
+  | "nivel_educativo"
+  | "situacion_laboral"
+  | "disponibilidad"
+  | "experiencia_laboral";
 export type FilaCandidatoParaEmpresa = ConNulos<
   FilaRpc<"candidato_para_empresa">,
-  "telefono" | "cv_ruta"
+  "telefono" | "cv_ruta" | CamposInformacionLaboral
 >;
 export type FilaCandidatoParaEmpresaCompleto = ConNulos<
   FilaRpc<"candidato_para_empresa_completo">,
-  "telefono" | "cv_ruta" | "foto_ruta"
+  "telefono" | "cv_ruta" | "foto_ruta" | CamposInformacionLaboral
 >;
 export type FilaDerivacionDeOfertaEmpresa = ConNulos<
   FilaRpc<"derivaciones_de_oferta_empresa">,
