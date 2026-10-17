@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import {
   Menu, X, LogIn, UserPlus, LogOut,
-  User, Briefcase, LayoutDashboard, ChevronDown, BookOpen,
+  User, Briefcase, LayoutDashboard, ChevronDown, BookOpen, ChartColumn,
 } from "lucide-react";
 import { RegisterModal } from "@/components/auth/register-modal";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
@@ -65,7 +65,10 @@ function getMenuItems(rol?: Rol | null, cursosPendientes = 0): MenuItem[] {
     return [{ label: "Mi panel", href: "/empresa", Icon: LayoutDashboard }];
   }
   if (rol === "municipalidad") {
-    return [{ label: "Panel de la oficina", href: "/admin", Icon: LayoutDashboard }];
+    return [
+      { label: "Panel de la oficina", href: "/admin", Icon: LayoutDashboard },
+      { label: "Indicadores", href: "/admin/indicadores", Icon: ChartColumn },
+    ];
   }
   return [{ label: "Mi perfil", href: "/perfil", Icon: User }];
 }
@@ -407,6 +410,16 @@ export function Navbar({ session = null }: NavbarProps) {
                   >
                     Mi perfil
                   </Link>
+
+                  {session.rol === "municipalidad" && (
+                    <Link
+                      href="/admin/indicadores"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`${mobileLinkBase} ${mobileLinkInactive}`}
+                    >
+                      Indicadores
+                    </Link>
+                  )}
 
                   {session.rol === "postulante" && (
                     <>
