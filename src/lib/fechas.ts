@@ -29,33 +29,57 @@ export function formatFechaCorta(iso: string | null | undefined): string {
   }).format(d);
 }
 
-export function formatFechaHora(iso: string | null | undefined): string {
+/** "20 oct": día y mes corto, sin año. */
+export function formatFechaDiaMes(iso: string | null | undefined): string {
   const d = parseFecha(iso);
   if (!d) return "—";
   return new Intl.DateTimeFormat("es-AR", {
     timeZone: TZ,
     day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+    month: "short",
   }).format(d);
 }
 
-/** "20/10 10:30": fecha y hora compactas para listados y badges. */
+// Las horas siempre en 24 horas ("16:15"), sin depender del idioma ni de la
+// configuración del navegador: hourCycle "h23" y armado manual con las partes.
+const FORMATO_FECHA_HORA = new Intl.DateTimeFormat("es-AR", {
+  timeZone: TZ,
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+const FORMATO_FECHA_HORA_CORTA = new Intl.DateTimeFormat("es-AR", {
+  timeZone: TZ,
+  day: "2-digit",
+  month: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+function partes(formato: Intl.DateTimeFormat, d: Date) {
+  const lista = formato.formatToParts(d);
+  return (tipo: Intl.DateTimeFormatPartTypes) =>
+    lista.find((p) => p.type === tipo)?.value ?? "";
+}
+
+/** "20 de octubre de 2026 a las 16:15". */
+export function formatFechaHora(iso: string | null | undefined): string {
+  const d = parseFecha(iso);
+  if (!d) return "—";
+  const parte = partes(FORMATO_FECHA_HORA, d);
+  return `${parte("day")} de ${parte("month")} de ${parte("year")} a las ${parte("hour")}:${parte("minute")}`;
+}
+
+/** "20/10 16:15": fecha y hora compactas para listados y badges. */
 export function formatFechaHoraCorta(iso: string | null | undefined): string {
   const d = parseFecha(iso);
   if (!d) return "—";
-  const partes = new Intl.DateTimeFormat("es-AR", {
-    timeZone: TZ,
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(d);
-  const parte = (tipo: Intl.DateTimeFormatPartTypes) =>
-    partes.find((p) => p.type === tipo)?.value ?? "";
+  const parte = partes(FORMATO_FECHA_HORA_CORTA, d);
   return `${parte("day")}/${parte("month")} ${parte("hour")}:${parte("minute")}`;
 }
 

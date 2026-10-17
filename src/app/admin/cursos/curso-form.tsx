@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { crearCurso, editarCurso } from "./actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
@@ -32,14 +33,12 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
   const [link, setLink] = useState(inicial?.link ?? "");
   const [indicaciones, setIndicaciones] = useState(inicial?.indicaciones ?? "");
   const [error, setError] = useState<ErrorAccion | null>(null);
-  const [guardado, setGuardado] = useState(false);
   const campos = useErroresCampo<keyof CursoData>();
   const { pendiente: isPending, ejecutar } = useAccion();
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setGuardado(false);
 
     if (!campos.validar({ nombre }, e.currentTarget)) return;
     if (link.trim() && !link.trim().startsWith("https://")) {
@@ -62,7 +61,7 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
       if (!res.ok) {
         if (!campos.tomarDelServidor(res, CAMPOS)) setError(toErrorAccion(res));
       } else {
-        setGuardado(true);
+        mostrarAviso(res);
       }
     });
   }
@@ -169,9 +168,6 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
             </p>
           )}
         </div>
-      )}
-      {guardado && (
-        <p className="text-sm text-primary">Cambios guardados.</p>
       )}
 
       <button type="submit" disabled={isPending} aria-busy={isPending} className="btn-primario">

@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { es } from "react-day-picker/locale";
-import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
+import { CampoFechaHora, fechaHoraISO, horarioYaPaso } from "@/components/ui/campo-fecha-hora";
 import {
   Dialog,
   DialogContent,
@@ -35,50 +34,11 @@ import {
   ariaErrorCampo,
 } from "@/components/ui/obligatorio";
 import { useErroresCampo } from "@/lib/use-errores-campo";
+import { formatFechaHora } from "@/lib/fechas";
 import { cn } from "@/lib/utils";
 
 /** "fecha" es el error de fecha y hora que devuelve el servidor; va debajo del horario. */
 type CampoEntrevista = "dia" | "hora" | "fecha" | "lugar";
-
-// Genera intervalos de 15 min de 08:00 a 20:00
-function generarHorarios(): string[] {
-  const slots: string[] = [];
-  for (let h = 8; h <= 20; h++) {
-    for (const m of [0, 15, 30, 45]) {
-      if (h === 20 && m > 0) break;
-      slots.push(
-        `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
-      );
-    }
-  }
-  return slots;
-}
-const HORARIOS = generarHorarios();
-
-function getNowArgentina(): Date {
-  return new Date(
-    new Date().toLocaleString("en-US", {
-      timeZone: "America/Argentina/Buenos_Aires",
-    })
-  );
-}
-
-function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-function buildFechaISO(day: Date, time: string): string {
-  const [h, m] = time.split(":");
-  const yyyy = day.getFullYear();
-  const mm = String(day.getMonth() + 1).padStart(2, "0");
-  const dd = String(day.getDate()).padStart(2, "0");
-  // Argentina is UTC-3 (no DST)
-  return `${yyyy}-${mm}-${dd}T${h}:${m}:00-03:00`;
-}
 
 type EntrevistaDialogProps = {
   open: boolean;
@@ -107,20 +67,6 @@ function EntrevistaDialog({
   const [error, setError] = useState<ErrorAccion | null>(null);
   const campos = useErroresCampo<CampoEntrevista>();
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const nowArg = getNowArgentina();
-  const selectedIsToday = selectedDay ? isSameDay(selectedDay, nowArg) : false;
-
-  function isHoraDisabled(slot: string): boolean {
-    if (!selectedIsToday) return false;
-    const [h, m] = slot.split(":").map(Number);
-    const argH = nowArg.getHours();
-    const argM = nowArg.getMinutes();
-    return h < argH || (h === argH && m <= argM);
-  }
-
   function handleReset() {
     setSelectedDay(undefined);
     setSelectedTime("");
@@ -137,11 +83,11 @@ function EntrevistaDialog({
   function handleSubmit() {
     setError(null);
     if (!campos.validar({ dia: selectedDay, hora: selectedTime, lugar }) || !selectedDay) return;
-    if (isHoraDisabled(selectedTime)) {
+    if (horarioYaPaso(selectedDay, selectedTime)) {
       campos.marcar("hora", "El horario elegido ya pasó. Seleccioná uno futuro.", null);
       return;
     }
-    const fechaISO = buildFechaISO(selectedDay, selectedTime);
+    const fechaISO = fechaHoraISO(selectedDay, selectedTime);
     const action = modo === "coordinar" ? coordinarEntrevista : reprogramarEntrevista;
     ejecutar(async () => {
       const result = await action(derivacionId, ofertaId, fechaISO, lugar.trim());
@@ -171,92 +117,30 @@ function EntrevistaDialog({
           <DialogTitle>{titulo}</DialogTitle>
           {fechaActual && modo === "reprogramar" && (
             <DialogDescription>
-              Entrevista actual: {new Date(fechaActual).toLocaleString("es-AR", {
-                timeZone: "America/Argentina/Buenos_Aires",
-                day: "numeric",
-                month: "long",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              Entrevista actual: {formatFechaHora(fechaActual)}
             </DialogDescription>
           )}
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Calendario */}
-          <div>
-            <p id="entrevista-dia-label" className="mb-2 text-sm font-medium text-foreground">
-              Seleccioná el día <Obligatorio />
-            </p>
-            {/* El calendario no es un control de formulario: el grupo lleva el
-                estado de error y recibe el foco cuando falta el día. */}
-            <div
-              id="entrevista-dia"
-              role="group"
-              aria-labelledby="entrevista-dia-label"
-              tabIndex={-1}
-              {...ariaErrorCampo("entrevista-dia", campos.errores.dia)}
-              className={cn(
-                "flex justify-center rounded-lg outline-none",
-                campos.errores.dia && "ring-2 ring-red-500/20"
-              )}
-            >
-              <Calendar
-                mode="single"
-                selected={selectedDay}
-                onSelect={(dia) => {
-                  setSelectedDay(dia);
-                  campos.limpiar("dia");
-                  campos.limpiar("fecha");
-                }}
-                disabled={{ before: today }}
-                locale={es}
-                captionLayout="label"
-              />
-            </div>
-            <ErrorCampo idCampo="entrevista-dia" mensaje={campos.errores.dia} className="mt-1.5" />
-          </div>
-
-          {/* Selector de hora */}
-          <div>
-            <label
-              htmlFor="horario-select"
-              className="mb-1.5 block text-sm font-medium text-foreground"
-            >
-              Horario <Obligatorio />
-            </label>
-            <select
-              id="horario-select"
-              value={selectedTime}
-              onChange={(e) => {
-                setSelectedTime(e.target.value);
-                campos.limpiar("hora");
-                campos.limpiar("fecha");
-              }}
-              disabled={!selectedDay}
-              {...ariaErrorCampo("horario-select", campos.errores.hora ?? campos.errores.fecha)}
-              className={cn(
-                "h-10 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:bg-surface-tinted disabled:text-muted-foreground",
-                CLASE_CONTROL_INVALIDO
-              )}
-            >
-              <option value="">Elegí un horario…</option>
-              {HORARIOS.map((slot) => (
-                <option
-                  key={slot}
-                  value={slot}
-                  disabled={isHoraDisabled(slot)}
-                >
-                  {slot}
-                </option>
-              ))}
-            </select>
-            <ErrorCampo
-              idCampo="horario-select"
-              mensaje={campos.errores.hora ?? campos.errores.fecha}
-              className="mt-1.5"
-            />
-          </div>
+          <CampoFechaHora
+            idHorario="horario-select"
+            dia={selectedDay}
+            hora={selectedTime}
+            onDiaChange={(dia) => {
+              setSelectedDay(dia);
+              campos.limpiar("dia");
+              campos.limpiar("fecha");
+            }}
+            onHoraChange={(hora) => {
+              setSelectedTime(hora);
+              campos.limpiar("hora");
+              campos.limpiar("fecha");
+            }}
+            deshabilitado={isPending}
+            errorDia={campos.errores.dia}
+            errorHora={campos.errores.hora ?? campos.errores.fecha}
+          />
 
           {/* Lugar (obligatorio) */}
           <div>

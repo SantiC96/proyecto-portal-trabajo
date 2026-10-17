@@ -21,6 +21,7 @@ import { EmpresaAcciones } from "./acciones";
 import type { Tabla } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
 import { idsEmpresasSinConfirmar, listaIn } from "@/lib/admin/empresas-sin-confirmar";
+import { formatFechaCorta } from "@/lib/fechas";
 
 export const metadata: Metadata = {
   title: "Empresas | Panel municipal | Portal de Empleo Funes",
@@ -52,14 +53,6 @@ const BADGE_VARIANT: Record<EstadoAprobacion, "secondary" | "default" | "destruc
   aprobada: "default",
   rechazada: "destructive",
 };
-
-function formatearFecha(iso: string) {
-  return new Date(iso).toLocaleDateString("es-AR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 const RUTA = "/admin/empresas";
 
@@ -315,7 +308,7 @@ async function ListadoEmpresas({
                       {emailMap.get(empresa.usuario_id) || "—"}
                     </td>
                     <td className="py-4 pr-4 text-muted-foreground">
-                      {formatearFecha(empresa.created_at)}
+                      {formatFechaCorta(empresa.created_at)}
                     </td>
                     <td className="py-4">
                       <EmpresaAcciones
@@ -398,7 +391,7 @@ async function ListadoEmpresas({
                       Registro
                     </dt>
                     <dd className="text-foreground">
-                      {formatearFecha(empresa.created_at)}
+                      {formatFechaCorta(empresa.created_at)}
                     </dd>
                   </div>
                 </dl>

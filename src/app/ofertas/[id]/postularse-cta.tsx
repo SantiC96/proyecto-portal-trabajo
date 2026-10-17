@@ -11,6 +11,7 @@ import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
 import type { Enum, Tabla } from "@/types/db";
+import { formatFecha } from "@/lib/fechas";
 
 const ESTADO_LABEL: Record<Enum<"estado_postulacion">, string> = {
   recibida: "Recibida",
@@ -120,11 +121,7 @@ export function PostularseCta({
 
   // --- ya postulado ---
   if (variant === "ya-postulado" && postulacion) {
-    const fecha = new Date(postulacion.created_at).toLocaleDateString("es-AR", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+    const fecha = formatFecha(postulacion.created_at);
     return (
       <div className="flex flex-col gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
         <div className="flex items-center gap-2">
