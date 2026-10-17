@@ -645,23 +645,35 @@ export type Database = {
       postulantes: {
         Row: {
           created_at: string
+          disponibilidad: string | null
           dni: string | null
           domicilio: string | null
+          experiencia_laboral: string | null
           id: string
+          nivel_educativo: string | null
+          situacion_laboral: string | null
           usuario_id: string
         }
         Insert: {
           created_at?: string
+          disponibilidad?: string | null
           dni?: string | null
           domicilio?: string | null
+          experiencia_laboral?: string | null
           id?: string
+          nivel_educativo?: string | null
+          situacion_laboral?: string | null
           usuario_id: string
         }
         Update: {
           created_at?: string
+          disponibilidad?: string | null
           dni?: string | null
           domicilio?: string | null
+          experiencia_laboral?: string | null
           id?: string
+          nivel_educativo?: string | null
+          situacion_laboral?: string | null
           usuario_id?: string
         }
         Relationships: [
@@ -772,16 +784,31 @@ export type Database = {
         Args: { p_asignacion_id: string; p_estado: string }
         Returns: undefined
       }
-      actualizar_mi_perfil_postulante: {
-        Args: {
-          p_apellido: string
-          p_dni: string
-          p_domicilio: string
-          p_nombre: string
-          p_telefono: string
-        }
-        Returns: undefined
-      }
+      actualizar_mi_perfil_postulante:
+        | {
+            Args: {
+              p_apellido: string
+              p_dni: string
+              p_domicilio: string
+              p_nombre: string
+              p_telefono: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_apellido: string
+              p_disponibilidad: string
+              p_dni: string
+              p_domicilio: string
+              p_experiencia_laboral: string
+              p_nivel_educativo: string
+              p_nombre: string
+              p_situacion_laboral: string
+              p_telefono: string
+            }
+            Returns: undefined
+          }
       bloquear_pre_entrevista: {
         Args: { p_pre_entrevista_id: string }
         Returns: Record<string, unknown>
@@ -815,8 +842,12 @@ export type Database = {
         Returns: {
           apellido: string
           cv_ruta: string
+          disponibilidad: string
           email: string
+          experiencia_laboral: string
+          nivel_educativo: string
           nombre: string
+          situacion_laboral: string
           telefono: string
         }[]
       }
@@ -825,10 +856,14 @@ export type Database = {
         Returns: {
           apellido: string
           cv_ruta: string
+          disponibilidad: string
           email: string
+          experiencia_laboral: string
           foto_ruta: string
+          nivel_educativo: string
           nombre: string
           rubros_interes: string[]
+          situacion_laboral: string
           telefono: string
         }[]
       }
@@ -948,8 +983,10 @@ export type Database = {
         Returns: {
           asignacion_activa_estado: string
           asignacion_activa_id: string
+          cursos_activos: number
           necesita_curso: boolean
           postulante_id: string
+          puede_recibir_curso: boolean
           rechazos_totales: number
           rechazos_ventana: number
           ultima_asignacion_estado: string
@@ -961,8 +998,10 @@ export type Database = {
         Returns: {
           asignacion_activa_estado: string
           asignacion_activa_id: string
+          cursos_activos: number
           necesita_curso: boolean
           postulante_id: string
+          puede_recibir_curso: boolean
           rechazos_totales: number
           rechazos_ventana: number
           ultima_asignacion_estado: string
