@@ -1,40 +1,11 @@
 import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { haceDiasISO, inicioAnioArgentinaISO } from "@/lib/fechas";
+import { desdePeriodo, type Periodo } from "@/lib/indicadores-periodo";
 import type { FilaIndicadoresPortal, FilaRpc } from "@/types/db";
 
 // Los cálculos viven en la base (migration_047, docs/decisiones/019): acá
 // solo se elige el período y se llaman las funciones.
-
-export const PERIODOS = ["30d", "90d", "anio", "todo"] as const;
-export type Periodo = (typeof PERIODOS)[number];
-export const PERIODO_POR_DEFECTO: Periodo = "30d";
-
-export const PERIODO_LABEL: Record<Periodo, string> = {
-  "30d": "Últimos 30 días",
-  "90d": "Últimos 90 días",
-  anio: "Este año",
-  todo: "Desde el inicio",
-};
-
-export function leerPeriodo(valor: string | undefined): Periodo {
-  return PERIODOS.find((p) => p === valor) ?? PERIODO_POR_DEFECTO;
-}
-
-/** Comienzo del período en ISO; undefined = desde el inicio. */
-export function desdePeriodo(periodo: Periodo): string | undefined {
-  switch (periodo) {
-    case "30d":
-      return haceDiasISO(30);
-    case "90d":
-      return haceDiasISO(90);
-    case "anio":
-      return inicioAnioArgentinaISO();
-    case "todo":
-      return undefined;
-  }
-}
 
 export type PostulacionesMes = FilaRpc<"postulaciones_por_mes">;
 export type PostulacionesRubro = FilaRpc<"postulaciones_por_rubro">;

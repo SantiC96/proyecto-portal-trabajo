@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ChevronRight, type LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export type Indicador = {
   etiqueta: string;
@@ -29,10 +30,13 @@ export function GrupoIndicadores({
   titulo,
   icono: Icono,
   indicadores,
+  columnas,
 }: {
   titulo: string;
   icono: LucideIcon;
   indicadores: Indicador[];
+  /** Columnas extra para pantallas anchas (por ejemplo "lg:grid-cols-5"); siempre parte de 2. */
+  columnas?: string;
 }) {
   return (
     <section
@@ -45,7 +49,7 @@ export function GrupoIndicadores({
         </span>
         {titulo}
       </h3>
-      <ul className="mt-4 grid grid-cols-2 gap-2">
+      <ul className={cn("mt-4 grid grid-cols-2 gap-2", columnas)}>
         {indicadores.map((indicador) => (
           <li key={indicador.etiqueta}>
             <ItemIndicador indicador={indicador} />

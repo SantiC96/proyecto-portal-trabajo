@@ -5,13 +5,8 @@ import Link from "next/link";
 import { BookOpen, Building2, ChartColumn, LayoutDashboard, Route } from "lucide-react";
 import { requerirRolPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import {
-  obtenerIndicadores,
-  leerPeriodo,
-  PERIODOS,
-  PERIODO_LABEL,
-  type Periodo,
-} from "@/lib/admin/indicadores";
+import { obtenerIndicadores } from "@/lib/admin/indicadores";
+import { leerPeriodo, PERIODO_LABEL, type Periodo } from "@/lib/indicadores-periodo";
 import type { FilaIndicadoresPortal } from "@/types/db";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import {
@@ -19,7 +14,9 @@ import {
   formatDecimal,
   formatNumero,
   type Indicador,
-} from "./grupo-indicadores";
+} from "@/components/indicadores/grupo-indicadores";
+import { SelectorPeriodo } from "@/components/indicadores/selector-periodo";
+import { TituloBloque } from "@/components/indicadores/titulo-bloque";
 import { GraficoPorMes, GraficoPorRubro } from "./graficos";
 import { EsqueletoIndicadores } from "./esqueleto-indicadores";
 import { formatMesAnio } from "@/lib/fechas";
@@ -56,25 +53,7 @@ export default async function IndicadoresPage({
         Datos del funcionamiento del portal, calculados en el momento.
       </p>
 
-      <nav
-        aria-label="Período"
-        className="mt-6 grid grid-cols-2 gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1 sm:flex"
-      >
-        {PERIODOS.map((p) => (
-          <Link
-            key={p}
-            href={p === "30d" ? RUTA : `${RUTA}?periodo=${p}`}
-            aria-current={p === periodo ? "page" : undefined}
-            className={
-              p === periodo
-                ? "flex min-h-11 flex-1 items-center justify-center rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
-                : "flex min-h-11 flex-1 items-center justify-center rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
-            }
-          >
-            {PERIODO_LABEL[p]}
-          </Link>
-        ))}
-      </nav>
+      <SelectorPeriodo ruta={RUTA} periodo={periodo} />
 
       <Suspense key={periodo} fallback={<EsqueletoIndicadores />}>
         <ContenidoIndicadores periodo={periodo} />
@@ -293,15 +272,6 @@ async function ContenidoIndicadores({ periodo }: { periodo: Periodo }) {
           <GraficoPorMes meses={meses} />
         )}
       </TarjetaGrafico>
-    </div>
-  );
-}
-
-function TituloBloque({ titulo, descripcion }: { titulo: string; descripcion: string }) {
-  return (
-    <div>
-      <h2 className="text-lg font-semibold text-foreground">{titulo}</h2>
-      <p className="mt-0.5 text-sm text-muted-foreground">{descripcion}</p>
     </div>
   );
 }

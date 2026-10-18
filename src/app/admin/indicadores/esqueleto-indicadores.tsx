@@ -1,17 +1,5 @@
 import { Esqueleto } from "@/components/ui/esqueleto";
-
-function EsqueletoGrupo({ items }: { items: number }) {
-  return (
-    <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4 shadow-xs sm:p-5">
-      <Esqueleto className="h-6 w-32" />
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        {Array.from({ length: items }, (_, i) => (
-          <Esqueleto key={i} className="h-20" />
-        ))}
-      </div>
-    </div>
-  );
-}
+import { EsqueletoGrupo } from "@/components/indicadores/esqueleto-grupo";
 
 /** Misma estructura que el contenido de /admin/indicadores. */
 export function EsqueletoIndicadores() {
