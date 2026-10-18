@@ -1101,6 +1101,38 @@ export type Database = {
         Args: { p_dias_aviso: number }
         Returns: number
       }
+      indicadores_empresa: {
+        Args: { p_desde?: string }
+        Returns: {
+          candidatos_derivados: number
+          dias_promedio_contratacion: number
+          entrevistas_coordinadas: number
+          no_seleccionados: number
+          ofertas_cerradas: number
+          ofertas_pendientes: number
+          ofertas_rechazadas: number
+          ofertas_totales: number
+          ofertas_vencidas: number
+          ofertas_vigentes: number
+          seleccionados: number
+          vacantes_cubiertas: number
+          vacantes_totales: number
+        }[]
+      }
+      indicadores_por_oferta_empresa: {
+        Args: { p_desde?: string }
+        Returns: {
+          cubiertas: number
+          derivados: number
+          entrevistas: number
+          estado: Database["public"]["Enums"]["estado_oferta"]
+          oferta_id: string
+          seleccionados: number
+          titulo: string
+          vacantes: number
+          vence_en: string
+        }[]
+      }
       indicadores_portal: {
         Args: { p_desde?: string }
         Returns: {

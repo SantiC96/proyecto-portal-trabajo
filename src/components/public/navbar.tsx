@@ -62,7 +62,10 @@ function getMenuItems(rol?: Rol | null, cursosPendientes = 0): MenuItem[] {
     ];
   }
   if (rol === "empresa") {
-    return [{ label: "Mi panel", href: "/empresa", Icon: LayoutDashboard }];
+    return [
+      { label: "Mi panel", href: "/empresa", Icon: LayoutDashboard },
+      { label: "Indicadores", href: "/empresa/indicadores", Icon: ChartColumn },
+    ];
   }
   if (rol === "municipalidad") {
     return [
@@ -414,6 +417,16 @@ export function Navbar({ session = null }: NavbarProps) {
                   {session.rol === "municipalidad" && (
                     <Link
                       href="/admin/indicadores"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`${mobileLinkBase} ${mobileLinkInactive}`}
+                    >
+                      Indicadores
+                    </Link>
+                  )}
+
+                  {session.rol === "empresa" && (
+                    <Link
+                      href="/empresa/indicadores"
                       onClick={() => setMobileMenuOpen(false)}
                       className={`${mobileLinkBase} ${mobileLinkInactive}`}
                     >
