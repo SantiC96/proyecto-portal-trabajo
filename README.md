@@ -39,6 +39,7 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 - Ver los candidatos que deriva la oficina, con su CV y foto.
 - Coordinar y reprogramar entrevistas, y seleccionar o descartar candidatos.
 - Guardar candidatos con una nota para tenerlos en cuenta más adelante.
+- Dashboard de indicadores: ofertas por estado, vacantes cubiertas, candidatos derivados, entrevistas y seleccionados del período, con el detalle de cada oferta.
 
 ### Oficina de Empleo
 
@@ -62,7 +63,7 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 - Los avisos importantes también llegan por email.
 - Página de avisos con marcar como leído y marcar todos.
 
-### Dashboard de indicadores
+### Dashboard de indicadores de la oficina
 
 - Postulantes, ofertas vigentes y empresas por estado.
 - Postulaciones, derivaciones, contrataciones y cursos del período elegido.
