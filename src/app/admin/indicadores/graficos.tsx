@@ -1,7 +1,7 @@
 import { formatMesAnio, formatMesCorto } from "@/lib/fechas";
 import type { PostulacionesMes, PostulacionesRubro } from "@/lib/admin/indicadores";
 import { cn } from "@/lib/utils";
-import { formatNumero } from "./grupo-indicadores";
+import { formatNumero } from "@/components/indicadores/grupo-indicadores";
 
 // Gráficos con CSS, sin librerías. Las barras son decorativas (aria-hidden):
 // los lectores de pantalla leen la tabla equivalente (sr-only), y los valores

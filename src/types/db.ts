@@ -95,3 +95,12 @@ export type FilaIndicadoresPortal = ConNulos<
   FilaRpc<"indicadores_portal">,
   "tasa_contratacion" | "dias_promedio_derivacion"
 >;
+/** Indicadores de la empresa (migration_049): el promedio es NULL sin seleccionados. */
+export type FilaIndicadoresEmpresa = ConNulos<
+  FilaRpc<"indicadores_empresa">,
+  "dias_promedio_contratacion"
+>;
+export type FilaIndicadoresPorOfertaEmpresa = ConNulos<
+  FilaRpc<"indicadores_por_oferta_empresa">,
+  "vacantes" | "vence_en"
+>;

@@ -74,17 +74,17 @@ src/
 ├── app/
 │   ├── (dashboard)/        # Postulante: perfil, mis-postulaciones, mis-cursos, notificaciones
 │   ├── admin/              # Oficina de Empleo: empresas, ofertas, postulaciones, postulantes, cursos, indicadores
-│   ├── empresa/            # Empresa: (panel)/ofertas, candidatos, candidatos-guardados, solicitud
+│   ├── empresa/            # Empresa: (panel)/ofertas, candidatos, candidatos-guardados, indicadores, solicitud
 │   ├── auth/               # Login, registro, verificación, recuperación de contraseña, callback
 │   ├── ofertas/            # Listado y detalle públicos
 │   └── api/                # emails/procesar (cron) y sesion
-├── components/             # ui/ (primitivos compartidos) y componentes por dominio
+├── components/             # ui/ (primitivos compartidos), indicadores/ (dashboards) y componentes por dominio
 ├── lib/                    # auth, validaciones, resultado, logger, fechas, clientes de Supabase, emails/
-├── migrations/             # migration_001 … migration_048 (SQL)
+├── migrations/             # migration_001 … migration_049 (SQL)
 ├── types/                  # database.ts (generado), db.ts (alias)
 └── proxy.ts                # Equivalente a middleware en Next.js 16
 docs/
-├── decisiones/             # Decisiones de diseño 001–020
+├── decisiones/             # Decisiones de diseño 001–021
 ├── guias/                  # Guías técnicas
 └── DESIGN_SYSTEM_Portal_Municipal_Empleo.md
 scripts/generar-tipos-db.mjs
@@ -242,8 +242,9 @@ Están en [`src/migrations/`](../src/migrations/) y se ejecutan **a mano, en ord
 | 041–043 | Avisos para los tres roles, empresas con email confirmado |
 | 044–045 | Pre-entrevista (opcional desde la 045) |
 | 046 | Varios cursos por postulante e información laboral |
-| 047 | Indicadores del dashboard |
+| 047 | Indicadores del dashboard de la oficina |
 | 048 | Cola de emails |
+| 049 | Indicadores del dashboard de la empresa |
 
 El número 014 no se usó.
 
@@ -287,7 +288,8 @@ El número 014 no se usó.
 - **RLS** activado en todas las tablas de `public`. Las funciones `rol_actual()`, `mi_empresa_id()` y `empresa_es_duena_de_oferta()` se usan dentro de las políticas.
 - **Permisos por columna:** se revoca `UPDATE`/`INSERT` completo y se otorga solo sobre columnas editables. Ejemplos: `usuarios (nombre, apellido, telefono)`, `postulaciones` solo inserta `(oferta_id, postulante_id)`, `notificaciones` solo actualiza `leida_en` (migraciones 018, 021, 028, 031, 038, 046).
 - **Datos de candidatos para la empresa:** la empresa solo ve candidatos derivados a sus ofertas o guardados, a través de funciones como `candidato_para_empresa` que devuelven únicamente los campos permitidos (decisión [007](decisiones/007-acceso-candidatos-empresa.md)). Las notas internas de la oficina nunca se exponen al postulante ni a la empresa.
-- **`supabaseAdmin`** (service role, salta RLS) se usa solo en el servidor para casos puntuales: alta de perfiles, subida de archivos y cola de emails (decisión [005](decisiones/005-uso-de-supabase-admin.md)).
+- **Indicadores:** `indicadores_portal`, `postulaciones_por_mes` y `postulaciones_por_rubro` (047) solo responden al rol `municipalidad`. `indicadores_empresa` e `indicadores_por_oferta_empresa` (049) solo al rol `empresa`, toman la empresa de `auth.uid()` (nunca de un parámetro), cuentan solo sus ofertas y las derivaciones que recibió, y devuelven cero o nada si la empresa no está aprobada (decisiones [019](decisiones/019-dashboard-de-indicadores.md) y [021](decisiones/021-dashboard-de-empresa.md)).
+- **`supabaseAdmin`** (service role, salta RLS) se usa solo en el servidor para casos puntuales: alta de perfiles, subida de archivos y cola de emails (decisión [005](decisiones/005-uso-de-supabase-admin.md)). `src/lib/supabase-admin.ts` importa `server-only`: importarlo desde un componente de cliente rompe el build.
 
 ### Aprobación de empresas
 
@@ -413,9 +415,9 @@ Detalle en la decisión [020](decisiones/020-notificaciones-por-email.md).
 | Errores con número de referencia; en producción el log es JSON con referencia, contexto y código de Postgres, sin el objeto de error completo | `src/lib/logger.ts` |
 | Validación única de redirects internos | `src/lib/redirect.ts` |
 | Autorización centralizada, además de RLS | `src/lib/auth.ts` |
-| Secretos solo en variables de entorno sin prefijo `NEXT_PUBLIC_`; módulos de servidor marcados con `server-only` | `.env.example`, `src/lib/emails/*`, `src/lib/logger.ts`, `src/lib/auth.ts` |
+| Secretos solo en variables de entorno sin prefijo `NEXT_PUBLIC_`; módulos de servidor marcados con `server-only` | `.env.example`, `src/lib/supabase-admin.ts`, `src/lib/emails/*`, `src/lib/logger.ts`, `src/lib/auth.ts` |
 | Lógica de negocio crítica en la base, no duplicada en la app | `src/migrations/migration_040_acciones_atomicas.sql` |
-| Accesibilidad: `aria-invalid`, `aria-describedby`, texto para lectores de pantalla, `aria-current` | `src/components/ui/obligatorio.tsx`, `src/app/admin/indicadores/page.tsx` |
+| Accesibilidad: `aria-invalid`, `aria-describedby`, texto para lectores de pantalla, `aria-current` | `src/components/ui/obligatorio.tsx`, `src/components/indicadores/selector-periodo.tsx`, `src/app/admin/indicadores/graficos.tsx` |
 | Componentes reutilizables en lugar de duplicarlos por rol | `src/components/ui/` (paginación, buscador, diálogo de confirmación, esqueletos, estado de listado) |
 | Paginación y búsqueda en el servidor | `src/lib/paginacion.ts`, `src/lib/busqueda.ts`, función `buscar_ofertas_publicas` |
 | Pantallas de carga, error y no encontrado | `loading.tsx`, `error.tsx`, `not-found.tsx`, `src/app/global-error.tsx` |
@@ -549,6 +551,7 @@ No hay tests automáticos configurados.
 | 018 | [Información laboral del postulante](decisiones/018-informacion-laboral-del-postulante.md) |
 | 019 | [Dashboard de indicadores](decisiones/019-dashboard-de-indicadores.md) |
 | 020 | [Notificaciones por email](decisiones/020-notificaciones-por-email.md) |
+| 021 | [Dashboard de indicadores de la empresa](decisiones/021-dashboard-de-empresa.md) |
 
 ---
 
@@ -564,4 +567,3 @@ No hay tests automáticos configurados.
 - **Cursos externos:** el portal no puede verificar que un curso se hizo; el postulante lo marca como completado.
 - **Pre-entrevista por postulación:** pendiente de confirmar con la oficina si debería ser por postulante (decisión [017](decisiones/017-pre-entrevista.md)).
 - **Puntos abiertos de cursos** (modalidad de cursado, exportar listados): ver decisión [008](decisiones/008-cursos-insercion.md).
-- `src/lib/supabase-admin.ts` no importa `server-only`. Hoy ningún componente de cliente lo usa y la clave no tiene prefijo `NEXT_PUBLIC_`, pero agregarlo evitaría un uso accidental.

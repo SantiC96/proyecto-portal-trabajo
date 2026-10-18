@@ -1,3 +1,29 @@
+import type { Enum } from "@/types/db";
+
+/**
+ * Estado de la oferta tal como lo ve la empresa: una oferta activa cuyo
+ * vence_en ya pasó se muestra como "Vencida" (ver estadoVencimiento).
+ */
+export type EstadoOfertaEmpresa = Enum<"estado_oferta"> | "vencida";
+
+export const ESTADO_OFERTA_EMPRESA_LABEL: Record<EstadoOfertaEmpresa, string> = {
+  pendiente_aprobacion: "Pendiente de revisión",
+  activa: "Publicada",
+  rechazada: "Rechazada",
+  cerrada: "Cerrada",
+  borrador: "Borrador",
+  vencida: "Vencida",
+};
+
+export const ESTADO_OFERTA_EMPRESA_STYLE: Record<EstadoOfertaEmpresa, string> = {
+  pendiente_aprobacion: "bg-amber-100 text-amber-800",
+  activa: "bg-emerald-100 text-emerald-800",
+  rechazada: "bg-red-100 text-red-700",
+  cerrada: "bg-gray-100 text-gray-600",
+  borrador: "bg-gray-100 text-gray-500",
+  vencida: "bg-red-100 text-red-700",
+};
+
 export type OfertaEstadoBadge = {
   label: string;
   descripcion?: string;

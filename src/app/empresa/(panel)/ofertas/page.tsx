@@ -24,31 +24,15 @@ import { RenovarOfertaBtn } from "./_components/renovar-oferta-btn";
 import { VencimientoOferta } from "@/components/ofertas/vencimiento-oferta";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 import { formatFecha } from "@/lib/fechas";
-import { accionesDisponibles } from "@/lib/oferta-estados";
-import type { Enum } from "@/types/db";
+import {
+  accionesDisponibles,
+  ESTADO_OFERTA_EMPRESA_LABEL,
+  ESTADO_OFERTA_EMPRESA_STYLE,
+  type EstadoOfertaEmpresa,
+} from "@/lib/oferta-estados";
 
 export const metadata: Metadata = {
   title: "Mis ofertas | Portal de Empleo Funes",
-};
-
-type EstadoVisible = Enum<"estado_oferta"> | "vencida";
-
-const ESTADO_LABEL: Record<EstadoVisible, string> = {
-  pendiente_aprobacion: "Pendiente de revisión",
-  activa: "Publicada",
-  rechazada: "Rechazada",
-  cerrada: "Cerrada",
-  borrador: "Borrador",
-  vencida: "Vencida",
-};
-
-const ESTADO_STYLE: Record<EstadoVisible, string> = {
-  pendiente_aprobacion: "bg-amber-100 text-amber-800",
-  activa: "bg-emerald-100 text-emerald-800",
-  rechazada: "bg-red-100 text-red-700",
-  cerrada: "bg-gray-100 text-gray-600",
-  borrador: "bg-gray-100 text-gray-500",
-  vencida: "bg-red-100 text-red-700",
 };
 
 const RUTA = "/empresa/ofertas";
@@ -214,7 +198,7 @@ async function ListadoMisOfertas({
 
             const tienePendientes = mostrarCandidatosPorContactar && ofertasConPendientesSet.has(oferta.id);
             const { vencida } = estadoVencimiento(oferta.estado, oferta.vence_en);
-            const estadoVisible: EstadoVisible = vencida ? "vencida" : oferta.estado;
+            const estadoVisible: EstadoOfertaEmpresa = vencida ? "vencida" : oferta.estado;
 
             return (
               <li
@@ -226,9 +210,9 @@ async function ListadoMisOfertas({
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-base font-semibold text-foreground">{oferta.titulo}</h2>
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ESTADO_STYLE[estadoVisible] ?? "bg-gray-100 text-gray-600"}`}
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ESTADO_OFERTA_EMPRESA_STYLE[estadoVisible] ?? "bg-gray-100 text-gray-600"}`}
                       >
-                        {ESTADO_LABEL[estadoVisible] ?? estadoVisible}
+                        {ESTADO_OFERTA_EMPRESA_LABEL[estadoVisible] ?? estadoVisible}
                       </span>
                       {tienePendientes && (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700">

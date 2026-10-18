@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { Building2, Plus, List, BookmarkCheck, AlertTriangle } from "lucide-react";
+import { Building2, Plus, List, BookmarkCheck, AlertTriangle, ChartColumn } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirEmpresaPagina } from "@/lib/auth";
 import { AvisoUrl } from "@/components/ui/aviso-url";
@@ -145,6 +145,19 @@ export default async function EmpresaDashboardPage() {
           <div>
             <p className="font-semibold text-foreground">Candidatos guardados</p>
             <p className="text-xs text-muted-foreground">Perfiles para futuras búsquedas</p>
+          </div>
+        </Link>
+
+        <Link
+          href="/empresa/indicadores"
+          className="flex items-center gap-3 rounded-[var(--radius-lg)] border border-border bg-white p-5 shadow-xs transition hover:border-primary/40 hover:bg-surface-tinted"
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-primary">
+            <ChartColumn className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="font-semibold text-foreground">Indicadores</p>
+            <p className="text-xs text-muted-foreground">Derivaciones, entrevistas y vacantes cubiertas</p>
           </div>
         </Link>
       </div>
