@@ -22,6 +22,7 @@ export default async function LoginPage({
           inactividad={motivo === "inactividad"}
           sesionAnterior={motivo === "sesion-anterior"}
           contrasenaActualizada={motivo === "contrasena-actualizada"}
+          cuentaDesactivada={motivo === "cuenta-desactivada"}
           redirect={redirect}
         />
       </main>

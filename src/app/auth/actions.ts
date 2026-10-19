@@ -4,12 +4,12 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import type { AuthError, Session } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { obtenerUsuarioActual } from "@/lib/auth";
+import { obtenerUsuarioActual, panelDeRol } from "@/lib/auth";
 import { createSupabaseEphemeralClient } from "@/lib/supabase-ephemeral";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { traducirErrorAuth } from "@/lib/auth-errors";
+import { MENSAJE_CUENTA_DESACTIVADA, traducirErrorAuth } from "@/lib/auth-errors";
 import { logError } from "@/lib/logger";
-import { err, errCampo, errConRef, type Resultado } from "@/lib/resultado";
+import { err, errCampo, errConRef, type Resultado, type ResultadoError } from "@/lib/resultado";
 import { formatearCUIT } from "@/lib/cuit";
 import {
   LARGO_MAXIMO,
@@ -23,11 +23,13 @@ import {
   validarTextoOpcional,
 } from "@/lib/validaciones";
 import {
+  cookieReintentoOptions,
+  INVITACION_COOKIE,
+  INVITACION_COOKIE_PATH,
   LAST_ACTIVITY_COOKIE,
   lastActivityCookieOptions,
   RECOVERY_COOKIE,
   RECOVERY_COOKIE_PATH,
-  recoveryCookieOptions,
 } from "@/lib/session-config";
 import { programarEnvioEmails } from "@/lib/emails/cola";
 import { rutaInterna } from "@/lib/redirect";
@@ -93,12 +95,25 @@ export async function login(credentials: {
   }
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data: ingreso, error } = await supabase.auth.signInWithPassword({
     email: credentials.email,
     password: credentials.password,
   });
 
   if (error) return wrapAuthError("login", error);
+
+  // Una cuenta desactivada está baneada en Auth y no llega acá; esto cubre el
+  // caso en que el ban no se pudo aplicar (decisión 023).
+  const { data: perfil, error: perfilError } = await supabaseAdmin
+    .from("usuarios")
+    .select("activo")
+    .eq("id", ingreso.user.id)
+    .maybeSingle();
+  if (perfilError) logError("login:activo", perfilError, { userId: ingreso.user.id });
+  if (perfil?.activo === false) {
+    await supabase.auth.signOut({ scope: "local" });
+    return err("SIN_PERMISO", MENSAJE_CUENTA_DESACTIVADA);
+  }
 
   // Las Server Actions no pasan por el control del proxy: sin esta cookie, el
   // primer request con sesión se tomaría como una sesión de un navegador anterior.
@@ -309,10 +324,31 @@ export async function logout(formData?: FormData): Promise<void> {
   redirect(rawTo ? rutaInterna(rawTo) : "/auth/login");
 }
 
-export async function restablecerContrasena(
-  _prevState: Resultado<void> | null,
-  formData: FormData
-): Promise<Resultado<void> | null> {
+type FlujoConToken = {
+  /** Tipo de token del link del email (Supabase Auth). */
+  tipo: "recovery" | "invite";
+  /** Cookie de reintento y la ruta de la página que la usa. */
+  cookie: string;
+  cookiePath: string;
+  contexto: string;
+  /**
+   * Control antes de guardar la contraseña, con el usuario del token. Si
+   * devuelve un error, no se guarda nada.
+   */
+  validarUsuario?: (userId: string) => Promise<ResultadoError | null>;
+};
+
+/**
+ * Guarda la contraseña nueva con el token del link (recuperación o
+ * invitación). Usa un cliente efímero: no toca la sesión de las cookies.
+ * El token se consume recién acá, al enviar el formulario, así los
+ * prefetchers de correo no lo gastan. Si falla después de consumirlo, el
+ * refresh token queda en una cookie para reintentar sin un link nuevo.
+ */
+async function guardarContrasenaConToken(
+  formData: FormData,
+  flujo: FlujoConToken,
+): Promise<{ ok: true; email: string | null } | ResultadoError> {
   const password = leerTexto(formData, "password");
   const confirmar = leerTexto(formData, "confirmar");
   const tokenHash = leerTexto(formData, "token_hash");
@@ -326,10 +362,12 @@ export async function restablecerContrasena(
 
   const client = createSupabaseEphemeralClient();
   const cookieStore = await cookies();
+  const borrarCookie = () =>
+    cookieStore.set(flujo.cookie, "", { maxAge: 0, path: flujo.cookiePath, httpOnly: true });
   let latestSession: Session | null = null;
 
-  // 2a. Try recovery cookie (allows retry without a new link)
-  const cookieValue = cookieStore.get(RECOVERY_COOKIE)?.value;
+  // 2a. Try retry cookie (allows retry without a new link)
+  const cookieValue = cookieStore.get(flujo.cookie)?.value;
   if (cookieValue) {
     const { data, error } = await client.auth.refreshSession({
       refresh_token: cookieValue,
@@ -337,11 +375,7 @@ export async function restablecerContrasena(
     if (!error && data.session) {
       latestSession = data.session;
     } else {
-      cookieStore.set(RECOVERY_COOKIE, "", {
-        maxAge: 0,
-        path: RECOVERY_COOKIE_PATH,
-        httpOnly: true,
-      });
+      borrarCookie();
     }
   }
 
@@ -349,7 +383,7 @@ export async function restablecerContrasena(
   if (!latestSession && tokenHash) {
     const { data, error } = await client.auth.verifyOtp({
       token_hash: tokenHash,
-      type: "recovery",
+      type: flujo.tipo,
     });
     if (!error && data.session) {
       latestSession = data.session;
@@ -358,12 +392,15 @@ export async function restablecerContrasena(
 
   // 2c. Still no session → link expired or already used
   if (!latestSession) {
-    cookieStore.set(RECOVERY_COOKIE, "", {
-      maxAge: 0,
-      path: RECOVERY_COOKIE_PATH,
-      httpOnly: true,
-    });
+    borrarCookie();
     return err("TOKEN_VENCIDO");
+  }
+
+  const rechazo = await flujo.validarUsuario?.(latestSession.user.id);
+  if (rechazo) {
+    await client.auth.signOut({ scope: "local" });
+    borrarCookie();
+    return rechazo;
   }
 
   // 3. Update password
@@ -372,21 +409,88 @@ export async function restablecerContrasena(
   if (updateError) {
     // Save refresh_token so the user can retry without a new link
     cookieStore.set(
-      RECOVERY_COOKIE,
+      flujo.cookie,
       latestSession.refresh_token,
-      recoveryCookieOptions()
+      cookieReintentoOptions(flujo.cookiePath)
     );
-    return wrapAuthError("restablecerContrasena", updateError);
+    const r = wrapAuthError(flujo.contexto, updateError);
+    return r.ok ? err("ERROR_INTERNO") : r;
   }
 
   // 4. Success — sign out the ephemeral session and clean up
   await client.auth.signOut({ scope: "local" });
-  cookieStore.set(RECOVERY_COOKIE, "", {
-    maxAge: 0,
-    path: RECOVERY_COOKIE_PATH,
-    httpOnly: true,
+  borrarCookie();
+  return { ok: true, email: latestSession.user.email ?? null };
+}
+
+export async function restablecerContrasena(
+  _prevState: Resultado<void> | null,
+  formData: FormData
+): Promise<Resultado<void> | null> {
+  const resultado = await guardarContrasenaConToken(formData, {
+    tipo: "recovery",
+    cookie: RECOVERY_COOKIE,
+    cookiePath: RECOVERY_COOKIE_PATH,
+    contexto: "restablecerContrasena",
   });
+  if (!resultado.ok) return resultado;
+
+  const cookieStore = await cookies();
   cookieStore.delete(LAST_ACTIVITY_COOKIE);
 
   redirect("/auth/login?motivo=contrasena-actualizada");
+}
+
+/**
+ * Link de la invitación de la oficina (/admin/cuentas): la persona elige su
+ * contraseña y queda con la sesión iniciada en el panel. Solo vale para una
+ * cuenta de la oficina activa.
+ */
+export async function aceptarInvitacion(
+  _prevState: Resultado<void> | null,
+  formData: FormData
+): Promise<Resultado<void> | null> {
+  const password = leerTexto(formData, "password");
+
+  const resultado = await guardarContrasenaConToken(formData, {
+    tipo: "invite",
+    cookie: INVITACION_COOKIE,
+    cookiePath: INVITACION_COOKIE_PATH,
+    contexto: "aceptarInvitacion",
+    validarUsuario: async (userId) => {
+      const { data: perfil, error } = await supabaseAdmin
+        .from("usuarios")
+        .select("rol, activo")
+        .eq("id", userId)
+        .maybeSingle();
+      if (error) {
+        const ref = logError("aceptarInvitacion:perfil", error, { userId });
+        return errConRef("ERROR_INTERNO", "No se pudo verificar la invitación. Intentá de nuevo.", ref);
+      }
+      if (perfil?.rol !== "municipalidad") return err("TOKEN_VENCIDO");
+      if (!perfil.activo) return err("SIN_PERMISO", MENSAJE_CUENTA_DESACTIVADA);
+      return null;
+    },
+  });
+  if (!resultado.ok) return resultado;
+
+  // La contraseña ya quedó guardada: si el ingreso falla, la persona puede
+  // entrar desde el login con esa contraseña.
+  if (!resultado.email) redirect("/auth/login");
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.signInWithPassword({
+    email: resultado.email,
+    password,
+  });
+  if (error) {
+    logError("aceptarInvitacion:signIn", error);
+    redirect("/auth/login?motivo=contrasena-actualizada");
+  }
+
+  // Igual que login(): sin esta cookie el proxy tomaría la sesión como de un
+  // navegador anterior (decisión 022).
+  const cookieStore = await cookies();
+  cookieStore.set(LAST_ACTIVITY_COOKIE, String(Date.now()), lastActivityCookieOptions());
+
+  redirect(panelDeRol("municipalidad"));
 }
