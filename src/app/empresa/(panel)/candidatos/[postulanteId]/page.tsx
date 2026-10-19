@@ -1,15 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  ArrowLeft,
-  Mail,
-  Phone,
-  FileText,
-  ExternalLink,
-  Briefcase,
-  User,
-} from "lucide-react";
+import { Mail, Phone, FileText, ExternalLink, Briefcase, User } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirEmpresaPagina } from "@/lib/auth";
 import { formatFecha } from "@/lib/fechas";
@@ -22,6 +13,7 @@ import type {
 import { NotaGuardadoEditor } from "@/app/empresa/(panel)/candidatos-guardados/_components/nota-editor";
 import { FotoPrivada } from "@/components/ui/foto-privada";
 import { InformacionLaboralResumen } from "@/components/postulantes/informacion-laboral-resumen";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Perfil de candidato | Portal de Empleo Funes",
@@ -75,24 +67,10 @@ export default async function PerfilCandidatoPage({
 
   return (
     <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/empresa/candidatos-guardados" className="hover:text-foreground">
-          Candidatos guardados
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">{nombreCompleto}</span>
-      </div>
+      <BotonVolver href="/empresa/candidatos-guardados">Volver a candidatos guardados</BotonVolver>
 
       {/* Cabecera */}
       <div className="mt-4 flex items-center gap-3">
-        <Link
-          href="/empresa/candidatos-guardados"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-white text-muted-foreground transition hover:bg-surface-tinted hover:text-foreground"
-          aria-label="Volver"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
         <div className="flex items-center gap-4">
           {fotoUrl ? (
             <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full border border-border">

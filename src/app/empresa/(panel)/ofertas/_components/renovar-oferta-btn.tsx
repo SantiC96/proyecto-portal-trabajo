@@ -20,7 +20,7 @@ export function RenovarOfertaBtn({ ofertaId, ofertaTitulo, duracionDias }: Props
         </>
       }
       estiloBoton="primario"
-      claseBoton="px-3 text-xs sm:min-h-8"
+      claseBoton="px-3 text-xs sm:min-h-9"
       titulo="Renovar oferta"
       descripcion={
         <>
@@ -30,7 +30,7 @@ export function RenovarOfertaBtn({ ofertaId, ofertaTitulo, duracionDias }: Props
         </>
       }
       textoConfirmar="Renovar"
-      textoPendiente="Renovando..."
+      textoPendiente="Renovando…"
       accion={() => renovarOferta(ofertaId)}
     />
   );

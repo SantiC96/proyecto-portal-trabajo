@@ -20,11 +20,10 @@ import {
   rechazarCandidato,
 } from "@/app/empresa/(panel)/ofertas/[id]/actions";
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
-import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
 import { mostrarAviso } from "@/lib/avisos";
 import { BookmarkBtn } from "./bookmark-btn";
 import { useAccion } from "@/lib/use-accion";
-import { Spinner } from "@/components/ui/spinner";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
 import {
@@ -64,14 +63,12 @@ function EntrevistaDialog({
   const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [lugar, setLugar] = useState(lugarActual ?? "");
-  const [error, setError] = useState<ErrorAccion | null>(null);
   const campos = useErroresCampo<CampoEntrevista>();
 
   function handleReset() {
     setSelectedDay(undefined);
     setSelectedTime("");
     setLugar(lugarActual ?? "");
-    setError(null);
     campos.limpiarTodos();
   }
 
@@ -81,7 +78,6 @@ function EntrevistaDialog({
   }
 
   function handleSubmit() {
-    setError(null);
     if (!campos.validar({ dia: selectedDay, hora: selectedTime, lugar }) || !selectedDay) return;
     if (horarioYaPaso(selectedDay, selectedTime)) {
       campos.marcar("hora", "El horario elegido ya pasó. Seleccioná uno futuro.", null);
@@ -91,10 +87,8 @@ function EntrevistaDialog({
     const action = modo === "coordinar" ? coordinarEntrevista : reprogramarEntrevista;
     ejecutar(async () => {
       const result = await action(derivacionId, ofertaId, fechaISO, lugar.trim());
-      mostrarAviso(result);
-      if (!result.ok) {
-        if (!campos.tomarDelServidor(result, ["fecha", "lugar"])) setError(toErrorAccion(result));
-      } else {
+      if (!campos.tomarDelServidor(result, ["fecha", "lugar"])) mostrarAviso(result);
+      if (result.ok) {
         handleReset();
         onClose();
         router.refresh();
@@ -160,41 +154,25 @@ function EntrevistaDialog({
               }}
               placeholder="Dirección, piso, o link de videollamada"
               maxLength={LARGO_MAXIMO.lugarEntrevista}
+              disabled={isPending}
               {...ariaErrorCampo("lugar-input", campos.errores.lugar)}
               className={cn(
-                "h-10 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring",
+                "h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring",
                 CLASE_CONTROL_INVALIDO
               )}
             />
             <ErrorCampo idCampo="lugar-input" mensaje={campos.errores.lugar} className="mt-1.5" />
           </div>
 
-          {error && (
-            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-              <p>{error.mensaje}</p>
-              {error.ref && (
-                <p className="mt-0.5 text-xs text-gray-500">
-                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-                </p>
-              )}
-            </div>
-          )}
         </div>
 
-        <DialogFooter>
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={isPending}
-            className="btn-secundario inline-flex h-9 items-center justify-center px-4 text-sm font-medium disabled:opacity-40"
-          >
-            Cancelar
-          </button>
-          <Button onClick={handleSubmit} disabled={isPending}>
-            {isPending && <Spinner className="mr-1" />}
-            {isPending ? "Guardando…" : "Confirmar"}
-          </Button>
-        </DialogFooter>
+        <BotonesDialogo
+          pendiente={isPending}
+          onCancelar={handleClose}
+          onConfirmar={handleSubmit}
+          textoConfirmar={modo === "coordinar" ? "Coordinar entrevista" : "Reprogramar entrevista"}
+          textoPendiente="Guardando…"
+        />
       </DialogContent>
     </Dialog>
   );
@@ -228,7 +206,6 @@ export function AccionesDerivacion({
   const [openSeleccion, setOpenSeleccion] = useState(false);
   const [openOfertaCerrada, setOpenOfertaCerrada] = useState(false);
   const [motivo, setMotivo] = useState("");
-  const [error, setError] = useState<ErrorAccion | null>(null);
   const camposRechazo = useErroresCampo<"motivo">();
 
   // Entrevista ya pasada → empresa puede seleccionar
@@ -244,13 +221,10 @@ export function AccionesDerivacion({
       : null;
 
   function handleSeleccionar() {
-    setError(null);
     ejecutar(async () => {
       const result = await seleccionarCandidato(derivacionId, ofertaId);
       mostrarAviso(result);
-      if (!result.ok) {
-        setError(toErrorAccion(result));
-      } else {
+      if (result.ok) {
         setOpenSeleccion(false);
         if (result.data?.ofertaCerrada) {
           setOpenOfertaCerrada(true);
@@ -261,14 +235,11 @@ export function AccionesDerivacion({
   }
 
   function handleRechazar() {
-    setError(null);
     if (!camposRechazo.validar({ motivo })) return;
     ejecutar(async () => {
       const result = await rechazarCandidato(derivacionId, ofertaId, motivo);
-      mostrarAviso(result);
-      if (!result.ok) {
-        if (!camposRechazo.tomarDelServidor(result, ["motivo"])) setError(toErrorAccion(result));
-      } else {
+      if (!camposRechazo.tomarDelServidor(result, ["motivo"])) mostrarAviso(result);
+      if (result.ok) {
         setOpenRechazo(false);
         setMotivo("");
         router.refresh();
@@ -300,25 +271,15 @@ export function AccionesDerivacion({
 
   return (
     <div className="space-y-3">
-      {error && (
-        <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-          <p>{error.mensaje}</p>
-          {error.ref && (
-            <p className="mt-0.5 text-xs text-gray-500">
-              Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-            </p>
-          )}
-        </div>
-      )}
 
       {/* Acciones según estado */}
       <div className="flex flex-col gap-2">
         {estado === "pendiente" && (
           <button
             type="button"
-            onClick={() => { setError(null); setOpenEntrevista("coordinar"); }}
+            onClick={() => setOpenEntrevista("coordinar")}
             disabled={isPending}
-            className="btn-primario inline-flex h-9 items-center justify-center px-4 text-sm font-medium disabled:opacity-60"
+            className="btn-primario min-h-11 justify-center"
           >
             Coordinar entrevista
           </button>
@@ -327,9 +288,9 @@ export function AccionesDerivacion({
         {estado === "en_proceso" && (
           <button
             type="button"
-            onClick={() => { setError(null); setOpenEntrevista("reprogramar"); }}
+            onClick={() => setOpenEntrevista("reprogramar")}
             disabled={isPending}
-            className="btn-secundario inline-flex h-9 items-center justify-center px-4 text-sm font-medium disabled:opacity-60"
+            className="btn-secundario inline-flex min-h-11 items-center justify-center px-4 text-sm font-medium"
           >
             Reprogramar
           </button>
@@ -341,10 +302,10 @@ export function AccionesDerivacion({
           <div className="flex flex-col gap-1">
             <button
               type="button"
-              onClick={() => { setError(null); setOpenSeleccion(true); }}
+              onClick={() => setOpenSeleccion(true)}
               disabled={isPending || motivoSeleccionNoDisponible !== null}
               title={motivoSeleccionNoDisponible ?? undefined}
-              className="btn-secundario inline-flex h-9 items-center justify-center px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
+              className="btn-secundario inline-flex min-h-11 items-center justify-center px-4 text-sm font-medium"
             >
               Seleccionar
             </button>
@@ -358,9 +319,9 @@ export function AccionesDerivacion({
 
         <button
           type="button"
-          onClick={() => { setError(null); setOpenRechazo(true); }}
+          onClick={() => setOpenRechazo(true)}
           disabled={isPending}
-          className="btn-secundario inline-flex h-9 items-center justify-center px-4 text-sm font-medium text-red-600 hover:bg-red-50 hover:border-red-200 disabled:opacity-60"
+          className="btn-peligro inline-flex min-h-11 items-center justify-center px-4 text-sm font-medium"
         >
           No seleccionar
         </button>
@@ -391,7 +352,7 @@ export function AccionesDerivacion({
       {/* Dialog: Seleccionar */}
       <Dialog
         open={openSeleccion}
-        onOpenChange={(v) => { if (!v && !isPending) { setOpenSeleccion(false); setError(null); } }}
+        onOpenChange={(v) => { if (!v && !isPending) setOpenSeleccion(false); }}
       >
         <DialogContent>
           <DialogHeader>
@@ -402,30 +363,13 @@ export function AccionesDerivacion({
               para el puesto. Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
-          {error && (
-            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-              <p>{error.mensaje}</p>
-              {error.ref && (
-                <p className="mt-0.5 text-xs text-gray-500">
-                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-                </p>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => { setOpenSeleccion(false); setError(null); }}
-              disabled={isPending}
-              className="btn-secundario inline-flex h-9 items-center justify-center px-4 text-sm font-medium disabled:opacity-40"
-            >
-              Cancelar
-            </button>
-            <Button onClick={handleSeleccionar} disabled={isPending}>
-              {isPending && <Spinner className="mr-1" />}
-              {isPending ? "Guardando…" : "Confirmar"}
-            </Button>
-          </DialogFooter>
+          <BotonesDialogo
+            pendiente={isPending}
+            onCancelar={() => setOpenSeleccion(false)}
+            onConfirmar={handleSeleccionar}
+            textoConfirmar="Seleccionar"
+            textoPendiente="Guardando…"
+          />
         </DialogContent>
       </Dialog>
 
@@ -433,7 +377,7 @@ export function AccionesDerivacion({
       <Dialog
         open={openRechazo}
         onOpenChange={(v) => {
-          if (!v && !isPending) { setOpenRechazo(false); setMotivo(""); setError(null); camposRechazo.limpiarTodos(); }
+          if (!v && !isPending) { setOpenRechazo(false); setMotivo(""); camposRechazo.limpiarTodos(); }
         }}
       >
         <DialogContent>
@@ -466,30 +410,14 @@ export function AccionesDerivacion({
             <ErrorCampo idCampo="motivo-rechazo" mensaje={camposRechazo.errores.motivo} />
             <ContadorCaracteres actual={motivo.length} maximo={LARGO_MAXIMO.motivo} />
           </div>
-          {error && (
-            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-              <p>{error.mensaje}</p>
-              {error.ref && (
-                <p className="mt-0.5 text-xs text-gray-500">
-                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-                </p>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => { setOpenRechazo(false); setMotivo(""); setError(null); camposRechazo.limpiarTodos(); }}
-              disabled={isPending}
-              className="btn-secundario inline-flex h-9 items-center justify-center px-4 text-sm font-medium disabled:opacity-40"
-            >
-              Cancelar
-            </button>
-            <Button onClick={handleRechazar} disabled={isPending}>
-              {isPending && <Spinner className="mr-1" />}
-              {isPending ? "Guardando…" : "Confirmar"}
-            </Button>
-          </DialogFooter>
+          <BotonesDialogo
+            pendiente={isPending}
+            onCancelar={() => { setOpenRechazo(false); setMotivo(""); camposRechazo.limpiarTodos(); }}
+            onConfirmar={handleRechazar}
+            textoConfirmar="No seleccionar"
+            textoPendiente="Guardando…"
+            destructivo
+          />
         </DialogContent>
       </Dialog>
 

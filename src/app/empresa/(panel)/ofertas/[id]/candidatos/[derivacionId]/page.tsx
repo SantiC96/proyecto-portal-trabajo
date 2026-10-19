@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Mail, Phone, FileText, ExternalLink, User } from "lucide-react";
+import { Mail, Phone, FileText, ExternalLink, User } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirEmpresaPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
@@ -10,6 +10,7 @@ import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_STYLE } from "@/lib/derivaci
 import type { FilaCandidatoParaEmpresa, FilaDerivacionDeOfertaEmpresa } from "@/types/db";
 import { InformacionLaboralResumen } from "@/components/postulantes/informacion-laboral-resumen";
 import { AccionesDerivacion } from "./_components/acciones-derivacion";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Ficha de candidato | Portal de Empleo Funes",
@@ -84,28 +85,10 @@ export default async function CandidatoFichaPage({
 
   return (
     <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/empresa/ofertas" className="hover:text-foreground">
-          Mis ofertas
-        </Link>
-        <span>/</span>
-        <Link href={`/empresa/ofertas/${ofertaId}`} className="hover:text-foreground">
-          {oferta.titulo}
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">Candidato</span>
-      </div>
+      <BotonVolver href={`/empresa/ofertas/${ofertaId}`}>Volver a la oferta</BotonVolver>
 
       {/* Cabecera */}
       <div className="mt-4 flex items-center gap-3">
-        <Link
-          href={`/empresa/ofertas/${ofertaId}`}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-white text-muted-foreground transition hover:bg-surface-tinted hover:text-foreground"
-          aria-label="Volver"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
         <div>
           <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
             {candidato

@@ -13,6 +13,7 @@ import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { NotaGuardadoEditor } from "./_components/nota-editor";
 import { QuitarGuardadoBtn } from "./_components/quitar-guardado-btn";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Candidatos guardados | Portal de Empleo Funes",
@@ -31,6 +32,7 @@ export default async function CandidatosGuardadosPage({
 
   return (
     <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+      <BotonVolver href="/empresa">Volver al panel</BotonVolver>
       <div className="flex items-center gap-3">
         <BookmarkCheck className="h-6 w-6 text-primary" />
         <div>

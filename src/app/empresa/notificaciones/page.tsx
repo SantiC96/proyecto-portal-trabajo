@@ -24,7 +24,7 @@ export default async function NotificacionesEmpresaPage({
         <PaginaNotificaciones
           usuarioId={user.id}
           ruta={rutaNotificaciones("empresa")}
-          panel={{ href: "/empresa", label: "Panel" }}
+          panel={{ href: "/empresa", label: "Volver al panel" }}
           textoVacio="Te avisamos acá sobre tu solicitud, la revisión de tus ofertas, los candidatos derivados y los vencimientos."
           searchParams={sp}
         />

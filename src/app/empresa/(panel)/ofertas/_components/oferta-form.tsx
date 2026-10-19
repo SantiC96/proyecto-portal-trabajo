@@ -10,6 +10,7 @@ import { crearOferta, editarOferta } from "@/app/empresa/(panel)/ofertas/actions
 import { type ErrorAccion, toErrorAccion } from "@/lib/resultado";
 import { DURACIONES_OFERTA, DURACION_OFERTA_POR_DEFECTO } from "@/lib/ofertas-vencimiento";
 import { useAccion } from "@/lib/use-accion";
+import { Spinner } from "@/components/ui/spinner";
 import type { Tabla } from "@/types/db";
 import {
   CLASE_CONTROL_INVALIDO,
@@ -486,18 +487,17 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
           type="button"
           onClick={() => router.push("/empresa/ofertas")}
           disabled={isPending}
-          className="btn-secundario inline-flex h-10 items-center justify-center px-5 text-sm font-medium disabled:opacity-60"
+          className="btn-secundario inline-flex min-h-11 items-center justify-center px-5 text-sm font-medium"
         >
           Cancelar
         </button>
         <button
           type="submit"
           disabled={isPending}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+          aria-busy={isPending}
+          className="btn-primario min-h-11 justify-center px-5"
         >
-          {isPending && (
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-          )}
+          {isPending && <Spinner />}
           {isPending ? "Guardando…" : ofertaId ? "Guardar cambios" : "Enviar a revisión"}
         </button>
       </div>
