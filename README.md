@@ -40,6 +40,7 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 - Coordinar y reprogramar entrevistas, y seleccionar o descartar candidatos.
 - Guardar candidatos con una nota para tenerlos en cuenta más adelante.
 - Dashboard de indicadores: ofertas por estado, vacantes cubiertas, candidatos derivados, entrevistas y seleccionados del período, con el detalle de cada oferta.
+- Mi perfil: logo de la empresa, datos de contacto de la persona responsable y cambio de contraseña; los datos de la empresa se ven sin editar.
 
 ### Oficina de Empleo
 
@@ -49,6 +50,8 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 - Corregir el resultado de una derivación cuando hace falta.
 - Consultar la base de postulantes con filtros (rubro, con CV, esperando curso) y ver la ficha de cada uno.
 - Crear cursos de inserción laboral y asignarlos a quien acumula rechazos.
+- Gestionar las cuentas de la oficina: invitar por email, desactivar y reactivar (siempre queda al menos una activa; nadie se desactiva a sí mismo).
+- Mi perfil: foto, datos de contacto y cambio de contraseña.
 
 ### Autenticación y cuentas
 

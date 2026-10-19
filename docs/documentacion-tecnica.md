@@ -245,6 +245,7 @@ Están en [`src/migrations/`](../src/migrations/) y se ejecutan **a mano, en ord
 | 047 | Indicadores del dashboard de la oficina |
 | 048 | Cola de emails |
 | 049 | Indicadores del dashboard de la empresa |
+| 050 | Cuentas de la oficina: activar, desactivar y mínimo de una activa |
 
 El número 014 no se usó.
 
@@ -258,7 +259,8 @@ El número 014 no se usó.
 - **Empresa** (`registrarEmpresa`): igual, con razón social y CUIT validado (`src/lib/cuit.ts`, único en la base). La empresa queda `pendiente` de aprobación.
 - **Confirmación de email:** el link del email lleva a `/auth/callback`, que canjea el código (PKCE) y crea la sesión. La empresa recién confirmada genera el aviso `empresa_pendiente` para la oficina: la oficina no ve ni puede aprobar empresas sin email confirmado (migración 042).
 - **Recuperación de contraseña:** `/auth/recuperar-contrasena` envía un email con link a `/auth/nueva-contrasena?token_hash=…&type=recovery`. El token se consume recién al enviar el formulario, así los prefetchers de correo no lo gastan; la cookie `ftl_recovery` (15 minutos, `httpOnly`) permite reintentar.
-- **Usuarios de la oficina:** el rol `municipalidad` se asigna a mano ([guía](guias/guia-usuarios-oficina.md)).
+- **Usuarios de la oficina:** la primera cuenta se crea a mano ([guía](guias/guia-usuarios-oficina.md)); las demás se invitan desde `/admin/cuentas` con `inviteUserByEmail`. El link lleva a `/auth/aceptar-invitacion?token_hash=…&type=invite`, que guarda la contraseña (token consumido al enviar, como en la recuperación) e inicia sesión en `/admin`.
+- **Cuentas desactivadas:** `usuarios.activo = false` (solo oficina). `rol_actual()` devuelve `NULL`, Auth las tiene baneadas, `requerirUsuarioPagina()` cierra la sesión abierta vía `/auth/cuenta-desactivada` y el login muestra "Tu cuenta está desactivada". Un trigger garantiza al menos una cuenta activa de la oficina y nadie se desactiva a sí mismo (decisión [023](decisiones/023-cuentas-de-la-oficina.md)).
 
 ### Sesión, cierre del navegador e inactividad
 
@@ -268,8 +270,8 @@ El número 014 no se usó.
 - **Cookies sin vencimiento:** las cookies de auth se escriben sin `maxAge` ni `expires` y se borran al cerrar el navegador. `sessionCookieOptions` (`src/lib/session-config.ts`) se aplica en el proxy, en `createSupabaseServerClient()` y en `createSupabaseBrowserClient()` (este último con `getAll`/`setAll` propios sobre `document.cookie`). Conserva `maxAge: 0` para que el logout borre las cookies al instante.
 - **Cierre por inactividad:** la cookie de sesión `ftl_last_activity` guarda la última actividad; pasados **30 minutos** (`INACTIVITY_TIMEOUT_MS`) el proxy cierra la sesión y redirige al login con `?motivo=inactividad`.
 - **Navegador nuevo:** si hay usuario y no existe `ftl_last_activity`, la sesión es de un navegador que se cerró. El proxy la cierra (`signOut({ scope: "local" })`): en rutas protegidas redirige a `/auth/login?motivo=sesion-anterior&redirect=<ruta>` ("Por seguridad, volvé a iniciar sesión."); en rutas públicas la página se muestra como visitante; `/api/sesion` responde `{ activa: false }`.
-- **Quién crea `ftl_last_activity`:** `login()` (antes del redirect) y `/auth/callback` (después de canjear el código), con `lastActivityCookieOptions()`. Después la actualiza el proxy en cada request. La recuperación de contraseña no inicia sesión (cliente efímero), así que no la necesita.
-- **Sin control:** Server Actions, `/auth/callback`, `/auth/nueva-contrasena` y el cron `/api/emails/procesar` (sin sesión).
+- **Quién crea `ftl_last_activity`:** `login()` (antes del redirect), `aceptarInvitacion()` y `/auth/callback` (después de canjear el código), con `lastActivityCookieOptions()`. Después la actualiza el proxy en cada request. La recuperación de contraseña no inicia sesión (cliente efímero), así que no la necesita.
+- **Sin control:** Server Actions, `/auth/callback`, `/auth/nueva-contrasena`, `/auth/aceptar-invitacion` y el cron `/api/emails/procesar` (sin sesión).
 - **Logout:** `signOut()` y borrado de `ftl_last_activity`.
 - **Limitación:** "Continuar donde lo dejaste" de Chrome y los navegadores que siguen en segundo plano conservan las cookies de sesión al reabrir; en esos casos la sesión termina por inactividad.
 - Rutas públicas: `/`, `/ofertas`, `/auth/*` y `/api/emails/procesar`. Sin sesión, cualquier otra ruta redirige al login.
@@ -356,11 +358,11 @@ Los triggers de avisos son `AFTER` y envuelven su trabajo en `BEGIN … EXCEPTIO
 | Bucket | Contenido | Tipos | Tamaño máximo |
 |---|---|---|---|
 | `cvs` | CV del postulante | PDF | 5 MB |
-| `avatares` | Foto de perfil del postulante | JPG, PNG, WEBP | 2 MB |
+| `avatares` | Foto de perfil (postulante y oficina) y logo de la empresa | JPG, PNG, WEBP | 2 MB |
 
 - **Privados:** no hay URLs públicas. Para mostrar un archivo se genera una URL firmada de corta duración (entre 5 y 60 minutos).
 - **Ruta:** `<id del usuario>/cv-<timestamp>.pdf` y `<id del usuario>/avatar-<timestamp>.<ext>`. La ruta se registra en `archivos_usuario`.
-- **Quién sube:** solo el postulante, desde las acciones `subirCV` y `subirAvatar` (`src/app/(dashboard)/perfil/actions.ts`). Primero se sube el archivo y después se registra con `activar_archivo_usuario`, que desactiva el anterior; si el registro falla, se borra el archivo recién subido.
+- **Quién sube:** el CV solo el postulante (`subirCV`); la foto, los tres roles desde "Mi perfil" con `subirAvatar` (`src/app/(dashboard)/perfil/actions.ts`, la misma acción y las mismas validaciones). Las URLs firmadas de varias fotos se generan juntas con `fotosDePerfil()` (`src/lib/fotos-perfil.ts`). Primero se sube el archivo y después se registra con `activar_archivo_usuario`, que desactiva el anterior; si el registro falla, se borra el archivo recién subido.
 - **Quién lee:** el propio usuario (su carpeta), la oficina (todos) y la empresa solo los de candidatos derivados a sus ofertas o guardados (`empresa_puede_ver_cv`, `empresa_puede_ver_avatar`, migraciones 028 y 029).
 - **Quitar o reemplazar** desactiva el registro (`activo = false`); la aplicación no borra archivos del bucket.
 
@@ -495,17 +497,18 @@ Si falta alguna variable `SMTP_*` o `EMAIL_FROM`, la app funciona igual y los em
 ### Base de datos
 
 1. En **Storage**, crear los buckets privados `cvs` y `avatares` (la migración 033 falla si no existen).
-2. En el **SQL Editor**, ejecutar en orden numérico todos los archivos `src/migrations/migration_0XX_*.sql`, de `migration_001_schema.sql` a `migration_048_emails.sql`. Leer los `NOTICE` que dejan algunas migraciones.
+2. En el **SQL Editor**, ejecutar en orden numérico todos los archivos `src/migrations/migration_0XX_*.sql`, de `migration_001_schema.sql` a `migration_050_gestion_admins.sql`. Leer los `NOTICE` que dejan algunas migraciones.
 3. Los datos demo (usuarios para probar cada rol) se documentan en la sección [Usuarios demo del README](../README.md#usuarios-demo).
-4. Crear al menos un usuario de la oficina siguiendo la [guía de usuarios de la oficina](guias/guia-usuarios-oficina.md).
+4. Crear el primer usuario de la oficina siguiendo la [guía de usuarios de la oficina](guias/guia-usuarios-oficina.md); los demás se invitan desde `/admin/cuentas`.
 5. Si se cambia el esquema: `npx supabase login` y `npm run db:tipos`.
 
 ### Configuración de Auth en Supabase
 
 - **Authentication → URL Configuration:**
   - *Site URL:* `http://localhost:3000` en local, la URL del sitio en producción.
-  - *Redirect URLs:* `<sitio>/auth/callback` (confirmación de email) y `<sitio>/auth/nueva-contrasena` (recuperación), para local y producción.
+  - *Redirect URLs:* `<sitio>/auth/callback` (confirmación de email), `<sitio>/auth/nueva-contrasena` (recuperación) y `<sitio>/auth/aceptar-invitacion` (invitación de la oficina), para local y producción.
 - **Plantilla "Reset Password":** el link tiene que ser `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery`.
+- **Plantilla "Invite user":** el link tiene que ser `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=invite`.
 - **SMTP personalizado:** activar *Custom SMTP* con la cuenta de Gmail para los emails de Auth (confirmación y recuperación). Pasos en la [guía de emails](guias/guia-emails-supabase.md).
 
 ### Scripts de npm
@@ -558,6 +561,7 @@ No hay tests automáticos configurados.
 | 020 | [Notificaciones por email](decisiones/020-notificaciones-por-email.md) |
 | 021 | [Dashboard de indicadores de la empresa](decisiones/021-dashboard-de-empresa.md) |
 | 022 | [Sesión: cierre del navegador e inactividad](decisiones/022-sesion-y-cierre-del-navegador.md) |
+| 023 | [Cuentas de la Oficina de Empleo](decisiones/023-cuentas-de-la-oficina.md) |
 
 ---
 
@@ -566,7 +570,7 @@ No hay tests automáticos configurados.
 - **Migraciones manuales:** se ejecutan a mano en el SQL Editor y la base no registra cuáles se aplicaron. Una mejora es pasar al flujo del CLI de Supabase (`supabase/migrations` + `db push`), descripto en la [guía de migraciones](guias/guia-migraciones-supabase.md).
 - **Sesión al reabrir el navegador:** con "Continuar donde lo dejaste" de Chrome, o si el navegador sigue en segundo plano, las cookies de sesión sobreviven al cierre. La sesión termina igual por inactividad a los 30 minutos (decisión [022](decisiones/022-sesion-y-cierre-del-navegador.md)).
 - **Sin tests automáticos:** la validación es `lint`, `build` y pruebas manuales.
-- **Buckets y usuarios de la oficina se crean a mano** en el dashboard de Supabase.
+- **Los buckets y la primera cuenta de la oficina se crean a mano** en el dashboard de Supabase.
 - **Emails por Gmail:** unos 500 envíos por día por cuenta. Los que agotan los 5 intentos quedan `fallido` y hay que volver a ponerlos en `pendiente` a mano. En un caso borde (el email salió pero no se pudo marcar como enviado) se puede mandar dos veces. Con más volumen conviene un proveedor transaccional; solo cambian las variables `SMTP_*`.
 - **Un solo cron diario** (plan Hobby): si un envío falla después de la acción, el reintento puede esperar hasta el día siguiente.
 - **`emails_pendientes` crece** con cada email; no hay limpieza automática de los enviados.
