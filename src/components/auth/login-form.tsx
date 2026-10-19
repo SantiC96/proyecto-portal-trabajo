@@ -21,6 +21,7 @@ import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { MENSAJE_CUENTA_DESACTIVADA } from "@/lib/auth-errors";
 
 const inputClass =
   "w-full rounded-lg border border-border bg-background py-2.5 pl-10 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20";
@@ -30,12 +31,14 @@ export function LoginForm({
   inactividad,
   sesionAnterior,
   contrasenaActualizada,
+  cuentaDesactivada,
   redirect,
 }: {
   confirmacionError?: boolean;
   inactividad?: boolean;
   sesionAnterior?: boolean;
   contrasenaActualizada?: boolean;
+  cuentaDesactivada?: boolean;
   redirect?: string;
 }) {
   const router = useRouter();
@@ -51,8 +54,8 @@ export function LoginForm({
   // (inactivity or previous-browser session) so the navbar reflects the cleared
   // session without needing a manual F5.
   useEffect(() => {
-    if (inactividad || sesionAnterior) router.refresh();
-  }, [inactividad, sesionAnterior, router]);
+    if (inactividad || sesionAnterior || cuentaDesactivada) router.refresh();
+  }, [inactividad, sesionAnterior, cuentaDesactivada, router]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -116,6 +119,14 @@ export function LoginForm({
           <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 mb-1">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>Por seguridad, volvé a iniciar sesión.</span>
+          </div>
+        )}
+
+        {/* Cuenta de la oficina desactivada (se cerró la sesión abierta) */}
+        {cuentaDesactivada && !error && (
+          <div className="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-1">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{MENSAJE_CUENTA_DESACTIVADA}</span>
           </div>
         )}
 

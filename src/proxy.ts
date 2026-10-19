@@ -69,7 +69,11 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/api/") || isServerAction ? null : rutaActual;
 
   // Auth exchange routes must not trigger the inactivity check mid-flow
-  const INACTIVITY_EXEMPT_PATHS = ["/auth/callback", "/auth/nueva-contrasena"];
+  const INACTIVITY_EXEMPT_PATHS = [
+    "/auth/callback",
+    "/auth/nueva-contrasena",
+    "/auth/aceptar-invitacion",
+  ];
   const isInactivityExempt =
     isServerAction ||
     INACTIVITY_EXEMPT_PATHS.some(

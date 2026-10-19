@@ -23,6 +23,8 @@ import { requerirRolPagina } from "@/lib/auth";
 import { idsEmpresasSinConfirmar, listaIn } from "@/lib/admin/empresas-sin-confirmar";
 import { formatFechaCorta } from "@/lib/fechas";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
+import { fotosDePerfil } from "@/lib/fotos-perfil";
 
 export const metadata: Metadata = {
   title: "Empresas | Panel municipal | Portal de Empleo Funes",
@@ -234,11 +236,12 @@ async function ListadoEmpresas({
   const empresaIds = empresas.map((e) => e.id);
   const usuarioIds = empresas.map((e) => e.usuario_id);
 
-  // Consultas paralelas: emails y historial de las empresas de la página actual.
-  const [{ data: emailRows }, { data: historialRows }] = await Promise.all([
+  // Consultas paralelas: emails, logos e historial de las empresas de la página actual.
+  const [{ data: emailRows }, logos, { data: historialRows }] = await Promise.all([
     usuarioIds.length > 0
       ? supabase.rpc("emails_de_usuarios", { ids: usuarioIds })
       : Promise.resolve({ data: [] }),
+    fotosDePerfil(usuarioIds),
     empresaIds.length > 0
       ? supabase
           .from("historial_aprobacion_empresa")
@@ -316,7 +319,15 @@ async function ListadoEmpresas({
                     className="border-b border-border last:border-0"
                   >
                     <td className="py-4 pr-4 font-medium text-foreground">
-                      {empresa.razon_social}
+                      <div className="flex items-center gap-2.5">
+                        <AvatarAjustado
+                          src={logos.get(empresa.usuario_id)?.url}
+                          ajuste={logos.get(empresa.usuario_id)?.ajuste}
+                          alt={`Logo de ${empresa.razon_social}`}
+                          size="sm"
+                        />
+                        {empresa.razon_social}
+                      </div>
                     </td>
                     <td className="py-4 pr-4 font-mono text-muted-foreground">
                       {formatearCUIT(empresa.cuit)}
@@ -361,9 +372,17 @@ async function ListadoEmpresas({
                 className="rounded-[var(--radius-lg)] border border-border bg-surface p-4"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold text-foreground">
-                    {empresa.razon_social}
-                  </p>
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <AvatarAjustado
+                      src={logos.get(empresa.usuario_id)?.url}
+                      ajuste={logos.get(empresa.usuario_id)?.ajuste}
+                      alt={`Logo de ${empresa.razon_social}`}
+                      size="sm"
+                    />
+                    <p className="font-semibold text-foreground">
+                      {empresa.razon_social}
+                    </p>
+                  </div>
                   <div className="flex flex-wrap justify-end gap-1">
                     <Badge variant={BADGE_VARIANT[estado]}>{LABELS[estado]}</Badge>
                     {estado === "pendiente" && reenviadas.has(empresa.id) && (

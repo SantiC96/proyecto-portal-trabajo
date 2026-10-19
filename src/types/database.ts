@@ -808,6 +808,7 @@ export type Database = {
       }
       usuarios: {
         Row: {
+          activo: boolean
           apellido: string
           created_at: string
           id: string
@@ -816,6 +817,7 @@ export type Database = {
           telefono: string
         }
         Insert: {
+          activo?: boolean
           apellido: string
           created_at?: string
           id: string
@@ -824,6 +826,7 @@ export type Database = {
           telefono: string
         }
         Update: {
+          activo?: boolean
           apellido?: string
           created_at?: string
           id?: string
@@ -1008,6 +1011,10 @@ export type Database = {
         Args: { p_nota: string; p_postulacion_id: string }
         Returns: string
       }
+      desactivar_cuenta_oficina: {
+        Args: { p_usuario_id: string }
+        Returns: boolean
+      }
       editar_oferta_empresa: {
         Args: {
           p_beneficios: string[]
@@ -1024,6 +1031,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      email_registrado: { Args: { p_email: string }; Returns: boolean }
       email_tipo_con_envio: { Args: { p_tipo: string }; Returns: boolean }
       emails_de_usuarios: {
         Args: { ids: string[] }
@@ -1153,6 +1161,18 @@ export type Database = {
           tasa_contratacion: number
         }[]
       }
+      listar_cuentas_oficina: {
+        Args: never
+        Returns: {
+          activo: boolean
+          apellido: string
+          creado_en: string
+          email: string
+          id: string
+          nombre: string
+          ultimo_ingreso: string
+        }[]
+      }
       mi_empresa_id: { Args: never; Returns: string }
       mis_cursos_asignados: {
         Args: never
@@ -1280,6 +1300,10 @@ export type Database = {
         Returns: {
           postulante_id: string
         }[]
+      }
+      reactivar_cuenta_oficina: {
+        Args: { p_usuario_id: string }
+        Returns: boolean
       }
       rechazos_desde_ultimo_curso: {
         Args: { p_postulante_id: string }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Lock, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
-import { restablecerContrasena } from "@/app/auth/actions";
+import { aceptarInvitacion, restablecerContrasena } from "@/app/auth/actions";
 import {
   CLASE_CONTROL_INVALIDO,
   ErrorCampo,
@@ -17,7 +17,37 @@ import type { Resultado } from "@/lib/resultado";
 
 type Campo = "password" | "confirmar";
 
-export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
+// La misma pantalla sirve para recuperar la contraseña y para aceptar la
+// invitación de la oficina (/auth/aceptar-invitacion).
+const VARIANTES = {
+  recuperacion: {
+    accion: restablecerContrasena,
+    titulo: "Nueva contraseña",
+    descripcion: "Elegí una nueva contraseña para tu cuenta.",
+    etiqueta: "Nueva contraseña",
+    linkVencido: { href: "/auth/recuperar-contrasena", texto: "Pedir un link nuevo" },
+  },
+  invitacion: {
+    accion: aceptarInvitacion,
+    titulo: "Activá tu cuenta",
+    descripcion:
+      "Te invitaron a la cuenta de la Oficina de Empleo. Elegí tu contraseña para entrar al panel.",
+    etiqueta: "Contraseña",
+    linkVencido: {
+      href: "/auth/login",
+      texto: "Si ya elegiste tu contraseña, iniciá sesión. Si no, pedí una invitación nueva a la Oficina de Empleo.",
+    },
+  },
+} as const;
+
+export function NuevaContrasenaForm({
+  tokenHash,
+  variante = "recuperacion",
+}: {
+  tokenHash: string;
+  variante?: keyof typeof VARIANTES;
+}) {
+  const textos = VARIANTES[variante];
   const [state, setState] = useState<Resultado<void> | null>(null);
   const { pendiente: isPending, ejecutar } = useAccion();
   const [password, setPassword] = useState("");
@@ -47,7 +77,7 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
     fd.append("token_hash", tokenHash);
     ejecutar(async () => {
       // En el éxito la acción redirige al login.
-      const res = await restablecerContrasena(null, fd);
+      const res = await textos.accion(null, fd);
       setState(res);
       if (res && !res.ok) {
         // Se limpian los campos para no reenviar valores viejos.
@@ -78,10 +108,10 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
           <Lock className="h-7 w-7" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Nueva contraseña
+          {textos.titulo}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Elegí una nueva contraseña para tu cuenta.
+          {textos.descripcion}
         </p>
       </div>
 
@@ -93,7 +123,7 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
             htmlFor="nueva-password"
             className="text-sm font-medium text-foreground"
           >
-            Nueva contraseña <Obligatorio />
+            {textos.etiqueta} <Obligatorio />
           </label>
           <div className="relative">
             <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-icon" />
@@ -204,10 +234,10 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
             )}
             {tokenVencido && (
               <Link
-                href="/auth/recuperar-contrasena"
+                href={textos.linkVencido.href}
                 className="ml-6 font-medium underline hover:text-red-700"
               >
-                Pedir un link nuevo
+                {textos.linkVencido.texto}
               </Link>
             )}
           </div>

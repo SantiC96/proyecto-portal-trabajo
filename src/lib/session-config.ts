@@ -14,14 +14,23 @@ export function lastActivityCookieOptions() {
 export const RECOVERY_COOKIE = "ftl_recovery";
 export const RECOVERY_COOKIE_PATH = "/auth/nueva-contrasena";
 
-export function recoveryCookieOptions() {
+// Misma cookie de reintento para aceptar una invitación de la oficina.
+export const INVITACION_COOKIE = "ftl_invitacion";
+export const INVITACION_COOKIE_PATH = "/auth/aceptar-invitacion";
+
+/** Cookie que guarda el refresh token para reintentar sin un link nuevo. */
+export function cookieReintentoOptions(path: string) {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict" as const,
-    path: RECOVERY_COOKIE_PATH,
+    path,
     maxAge: 15 * 60,
   };
+}
+
+export function recoveryCookieOptions() {
+  return cookieReintentoOptions(RECOVERY_COOKIE_PATH);
 }
 
 // @supabase/ssr forces maxAge: 400 days on writes and maxAge: 0 on removals.

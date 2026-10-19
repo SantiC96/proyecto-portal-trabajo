@@ -9,6 +9,7 @@ import {
   FilePlus2,
   LayoutDashboard,
   User,
+  UserCog,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -22,12 +23,12 @@ export type SeccionRol = {
 
 /**
  * Secciones del panel de cada rol, en el orden en que aparecen en el menú del
- * usuario. "Mi perfil" va primero solo para el postulante, que es el único rol
- * con una página de perfil propia.
+ * usuario. "Mi perfil" va primero en los tres roles.
  */
 export function seccionesDeRol(rol: Rol | null | undefined): SeccionRol[] {
   if (rol === "empresa") {
     return [
+      { label: "Mi perfil", href: "/empresa/perfil", Icono: User },
       { label: "Panel", href: "/empresa", Icono: LayoutDashboard },
       { label: "Mis ofertas", href: "/empresa/ofertas", Icono: Briefcase },
       { label: "Publicar oferta", href: "/empresa/ofertas/nueva", Icono: FilePlus2 },
@@ -38,6 +39,7 @@ export function seccionesDeRol(rol: Rol | null | undefined): SeccionRol[] {
   }
   if (rol === "municipalidad") {
     return [
+      { label: "Mi perfil", href: "/admin/perfil", Icono: User },
       { label: "Panel", href: "/admin", Icono: LayoutDashboard },
       { label: "Ofertas", href: "/admin/ofertas", Icono: Briefcase },
       { label: "Empresas", href: "/admin/empresas", Icono: Building2 },
@@ -45,6 +47,7 @@ export function seccionesDeRol(rol: Rol | null | undefined): SeccionRol[] {
       { label: "Postulantes", href: "/admin/postulantes", Icono: Users },
       { label: "Cursos", href: "/admin/cursos", Icono: BookOpen },
       { label: "Indicadores", href: "/admin/indicadores", Icono: ChartColumn },
+      { label: "Cuentas de la oficina", href: "/admin/cuentas", Icono: UserCog },
       { label: "Notificaciones", href: "/admin/notificaciones", Icono: Bell },
     ];
   }
