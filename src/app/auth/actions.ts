@@ -24,6 +24,7 @@ import {
 } from "@/lib/validaciones";
 import {
   LAST_ACTIVITY_COOKIE,
+  lastActivityCookieOptions,
   RECOVERY_COOKIE,
   RECOVERY_COOKIE_PATH,
   recoveryCookieOptions,
@@ -98,6 +99,11 @@ export async function login(credentials: {
   });
 
   if (error) return wrapAuthError("login", error);
+
+  // Las Server Actions no pasan por el control del proxy: sin esta cookie, el
+  // primer request con sesión se tomaría como una sesión de un navegador anterior.
+  const cookieStore = await cookies();
+  cookieStore.set(LAST_ACTIVITY_COOKIE, String(Date.now()), lastActivityCookieOptions());
 
   redirect(rutaInterna(credentials.redirectTo));
 }

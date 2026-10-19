@@ -25,11 +25,13 @@ const inputClass =
 export function LoginForm({
   confirmacionError,
   inactividad,
+  sesionAnterior,
   contrasenaActualizada,
   redirect,
 }: {
   confirmacionError?: boolean;
   inactividad?: boolean;
+  sesionAnterior?: boolean;
   contrasenaActualizada?: boolean;
   redirect?: string;
 }) {
@@ -42,11 +44,12 @@ export function LoginForm({
   const [error, setError] = useState<ErrorAccion | null>(null);
   const campos = useErroresCampo<"email" | "password">();
 
-  // Belt-and-suspenders: force the root layout to re-render after an inactivity signOut
-  // so the navbar reflects the cleared session without needing a manual F5.
+  // Belt-and-suspenders: force the root layout to re-render after a proxy signOut
+  // (inactivity or previous-browser session) so the navbar reflects the cleared
+  // session without needing a manual F5.
   useEffect(() => {
-    if (inactividad) router.refresh();
-  }, [inactividad, router]);
+    if (inactividad || sesionAnterior) router.refresh();
+  }, [inactividad, sesionAnterior, router]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -100,6 +103,14 @@ export function LoginForm({
           <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 mb-1">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>Tu sesión se cerró por inactividad. Iniciá sesión de nuevo.</span>
+          </div>
+        )}
+
+        {/* Session from a previous browser banner */}
+        {sesionAnterior && (
+          <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 mb-1">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>Por seguridad, volvé a iniciar sesión.</span>
           </div>
         )}
 

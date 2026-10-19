@@ -260,13 +260,18 @@ El número 014 no se usó.
 - **Recuperación de contraseña:** `/auth/recuperar-contrasena` envía un email con link a `/auth/nueva-contrasena?token_hash=…&type=recovery`. El token se consume recién al enviar el formulario, así los prefetchers de correo no lo gastan; la cookie `ftl_recovery` (15 minutos, `httpOnly`) permite reintentar.
 - **Usuarios de la oficina:** el rol `municipalidad` se asigna a mano ([guía](guias/guia-usuarios-oficina.md)).
 
-### Sesión y cierre por inactividad
+### Sesión, cierre del navegador e inactividad
 
-`src/proxy.ts` (el `middleware` de Next.js 16, decisión [001](decisiones/001-proxy-en-lugar-de-middleware.md)) corre en cada request:
+`src/proxy.ts` (el `middleware` de Next.js 16, decisión [001](decisiones/001-proxy-en-lugar-de-middleware.md)) corre en cada request. Detalle en la decisión [022](decisiones/022-sesion-y-cierre-del-navegador.md).
 
 - Refresca la sesión con `supabase.auth.getUser()`, que valida el token contra Supabase.
-- Las cookies de sesión no tienen vencimiento persistente: se borran al cerrar el navegador (`sessionCookieOptions` en `src/lib/session-config.ts`).
-- Cierre por inactividad: la cookie `ftl_last_activity` guarda la última actividad; pasados **30 minutos** (`INACTIVITY_TIMEOUT_MS`) cierra la sesión y redirige al login con `?motivo=inactividad`.
+- **Cookies sin vencimiento:** las cookies de auth se escriben sin `maxAge` ni `expires` y se borran al cerrar el navegador. `sessionCookieOptions` (`src/lib/session-config.ts`) se aplica en el proxy, en `createSupabaseServerClient()` y en `createSupabaseBrowserClient()` (este último con `getAll`/`setAll` propios sobre `document.cookie`). Conserva `maxAge: 0` para que el logout borre las cookies al instante.
+- **Cierre por inactividad:** la cookie de sesión `ftl_last_activity` guarda la última actividad; pasados **30 minutos** (`INACTIVITY_TIMEOUT_MS`) el proxy cierra la sesión y redirige al login con `?motivo=inactividad`.
+- **Navegador nuevo:** si hay usuario y no existe `ftl_last_activity`, la sesión es de un navegador que se cerró. El proxy la cierra (`signOut({ scope: "local" })`): en rutas protegidas redirige a `/auth/login?motivo=sesion-anterior&redirect=<ruta>` ("Por seguridad, volvé a iniciar sesión."); en rutas públicas la página se muestra como visitante; `/api/sesion` responde `{ activa: false }`.
+- **Quién crea `ftl_last_activity`:** `login()` (antes del redirect) y `/auth/callback` (después de canjear el código), con `lastActivityCookieOptions()`. Después la actualiza el proxy en cada request. La recuperación de contraseña no inicia sesión (cliente efímero), así que no la necesita.
+- **Sin control:** Server Actions, `/auth/callback`, `/auth/nueva-contrasena` y el cron `/api/emails/procesar` (sin sesión).
+- **Logout:** `signOut()` y borrado de `ftl_last_activity`.
+- **Limitación:** "Continuar donde lo dejaste" de Chrome y los navegadores que siguen en segundo plano conservan las cookies de sesión al reabrir; en esos casos la sesión termina por inactividad.
 - Rutas públicas: `/`, `/ofertas`, `/auth/*` y `/api/emails/procesar`. Sin sesión, cualquier otra ruta redirige al login.
 
 ### Roles y protección de páginas y acciones
@@ -552,12 +557,14 @@ No hay tests automáticos configurados.
 | 019 | [Dashboard de indicadores](decisiones/019-dashboard-de-indicadores.md) |
 | 020 | [Notificaciones por email](decisiones/020-notificaciones-por-email.md) |
 | 021 | [Dashboard de indicadores de la empresa](decisiones/021-dashboard-de-empresa.md) |
+| 022 | [Sesión: cierre del navegador e inactividad](decisiones/022-sesion-y-cierre-del-navegador.md) |
 
 ---
 
 ## 13. Limitaciones conocidas y posibles mejoras
 
 - **Migraciones manuales:** se ejecutan a mano en el SQL Editor y la base no registra cuáles se aplicaron. Una mejora es pasar al flujo del CLI de Supabase (`supabase/migrations` + `db push`), descripto en la [guía de migraciones](guias/guia-migraciones-supabase.md).
+- **Sesión al reabrir el navegador:** con "Continuar donde lo dejaste" de Chrome, o si el navegador sigue en segundo plano, las cookies de sesión sobreviven al cierre. La sesión termina igual por inactividad a los 30 minutos (decisión [022](decisiones/022-sesion-y-cierre-del-navegador.md)).
 - **Sin tests automáticos:** la validación es `lint`, `build` y pruebas manuales.
 - **Buckets y usuarios de la oficina se crean a mano** en el dashboard de Supabase.
 - **Emails por Gmail:** unos 500 envíos por día por cuenta. Los que agotan los 5 intentos quedan `fallido` y hay que volver a ponerlos en `pendiente` a mano. En un caso borde (el email salió pero no se pudo marcar como enviado) se puede mandar dos veces. Con más volumen conviene un proveedor transaccional; solo cambian las variables `SMTP_*`.
