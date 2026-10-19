@@ -354,7 +354,7 @@ export async function subirCV(
   }
 
   revalidatePath("/perfil");
-  return okMsg("CV actualizado.");
+  return okMsg("CV subido correctamente.");
 }
 
 export async function eliminarCV(): Promise<Resultado<void>> {

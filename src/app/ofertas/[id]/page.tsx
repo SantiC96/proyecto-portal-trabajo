@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building, MapPin, Clock, Briefcase } from "lucide-react";
+import { Building, MapPin, Clock, Briefcase } from "lucide-react";
 import { PublicFooter } from "@/components/public/public-footer";
 import { getOfertaById } from "@/lib/ofertas";
 import { formatFecha } from "@/lib/fechas";
@@ -9,6 +9,7 @@ import { obtenerPostulanteActual, obtenerUsuarioActual } from "@/lib/auth";
 import { PostularseCta, type Postulacion } from "./postularse-cta";
 import { RequisitosList, BeneficiosList } from "@/components/ofertas/requisitos-beneficios";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -83,14 +84,7 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
     <>
       <main className="flex-1 px-4 py-8 sm:px-6 sm:py-12">
         <div className="mx-auto max-w-3xl">
-          {/* Back link */}
-          <Link
-            href="/ofertas"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground-strong transition hover:text-primary"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Volver a ofertas
-          </Link>
+          <BotonVolver href="/ofertas">Volver a ofertas</BotonVolver>
 
           {/* Card */}
           <article className="mt-6 rounded-2xl border border-border bg-white p-6 shadow-xs sm:p-8">

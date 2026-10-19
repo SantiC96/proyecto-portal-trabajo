@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { Bell } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
@@ -14,6 +13,7 @@ import { BotonFormulario } from "@/components/ui/boton-formulario";
 import { abrirNotificacion } from "@/app/(dashboard)/notificaciones/actions";
 import { MarcarLeidaBtn, MarcarTodasLeidasBtn } from "./acciones-notificaciones";
 import { IconoNotificacion } from "./icono-notificacion";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 /**
  * Listado paginado de las notificaciones del usuario. Lo usan las páginas de
@@ -29,7 +29,7 @@ export async function PaginaNotificaciones({
   usuarioId: string;
   /** Ruta de esta página (para la paginación). */
   ruta: string;
-  /** Miga de pan hacia el panel del rol. */
+  /** Página a la que vuelve el botón "Volver" (el panel del rol). */
   panel: { href: string; label: string };
   textoVacio: string;
   searchParams: ParamsUrl;
@@ -45,13 +45,7 @@ export async function PaginaNotificaciones({
 
   return (
     <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href={panel.href} className="hover:text-foreground">
-          {panel.label}
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">Notificaciones</span>
-      </div>
+      <BotonVolver href={panel.href}>{panel.label}</BotonVolver>
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
         <div>
