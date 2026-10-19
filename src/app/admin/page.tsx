@@ -8,6 +8,7 @@ import {
   ChartColumn,
   ChevronRight,
   ClipboardList,
+  UserCog,
   Users,
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
@@ -179,6 +180,24 @@ export default async function AdminDashboardPage() {
               <p className="font-semibold text-foreground">Indicadores</p>
               <p className="text-sm text-muted-foreground">
                 Postulaciones, derivaciones, contrataciones y cursos por período
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 flex-shrink-0 text-muted-icon" />
+        </Link>
+
+        <Link
+          href="/admin/cuentas"
+          className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-colors hover:bg-surface-tinted"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-primary">
+              <UserCog className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Cuentas de la oficina</p>
+              <p className="text-sm text-muted-foreground">
+                Invitá, desactivá o reactivá las cuentas del personal de la oficina
               </p>
             </div>
           </div>
