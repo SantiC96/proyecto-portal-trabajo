@@ -170,12 +170,12 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
         </div>
       )}
 
-      <button type="submit" disabled={isPending} aria-busy={isPending} className="btn-primario">
+      <button type="submit" disabled={isPending} aria-busy={isPending} className="btn-primario min-h-11">
         {isPending && <Spinner />}
         {isPending
           ? modo === "crear"
-            ? "Creando..."
-            : "Guardando..."
+            ? "Creando…"
+            : "Guardando…"
           : modo === "crear"
             ? "Crear curso"
             : "Guardar cambios"}

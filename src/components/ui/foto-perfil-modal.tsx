@@ -6,8 +6,9 @@ import { UserRound, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useMounted } from "@/lib/use-mounted";
 import { FotoPrivada } from "@/components/ui/foto-privada";
 import { ajustarAvatar } from "@/app/(dashboard)/perfil/actions";
-import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
+import { useAccion } from "@/lib/use-accion";
+import { Spinner } from "@/components/ui/spinner";
 
 interface FotoPerfilModalProps {
   src: string;
@@ -32,43 +33,35 @@ export function FotoPerfilModal({
   const mounted = useMounted();
   const [modo, setModo] = useState<"ver" | "ajustar">(modoInicial);
   const [ajuste, setAjuste] = useState(ajusteInicial);
-  const [guardando, setGuardando] = useState(false);
-  const [error, setError] = useState<ErrorAccion | null>(null);
+  const { pendiente: guardando, ejecutar } = useAccion();
 
   const previewRef = useRef<HTMLDivElement>(null);
   const dragStart = useRef<{ px: number; py: number; ax: number; ay: number } | null>(null);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !guardando) onClose();
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
+  }, [onClose, guardando]);
 
   const abrirAjuste = () => {
     setAjuste(ajusteInicial);
-    setError(null);
     setModo("ajustar");
   };
 
   const cancelarAjuste = () => {
     setAjuste(ajusteInicial);
-    setError(null);
     setModo("ver");
   };
 
-  const handleGuardar = async () => {
-    setGuardando(true);
-    setError(null);
-    const result = await ajustarAvatar(ajuste);
-    setGuardando(false);
-    mostrarAviso(result);
-    if (!result.ok) {
-      setError(toErrorAccion(result));
-    } else {
-      onGuardado(ajuste);
-    }
+  const handleGuardar = () => {
+    ejecutar(async () => {
+      const result = await ajustarAvatar(ajuste);
+      mostrarAviso(result);
+      if (result.ok) onGuardado(ajuste);
+    });
   };
 
   // ── Drag handlers ──────────────────────────────────────────────────────────
@@ -104,14 +97,15 @@ export function FotoPerfilModal({
       aria-label="Foto de perfil"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget && !guardando) onClose();
       }}
     >
       <div className="relative w-full max-w-lg rounded-2xl border border-border bg-white shadow-xl">
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 rounded-full p-1.5 text-muted-foreground transition hover:bg-gray-100 hover:text-foreground"
+          disabled={guardando}
+          className="absolute top-3 right-3 z-10 inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-tinted hover:text-foreground disabled:opacity-40"
           aria-label="Cerrar"
         >
           <X className="h-5 w-5" />
@@ -249,16 +243,6 @@ export function FotoPerfilModal({
               </button>
             </div>
 
-            {error && (
-              <div className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-center text-sm text-red-600">
-                <p>{error.mensaje}</p>
-                {error.ref && (
-                  <p className="mt-0.5 text-xs text-gray-500">
-                    Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-                  </p>
-                )}
-              </div>
-            )}
 
             <div className="flex flex-wrap justify-center gap-3">
               <button
@@ -272,11 +256,10 @@ export function FotoPerfilModal({
                 type="button"
                 onClick={handleGuardar}
                 disabled={guardando}
-                className="flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-60"
+                aria-busy={guardando}
+                className="flex h-11 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-60"
               >
-                {guardando && (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                )}
+                {guardando && <Spinner />}
                 {guardando ? "Guardando…" : "Guardar"}
               </button>
               <button

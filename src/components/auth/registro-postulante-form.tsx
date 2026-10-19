@@ -25,6 +25,9 @@ import {
   ariaErrorCampo,
 } from "@/components/ui/obligatorio";
 import { useErroresCampo } from "@/lib/use-errores-campo";
+import { useAccion } from "@/lib/use-accion";
+import { Spinner } from "@/components/ui/spinner";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 const CAMPOS = [
   "nombre",
@@ -83,7 +86,7 @@ export function RegistroPostulanteForm() {
   const [confirmaFunes, setConfirmaFunes] = useState(false);
 
   // Submit state
-  const [isLoading, setIsLoading] = useState(false);
+  const { pendiente: isLoading, ejecutar } = useAccion();
   const [submitError, setSubmitError] = useState<ErrorAccion | null>(null);
   const campos = useErroresCampo<Campo>();
 
@@ -92,7 +95,7 @@ export function RegistroPostulanteForm() {
     passwordRepeat !== "" && password !== passwordRepeat;
 
   // ── handlers ───────────────────────────────────────────────────────────────
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitError(null);
 
@@ -117,25 +120,29 @@ export function RegistroPostulanteForm() {
     }
 
     setSubmitError(null);
-    setIsLoading(true);
-    const result = await registrarPostulante({
-      nombre,
-      apellido,
-      telefono,
-      dni,
-      domicilio,
-      email,
-      password,
+    // En el éxito la acción redirige a la página de verificación del email.
+    ejecutar(async () => {
+      const result = await registrarPostulante({
+        nombre,
+        apellido,
+        telefono,
+        dni,
+        domicilio,
+        email,
+        password,
     });
-    if (result && !result.ok) {
-      if (!campos.tomarDelServidor(result, CAMPOS)) setSubmitError(toErrorAccion(result));
-      setIsLoading(false);
-    }
+      if (result && !result.ok && !campos.tomarDelServidor(result, CAMPOS)) {
+        setSubmitError(toErrorAccion(result));
+      }
+    });
   };
 
   // ── render ─────────────────────────────────────────────────────────────────
   return (
     <div className="w-full max-w-xl">
+      <BotonVolver href="/" className="mb-3">
+        Volver al inicio
+      </BotonVolver>
       {/* Header */}
       <div className="mb-6 text-center">
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -152,7 +159,7 @@ export function RegistroPostulanteForm() {
       <form
         onSubmit={handleSubmit}
         noValidate
-        className="flex flex-col gap-6 rounded-2xl border border-border bg-white px-7 py-8 shadow-sm"
+        className="flex flex-col gap-6 rounded-2xl border border-border bg-white px-4 py-6 shadow-sm sm:px-7 sm:py-8"
       >
         {/* ── 1. Datos personales ────────────────────────────────────────── */}
         <section>
@@ -461,10 +468,11 @@ export function RegistroPostulanteForm() {
           type="submit"
           id="reg-postulante-submit"
           disabled={isLoading || passwordRepeatError}
+          aria-busy={isLoading}
           className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isLoading ? (
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            <Spinner />
           ) : (
             <UserPlus className="h-4 w-4" />
           )}
@@ -479,13 +487,6 @@ export function RegistroPostulanteForm() {
           </Link>
         </p>
       </form>
-
-      {/* Back to home */}
-      <p className="mt-5 mb-8 text-center text-xs text-muted-icon">
-        <Link href="/" className="hover:text-primary hover:underline">
-          ← Volver al inicio
-        </Link>
-      </p>
 
     </div>
   );

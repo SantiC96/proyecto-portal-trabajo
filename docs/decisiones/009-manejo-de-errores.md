@@ -154,7 +154,7 @@ Cuando una acción termina en una redirección a otra página (alta de oferta, r
 
 - La acción redirige con `?aviso=<clave>` (ej. `?aviso=enviada`).
 - `src/components/ui/aviso-url.tsx` lee el param al montar, muestra el toast correspondiente y limpia el param de la URL con `router.replace`.
-- Páginas que incluyen `<AvisoUrl>`: `empresa/ofertas`, `empresa` (panel), `admin/cursos/[id]`.
+- Páginas que incluyen `<AvisoUrl>`: `empresa/ofertas`, `empresa` (panel), `admin/cursos/[id]`, `admin/cursos` (`?aviso=curso-eliminado`).
 
 **Razonamiento:** un toast disparado antes de un `redirect()` se pierde porque el browser navega antes de que el componente monte. El param `?aviso=` persiste la intención de mostrar feedback a través de la navegación.
 
@@ -162,12 +162,20 @@ Cuando una acción termina en una redirección a otra página (alta de oferta, r
 
 Los formularios mantienen errores de validación inline (junto al campo o debajo del form). El éxito se muestra via toast (`mostrarAviso`) y no como banner persistente en pantalla.
 
+**Un solo aviso por resultado.** Cada resultado de una acción se informa en un solo lugar:
+
+- Error de un campo puntual (la acción devuelve `campo`, por ejemplo "La contraseña actual es incorrecta."): va debajo de ese campo con `tomarDelServidor`, que además lo marca como inválido. No se muestra toast. Patrón: `if (!campos.tomarDelServidor(res, CAMPOS)) mostrarAviso(res);`.
+- Éxito y errores generales (sin `campo`): toast con `mostrarAviso`. La pantalla no repite el error en un recuadro, ni dentro de un diálogo ni debajo del formulario; el diálogo o el formulario quedan abiertos para reintentar.
+- Validación en el navegador antes de enviar (obligatorios, formatos, tipo y tamaño de archivo): debajo del campo, sin toast.
+
+Los formularios que no usan toast (login, registro, nueva contraseña, oferta de empresa, curso, corrección de la solicitud) muestran su único mensaje en la página.
+
 **Campos obligatorios** (`src/components/ui/obligatorio.tsx`, `src/lib/use-errores-campo.ts`):
 
 - El label lleva `<Obligatorio />`: un asterisco rojo con "(obligatorio)" oculto para lectores de pantalla. No se agrega una leyenda "* Campo obligatorio" en el formulario.
 - Los formularios llevan `noValidate` (los diálogos sin `<form>` validan igual) y no usan el globo del navegador: al enviar, `useErroresCampo().validar({...})` marca "Este campo es obligatorio." (`MENSAJE_OBLIGATORIO`) debajo de cada obligatorio vacío o solo con espacios, enfoca el primero y no envía.
 - El mensaje va en `<ErrorCampo />`, y el control lleva `aria-invalid` y `aria-describedby` (`ariaErrorCampo()`); el error se borra cuando el usuario cambia el campo.
-- El servidor sigue validando lo mismo. Si devuelve `campo`, `tomarDelServidor(resultado, campos)` lo muestra debajo de ese campo; si no, el error va donde iba (arriba del botón).
+- El servidor sigue validando lo mismo. Si devuelve `campo`, `tomarDelServidor(resultado, campos)` lo muestra debajo de ese campo (sin toast); si no, el error va en el toast, o arriba del botón en los formularios que no usan toast.
 
 ---
 

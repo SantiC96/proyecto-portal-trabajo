@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import Link from "next/link";
 import { Building2 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
@@ -14,6 +13,7 @@ import {
 } from "@/lib/paginacion";
 import { Badge } from "@/components/ui/badge";
 import { Buscador } from "@/components/ui/buscador";
+import { ContadoresEstado, PestanasEstado } from "@/components/ui/pestanas-estado";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
@@ -22,6 +22,7 @@ import type { Tabla } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
 import { idsEmpresasSinConfirmar, listaIn } from "@/lib/admin/empresas-sin-confirmar";
 import { formatFechaCorta } from "@/lib/fechas";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Empresas | Panel municipal | Portal de Empleo Funes",
@@ -67,36 +68,55 @@ export default async function AdminEmpresasPage({
   const q = limpiarBusqueda(sp.q);
   const pagina = leerPagina(sp.pagina);
 
+  const supabase = await createSupabaseServerClient();
+  const contar = (e: EstadoAprobacion) =>
+    supabase
+      .from("empresas")
+      .select("*", { count: "exact", head: true })
+      .eq("estado_aprobacion", e);
+  const [
+    { count: cPendientesTotales },
+    { count: cAprobadas },
+    { count: cRechazadas },
+    sinConfirmar,
+  ] = await Promise.all([
+    contar("pendiente"),
+    contar("aprobada"),
+    contar("rechazada"),
+    idsEmpresasSinConfirmar(supabase),
+  ]);
+
+  // Las empresas que no confirmaron el email no cuentan como pendientes: la
+  // base solo las deja en ese estado (migration_042).
+  if (sinConfirmar.error) logError("admin_empresas_contador_sin_confirmar", sinConfirmar.error);
+  const cPendientes = Math.max(0, (cPendientesTotales ?? 0) - (sinConfirmar.ids?.length ?? 0));
+
   return (
     <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/admin" className="hover:text-foreground">
-          Panel
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">Empresas</span>
-      </div>
+      <BotonVolver href="/admin">Volver al panel</BotonVolver>
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         Empresas
       </h1>
 
-      {/* Barra de pestañas */}
-      <div className="mt-6 flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
-        {ESTADOS.map((tab) => (
-          <Link
-            key={tab}
-            href={hrefConParams(RUTA, {}, { estado: tab, q: sp.q ?? null })}
-            className={
-              tab === estado
-                ? "flex min-h-11 flex-1 items-center justify-center rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
-                : "flex min-h-11 flex-1 items-center justify-center rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
-            }
-          >
-            {LABELS[tab]}
-          </Link>
-        ))}
-      </div>
+      <ContadoresEstado
+        className="mt-6"
+        contadores={[
+          { label: "Pendientes", valor: cPendientes, color: "text-amber-700" },
+          { label: "Aprobadas", valor: cAprobadas ?? 0, color: "text-emerald-700" },
+          { label: "Rechazadas", valor: cRechazadas ?? 0, color: "text-red-600" },
+        ]}
+      />
+
+      <PestanasEstado
+        className="mt-6"
+        etiqueta="Estado de las empresas"
+        pestanas={ESTADOS.map((tab) => ({
+          href: hrefConParams(RUTA, {}, { estado: tab, q: sp.q ?? null }),
+          label: LABELS[tab],
+          activa: tab === estado,
+        }))}
+      />
 
       {/* Búsqueda */}
       <Buscador className="mt-4" placeholder="Buscar por razón social o CUIT…" />
@@ -105,7 +125,13 @@ export default async function AdminEmpresasPage({
         key={JSON.stringify({ estado, q, pagina })}
         fallback={<EsqueletoLista filas={5} className="mt-4" />}
       >
-        <ListadoEmpresas estado={estado} q={q} pagina={pagina} searchParams={sp} />
+        <ListadoEmpresas
+          estado={estado}
+          q={q}
+          pagina={pagina}
+          searchParams={sp}
+          empresasSinConfirmar={sinConfirmar}
+        />
       </Suspense>
     </section>
   );
@@ -116,11 +142,14 @@ async function ListadoEmpresas({
   q,
   pagina,
   searchParams,
+  empresasSinConfirmar,
 }: {
   estado: EstadoAprobacion;
   q: string;
   pagina: number;
   searchParams: ParamsUrl;
+  /** Calculadas en la página, que también las usa para el contador. */
+  empresasSinConfirmar: Awaited<ReturnType<typeof idsEmpresasSinConfirmar>>;
 }) {
   const supabase = await createSupabaseServerClient();
   const ascendente = estado === "pendiente";
@@ -130,12 +159,11 @@ async function ListadoEmpresas({
   // (migration_042).
   let sinConfirmar: string[] = [];
   if (estado === "pendiente") {
-    const res = await idsEmpresasSinConfirmar(supabase);
-    if (res.error) {
-      const ref = logError("admin_empresas_sin_confirmar", res.error, { estado });
+    if (empresasSinConfirmar.error) {
+      const ref = logError("admin_empresas_sin_confirmar", empresasSinConfirmar.error, { estado });
       return <ErrorListado className="mt-4" refError={ref} />;
     }
-    sinConfirmar = res.ids;
+    sinConfirmar = empresasSinConfirmar.ids;
   }
 
   const resultado = await consultarPagina(pagina, (desde, hasta) => {

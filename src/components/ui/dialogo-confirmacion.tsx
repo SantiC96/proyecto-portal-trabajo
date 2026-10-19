@@ -12,17 +12,90 @@ import {
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { mostrarAviso } from "@/lib/avisos";
-import { toErrorAccion, type ErrorAccion, type Resultado } from "@/lib/resultado";
+import type { Resultado } from "@/lib/resultado";
 import { useAccion } from "@/lib/use-accion";
 import { cn } from "@/lib/utils";
+
+/** Clases de una acción del pie que no es un Button (un Link o un BotonFormulario). */
+export const CLASE_ACCION_DIALOGO = {
+  primario: "btn-primario min-h-11 justify-center sm:min-h-9",
+  secundario:
+    "btn-secundario inline-flex min-h-11 items-center justify-center whitespace-nowrap px-4 text-sm font-medium sm:min-h-9",
+} as const;
+
+/** Estilos de los botones que abren un diálogo, según la jerarquía de la acción. */
+export const CLASE_BOTON = {
+  primario: "btn-primario",
+  secundario: "btn-secundario",
+  peligro: "btn-peligro",
+} as const;
+
+export type EstiloBoton = keyof typeof CLASE_BOTON;
+
+/**
+ * Pie de todos los diálogos con una acción: Cancelar a la izquierda y la
+ * acción a la derecha (en el celular, la acción arriba). Mientras la acción
+ * corre los dos quedan deshabilitados y el de confirmar muestra la carga.
+ * Si la acción no es un botón (un link, un formulario), va como `children`
+ * con las clases de CLASE_ACCION_DIALOGO.
+ */
+export function BotonesDialogo({
+  pendiente,
+  onCancelar,
+  onConfirmar,
+  textoConfirmar,
+  textoPendiente,
+  destructivo = false,
+  deshabilitado = false,
+  textoCancelar = "Cancelar",
+  children,
+}: {
+  pendiente: boolean;
+  onCancelar: () => void;
+  textoCancelar?: string;
+  children?: ReactNode;
+  onConfirmar?: () => void;
+  textoConfirmar?: string;
+  textoPendiente?: string;
+  destructivo?: boolean;
+  deshabilitado?: boolean;
+}) {
+  return (
+    <DialogFooter>
+      <button
+        type="button"
+        onClick={onCancelar}
+        disabled={pendiente}
+        className="btn-secundario inline-flex min-h-11 items-center justify-center whitespace-nowrap px-4 text-sm font-medium sm:min-h-9"
+      >
+        {textoCancelar}
+      </button>
+      {children}
+      {onConfirmar && textoConfirmar && (
+        <Button
+          onClick={onConfirmar}
+          disabled={pendiente || deshabilitado}
+          aria-busy={pendiente}
+          variant={destructivo ? "destructive" : "default"}
+          className="min-h-11 px-4 sm:min-h-9"
+        >
+          {pendiente && <Spinner />}
+          {pendiente ? (textoPendiente ?? "Guardando…") : textoConfirmar}
+        </Button>
+      )}
+    </DialogFooter>
+  );
+}
 
 type Props<T> = {
   /** Texto del botón que abre el diálogo. */
   textoBoton: ReactNode;
-  /** Estilo del botón que abre el diálogo (clases btn-primario / btn-secundario). */
-  estiloBoton?: "primario" | "secundario";
+  /** Jerarquía del botón que abre el diálogo. */
+  estiloBoton?: EstiloBoton;
   claseBoton?: string;
   deshabilitado?: boolean;
+  /** Texto de ayuda del botón (tooltip). */
+  ayudaBoton?: string;
   titulo: string;
   descripcion?: ReactNode;
   /** Contenido extra entre la descripción y los botones. */
@@ -39,13 +112,15 @@ type Props<T> = {
 /**
  * Botón + diálogo de confirmación para una acción del servidor. Mientras la
  * acción corre, los botones quedan deshabilitados, el de confirmar muestra el
- * indicador de carga y un segundo clic no vuelve a dispararla.
+ * indicador de carga y un segundo clic no vuelve a dispararla. El resultado se
+ * informa con un toast; si falla, el diálogo queda abierto para reintentar.
  */
 export function DialogoConfirmacion<T>({
   textoBoton,
   estiloBoton = "secundario",
   claseBoton,
   deshabilitado = false,
+  ayudaBoton,
   titulo,
   descripcion,
   children,
@@ -57,18 +132,13 @@ export function DialogoConfirmacion<T>({
   onExito,
 }: Props<T>) {
   const [abierto, setAbierto] = useState(false);
-  const [error, setError] = useState<ErrorAccion | null>(null);
   const { pendiente, ejecutar } = useAccion();
 
   function confirmar() {
-    setError(null);
     ejecutar(async () => {
       const res = await accion();
       mostrarAviso(res, mensajeExito);
-      if (!res.ok) {
-        setError(toErrorAccion(res));
-        return;
-      }
+      if (!res.ok) return;
       setAbierto(false);
       onExito?.(res);
     });
@@ -78,14 +148,12 @@ export function DialogoConfirmacion<T>({
     <>
       <button
         type="button"
-        onClick={() => {
-          setError(null);
-          setAbierto(true);
-        }}
+        onClick={() => setAbierto(true)}
         disabled={deshabilitado || pendiente}
+        title={ayudaBoton}
         className={cn(
-          estiloBoton === "primario" ? "btn-primario" : "btn-secundario",
-          "inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap px-4 text-sm font-medium disabled:opacity-60",
+          CLASE_BOTON[estiloBoton],
+          "inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap px-4 text-sm font-medium",
           claseBoton,
         )}
       >
@@ -97,7 +165,6 @@ export function DialogoConfirmacion<T>({
         onOpenChange={(v) => {
           if (pendiente) return;
           setAbierto(v);
-          if (!v) setError(null);
         }}
       >
         <DialogContent>
@@ -108,40 +175,14 @@ export function DialogoConfirmacion<T>({
 
           {children}
 
-          {error && (
-            <div role="alert">
-              <p className="text-sm text-red-600">{error.mensaje}</p>
-              {error.ref && (
-                <p className="mt-0.5 text-xs text-gray-500">
-                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-                </p>
-              )}
-            </div>
-          )}
-
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => {
-                setAbierto(false);
-                setError(null);
-              }}
-              disabled={pendiente}
-              className="btn-secundario inline-flex min-h-11 items-center justify-center whitespace-nowrap px-4 text-sm font-medium disabled:opacity-60 sm:min-h-9"
-            >
-              Cancelar
-            </button>
-            <Button
-              onClick={confirmar}
-              disabled={pendiente}
-              aria-busy={pendiente}
-              variant={destructivo ? "destructive" : "default"}
-              className="min-h-11 px-4 sm:min-h-9"
-            >
-              {pendiente && <Spinner />}
-              {pendiente ? textoPendiente : textoConfirmar}
-            </Button>
-          </DialogFooter>
+          <BotonesDialogo
+            pendiente={pendiente}
+            onCancelar={() => setAbierto(false)}
+            onConfirmar={confirmar}
+            textoConfirmar={textoConfirmar}
+            textoPendiente={textoPendiente}
+            destructivo={destructivo}
+          />
         </DialogContent>
       </Dialog>
     </>

@@ -10,6 +10,7 @@ const MENSAJES: Record<string, { tipo: "exito" | "info"; texto: string }> = {
   eliminada: { tipo: "exito", texto: "El envío fue eliminado exitosamente." },
   pendiente: { tipo: "info", texto: "La oferta está en revisión. Vas a poder editarla cuando la oficina responda." },
   creado: { tipo: "exito", texto: "Curso creado." },
+  "curso-eliminado": { tipo: "exito", texto: "Curso eliminado." },
   reenviada: { tipo: "exito", texto: "Solicitud reenviada. La Oficina de Empleo la revisará pronto." },
 };
 

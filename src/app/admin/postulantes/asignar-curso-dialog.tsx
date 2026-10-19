@@ -5,18 +5,15 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
 import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { asignarCurso } from "@/app/admin/cursos/actions";
-import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
-import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import type { Tabla } from "@/types/db";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
@@ -28,8 +25,6 @@ import {
   ariaErrorCampo,
 } from "@/components/ui/obligatorio";
 import { useErroresCampo } from "@/lib/use-errores-campo";
-
-const CAMPOS = ["cursoId", "nota"] as const;
 
 type Curso = Pick<Tabla<"cursos">, "id" | "nombre" | "descripcion">;
 
@@ -56,27 +51,22 @@ export function AsignarCursoDialog({
   const [open, setOpen] = useState(false);
   const [cursoId, setCursoId] = useState(disponibles[0]?.id ?? "");
   const [nota, setNota] = useState("");
-  const [error, setError] = useState<ErrorAccion | null>(null);
-  const campos = useErroresCampo<(typeof CAMPOS)[number]>();
+  const campos = useErroresCampo<"cursoId" | "nota">();
   const { pendiente: isPending, ejecutar } = useAccion();
 
   function handleOpen() {
     setCursoId(disponibles[0]?.id ?? "");
     setNota("");
-    setError(null);
     campos.limpiarTodos();
     setOpen(true);
   }
 
   function handleAsignar() {
-    setError(null);
     if (!campos.validar({ cursoId })) return;
     ejecutar(async () => {
       const res = await asignarCurso(postulanteId, cursoId, nota);
-      mostrarAviso(res);
-      if (!res.ok) {
-        if (!campos.tomarDelServidor(res, CAMPOS)) setError(toErrorAccion(res));
-      } else {
+      if (!campos.tomarDelServidor(res, ["cursoId", "nota"])) mostrarAviso(res);
+      if (res.ok) {
         setOpen(false);
         setNota("");
       }
@@ -99,11 +89,9 @@ export function AsignarCursoDialog({
       <Dialog
         open={open}
         onOpenChange={(v) => {
+          if (isPending) return;
           setOpen(v);
-          if (!v) {
-            setError(null);
-            campos.limpiarTodos();
-          }
+          if (!v) campos.limpiarTodos();
         }}
       >
         <DialogContent>
@@ -200,36 +188,14 @@ export function AsignarCursoDialog({
             </div>
           )}
 
-          {error && (
-            <div>
-              <p className="text-sm text-red-600">{error.mensaje}</p>
-              {error.ref && (
-                <p className="mt-0.5 text-xs text-gray-500">
-                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-                </p>
-              )}
-            </div>
-          )}
 
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                setError(null);
-              }}
-              disabled={isPending}
-              className="btn-secundario inline-flex items-center justify-center whitespace-nowrap h-9 px-4 text-sm font-medium"
-            >
-              Cancelar
-            </button>
-            {disponibles.length > 0 && (
-              <Button onClick={handleAsignar} disabled={isPending}>
-                {isPending && <Spinner className="mr-1" />}
-                {isPending ? "Asignando..." : "Asignar curso"}
-              </Button>
-            )}
-          </DialogFooter>
+          <BotonesDialogo
+            pendiente={isPending}
+            onCancelar={() => setOpen(false)}
+            onConfirmar={disponibles.length > 0 ? handleAsignar : undefined}
+            textoConfirmar="Asignar curso"
+            textoPendiente="Asignando…"
+          />
         </DialogContent>
       </Dialog>
     </>

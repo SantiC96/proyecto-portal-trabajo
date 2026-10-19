@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Building, MapPin, Clock, Briefcase } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
@@ -10,6 +9,7 @@ import { VencimientoOferta } from "@/components/ofertas/vencimiento-oferta";
 import { OfertaAcciones } from "./oferta-acciones";
 import { RequisitosList, BeneficiosList } from "@/components/ofertas/requisitos-beneficios";
 import { requerirRolPagina } from "@/lib/auth";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Oferta | Panel municipal | Portal de Empleo Funes",
@@ -80,18 +80,7 @@ export default async function AdminOfertaDetallePage({
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/admin" className="hover:text-foreground">
-          Panel
-        </Link>
-        <span>/</span>
-        <Link href="/admin/ofertas" className="hover:text-foreground">
-          Ofertas
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">Detalle</span>
-      </div>
+      <BotonVolver href="/admin/ofertas">Volver a ofertas</BotonVolver>
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Columna principal */}

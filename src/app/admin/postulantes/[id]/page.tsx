@@ -40,6 +40,7 @@ import {
 } from "@/lib/cursos";
 import type { ClienteSupabase } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Ficha postulante | Panel municipal | Portal de Empleo Funes",
@@ -195,18 +196,7 @@ export default async function PostulanteFichaPage({
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/admin" className="hover:text-foreground">
-          Panel
-        </Link>
-        <span>/</span>
-        <Link href={volverHref} className="hover:text-foreground">
-          ← Postulantes
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">{nombreCompleto}</span>
-      </div>
+      <BotonVolver href={volverHref}>Volver a postulantes</BotonVolver>
 
       {/* Cabecera */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">

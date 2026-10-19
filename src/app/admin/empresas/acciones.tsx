@@ -1,24 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
 import { Badge } from "@/components/ui/badge";
 import { aprobarEmpresa, rechazarEmpresa } from "../actions";
-import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
 import type { HistorialEntry } from "./page";
 import { useAccion } from "@/lib/use-accion";
-import { Spinner } from "@/components/ui/spinner";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
 import {
@@ -63,46 +60,37 @@ export function EmpresaAcciones({
   const [abrirRechazar, setAbrirRechazar] = useState(false);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
   const [motivo, setMotivo] = useState("");
-  const [error, setError] = useState<ErrorAccion | null>(null);
   const campos = useErroresCampo<"motivo">();
   const { pendiente: isPending, ejecutar } = useAccion();
 
   function handleAbrirRechazar(open: boolean) {
+    if (isPending) return;
     setAbrirRechazar(open);
     if (!open) {
       setMotivo("");
-      setError(null);
       campos.limpiarTodos();
     }
   }
 
   function handleAbrirAprobar(open: boolean) {
+    if (isPending) return;
     setAbrirAprobar(open);
-    if (!open) setError(null);
   }
 
   function handleAprobar() {
-    setError(null);
     ejecutar(async () => {
       const resultado = await aprobarEmpresa(empresaId);
       mostrarAviso(resultado);
-      if (!resultado.ok) {
-        setError(toErrorAccion(resultado));
-      } else {
-        setAbrirAprobar(false);
-      }
+      if (resultado.ok) setAbrirAprobar(false);
     });
   }
 
   function handleRechazar() {
-    setError(null);
     if (!campos.validar({ motivo })) return;
     ejecutar(async () => {
       const resultado = await rechazarEmpresa(empresaId, motivo.trim());
-      mostrarAviso(resultado);
-      if (!resultado.ok) {
-        if (!campos.tomarDelServidor(resultado, ["motivo"])) setError(toErrorAccion(resultado));
-      } else {
+      if (!campos.tomarDelServidor(resultado, ["motivo"])) mostrarAviso(resultado);
+      if (resultado.ok) {
         setAbrirRechazar(false);
         setMotivo("");
       }
@@ -126,25 +114,24 @@ export function EmpresaAcciones({
       {/* Botones de acción */}
       <div className="flex flex-wrap gap-2">
         {estadoActual !== "aprobada" && (
-          <Button
-            size="sm"
+          <button
+            type="button"
             onClick={() => handleAbrirAprobar(true)}
             disabled={isPending}
-            className="min-h-11"
+            className="btn-primario min-h-11 justify-center"
           >
             Aprobar
-          </Button>
+          </button>
         )}
         {estadoActual !== "rechazada" && (
-          <Button
-            size="sm"
-            variant="outline"
+          <button
+            type="button"
             onClick={() => handleAbrirRechazar(true)}
             disabled={isPending}
-            className="min-h-11"
+            className="btn-peligro inline-flex min-h-11 items-center justify-center px-4 text-sm font-medium"
           >
             Rechazar
-          </Button>
+          </button>
         )}
       </div>
 
@@ -154,7 +141,8 @@ export function EmpresaAcciones({
           <button
             type="button"
             onClick={() => setMostrarHistorial((v) => !v)}
-            className="flex items-center gap-1 text-xs text-muted-foreground transition hover:text-foreground"
+            aria-expanded={mostrarHistorial}
+            className="flex min-h-11 items-center gap-1 text-xs text-muted-foreground transition hover:text-foreground"
           >
             {mostrarHistorial ? (
               <ChevronUp className="h-3.5 w-3.5" />
@@ -206,29 +194,13 @@ export function EmpresaAcciones({
               La empresa va a poder acceder al portal y publicar ofertas.
             </DialogDescription>
           </DialogHeader>
-          {error && (
-            <div>
-              <p className="text-sm text-red-600">{error.mensaje}</p>
-              {error.ref && (
-                <p className="mt-0.5 text-xs text-gray-500">
-                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-                </p>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => handleAbrirAprobar(false)}
-              disabled={isPending}
-            >
-              Cancelar
-            </Button>
-            <Button onClick={handleAprobar} disabled={isPending}>
-              {isPending && <Spinner className="mr-1" />}
-              {isPending ? "Aprobando..." : "Confirmar"}
-            </Button>
-          </DialogFooter>
+          <BotonesDialogo
+            pendiente={isPending}
+            onCancelar={() => handleAbrirAprobar(false)}
+            onConfirmar={handleAprobar}
+            textoConfirmar="Aprobar empresa"
+            textoPendiente="Aprobando…"
+          />
         </DialogContent>
       </Dialog>
 
@@ -266,34 +238,14 @@ export function EmpresaAcciones({
             <ErrorCampo idCampo={`motivo-${empresaId}`} mensaje={campos.errores.motivo} />
             <ContadorCaracteres actual={motivo.length} maximo={LARGO_MAXIMO.motivo} />
           </div>
-          {error && (
-            <div>
-              <p className="text-sm text-red-600">{error.mensaje}</p>
-              {error.ref && (
-                <p className="mt-0.5 text-xs text-gray-500">
-                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-                </p>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => handleAbrirRechazar(false)}
-              disabled={isPending}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleRechazar}
-              disabled={isPending}
-            >
-              {isPending && <Loader2 className="animate-spin" />}
-              {isPending && <Spinner className="mr-1" />}
-              {isPending ? "Rechazando..." : "Rechazar empresa"}
-            </Button>
-          </DialogFooter>
+          <BotonesDialogo
+            pendiente={isPending}
+            onCancelar={() => handleAbrirRechazar(false)}
+            onConfirmar={handleRechazar}
+            textoConfirmar="Rechazar empresa"
+            textoPendiente="Rechazando…"
+            destructivo
+          />
         </DialogContent>
       </Dialog>
     </div>

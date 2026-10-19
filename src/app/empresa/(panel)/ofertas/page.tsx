@@ -30,6 +30,7 @@ import {
   ESTADO_OFERTA_EMPRESA_STYLE,
   type EstadoOfertaEmpresa,
 } from "@/lib/oferta-estados";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Mis ofertas | Portal de Empleo Funes",
@@ -49,6 +50,7 @@ export default async function MisOfertasPage({
 
   return (
     <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+      <BotonVolver href="/empresa">Volver al panel</BotonVolver>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Mis ofertas</h1>
@@ -262,7 +264,7 @@ async function ListadoMisOfertas({
                     {oferta.estado === "activa" && (
                       <Link
                         href={`/empresa/ofertas/${oferta.id}`}
-                        className="btn-secundario inline-flex h-8 items-center px-3 text-xs font-medium"
+                        className="btn-secundario inline-flex min-h-11 items-center px-3 text-xs font-medium sm:min-h-9"
                       >
                         Ver candidatos
                       </Link>
@@ -270,7 +272,7 @@ async function ListadoMisOfertas({
                     {puedeEditar && (
                       <Link
                         href={`/empresa/ofertas/${oferta.id}/editar`}
-                        className="btn-secundario inline-flex h-8 items-center px-3 text-xs font-medium"
+                        className="btn-secundario inline-flex min-h-11 items-center px-3 text-xs font-medium sm:min-h-9"
                       >
                         Editar
                       </Link>

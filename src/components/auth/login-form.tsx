@@ -17,7 +17,10 @@ import {
   ariaErrorCampo,
 } from "@/components/ui/obligatorio";
 import { useErroresCampo } from "@/lib/use-errores-campo";
+import { useAccion } from "@/lib/use-accion";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 const inputClass =
   "w-full rounded-lg border border-border bg-background py-2.5 pl-10 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20";
@@ -39,7 +42,7 @@ export function LoginForm({
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const { pendiente: isLoading, ejecutar } = useAccion();
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const [error, setError] = useState<ErrorAccion | null>(null);
   const campos = useErroresCampo<"email" | "password">();
@@ -51,22 +54,24 @@ export function LoginForm({
     if (inactividad || sesionAnterior) router.refresh();
   }, [inactividad, sesionAnterior, router]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     if (!campos.validar({ email, password }, e.currentTarget)) return;
-    setIsLoading(true);
-    const result = await login({ email, password, redirectTo: redirect });
-    if (result && !result.ok) {
-      setError(toErrorAccion(result));
-      setIsLoading(false);
-    }
+    // En el éxito la acción redirige.
+    ejecutar(async () => {
+      const result = await login({ email, password, redirectTo: redirect });
+      if (result && !result.ok) setError(toErrorAccion(result));
+    });
   };
 
   return (
     <div className="w-full max-w-md">
+      <BotonVolver href="/" className="mb-3">
+        Volver al inicio
+      </BotonVolver>
       {/* Card */}
-      <div className="rounded-2xl border border-border bg-white px-8 py-10 shadow-sm">
+      <div className="rounded-2xl border border-border bg-white px-5 py-8 shadow-sm sm:px-8 sm:py-10">
         {/* Logo + title */}
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <Image
@@ -220,13 +225,10 @@ export function LoginForm({
             type="submit"
             id="login-submit-btn"
             disabled={isLoading}
+            aria-busy={isLoading}
             className="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isLoading ? (
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            ) : (
-              <LogIn className="h-4 w-4" />
-            )}
+            {isLoading ? <Spinner /> : <LogIn className="h-4 w-4" />}
             {isLoading ? "Ingresando…" : "Ingresar"}
           </button>
         </form>
@@ -250,13 +252,6 @@ export function LoginForm({
           </button>
         </p>
       </div>
-
-      {/* Back to home */}
-      <p className="mt-5 text-center text-xs text-muted-icon">
-        <Link href="/" className="hover:text-primary hover:underline">
-          ← Volver al inicio
-        </Link>
-      </p>
 
       {/* Registration modal — mounted at body level via portal */}
       {registerModalOpen &&

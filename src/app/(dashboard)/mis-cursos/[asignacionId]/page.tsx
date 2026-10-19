@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirRolPagina } from "@/lib/auth";
 import { esUuid } from "@/lib/validaciones";
@@ -9,6 +8,7 @@ import { formatFechaCorta } from "@/lib/fechas";
 import { aMisCursos, type MiCurso } from "@/lib/cursos";
 import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
 import { AccionesMiCurso } from "../acciones-mi-curso";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 async function obtenerMiCurso(asignacionId: string): Promise<MiCurso | null> {
   if (!esUuid(asignacionId)) return null;
@@ -44,15 +44,9 @@ export default async function MiCursoDetallePage({
   if (!curso) notFound();
 
   return (
-    <main className="flex-1 px-4 py-8 sm:px-6 sm:py-12">
+    <section className="px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-3xl">
-        <Link
-          href="/mis-cursos"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground-strong transition hover:text-primary"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Volver a Mis cursos
-        </Link>
+        <BotonVolver href="/mis-cursos">Volver a mis cursos</BotonVolver>
 
         <article className="mt-6 rounded-2xl border border-border bg-white p-6 shadow-xs sm:p-8 space-y-6">
           <div>
@@ -149,6 +143,6 @@ export default async function MiCursoDetallePage({
           Ante cualquier duda, comunicate con la Oficina de Empleo.
         </p>
       </div>
-    </main>
+    </section>
   );
 }

@@ -1,17 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { X, AlertCircle, Briefcase, CheckCircle, AlertTriangle, CalendarClock } from "lucide-react";
-import { useMounted } from "@/lib/use-mounted";
+import { CheckCircle, AlertTriangle, CalendarClock } from "lucide-react";
 import { retirarPostulacion } from "@/app/(dashboard)/postulaciones/actions";
-import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
-import { mostrarAviso } from "@/lib/avisos";
+import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { getOfertaEstadoBadge } from "@/lib/oferta-estados";
-import { useAccion } from "@/lib/use-accion";
 import type { Enum, FilaEstadoDerivacionPostulante, FilaMiPreEntrevista, Tabla } from "@/types/db";
 
 type EstadoPostulacion = Enum<"estado_postulacion">;
@@ -40,164 +34,19 @@ function getBadgeEstado(estado: EstadoPostulacion) {
   }
 }
 
-function RetirarBoton({
-  postulacionId,
-}: {
-  postulacionId: string;
-}) {
-  const mounted = useMounted();
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [error, setError] = useState<ErrorAccion | null>(null);
-  const { pendiente: isPending, ejecutar } = useAccion();
-  const confirmRef = useRef<HTMLButtonElement>(null);
-  const needsRefresh = useRef(false);
-
-  useEffect(() => {
-    if (open) {
-      setTimeout(() => confirmRef.current?.focus(), 50);
-    }
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !isPending) {
-        setOpen(false);
-        setError(null);
-      }
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [open, isPending]);
-
-  useEffect(() => {
-    if (!isPending && needsRefresh.current) {
-      needsRefresh.current = false;
-      router.refresh();
-    }
-  }, [isPending, router]);
-
-  function handleConfirm() {
-    setError(null);
-    ejecutar(async () => {
-      const result = await retirarPostulacion(postulacionId);
-      mostrarAviso(result);
-      if (!result.ok) {
-        setError(toErrorAccion(result));
-      } else {
-        needsRefresh.current = true;
-        setOpen(false);
-      }
-    });
-  }
-
+function RetirarBoton({ postulacionId }: { postulacionId: string }) {
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => {
-          setError(null);
-          setOpen(true);
-        }}
-        className="mt-2 text-xs font-medium text-red-600 underline-offset-2 hover:underline"
-      >
-        Retirar postulación
-      </button>
-
-      {mounted &&
-        open &&
-        createPortal(
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="retirar-titulo"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
-            onClick={(e) => {
-              if (e.target === e.currentTarget && !isPending) {
-                setOpen(false);
-                setError(null);
-              }
-            }}
-          >
-            <div className="relative w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-xl">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!isPending) {
-                    setOpen(false);
-                    setError(null);
-                  }
-                }}
-                disabled={isPending}
-                className="absolute top-4 right-4 rounded-full p-1.5 text-muted-foreground transition hover:bg-gray-100 hover:text-foreground disabled:opacity-40"
-                aria-label="Cerrar ventana"
-              >
-                <X className="h-5 w-5" />
-              </button>
-
-              <div className="mb-5 text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
-                  <Briefcase className="h-6 w-6" />
-                </div>
-                <h3 id="retirar-titulo" className="text-xl font-bold text-foreground">
-                  ¿Retirar postulación?
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Tu postulación se va a eliminar y la Oficina de Empleo ya no la va a ver. Si cambiás de opinión, podés volver a postularte mientras la oferta siga publicada.
-                </p>
-              </div>
-
-              {error && (
-                <div className="mb-4 flex flex-col gap-1 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-600">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                    {error.mensaje}
-                  </div>
-                  {error.ref && (
-                    <p className="ml-6 text-xs text-gray-500">
-                      Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <div className="flex flex-col gap-3">
-                <button
-                  ref={confirmRef}
-                  type="button"
-                  onClick={handleConfirm}
-                  disabled={isPending}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 text-sm font-semibold text-white shadow-xs transition hover:bg-red-700 disabled:opacity-60"
-                >
-                  {isPending ? (
-                    <>
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                      Retirando…
-                    </>
-                  ) : (
-                    "Sí, retirar"
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!isPending) {
-                      setOpen(false);
-                      setError(null);
-                    }
-                  }}
-                  disabled={isPending}
-                  className="flex h-11 w-full items-center justify-center rounded-xl border border-border bg-white text-sm font-medium text-foreground transition hover:bg-surface-tinted disabled:opacity-40"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )}
-    </>
+    <DialogoConfirmacion
+      textoBoton="Retirar postulación"
+      estiloBoton="peligro"
+      claseBoton="mt-3"
+      titulo="¿Retirar postulación?"
+      descripcion="Tu postulación se va a eliminar y la Oficina de Empleo ya no la va a ver. Si cambiás de opinión, podés volver a postularte mientras la oferta siga publicada."
+      textoConfirmar="Sí, retirar"
+      textoPendiente="Retirando…"
+      destructivo
+      accion={() => retirarPostulacion(postulacionId)}
+    />
   );
 }
 

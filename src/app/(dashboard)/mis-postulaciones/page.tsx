@@ -13,6 +13,7 @@ import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { MisPostulacionesLista, type Postulacion } from "./mis-postulaciones-lista";
 import type { FilaEstadoDerivacionPostulante, FilaMiPreEntrevista } from "@/types/db";
 import { AvisoCursoPendiente } from "@/components/cursos/aviso-curso-pendiente";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Mis postulaciones | Portal de Empleo Funes",
@@ -32,8 +33,9 @@ export default async function MisPostulacionesPage({
   if (!postulante) redirect("/");
 
   return (
-    <main className="flex-1 px-4 py-8 sm:px-6 sm:py-12">
+    <section className="px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-3xl space-y-10">
+        <BotonVolver href="/perfil">Volver a mi perfil</BotonVolver>
         {/* Postulaciones */}
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
@@ -60,7 +62,7 @@ export default async function MisPostulacionesPage({
         </div>
 
       </div>
-    </main>
+    </section>
   );
 }
 

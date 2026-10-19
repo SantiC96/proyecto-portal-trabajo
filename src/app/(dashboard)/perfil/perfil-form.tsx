@@ -33,8 +33,11 @@ import {
 } from "./actions";
 import { LARGO_MAXIMO, validarNombre, validarDNI, validarTelefono } from "@/lib/validaciones";
 import type { Rol, Tabla } from "@/types/db";
-import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import type { ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
+import { useAccion } from "@/lib/use-accion";
+import { Spinner } from "@/components/ui/spinner";
+import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
 import {
   AVATAR_ACCEPT,
   AVATAR_HELP_TEXT,
@@ -69,7 +72,19 @@ import {
 } from "@/lib/informacion-laboral";
 import { formatFecha } from "@/lib/fechas";
 
-const CAMPOS_DATOS = [
+type CampoDatos =
+  | "nombre"
+  | "apellido"
+  | "telefono"
+  | "domicilio"
+  | "dni"
+  | "nivelEducativo"
+  | "situacionLaboral"
+  | "disponibilidad"
+  | "experienciaLaboral";
+type CampoContrasena = "contrasenaActual" | "contrasenaNueva" | "repetirContrasena";
+
+const CAMPOS_DATOS: readonly CampoDatos[] = [
   "nombre",
   "apellido",
   "telefono",
@@ -79,8 +94,12 @@ const CAMPOS_DATOS = [
   "situacionLaboral",
   "disponibilidad",
   "experienciaLaboral",
-] as const;
-const CAMPOS_CONTRASENA = ["contrasenaActual", "contrasenaNueva", "repetirContrasena"] as const;
+];
+const CAMPOS_CONTRASENA: readonly CampoContrasena[] = [
+  "contrasenaActual",
+  "contrasenaNueva",
+  "repetirContrasena",
+];
 
 type AjusteAvatar = { x: number; y: number; zoom: number };
 
@@ -204,9 +223,8 @@ export function PerfilForm({
 
   // Modo edición — datos personales
   const [modoEdicionDatos, setModoEdicionDatos] = useState(false);
-  const [guardandoDatos, setGuardandoDatos] = useState(false);
-  const [errorDatos, setErrorDatos] = useState<ErrorAccion | null>(null);
-  const camposDatos = useErroresCampo<(typeof CAMPOS_DATOS)[number]>();
+  const { pendiente: guardandoDatos, ejecutar: ejecutarDatos } = useAccion();
+  const camposDatos = useErroresCampo<CampoDatos>();
 
   // Datos personales
   const [nombre, setNombre] = useState(usuario.nombre);
@@ -223,8 +241,7 @@ export function PerfilForm({
 
   // Modo edición — rubros de interés
   const [modoEdicionRubros, setModoEdicionRubros] = useState(false);
-  const [guardandoRubros, setGuardandoRubros] = useState(false);
-  const [errorRubros, setErrorRubros] = useState<ErrorAccion | null>(null);
+  const { pendiente: guardandoRubros, ejecutar: ejecutarRubros } = useAccion();
 
   const [categoriaIds, setCategoriaIds] = useState<string[]>(categoriasIniciales);
 
@@ -232,7 +249,8 @@ export function PerfilForm({
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [guardandoAvatar, setGuardandoAvatar] = useState(false);
+  const { pendiente: guardandoAvatar, ejecutar: ejecutarAvatar } = useAccion();
+  // Solo errores de la validación del archivo en el navegador: los del servidor van en el toast.
   const [errorAvatar, setErrorAvatar] = useState<ErrorAccion | null>(null);
 
   // Modal foto
@@ -247,8 +265,8 @@ export function PerfilForm({
   // CV
   const cvInputRef = useRef<HTMLInputElement>(null);
   const [cvFile, setCvFile] = useState<File | null>(null);
-  const [subiendoCV, setSubiendoCV] = useState(false);
-  const [eliminandoCV, setEliminandoCV] = useState(false);
+  const { pendiente: subiendoCV, ejecutar: ejecutarCV } = useAccion();
+  // Solo errores de la validación del archivo en el navegador: los del servidor van en el toast.
   const [errorCV, setErrorCV] = useState<ErrorAccion | null>(null);
 
   // Contraseña
@@ -259,9 +277,8 @@ export function PerfilForm({
   const [mostrarActual, setMostrarActual] = useState(false);
   const [mostrarNueva, setMostrarNueva] = useState(false);
   const [mostrarRepetir, setMostrarRepetir] = useState(false);
-  const [cargandoContrasena, setCargandoContrasena] = useState(false);
-  const [errorContrasena, setErrorContrasena] = useState<ErrorAccion | null>(null);
-  const camposContrasena = useErroresCampo<(typeof CAMPOS_CONTRASENA)[number]>();
+  const { pendiente: cargandoContrasena, ejecutar: ejecutarContrasena } = useAccion();
+  const camposContrasena = useErroresCampo<CampoContrasena>();
 
   // Limpiar blob URL al desmontar
   useEffect(() => {
@@ -292,7 +309,6 @@ export function PerfilForm({
     setSituacionLaboral(postulante.situacionLaboral);
     setDisponibilidad(postulante.disponibilidad);
     setExperienciaLaboral(postulante.experienciaLaboral);
-    setErrorDatos(null);
     camposDatos.limpiarTodos();
     setModoEdicionDatos(false);
   };
@@ -301,7 +317,6 @@ export function PerfilForm({
 
   const handleCancelarRubros = () => {
     setCategoriaIds(categoriasIniciales);
-    setErrorRubros(null);
     setModoEdicionRubros(false);
   };
 
@@ -322,29 +337,22 @@ export function PerfilForm({
     setAvatarPreview(URL.createObjectURL(file));
   };
 
-  const handleGuardarAvatar = async () => {
+  const handleGuardarAvatar = () => {
     if (!avatarFile) return;
-    setGuardandoAvatar(true);
     setErrorAvatar(null);
     const fd = new FormData();
     fd.append("avatar", avatarFile);
-    try {
+    ejecutarAvatar(async () => {
       const result = await subirAvatar(fd);
       mostrarAviso(result);
-      if (!result.ok) {
-        setErrorAvatar(toErrorAccion(result));
-      } else {
-        if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-        setAvatarPreview(null);
-        setAvatarFile(null);
-        // El editor se abre cuando llega el nuevo avatarActivo tras el refresh
-        abrirEditorTrasRefresh.current = true;
-        router.refresh();
-      }
-    } catch {
-      setErrorAvatar({ mensaje: "Ocurrió un error inesperado al subir la foto. Intentá de nuevo." });
-    }
-    setGuardandoAvatar(false);
+      if (!result.ok) return;
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+      setAvatarPreview(null);
+      setAvatarFile(null);
+      // El editor se abre cuando llega el nuevo avatarActivo tras el refresh
+      abrirEditorTrasRefresh.current = true;
+      router.refresh();
+    });
   };
 
   const handleCancelarAvatar = () => {
@@ -354,24 +362,10 @@ export function PerfilForm({
     setErrorAvatar(null);
   };
 
-  const handleQuitarAvatar = async () => {
-    setGuardandoAvatar(true);
-    setErrorAvatar(null);
-    const result = await quitarAvatar();
-    mostrarAviso(result);
-    if (!result.ok) {
-      setErrorAvatar(toErrorAccion(result));
-    } else {
-      router.refresh();
-    }
-    setGuardandoAvatar(false);
-  };
-
   // ── guardar datos personales ─────────────────────────────────────────────────
 
-  const handleGuardarDatos = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleGuardarDatos = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setErrorDatos(null);
     if (!camposDatos.validar({ nombre, apellido, dni }, e.currentTarget)) return;
     const erroresCliente = [
       ["nombre", validarNombre(nombre)],
@@ -384,22 +378,20 @@ export function PerfilForm({
       camposDatos.marcar(primerError[0], primerError[1]);
       return;
     }
-    setGuardandoDatos(true);
-    const result = await actualizarPerfil({
-      nombre,
-      apellido,
-      telefono,
-      domicilio,
-      dni,
-      nivelEducativo,
-      situacionLaboral,
-      disponibilidad,
-      experienciaLaboral,
-    });
-    mostrarAviso(result);
-    if (!result.ok) {
-      if (!camposDatos.tomarDelServidor(result, CAMPOS_DATOS)) setErrorDatos(toErrorAccion(result));
-    } else {
+    ejecutarDatos(async () => {
+      const result = await actualizarPerfil({
+        nombre,
+        apellido,
+        telefono,
+        domicilio,
+        dni,
+        nivelEducativo,
+        situacionLaboral,
+        disponibilidad,
+        experienciaLaboral,
+      });
+      if (!camposDatos.tomarDelServidor(result, CAMPOS_DATOS)) mostrarAviso(result);
+      if (!result.ok) return;
       setNombre(nombre.trim());
       setApellido(apellido.trim());
       setTelefono(telefono.trim());
@@ -408,30 +400,25 @@ export function PerfilForm({
       setExperienciaLaboral(experienciaLaboral.trim());
       setModoEdicionDatos(false);
       router.refresh();
-    }
-    setGuardandoDatos(false);
+    });
   };
 
   // ── guardar rubros ───────────────────────────────────────────────────────────
 
-  const handleGuardarRubros = async (e: React.FormEvent) => {
+  const handleGuardarRubros = (e: React.FormEvent) => {
     e.preventDefault();
-    setGuardandoRubros(true);
-    setErrorRubros(null);
-    const result = await actualizarRubros(categoriaIds);
-    mostrarAviso(result);
-    if (!result.ok) {
-      setErrorRubros(toErrorAccion(result));
-    } else {
+    ejecutarRubros(async () => {
+      const result = await actualizarRubros(categoriaIds);
+      mostrarAviso(result);
+      if (!result.ok) return;
       setModoEdicionRubros(false);
       router.refresh();
-    }
-    setGuardandoRubros(false);
+    });
   };
 
   // ── cv handlers ─────────────────────────────────────────────────────────────
 
-  const handleSeleccionarCV = async (file: File) => {
+  const handleSeleccionarCV = (file: File) => {
     setErrorCV(null);
     if (!validarTipoCV(file.type)) {
       setErrorCV({ mensaje: ERRORES_ARCHIVO.cvTipo });
@@ -442,67 +429,42 @@ export function PerfilForm({
       return;
     }
     setCvFile(file);
-    setSubiendoCV(true);
     const fd = new FormData();
     fd.append("cv", file);
-    try {
-      const result = await subirCV(fd);
-      mostrarAviso(result);
-      if (!result.ok) {
-        setErrorCV(toErrorAccion(result));
+    ejecutarCV(async () => {
+      try {
+        const result = await subirCV(fd);
+        mostrarAviso(result);
+        if (result.ok) router.refresh();
+      } finally {
         setCvFile(null);
-      } else {
-        setCvFile(null);
-        router.refresh();
       }
-    } catch {
-      setErrorCV({ mensaje: "Ocurrió un error inesperado al subir el CV. Intentá de nuevo." });
-      setCvFile(null);
-    } finally {
-      setSubiendoCV(false);
-    }
-  };
-
-  const handleEliminarCV = async () => {
-    setEliminandoCV(true);
-    setErrorCV(null);
-    const result = await eliminarCV();
-    mostrarAviso(result);
-    if (!result.ok) {
-      setErrorCV(toErrorAccion(result));
-    } else {
-      router.refresh();
-    }
-    setEliminandoCV(false);
+    });
   };
 
   // ── contraseña handlers ─────────────────────────────────────────────────────
 
-  const handleCambiarContrasena = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleCambiarContrasena = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setErrorContrasena(null);
     const completos = camposContrasena.validar(
       { contrasenaActual, contrasenaNueva, repetirContrasena },
       e.currentTarget
     );
     if (!completos) return;
-    setCargandoContrasena(true);
     const fd = new FormData();
     fd.append("contrasenaActual", contrasenaActual);
     fd.append("contrasenaNueva", contrasenaNueva);
     fd.append("repetirContrasena", repetirContrasena);
-    const res = await cambiarContrasena(fd);
-    setCargandoContrasena(false);
-    mostrarAviso(res);
-    if (!res.ok) {
-      if (!camposContrasena.tomarDelServidor(res, CAMPOS_CONTRASENA))
-        setErrorContrasena(toErrorAccion(res));
-    } else {
+    ejecutarContrasena(async () => {
+      // Un solo aviso: el error de un campo va debajo de ese campo; el resto, en el toast.
+      const res = await cambiarContrasena(fd);
+      if (!camposContrasena.tomarDelServidor(res, CAMPOS_CONTRASENA)) mostrarAviso(res);
+      if (!res.ok) return;
       setMostrarFormContrasena(false);
       setContrasenaActual("");
       setContrasenaNueva("");
       setRepetirContrasena("");
-    }
+    });
   };
 
   const handleCancelarContrasena = () => {
@@ -510,7 +472,6 @@ export function PerfilForm({
     setContrasenaActual("");
     setContrasenaNueva("");
     setRepetirContrasena("");
-    setErrorContrasena(null);
     camposContrasena.limpiarTodos();
   };
 
@@ -524,7 +485,7 @@ export function PerfilForm({
     <div className="flex flex-col gap-6">
 
       {/* ── 1. Avatar ──────────────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-border bg-white px-6 py-6 shadow-sm">
+      <div className="rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6">
         <SectionTitle>Foto de perfil</SectionTitle>
         <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
           <div className="shrink-0">
@@ -565,20 +526,17 @@ export function PerfilForm({
                     type="button"
                     onClick={handleGuardarAvatar}
                     disabled={guardandoAvatar}
-                    className="flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-60"
+                    aria-busy={guardandoAvatar}
+                    className="btn-primario min-h-11 sm:min-h-9"
                   >
-                    {guardandoAvatar ? (
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4" />
-                    )}
-                    Guardar foto
+                    {guardandoAvatar ? <Spinner /> : <CheckCircle2 className="h-4 w-4" />}
+                    {guardandoAvatar ? "Guardando…" : "Guardar foto"}
                   </button>
                   <button
                     type="button"
                     onClick={handleCancelarAvatar}
                     disabled={guardandoAvatar}
-                    className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
+                    className="btn-secundario inline-flex min-h-11 items-center gap-1.5 px-4 text-sm font-medium sm:min-h-9"
                   >
                     <X className="h-4 w-4" />
                     Cancelar
@@ -591,25 +549,30 @@ export function PerfilForm({
                   type="button"
                   onClick={() => avatarInputRef.current?.click()}
                   disabled={guardandoAvatar}
-                  className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
+                  className="btn-secundario inline-flex min-h-11 items-center gap-1.5 px-4 text-sm font-medium sm:min-h-9"
                 >
                   <Upload className="h-4 w-4" />
                   {tieneAvatar ? "Cambiar foto" : "Subir foto"}
                 </button>
                 {tieneAvatar && (
-                  <button
-                    type="button"
-                    onClick={handleQuitarAvatar}
-                    disabled={guardandoAvatar}
-                    className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-medium text-muted-foreground transition hover:border-red-300 hover:text-red-500 disabled:opacity-60"
-                  >
-                    {guardandoAvatar ? (
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    ) : (
-                      <X className="h-4 w-4" />
-                    )}
-                    Quitar foto
-                  </button>
+                  <DialogoConfirmacion
+                    textoBoton={
+                      <>
+                        <X className="h-4 w-4" />
+                        Quitar foto
+                      </>
+                    }
+                    estiloBoton="peligro"
+                    claseBoton="sm:min-h-9"
+                    deshabilitado={guardandoAvatar}
+                    titulo="¿Quitar tu foto de perfil?"
+                    descripcion="Tu perfil va a mostrar tus iniciales en lugar de la foto. Podés subir otra cuando quieras."
+                    textoConfirmar="Sí, quitar"
+                    textoPendiente="Quitando…"
+                    destructivo
+                    accion={quitarAvatar}
+                    onExito={() => router.refresh()}
+                  />
                 )}
               </div>
             )}
@@ -635,14 +598,14 @@ export function PerfilForm({
 
       {/* ── 2. Datos personales ────────────────────────────────────────────── */}
       <form onSubmit={handleGuardarDatos} noValidate>
-        <div className="rounded-2xl border border-border bg-white px-6 py-6 shadow-sm">
+        <div className="rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <SectionTitle>Datos personales</SectionTitle>
             {!modoEdicionDatos && (
               <button
                 type="button"
-                onClick={() => { setErrorDatos(null); setModoEdicionDatos(true); }}
-                className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-medium text-muted-foreground-strong transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                onClick={() => setModoEdicionDatos(true)}
+                className="btn-secundario inline-flex min-h-11 items-center gap-1.5 px-3 text-xs font-medium sm:min-h-9"
               >
                 <Pencil className="h-3.5 w-3.5" />
                 Editar datos
@@ -941,25 +904,21 @@ export function PerfilForm({
 
           {modoEdicionDatos && (
             <div className="mt-6 flex flex-col gap-4">
-              {errorDatos && <MensajeError error={errorDatos} />}
               <div className="flex flex-wrap gap-3">
                 <button
                   type="submit"
                   disabled={guardandoDatos}
-                  className="flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-8 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-busy={guardandoDatos}
+                  className="btn-primario min-h-11 justify-center px-6"
                 >
-                  {guardandoDatos ? (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  ) : (
-                    <CheckCircle2 className="h-4 w-4" />
-                  )}
+                  {guardandoDatos ? <Spinner /> : <CheckCircle2 className="h-4 w-4" />}
                   {guardandoDatos ? "Guardando…" : "Guardar datos"}
                 </button>
                 <button
                   type="button"
                   onClick={handleCancelarDatos}
                   disabled={guardandoDatos}
-                  className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-8 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
+                  className="btn-secundario inline-flex min-h-11 items-center justify-center px-6 text-sm font-medium"
                 >
                   Cancelar
                 </button>
@@ -972,14 +931,14 @@ export function PerfilForm({
 
       {/* ── 3. Rubros de interés ───────────────────────────────────────────── */}
       <form onSubmit={handleGuardarRubros}>
-        <div className="rounded-2xl border border-border bg-white px-6 py-6 shadow-sm">
+        <div className="rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <SectionTitle>Rubros de interés</SectionTitle>
             {!modoEdicionRubros && (
               <button
                 type="button"
-                onClick={() => { setErrorRubros(null); setModoEdicionRubros(true); }}
-                className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-xs font-medium text-muted-foreground-strong transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                onClick={() => setModoEdicionRubros(true)}
+                className="btn-secundario inline-flex min-h-11 items-center gap-1.5 px-3 text-xs font-medium sm:min-h-9"
               >
                 <Pencil className="h-3.5 w-3.5" />
                 Editar rubros
@@ -1020,25 +979,21 @@ export function PerfilForm({
                 placeholder="Buscá o elegí rubros…"
                 id="rubros-combobox"
               />
-              {errorRubros && <MensajeError error={errorRubros} />}
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   type="submit"
                   disabled={guardandoRubros}
-                  className="flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-8 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-busy={guardandoRubros}
+                  className="btn-primario min-h-11 justify-center px-6"
                 >
-                  {guardandoRubros ? (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  ) : (
-                    <CheckCircle2 className="h-4 w-4" />
-                  )}
+                  {guardandoRubros ? <Spinner /> : <CheckCircle2 className="h-4 w-4" />}
                   {guardandoRubros ? "Guardando…" : "Guardar rubros"}
                 </button>
                 <button
                   type="button"
                   onClick={handleCancelarRubros}
                   disabled={guardandoRubros}
-                  className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-8 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
+                  className="btn-secundario inline-flex min-h-11 items-center justify-center px-6 text-sm font-medium"
                 >
                   Cancelar
                 </button>
@@ -1050,7 +1005,7 @@ export function PerfilForm({
       </form>
 
       {/* ── 4. CV ──────────────────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-border bg-white px-6 py-6 shadow-sm">
+      <div className="rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6">
         <SectionTitle>Curriculum Vitae</SectionTitle>
 
         {!postulante.cvActivo ? (
@@ -1066,7 +1021,7 @@ export function PerfilForm({
 
             {subiendoCV ? (
               <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-surface-tinted px-4 py-3">
-                <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <Spinner className="text-primary" />
                 <div className="min-w-0 flex-1">
                   <p className="break-all text-sm font-medium text-foreground">{cvFile?.name}</p>
                   <p className="text-xs text-muted-foreground">
@@ -1097,10 +1052,10 @@ export function PerfilForm({
           </div>
         ) : (
           <div className="mt-4 flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-tinted px-4 py-3">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-tinted px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
                 <FileText className="h-8 w-8 shrink-0 text-primary" />
-                <div>
+                <div className="min-w-0">
                   <p className="break-all text-sm font-medium text-foreground">
                     {postulante.cvActivo.nombreOriginal}
                   </p>
@@ -1121,25 +1076,30 @@ export function PerfilForm({
                     rel="noopener noreferrer"
                     aria-disabled={subiendoCV}
                     tabIndex={subiendoCV ? -1 : undefined}
-                    className={`flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary${subiendoCV ? " pointer-events-none opacity-60" : ""}`}
+                    className={`btn-secundario inline-flex min-h-11 items-center gap-1.5 px-3 text-sm font-medium sm:min-h-9${subiendoCV ? " pointer-events-none opacity-60" : ""}`}
                   >
                     <ExternalLink className="h-4 w-4" />
                     Ver CV
                   </a>
                 )}
-                <button
-                  type="button"
-                  onClick={handleEliminarCV}
-                  disabled={subiendoCV || eliminandoCV}
-                  className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-3 text-sm font-medium text-muted-foreground transition hover:border-red-300 hover:text-red-500 disabled:opacity-60"
-                  aria-label="Eliminar CV"
-                >
-                  {eliminandoCV ? (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  ) : (
-                    <X className="h-4 w-4" />
-                  )}
-                </button>
+                <DialogoConfirmacion
+                  textoBoton={
+                    <>
+                      <X className="h-4 w-4" />
+                      Eliminar
+                    </>
+                  }
+                  estiloBoton="peligro"
+                  claseBoton="px-3 sm:min-h-9"
+                  deshabilitado={subiendoCV}
+                  titulo="¿Eliminar tu CV?"
+                  descripcion="Sin CV no vas a poder postularte a nuevas ofertas hasta que subas otro."
+                  textoConfirmar="Sí, eliminar"
+                  textoPendiente="Eliminando…"
+                  destructivo
+                  accion={eliminarCV}
+                  onExito={() => router.refresh()}
+                />
               </div>
             </div>
 
@@ -1147,14 +1107,11 @@ export function PerfilForm({
               <button
                 type="button"
                 onClick={() => cvInputRef.current?.click()}
-                disabled={subiendoCV || eliminandoCV}
-                className="flex h-9 w-fit items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
+                disabled={subiendoCV}
+                aria-busy={subiendoCV}
+                className="btn-secundario inline-flex min-h-11 w-fit items-center gap-1.5 px-4 text-sm font-medium sm:min-h-9"
               >
-                {subiendoCV ? (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                ) : (
-                  <Upload className="h-4 w-4" />
-                )}
+                {subiendoCV ? <Spinner /> : <Upload className="h-4 w-4" />}
                 {subiendoCV ? "Subiendo…" : "Reemplazar CV"}
               </button>
               <p className="text-xs text-muted-icon">{CV_HELP_TEXT}</p>
@@ -1195,7 +1152,7 @@ export function PerfilForm({
       )}
 
       {/* ── 5. Contraseña ──────────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-border bg-white px-6 py-5 shadow-sm">
+      <div className="rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6">
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm font-medium text-foreground">Contraseña</p>
@@ -1205,7 +1162,7 @@ export function PerfilForm({
             <button
               type="button"
               onClick={() => setMostrarFormContrasena(true)}
-              className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary"
+              className="btn-secundario inline-flex min-h-11 shrink-0 items-center gap-1.5 px-4 text-sm font-medium sm:min-h-9"
             >
               <KeyRound className="h-4 w-4" />
               Cambiar contraseña
@@ -1311,26 +1268,21 @@ export function PerfilForm({
               <ErrorCampo idCampo="p-repetir-contrasena" mensaje={camposContrasena.errores.repetirContrasena} />
             </div>
 
-            {errorContrasena && <MensajeError error={errorContrasena} />}
-
             <div className="flex flex-col gap-2 sm:flex-row">
               <button
                 type="submit"
                 disabled={cargandoContrasena}
-                className="flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-6 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-60"
+                aria-busy={cargandoContrasena}
+                className="btn-primario min-h-11 justify-center px-6"
               >
-                {cargandoContrasena ? (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                ) : (
-                  <CheckCircle2 className="h-4 w-4" />
-                )}
-                {cargandoContrasena ? "Guardando…" : "Guardar"}
+                {cargandoContrasena ? <Spinner /> : <CheckCircle2 className="h-4 w-4" />}
+                {cargandoContrasena ? "Guardando…" : "Guardar contraseña"}
               </button>
               <button
                 type="button"
                 onClick={handleCancelarContrasena}
                 disabled={cargandoContrasena}
-                className="flex h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-6 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
+                className="btn-secundario inline-flex min-h-11 items-center justify-center px-6 text-sm font-medium"
               >
                 Cancelar
               </button>

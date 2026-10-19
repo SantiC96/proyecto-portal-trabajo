@@ -1,13 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -26,10 +24,9 @@ import {
   DERIVACION_ESTADO_LABEL,
   type EstadoDerivacionEmpresa,
 } from "@/lib/derivacion-estados";
-import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
-import { Spinner } from "@/components/ui/spinner";
 import { esValorEnum, type Enum, type Tabla } from "@/types/db";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
@@ -88,7 +85,6 @@ export function FichaAcciones({
   const [estadoCorreccion, setEstadoCorreccion] = useState<EstadoDerivacionEmpresa>("pendiente");
   const [notaDescartar, setNotaDescartar] = useState("");
   const [notaDerivar, setNotaDerivar] = useState("");
-  const [error, setError] = useState<ErrorAccion | null>(null);
   const camposCorregir = useErroresCampo<"estado">();
   const { pendiente: isPending, ejecutar } = useAccion();
 
@@ -97,62 +93,41 @@ export function FichaAcciones({
     setAbrirDerivar(false);
     setAbrirReconsiderar(false);
     setAbrirCorregir(false);
-    setError(null);
     setNotaDescartar("");
     setNotaDerivar("");
   }
 
   function handleDescartar() {
-    setError(null);
     ejecutar(async () => {
       const res = await descartarPostulacion(postulacionId, notaDescartar);
       mostrarAviso(res);
-      if (!res.ok) {
-        setError(toErrorAccion(res));
-      } else {
-        cerrarTodo();
-      }
+      if (res.ok) cerrarTodo();
     });
   }
 
   function handleDerivar() {
-    setError(null);
     ejecutar(async () => {
       const res = await derivarPostulacion(postulacionId, notaDerivar);
       mostrarAviso(res);
-      if (!res.ok) {
-        setError(toErrorAccion(res));
-      } else {
-        cerrarTodo();
-      }
+      if (res.ok) cerrarTodo();
     });
   }
 
   function handleReconsiderar() {
-    setError(null);
     ejecutar(async () => {
       const res = await marcarEnRevision(postulacionId);
       mostrarAviso(res);
-      if (!res.ok) {
-        setError(toErrorAccion(res));
-      } else {
-        setAbrirReconsiderar(false);
-      }
+      if (res.ok) setAbrirReconsiderar(false);
     });
   }
 
   function handleCorregir() {
     if (!derivacion) return;
-    setError(null);
     if (!camposCorregir.validar({ estado: estadoCorreccion })) return;
     ejecutar(async () => {
       const res = await corregirEstadoDerivacion(postulacionId, derivacion.id, estadoCorreccion);
-      mostrarAviso(res);
-      if (!res.ok) {
-        if (!camposCorregir.tomarDelServidor(res, ["estado"])) setError(toErrorAccion(res));
-      } else {
-        setAbrirCorregir(false);
-      }
+      if (!camposCorregir.tomarDelServidor(res, ["estado"])) mostrarAviso(res);
+      if (res.ok) setAbrirCorregir(false);
     });
   }
 
@@ -197,11 +172,10 @@ export function FichaAcciones({
             type="button"
             onClick={() => {
               setEstadoCorreccion(derivacion.estado_empresa);
-              setError(null);
               camposCorregir.limpiarTodos();
               setAbrirCorregir(true);
             }}
-            className="btn-secundario inline-flex w-full items-center justify-center gap-2 min-h-9 px-4 text-sm font-medium"
+            className="btn-secundario inline-flex min-h-11 w-full items-center justify-center gap-2 px-4 text-sm font-medium"
           >
             Corregir estado de la empresa
           </button>
@@ -211,8 +185,7 @@ export function FichaAcciones({
         <Dialog
           open={abrirCorregir}
           onOpenChange={(open) => {
-            setAbrirCorregir(open);
-            if (!open) setError(null);
+            if (!isPending) setAbrirCorregir(open);
           }}
         >
           <DialogContent>
@@ -250,30 +223,13 @@ export function FichaAcciones({
               </select>
               <ErrorCampo idCampo="corregir-estado" mensaje={camposCorregir.errores.estado} />
             </div>
-            {error && (
-              <div>
-                <p className="text-sm text-red-600">{error.mensaje}</p>
-                {error.ref && (
-                  <p className="mt-0.5 text-xs text-gray-500">
-                    Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-                  </p>
-                )}
-              </div>
-            )}
-            <DialogFooter>
-              <button
-                type="button"
-                onClick={() => { setAbrirCorregir(false); setError(null); }}
-                disabled={isPending}
-                className="btn-secundario inline-flex items-center justify-center whitespace-nowrap h-9 px-4 text-sm font-medium"
-              >
-                Cancelar
-              </button>
-              <Button onClick={handleCorregir} disabled={isPending}>
-                {isPending && <Spinner className="mr-1" />}
-                {isPending ? "Guardando..." : "Guardar corrección"}
-              </Button>
-            </DialogFooter>
+            <BotonesDialogo
+              pendiente={isPending}
+              onCancelar={() => setAbrirCorregir(false)}
+              onConfirmar={handleCorregir}
+              textoConfirmar="Guardar corrección"
+              textoPendiente="Guardando…"
+            />
           </DialogContent>
         </Dialog>
       </div>
@@ -288,32 +244,23 @@ export function FichaAcciones({
         </div>
       )}
 
-      {error && (
-        <div>
-          <p className="text-sm text-red-600">{error.mensaje}</p>
-          {error.ref && (
-            <p className="mt-0.5 text-xs text-gray-500">
-              Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-            </p>
-          )}
-        </div>
-      )}
 
       <div className="flex flex-wrap gap-2">
         {(estado === "recibida" || estado === "en_revision") && (
           <>
-            <Button
-              onClick={() => { setError(null); setAbrirDerivar(true); }}
-              disabled={isPending || ofertaEnRevision}
-              className="min-h-11"
-            >
-              Derivar a la empresa
-            </Button>
             <button
               type="button"
-              onClick={() => { setError(null); setAbrirDescartar(true); }}
+              onClick={() => setAbrirDerivar(true)}
               disabled={isPending || ofertaEnRevision}
-              className="btn-secundario inline-flex items-center justify-center whitespace-nowrap min-h-11 px-4 text-sm font-medium disabled:opacity-60"
+              className="btn-primario min-h-11 justify-center"
+            >
+              Derivar a la empresa
+            </button>
+            <button
+              type="button"
+              onClick={() => setAbrirDescartar(true)}
+              disabled={isPending || ofertaEnRevision}
+              className="btn-peligro inline-flex min-h-11 items-center justify-center whitespace-nowrap px-4 text-sm font-medium"
             >
               No seleccionar
             </button>
@@ -323,7 +270,7 @@ export function FichaAcciones({
         {estado === "rechazada_municipalidad" && (
           <button
             type="button"
-            onClick={() => { setError(null); setAbrirReconsiderar(true); }}
+            onClick={() => setAbrirReconsiderar(true)}
             disabled={isPending}
             className="btn-secundario inline-flex items-center justify-center whitespace-nowrap min-h-11 px-4 text-sm font-medium"
           >
@@ -336,8 +283,9 @@ export function FichaAcciones({
       <Dialog
         open={abrirDescartar}
         onOpenChange={(open) => {
+          if (isPending) return;
           setAbrirDescartar(open);
-          if (!open) { setNotaDescartar(""); setError(null); }
+          if (!open) setNotaDescartar("");
         }}
       >
         <DialogContent>
@@ -372,30 +320,14 @@ export function FichaAcciones({
             />
             <ContadorCaracteres actual={notaDescartar.length} maximo={LARGO_MAXIMO.nota} />
           </div>
-          {error && (
-            <div>
-              <p className="text-sm text-red-600">{error.mensaje}</p>
-              {error.ref && (
-                <p className="mt-0.5 text-xs text-gray-500">
-                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-                </p>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => { setAbrirDescartar(false); setNotaDescartar(""); setError(null); }}
-              disabled={isPending}
-              className="btn-secundario inline-flex items-center justify-center whitespace-nowrap h-9 px-4 text-sm font-medium"
-            >
-              Cancelar
-            </button>
-            <Button onClick={handleDescartar} disabled={isPending}>
-              {isPending && <Spinner className="mr-1" />}
-              {isPending ? "Guardando..." : "Confirmar"}
-            </Button>
-          </DialogFooter>
+          <BotonesDialogo
+            pendiente={isPending}
+            onCancelar={() => { setAbrirDescartar(false); setNotaDescartar(""); }}
+            onConfirmar={handleDescartar}
+            textoConfirmar="No seleccionar"
+            textoPendiente="Guardando…"
+            destructivo
+          />
         </DialogContent>
       </Dialog>
 
@@ -403,8 +335,9 @@ export function FichaAcciones({
       <Dialog
         open={abrirDerivar}
         onOpenChange={(open) => {
+          if (isPending) return;
           setAbrirDerivar(open);
-          if (!open) { setNotaDerivar(""); setError(null); }
+          if (!open) setNotaDerivar("");
         }}
       >
         <DialogContent>
@@ -444,30 +377,13 @@ export function FichaAcciones({
             />
             <ContadorCaracteres actual={notaDerivar.length} maximo={LARGO_MAXIMO.nota} />
           </div>
-          {error && (
-            <div>
-              <p className="text-sm text-red-600">{error.mensaje}</p>
-              {error.ref && (
-                <p className="mt-0.5 text-xs text-gray-500">
-                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-                </p>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => { setAbrirDerivar(false); setNotaDerivar(""); setError(null); }}
-              disabled={isPending}
-              className="btn-secundario inline-flex items-center justify-center whitespace-nowrap h-9 px-4 text-sm font-medium"
-            >
-              Cancelar
-            </button>
-            <Button onClick={handleDerivar} disabled={isPending}>
-              {isPending && <Spinner className="mr-1" />}
-              {isPending ? "Derivando..." : "Derivar candidato"}
-            </Button>
-          </DialogFooter>
+          <BotonesDialogo
+            pendiente={isPending}
+            onCancelar={() => { setAbrirDerivar(false); setNotaDerivar(""); }}
+            onConfirmar={handleDerivar}
+            textoConfirmar="Derivar candidato"
+            textoPendiente="Derivando…"
+          />
         </DialogContent>
       </Dialog>
 
@@ -475,8 +391,7 @@ export function FichaAcciones({
       <Dialog
         open={abrirReconsiderar}
         onOpenChange={(open) => {
-          setAbrirReconsiderar(open);
-          if (!open) setError(null);
+          if (!isPending) setAbrirReconsiderar(open);
         }}
       >
         <DialogContent>
@@ -488,30 +403,13 @@ export function FichaAcciones({
               .
             </DialogDescription>
           </DialogHeader>
-          {error && (
-            <div>
-              <p className="text-sm text-red-600">{error.mensaje}</p>
-              {error.ref && (
-                <p className="mt-0.5 text-xs text-gray-500">
-                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-                </p>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => { setAbrirReconsiderar(false); setError(null); }}
-              disabled={isPending}
-              className="btn-secundario inline-flex items-center justify-center whitespace-nowrap h-9 px-4 text-sm font-medium"
-            >
-              Cancelar
-            </button>
-            <Button onClick={handleReconsiderar} disabled={isPending}>
-              {isPending && <Spinner className="mr-1" />}
-              {isPending ? "Guardando..." : "Confirmar"}
-            </Button>
-          </DialogFooter>
+          <BotonesDialogo
+            pendiente={isPending}
+            onCancelar={() => setAbrirReconsiderar(false)}
+            onConfirmar={handleReconsiderar}
+            textoConfirmar="Volver a revisión"
+            textoPendiente="Guardando…"
+          />
         </DialogContent>
       </Dialog>
     </div>
