@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSesion } from "@/components/layout/sesion-provider";
 import { SesionActivaModal } from "@/components/auth/sesion-activa-modal";
+import { useAccion } from "@/lib/use-accion";
 import type { Rol } from "@/types/db";
 
 interface Props {
@@ -28,7 +29,7 @@ export function AuthLink({ href, className, children, onClick }: Props) {
   const sesion = useSesion();
   const router = useRouter();
   const [modalData, setModalData] = useState<ModalData | null>(null);
-  const [consultando, setConsultando] = useState(false);
+  const { pendiente: consultando, ejecutar } = useAccion();
   const accion = getAccion(href);
 
   if (!sesion) {
@@ -39,25 +40,23 @@ export function AuthLink({ href, className, children, onClick }: Props) {
     );
   }
 
-  async function handleClick(e: React.MouseEvent<HTMLAnchorElement>) {
+  function handleClick(e: React.MouseEvent<HTMLAnchorElement>) {
     e.preventDefault();
-    if (consultando) return;
     onClick?.();
-    setConsultando(true);
-    try {
-      const res = await fetch("/api/sesion", { cache: "no-store" });
-      const data: SesionVerificada = await res.json();
-      if (data.activa) {
-        setModalData({ nombre: data.nombre, rol: data.rol, profileHref: data.profileHref });
-      } else {
-        router.refresh();
+    ejecutar(async () => {
+      try {
+        const res = await fetch("/api/sesion", { cache: "no-store" });
+        const data: SesionVerificada = await res.json();
+        if (data.activa) {
+          setModalData({ nombre: data.nombre, rol: data.rol, profileHref: data.profileHref });
+        } else {
+          router.refresh();
+          router.push(href);
+        }
+      } catch {
         router.push(href);
       }
-    } catch {
-      router.push(href);
-    } finally {
-      setConsultando(false);
-    }
+    });
   }
 
   return (
