@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { requerirPostulante, requerirRol, requerirUsuario } from "@/lib/auth";
+import { requerirPostulante, requerirRol, requerirUsuario, type Rol } from "@/lib/auth";
+import { createSupabaseEphemeralClient } from "@/lib/supabase-ephemeral";
 import { traducirErrorAuth } from "@/lib/auth-errors";
 import { logError } from "@/lib/logger";
 import { err, errCampo, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
@@ -27,6 +28,15 @@ import {
   detectarMimeType,
 } from "@/lib/archivos";
 import { validarInformacionLaboral } from "@/lib/informacion-laboral";
+
+// La foto de perfil, los datos de contacto y la contraseña se comparten con
+// "Mi perfil" de la empresa (/empresa/perfil) y de la oficina (/admin/perfil).
+const ROLES_CON_PERFIL: readonly Rol[] = ["postulante", "empresa", "municipalidad"];
+const RUTAS_PERFIL = ["/perfil", "/empresa/perfil", "/admin/perfil"] as const;
+
+function revalidarPerfiles() {
+  for (const ruta of RUTAS_PERFIL) revalidatePath(ruta);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Actualizar datos personales
@@ -174,7 +184,7 @@ async function descartarArchivoSubido(
 export async function subirAvatar(
   formData: FormData
 ): Promise<Resultado<void>> {
-  const auth = await requerirRol("postulante");
+  const auth = await requerirRol(ROLES_CON_PERFIL);
   if (!auth.ok) return auth;
   const user = auth.usuario;
 
@@ -227,7 +237,7 @@ export async function subirAvatar(
     return errConRef("ERROR_INTERNO", "Error al guardar la foto. Intentá de nuevo.", ref);
   }
 
-  revalidatePath("/perfil");
+  revalidarPerfiles();
   return okMsg("Foto de perfil actualizada.");
 }
 
@@ -236,7 +246,7 @@ export async function ajustarAvatar(data: {
   y: number;
   zoom: number;
 }): Promise<Resultado<void>> {
-  const auth = await requerirRol("postulante");
+  const auth = await requerirRol(ROLES_CON_PERFIL);
   if (!auth.ok) return auth;
   const user = auth.usuario;
 
@@ -266,13 +276,13 @@ export async function ajustarAvatar(data: {
     return errConRef("ERROR_INTERNO", "Error al guardar el ajuste. Intentá de nuevo.", ref);
   }
 
-  revalidatePath("/perfil");
+  revalidarPerfiles();
   revalidatePath("/", "layout");
   return okMsg("Ajuste guardado.");
 }
 
 export async function quitarAvatar(): Promise<Resultado<void>> {
-  const auth = await requerirRol("postulante");
+  const auth = await requerirRol(ROLES_CON_PERFIL);
   if (!auth.ok) return auth;
   const user = auth.usuario;
 
@@ -289,7 +299,7 @@ export async function quitarAvatar(): Promise<Resultado<void>> {
     return errConRef("ERROR_INTERNO", "Error al quitar la foto. Intentá de nuevo.", ref);
   }
 
-  revalidatePath("/perfil");
+  revalidarPerfiles();
   return okMsg("Foto de perfil quitada.");
 }
 
@@ -404,12 +414,17 @@ export async function cambiarContrasena(
   const user = auth.usuario;
   if (!user.email) return err("NO_AUTENTICADO");
 
-  // Verificar contraseña actual con el cliente admin (no toca la sesión de cookies)
-  const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+  // Verificar la contraseña actual con un cliente efímero: no toca la sesión de
+  // las cookies. No se usa supabaseAdmin porque el login le dejaría guardada
+  // esa sesión y sus consultas siguientes saldrían con el token del usuario en
+  // lugar de la service role.
+  const verificador = createSupabaseEphemeralClient();
+  const { error: signInError } = await verificador.auth.signInWithPassword({
     email: user.email,
     password: contrasenaActual,
   });
   if (signInError) return errCampo("contrasenaActual", "La contraseña actual es incorrecta.");
+  await verificador.auth.signOut({ scope: "local" });
 
   const supabase = await createSupabaseServerClient();
   const { error: updateError } = await supabase.auth.updateUser({
@@ -425,4 +440,60 @@ export async function cambiarContrasena(
   }
 
   return okMsg("Contraseña actualizada.");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Datos de contacto (empresa y oficina)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Nombre, apellido y teléfono de la persona en "Mi perfil" de la empresa y
+ * de la oficina. El postulante los guarda con actualizarPerfil, junto con
+ * sus otros datos.
+ */
+export async function actualizarDatosContacto(data: {
+  nombre: string;
+  apellido: string;
+  telefono: string;
+}): Promise<Resultado<void>> {
+  const auth = await requerirRol(["empresa", "municipalidad"]);
+  if (!auth.ok) return auth;
+  const user = auth.usuario;
+
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    [data.nombre, data.apellido, data.telefono].some((v) => typeof v !== "string")
+  ) {
+    return err("DATOS_INVALIDOS");
+  }
+
+  const errNombre = validarNombre(data.nombre);
+  if (errNombre) return errCampo("nombre", errNombre);
+  const errApellido = validarNombre(data.apellido);
+  if (errApellido) return errCampo("apellido", errApellido);
+  const errTelefono = validarTelefono(data.telefono);
+  if (errTelefono) return errCampo("telefono", errTelefono);
+
+  // RLS solo deja editar la fila propia y los permisos por columna (018),
+  // solo estos tres campos.
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("usuarios")
+    .update({
+      nombre: data.nombre.trim(),
+      apellido: data.apellido.trim(),
+      telefono: data.telefono.trim(),
+    })
+    .eq("id", user.id);
+
+  if (error) {
+    if (error.code === "P0001" || error.code === "42501") return fromSupabaseError(error);
+    const ref = logError("actualizarDatosContacto", error, { userId: user.id });
+    return errConRef("ERROR_INTERNO", "Error al guardar los datos. Intentá de nuevo.", ref);
+  }
+
+  revalidarPerfiles();
+  revalidatePath("/", "layout");
+  return okMsg("Datos actualizados.");
 }

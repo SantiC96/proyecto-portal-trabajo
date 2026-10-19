@@ -10,6 +10,8 @@ import { OfertaAcciones } from "./oferta-acciones";
 import { RequisitosList, BeneficiosList } from "@/components/ofertas/requisitos-beneficios";
 import { requerirRolPagina } from "@/lib/auth";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
+import { fotoDePerfil } from "@/lib/fotos-perfil";
 
 export const metadata: Metadata = {
   title: "Oferta | Panel municipal | Portal de Empleo Funes",
@@ -45,7 +47,7 @@ export default async function AdminOfertaDetallePage({
     oferta.empresa_id
       ? supabase
           .from("empresas")
-          .select("razon_social, rubro, descripcion")
+          .select("razon_social, rubro, descripcion, usuario_id")
           .eq("id", oferta.empresa_id)
           .single()
       : Promise.resolve({ data: null }),
@@ -69,6 +71,7 @@ export default async function AdminOfertaDetallePage({
   ]);
 
   const empresa = empresaResult.data;
+  const logoEmpresa = empresa ? await fotoDePerfil(empresa.usuario_id) : null;
   const revisor = revisorResult.data;
   const totalPostulaciones = postulacionesResult.count ?? 0;
   const vacantes = vacantesResult.data?.cantidad ?? null;
@@ -150,7 +153,15 @@ export default async function AdminOfertaDetallePage({
           {/* Empresa */}
           {empresa && (
             <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
-              <h2 className="font-semibold text-foreground">Empresa</h2>
+              <div className="flex items-center gap-3">
+                <AvatarAjustado
+                  src={logoEmpresa?.url}
+                  ajuste={logoEmpresa?.ajuste}
+                  alt={`Logo de ${empresa.razon_social}`}
+                  size="md"
+                />
+                <h2 className="font-semibold text-foreground">Empresa</h2>
+              </div>
               <dl className="mt-4 grid grid-cols-1 gap-y-3 text-sm sm:grid-cols-2">
                 <div>
                   <dt className="text-muted-foreground">Razón social</dt>

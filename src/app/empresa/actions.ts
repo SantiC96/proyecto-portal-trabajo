@@ -102,7 +102,7 @@ export async function reenviarSolicitudEmpresa(data: {
   }
 
   programarEnvioEmails();
-  revalidatePath("/empresa");
-  revalidatePath("/empresa/solicitud");
+  // La razón social es el nombre que se muestra de la sesión (menú del usuario).
+  revalidatePath("/", "layout");
   return okMsg("Solicitud reenviada. La Oficina de Empleo la revisará pronto.");
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   User,
@@ -12,24 +12,15 @@ import {
   Upload,
   X,
   CheckCircle2,
-  AlertCircle,
   ExternalLink,
-  KeyRound,
   Pencil,
-  Eye,
-  EyeOff,
 } from "lucide-react";
-import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
-import { FotoPerfilModal } from "@/components/ui/foto-perfil-modal";
 import { MultiCombobox } from "@/components/ui/multi-combobox";
 import {
   actualizarPerfil,
   actualizarRubros,
-  subirAvatar,
-  quitarAvatar,
   subirCV,
   eliminarCV,
-  cambiarContrasena,
 } from "./actions";
 import { LARGO_MAXIMO, validarNombre, validarDNI, validarTelefono } from "@/lib/validaciones";
 import type { Rol, Tabla } from "@/types/db";
@@ -39,14 +30,10 @@ import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
 import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
 import {
-  AVATAR_ACCEPT,
-  AVATAR_HELP_TEXT,
-  AVATAR_MAX_SIZE,
   CV_ACCEPT,
   CV_HELP_TEXT,
   CV_MAX_SIZE,
   ERRORES_ARCHIVO,
-  validarTipoAvatar,
   validarTipoCV,
 } from "@/lib/archivos";
 import {
@@ -55,6 +42,19 @@ import {
   Obligatorio,
   ariaErrorCampo,
 } from "@/components/ui/obligatorio";
+import {
+  CampoLectura,
+  FieldIcon,
+  InputWrapper,
+  MensajeError,
+  SectionTitle,
+  inputClass,
+  inputReadonlyClass,
+  type FotoPerfil,
+} from "@/components/perfil/piezas";
+import { EncabezadoPerfil } from "@/components/perfil/encabezado-perfil";
+import { inicialesDePersona } from "@/lib/iniciales";
+import { SeccionContrasena } from "@/components/perfil/seccion-contrasena";
 import { useErroresCampo } from "@/lib/use-errores-campo";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import {
@@ -82,7 +82,6 @@ type CampoDatos =
   | "situacionLaboral"
   | "disponibilidad"
   | "experienciaLaboral";
-type CampoContrasena = "contrasenaActual" | "contrasenaNueva" | "repetirContrasena";
 
 const CAMPOS_DATOS: readonly CampoDatos[] = [
   "nombre",
@@ -95,23 +94,8 @@ const CAMPOS_DATOS: readonly CampoDatos[] = [
   "disponibilidad",
   "experienciaLaboral",
 ];
-const CAMPOS_CONTRASENA: readonly CampoContrasena[] = [
-  "contrasenaActual",
-  "contrasenaNueva",
-  "repetirContrasena",
-];
-
-type AjusteAvatar = { x: number; y: number; zoom: number };
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
-
-const inputClass =
-  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 " +
-  CLASE_CONTROL_INVALIDO;
-
-const inputClassPassword =
-  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-10 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 " +
-  CLASE_CONTROL_INVALIDO;
 
 const selectClass =
   "min-h-11 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 " +
@@ -121,64 +105,6 @@ const textareaClass =
   "min-h-32 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 " +
   CLASE_CONTROL_INVALIDO;
 
-const inputReadonlyClass =
-  "w-full rounded-lg border border-border bg-surface-tinted py-2.5 pl-10 pr-4 text-sm text-muted-foreground-strong outline-none cursor-default";
-
-function InputWrapper({ children }: { children: React.ReactNode }) {
-  return <div className="relative">{children}</div>;
-}
-
-function FieldIcon({ icon: Icon }: { icon: React.ElementType }) {
-  return (
-    <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-icon" />
-  );
-}
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="text-xs font-bold uppercase tracking-wider text-primary">{children}</h2>
-  );
-}
-
-function CampoLectura({
-  label,
-  valor,
-  vacio = "—",
-  className,
-}: {
-  label: string;
-  valor: string;
-  vacio?: string;
-  className?: string;
-}) {
-  return (
-    <div className={className}>
-      <p className="mb-0.5 text-xs font-medium uppercase tracking-wider text-muted-icon">{label}</p>
-      <p
-        className={`whitespace-pre-line break-words text-sm ${valor ? "text-foreground" : "text-muted-foreground"}`}
-      >
-        {valor || vacio}
-      </p>
-    </div>
-  );
-}
-
-function MensajeError({ error }: { error: ErrorAccion }) {
-  return (
-    <div className="flex flex-col gap-1 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-      <div className="flex items-start gap-2.5">
-        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-        <span>{error.mensaje}</span>
-      </div>
-      {error.ref && (
-        <p className="ml-7 text-xs text-gray-500">
-          Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-        </p>
-      )}
-    </div>
-  );
-}
-
 // ─── tipos ───────────────────────────────────────────────────────────────────
 
 interface PerfilFormProps {
@@ -187,7 +113,7 @@ interface PerfilFormProps {
     apellido: string;
     telefono: string;
     rol: Rol | null;
-    avatarActivo: { ruta: string; url: string | null; ajuste: AjusteAvatar } | null;
+    avatarActivo: FotoPerfil | null;
   };
   postulante: {
     id: string;
@@ -245,57 +171,12 @@ export function PerfilForm({
 
   const [categoriaIds, setCategoriaIds] = useState<string[]>(categoriasIniciales);
 
-  // Avatar
-  const avatarInputRef = useRef<HTMLInputElement>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const { pendiente: guardandoAvatar, ejecutar: ejecutarAvatar } = useAccion();
-  // Solo errores de la validación del archivo en el navegador: los del servidor van en el toast.
-  const [errorAvatar, setErrorAvatar] = useState<ErrorAccion | null>(null);
-
-  // Modal foto
-  const [modalFotoAbierto, setModalFotoAbierto] = useState(false);
-  const [modalModo, setModalModo] = useState<"ver" | "ajustar">("ver");
-  const [ajusteActual, setAjusteActual] = useState<AjusteAvatar>(
-    usuario.avatarActivo?.ajuste ?? { x: 50, y: 50, zoom: 1 }
-  );
-  // Flag para abrir el editor automáticamente tras subir una foto nueva
-  const abrirEditorTrasRefresh = useRef(false);
-
   // CV
   const cvInputRef = useRef<HTMLInputElement>(null);
   const [cvFile, setCvFile] = useState<File | null>(null);
   const { pendiente: subiendoCV, ejecutar: ejecutarCV } = useAccion();
   // Solo errores de la validación del archivo en el navegador: los del servidor van en el toast.
   const [errorCV, setErrorCV] = useState<ErrorAccion | null>(null);
-
-  // Contraseña
-  const [mostrarFormContrasena, setMostrarFormContrasena] = useState(false);
-  const [contrasenaActual, setContrasenaActual] = useState("");
-  const [contrasenaNueva, setContrasenaNueva] = useState("");
-  const [repetirContrasena, setRepetirContrasena] = useState("");
-  const [mostrarActual, setMostrarActual] = useState(false);
-  const [mostrarNueva, setMostrarNueva] = useState(false);
-  const [mostrarRepetir, setMostrarRepetir] = useState(false);
-  const { pendiente: cargandoContrasena, ejecutar: ejecutarContrasena } = useAccion();
-  const camposContrasena = useErroresCampo<CampoContrasena>();
-
-  // Limpiar blob URL al desmontar
-  useEffect(() => {
-    return () => {
-      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-    };
-  }, [avatarPreview]);
-
-  // Abrir editor de ajuste cuando llega el nuevo avatarActivo tras subir foto
-  useEffect(() => {
-    if (abrirEditorTrasRefresh.current && usuario.avatarActivo) {
-      abrirEditorTrasRefresh.current = false;
-      setAjusteActual({ x: 50, y: 50, zoom: 1 });
-      setModalModo("ajustar");
-      setModalFotoAbierto(true);
-    }
-  }, [usuario.avatarActivo]);
 
   // ── handlers datos personales ────────────────────────────────────────────────
 
@@ -318,48 +199,6 @@ export function PerfilForm({
   const handleCancelarRubros = () => {
     setCategoriaIds(categoriasIniciales);
     setModoEdicionRubros(false);
-  };
-
-  // ── avatar handlers ─────────────────────────────────────────────────────────
-
-  const handleAvatarSelect = (file: File) => {
-    if (!validarTipoAvatar(file.type)) {
-      setErrorAvatar({ mensaje: ERRORES_ARCHIVO.avatarTipo });
-      return;
-    }
-    if (file.size > AVATAR_MAX_SIZE) {
-      setErrorAvatar({ mensaje: ERRORES_ARCHIVO.avatarTamano });
-      return;
-    }
-    setErrorAvatar(null);
-    setAvatarFile(file);
-    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-    setAvatarPreview(URL.createObjectURL(file));
-  };
-
-  const handleGuardarAvatar = () => {
-    if (!avatarFile) return;
-    setErrorAvatar(null);
-    const fd = new FormData();
-    fd.append("avatar", avatarFile);
-    ejecutarAvatar(async () => {
-      const result = await subirAvatar(fd);
-      mostrarAviso(result);
-      if (!result.ok) return;
-      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-      setAvatarPreview(null);
-      setAvatarFile(null);
-      // El editor se abre cuando llega el nuevo avatarActivo tras el refresh
-      abrirEditorTrasRefresh.current = true;
-      router.refresh();
-    });
-  };
-
-  const handleCancelarAvatar = () => {
-    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-    setAvatarPreview(null);
-    setAvatarFile(null);
-    setErrorAvatar(null);
   };
 
   // ── guardar datos personales ─────────────────────────────────────────────────
@@ -442,159 +281,18 @@ export function PerfilForm({
     });
   };
 
-  // ── contraseña handlers ─────────────────────────────────────────────────────
-
-  const handleCambiarContrasena = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const completos = camposContrasena.validar(
-      { contrasenaActual, contrasenaNueva, repetirContrasena },
-      e.currentTarget
-    );
-    if (!completos) return;
-    const fd = new FormData();
-    fd.append("contrasenaActual", contrasenaActual);
-    fd.append("contrasenaNueva", contrasenaNueva);
-    fd.append("repetirContrasena", repetirContrasena);
-    ejecutarContrasena(async () => {
-      // Un solo aviso: el error de un campo va debajo de ese campo; el resto, en el toast.
-      const res = await cambiarContrasena(fd);
-      if (!camposContrasena.tomarDelServidor(res, CAMPOS_CONTRASENA)) mostrarAviso(res);
-      if (!res.ok) return;
-      setMostrarFormContrasena(false);
-      setContrasenaActual("");
-      setContrasenaNueva("");
-      setRepetirContrasena("");
-    });
-  };
-
-  const handleCancelarContrasena = () => {
-    setMostrarFormContrasena(false);
-    setContrasenaActual("");
-    setContrasenaNueva("");
-    setRepetirContrasena("");
-    camposContrasena.limpiarTodos();
-  };
-
   // ── render ──────────────────────────────────────────────────────────────────
-
-  const avatarSrc = avatarPreview ?? usuario.avatarActivo?.url ?? undefined;
-  const tieneAvatar = !!(usuario.avatarActivo || avatarPreview);
-  const puedeVerFoto = !!(usuario.avatarActivo && !avatarPreview);
 
   return (
     <div className="flex flex-col gap-6">
 
-      {/* ── 1. Avatar ──────────────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6">
-        <SectionTitle>Foto de perfil</SectionTitle>
-        <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
-          <div className="shrink-0">
-            {puedeVerFoto ? (
-              <button
-                type="button"
-                className="cursor-zoom-in rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40"
-                aria-label="Ver foto de perfil"
-                onClick={() => {
-                  setModalModo("ver");
-                  setModalFotoAbierto(true);
-                }}
-              >
-                <AvatarAjustado
-                  src={avatarSrc}
-                  alt={`Foto de ${usuario.nombre} ${usuario.apellido}`.trim()}
-                  ajuste={ajusteActual}
-                  size="lg"
-                />
-              </button>
-            ) : (
-              <AvatarAjustado
-                src={avatarSrc}
-                alt={`Foto de ${usuario.nombre} ${usuario.apellido}`.trim()}
-                ajuste={ajusteActual}
-                size="lg"
-              />
-            )}
-          </div>
-          <div className="flex flex-1 flex-col gap-3">
-            {avatarPreview ? (
-              <div className="flex flex-col gap-2">
-                <p className="text-sm text-muted-foreground">
-                  Vista previa lista. Guardá los cambios o cancelá.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={handleGuardarAvatar}
-                    disabled={guardandoAvatar}
-                    aria-busy={guardandoAvatar}
-                    className="btn-primario min-h-11 sm:min-h-9"
-                  >
-                    {guardandoAvatar ? <Spinner /> : <CheckCircle2 className="h-4 w-4" />}
-                    {guardandoAvatar ? "Guardando…" : "Guardar foto"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCancelarAvatar}
-                    disabled={guardandoAvatar}
-                    className="btn-secundario inline-flex min-h-11 items-center gap-1.5 px-4 text-sm font-medium sm:min-h-9"
-                  >
-                    <X className="h-4 w-4" />
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => avatarInputRef.current?.click()}
-                  disabled={guardandoAvatar}
-                  className="btn-secundario inline-flex min-h-11 items-center gap-1.5 px-4 text-sm font-medium sm:min-h-9"
-                >
-                  <Upload className="h-4 w-4" />
-                  {tieneAvatar ? "Cambiar foto" : "Subir foto"}
-                </button>
-                {tieneAvatar && (
-                  <DialogoConfirmacion
-                    textoBoton={
-                      <>
-                        <X className="h-4 w-4" />
-                        Quitar foto
-                      </>
-                    }
-                    estiloBoton="peligro"
-                    claseBoton="sm:min-h-9"
-                    deshabilitado={guardandoAvatar}
-                    titulo="¿Quitar tu foto de perfil?"
-                    descripcion="Tu perfil va a mostrar tus iniciales en lugar de la foto. Podés subir otra cuando quieras."
-                    textoConfirmar="Sí, quitar"
-                    textoPendiente="Quitando…"
-                    destructivo
-                    accion={quitarAvatar}
-                    onExito={() => router.refresh()}
-                  />
-                )}
-              </div>
-            )}
-            <p className="text-xs text-muted-icon">{AVATAR_HELP_TEXT}</p>
-            {errorAvatar && <MensajeError error={errorAvatar} />}
-          </div>
-        </div>
-        <p className="mt-2 text-xs text-muted-icon">
-          Los archivos eliminados se conservan 90 días por seguridad y luego se borran definitivamente.
-        </p>
-        <input
-          ref={avatarInputRef}
-          type="file"
-          accept={AVATAR_ACCEPT}
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleAvatarSelect(file);
-            e.target.value = "";
-          }}
-        />
-      </div>
+      {/* ── 1. Encabezado con la foto ──────────────────────────────────────── */}
+      <EncabezadoPerfil
+        avatarActivo={usuario.avatarActivo}
+        titulo={`${usuario.nombre} ${usuario.apellido}`}
+        subtitulo="Postulante"
+        iniciales={inicialesDePersona(usuario.nombre, usuario.apellido)}
+      />
 
       {/* ── 2. Datos personales ────────────────────────────────────────────── */}
       <form onSubmit={handleGuardarDatos} noValidate>
@@ -1136,160 +834,8 @@ export function PerfilForm({
         />
       </div>
 
-      {/* ── Modal foto de perfil ───────────────────────────────────────────── */}
-      {modalFotoAbierto && usuario.avatarActivo?.url && (
-        <FotoPerfilModal
-          src={usuario.avatarActivo.url}
-          nombre={usuario.nombre}
-          ajusteInicial={ajusteActual}
-          modoInicial={modalModo}
-          onClose={() => setModalFotoAbierto(false)}
-          onGuardado={(nuevoAjuste) => {
-            setAjusteActual(nuevoAjuste);
-            setModalFotoAbierto(false);
-          }}
-        />
-      )}
-
       {/* ── 5. Contraseña ──────────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-foreground">Contraseña</p>
-            <p className="text-xs text-muted-foreground">Cambiá tu contraseña de acceso.</p>
-          </div>
-          {!mostrarFormContrasena && (
-            <button
-              type="button"
-              onClick={() => setMostrarFormContrasena(true)}
-              className="btn-secundario inline-flex min-h-11 shrink-0 items-center gap-1.5 px-4 text-sm font-medium sm:min-h-9"
-            >
-              <KeyRound className="h-4 w-4" />
-              Cambiar contraseña
-            </button>
-          )}
-        </div>
-
-        {mostrarFormContrasena && (
-          <form onSubmit={handleCambiarContrasena} noValidate className="mt-5 flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="p-contrasena-actual" className="text-sm font-medium text-foreground">
-                Contraseña actual <Obligatorio />
-              </label>
-              <InputWrapper>
-                <FieldIcon icon={KeyRound} />
-                <input
-                  id="p-contrasena-actual"
-                  type={mostrarActual ? "text" : "password"}
-                  autoComplete="current-password"
-                  required
-                  value={contrasenaActual}
-                  onChange={(e) => {
-                    setContrasenaActual(e.target.value);
-                    camposContrasena.limpiar("contrasenaActual");
-                  }}
-                  placeholder="Tu contraseña actual"
-                  className={inputClassPassword}
-                  {...ariaErrorCampo("p-contrasena-actual", camposContrasena.errores.contrasenaActual)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setMostrarActual((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-icon transition hover:text-foreground"
-                  aria-label={mostrarActual ? "Ocultar contraseña" : "Mostrar contraseña"}
-                >
-                  {mostrarActual ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </InputWrapper>
-              <ErrorCampo idCampo="p-contrasena-actual" mensaje={camposContrasena.errores.contrasenaActual} />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="p-contrasena-nueva" className="text-sm font-medium text-foreground">
-                Contraseña nueva <Obligatorio />
-              </label>
-              <InputWrapper>
-                <FieldIcon icon={KeyRound} />
-                <input
-                  id="p-contrasena-nueva"
-                  type={mostrarNueva ? "text" : "password"}
-                  autoComplete="new-password"
-                  required
-                  value={contrasenaNueva}
-                  onChange={(e) => {
-                    setContrasenaNueva(e.target.value);
-                    camposContrasena.limpiar("contrasenaNueva");
-                  }}
-                  placeholder="Mínimo 6 caracteres"
-                  className={inputClassPassword}
-                  {...ariaErrorCampo("p-contrasena-nueva", camposContrasena.errores.contrasenaNueva)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setMostrarNueva((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-icon transition hover:text-foreground"
-                  aria-label={mostrarNueva ? "Ocultar contraseña" : "Mostrar contraseña"}
-                >
-                  {mostrarNueva ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </InputWrapper>
-              <ErrorCampo idCampo="p-contrasena-nueva" mensaje={camposContrasena.errores.contrasenaNueva} />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="p-repetir-contrasena" className="text-sm font-medium text-foreground">
-                Repetir contraseña nueva <Obligatorio />
-              </label>
-              <InputWrapper>
-                <FieldIcon icon={KeyRound} />
-                <input
-                  id="p-repetir-contrasena"
-                  type={mostrarRepetir ? "text" : "password"}
-                  autoComplete="new-password"
-                  required
-                  value={repetirContrasena}
-                  onChange={(e) => {
-                    setRepetirContrasena(e.target.value);
-                    camposContrasena.limpiar("repetirContrasena");
-                  }}
-                  placeholder="Repetí la contraseña nueva"
-                  className={inputClassPassword}
-                  {...ariaErrorCampo("p-repetir-contrasena", camposContrasena.errores.repetirContrasena)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setMostrarRepetir((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-icon transition hover:text-foreground"
-                  aria-label={mostrarRepetir ? "Ocultar contraseña" : "Mostrar contraseña"}
-                >
-                  {mostrarRepetir ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </InputWrapper>
-              <ErrorCampo idCampo="p-repetir-contrasena" mensaje={camposContrasena.errores.repetirContrasena} />
-            </div>
-
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <button
-                type="submit"
-                disabled={cargandoContrasena}
-                aria-busy={cargandoContrasena}
-                className="btn-primario min-h-11 justify-center px-6"
-              >
-                {cargandoContrasena ? <Spinner /> : <CheckCircle2 className="h-4 w-4" />}
-                {cargandoContrasena ? "Guardando…" : "Guardar contraseña"}
-              </button>
-              <button
-                type="button"
-                onClick={handleCancelarContrasena}
-                disabled={cargandoContrasena}
-                className="btn-secundario inline-flex min-h-11 items-center justify-center px-6 text-sm font-medium"
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
+      <SeccionContrasena />
 
     </div>
   );
