@@ -20,6 +20,7 @@ import { TituloBloque } from "@/components/indicadores/titulo-bloque";
 import { GraficoPorMes, GraficoPorRubro } from "./graficos";
 import { EsqueletoIndicadores } from "./esqueleto-indicadores";
 import { formatMesAnio } from "@/lib/fechas";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Indicadores | Panel municipal | Portal de Empleo Funes",
@@ -38,13 +39,7 @@ export default async function IndicadoresPage({
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/admin" className="hover:text-foreground">
-          Panel
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">Indicadores</span>
-      </div>
+      <BotonVolver href="/admin">Volver al panel</BotonVolver>
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         Indicadores

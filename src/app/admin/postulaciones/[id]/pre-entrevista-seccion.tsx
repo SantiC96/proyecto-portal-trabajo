@@ -2,18 +2,16 @@
 
 import { useState } from "react";
 import { CalendarClock } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
+import { BotonesDialogo, DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
 import { CampoFechaHora, fechaHoraISO, horarioYaPaso } from "@/components/ui/campo-fecha-hora";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import {
@@ -22,10 +20,8 @@ import {
   ariaErrorCampo,
 } from "@/components/ui/obligatorio";
 import { useErroresCampo } from "@/lib/use-errores-campo";
-import { Spinner } from "@/components/ui/spinner";
 import { mostrarAviso } from "@/lib/avisos";
 import { formatFechaHora } from "@/lib/fechas";
-import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { useAccion } from "@/lib/use-accion";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
 import { badgePreEntrevista, type PreEntrevista } from "@/lib/pre-entrevistas";
@@ -34,19 +30,6 @@ import {
   registrarResultadoPreEntrevista,
   reprogramarPreEntrevista,
 } from "../actions";
-
-function MensajeError({ error }: { error: ErrorAccion }) {
-  return (
-    <div role="alert">
-      <p className="text-sm text-red-600">{error.mensaje}</p>
-      {error.ref && (
-        <p className="mt-0.5 text-xs text-gray-500">
-          Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-        </p>
-      )}
-    </div>
-  );
-}
 
 function CampoNota({
   id,
@@ -84,6 +67,7 @@ function CampoNota({
 
 type ModoDialogo = "coordinar" | "reprogramar";
 
+/** Campos que puede marcar el servidor; "fechaHora" se muestra debajo del horario. */
 const CAMPOS_SERVIDOR = ["fechaHora", "lugar", "nota"] as const;
 type CampoDialogo = "dia" | "hora" | (typeof CAMPOS_SERVIDOR)[number];
 
@@ -103,11 +87,9 @@ function DialogoFechaPreEntrevista({
   const [hora, setHora] = useState("");
   const [lugar, setLugar] = useState(preEntrevista?.lugar ?? "");
   const [nota, setNota] = useState(preEntrevista?.nota_oficina ?? "");
-  const [error, setError] = useState<ErrorAccion | null>(null);
   const campos = useErroresCampo<CampoDialogo>();
 
   function confirmar() {
-    setError(null);
     if (!campos.validar({ dia, hora, lugar }) || !dia) return;
     if (horarioYaPaso(dia, hora)) {
       campos.marcar("hora", "El horario elegido ya pasó. Elegí uno posterior.", null);
@@ -120,12 +102,8 @@ function DialogoFechaPreEntrevista({
         modo === "coordinar" || !preEntrevista
           ? await coordinarPreEntrevista(postulacionId, iso, lugar, nota)
           : await reprogramarPreEntrevista(postulacionId, preEntrevista.id, iso, lugar, nota);
-      mostrarAviso(res);
-      if (!res.ok) {
-        if (!campos.tomarDelServidor(res, CAMPOS_SERVIDOR)) setError(toErrorAccion(res));
-      } else {
-        onCerrar();
-      }
+      if (!campos.tomarDelServidor(res, CAMPOS_SERVIDOR)) mostrarAviso(res);
+      if (res.ok) onCerrar();
     });
   }
 
@@ -203,31 +181,19 @@ function DialogoFechaPreEntrevista({
               setNota(valor);
               campos.limpiar("nota");
             }}
-            deshabilitado={pendiente}
             error={campos.errores.nota}
+            deshabilitado={pendiente}
           />
 
-          {error && <MensajeError error={error} />}
         </div>
 
-        <DialogFooter>
-          <button
-            type="button"
-            onClick={onCerrar}
-            disabled={pendiente}
-            className="btn-secundario inline-flex min-h-11 items-center justify-center whitespace-nowrap px-4 text-sm font-medium disabled:opacity-60 sm:min-h-9"
-          >
-            Cancelar
-          </button>
-          <Button onClick={confirmar} disabled={pendiente} className="min-h-11 px-4 sm:min-h-9">
-            {pendiente && <Spinner />}
-            {pendiente
-              ? "Guardando…"
-              : modo === "coordinar"
-                ? "Coordinar"
-                : "Reprogramar"}
-          </Button>
-        </DialogFooter>
+        <BotonesDialogo
+          pendiente={pendiente}
+          onCancelar={onCerrar}
+          onConfirmar={confirmar}
+          textoConfirmar={modo === "coordinar" ? "Coordinar" : "Reprogramar"}
+          textoPendiente="Guardando…"
+        />
       </DialogContent>
     </Dialog>
   );
@@ -299,9 +265,13 @@ export function PreEntrevistaSeccion({
       {gestionable && (
         <div className="mt-4 space-y-2">
           {!preEntrevista && (
-            <Button onClick={() => setDialogo("coordinar")} className="min-h-11 w-full">
+            <button
+              type="button"
+              onClick={() => setDialogo("coordinar")}
+              className="btn-primario min-h-11 w-full justify-center"
+            >
               Coordinar pre-entrevista
-            </Button>
+            </button>
           )}
 
           {estado === "coordinada" && preEntrevista && (

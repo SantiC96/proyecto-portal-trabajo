@@ -165,7 +165,7 @@ export async function eliminarCurso(cursoId: string): Promise<Resultado<void>> {
   }
 
   revalidarCursos();
-  redirect("/admin/cursos");
+  redirect("/admin/cursos?aviso=curso-eliminado");
 }
 
 export async function asignarCurso(

@@ -16,11 +16,13 @@ import {
   type ParamsUrl,
 } from "@/lib/paginacion";
 import { Buscador } from "@/components/ui/buscador";
+import { ContadoresEstado, PestanasEstado } from "@/components/ui/pestanas-estado";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import type { Enum, Tabla } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Ofertas | Panel municipal | Portal de Empleo Funes",
@@ -110,69 +112,32 @@ export default async function AdminOfertasPage({
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/admin" className="hover:text-foreground">
-          Panel
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">Ofertas</span>
-      </div>
+      <BotonVolver href="/admin">Volver al panel</BotonVolver>
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         Ofertas
       </h1>
 
-      {/* Contadores */}
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
-          <p className="text-xs font-medium text-muted-foreground">Pendientes</p>
-          <p className="mt-1 text-2xl font-bold text-amber-700">
-            {cPendientes ?? 0}
-          </p>
-        </div>
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
-          <p className="text-xs font-medium text-muted-foreground">Activas</p>
-          <p className="mt-1 text-2xl font-bold text-emerald-700">
-            {cActivas ?? 0}
-          </p>
-        </div>
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
-          <p className="text-xs font-medium text-muted-foreground">Vencidas</p>
-          <p className="mt-1 text-2xl font-bold text-red-600">
-            {cVencidas ?? 0}
-          </p>
-        </div>
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
-          <p className="text-xs font-medium text-muted-foreground">Rechazadas</p>
-          <p className="mt-1 text-2xl font-bold text-red-600">
-            {cRechazadas ?? 0}
-          </p>
-        </div>
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
-          <p className="text-xs font-medium text-muted-foreground">Cerradas</p>
-          <p className="mt-1 text-2xl font-bold text-muted-foreground">
-            {cCerradas ?? 0}
-          </p>
-        </div>
-      </div>
+      <ContadoresEstado
+        className="mt-6"
+        contadores={[
+          { label: "Pendientes", valor: cPendientes ?? 0, color: "text-amber-700" },
+          { label: "Activas", valor: cActivas ?? 0, color: "text-emerald-700" },
+          { label: "Vencidas", valor: cVencidas ?? 0, color: "text-red-600" },
+          { label: "Rechazadas", valor: cRechazadas ?? 0, color: "text-red-600" },
+          { label: "Cerradas", valor: cCerradas ?? 0, color: "text-muted-foreground" },
+        ]}
+      />
 
-      {/* Barra de pestañas */}
-      <div className="mt-6 flex gap-1 overflow-x-auto rounded-[var(--radius-md)] border border-border bg-surface p-1">
-        {ESTADOS_FILTRO.map((tab) => (
-          <Link
-            key={tab}
-            href={hrefConParams(RUTA, {}, { estado: tab, q: sp.q ?? null })}
-            className={
-              tab === estado
-                ? "flex-1 whitespace-nowrap rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
-                : "flex-1 whitespace-nowrap rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
-            }
-          >
-            {LABEL_FILTRO[tab]}
-          </Link>
-        ))}
-      </div>
+      <PestanasEstado
+        className="mt-6"
+        etiqueta="Estado de las ofertas"
+        pestanas={ESTADOS_FILTRO.map((tab) => ({
+          href: hrefConParams(RUTA, {}, { estado: tab, q: sp.q ?? null }),
+          label: LABEL_FILTRO[tab],
+          activa: tab === estado,
+        }))}
+      />
 
       {/* Búsqueda */}
       <Buscador className="mt-4" placeholder="Buscar por título…" />

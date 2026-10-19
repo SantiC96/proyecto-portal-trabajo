@@ -13,7 +13,6 @@ import {
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { UMBRAL_RECHAZOS_CURSO } from "@/lib/cursos";
 import { requerirRolPagina } from "@/lib/auth";
-import { idsEmpresasSinConfirmar } from "@/lib/admin/empresas-sin-confirmar";
 
 export const metadata: Metadata = {
   title: "Panel municipal | Portal de Empleo Funes",
@@ -30,18 +29,12 @@ export default async function AdminDashboardPage() {
   const supabase = await createSupabaseServerClient();
 
   const [
-    { count: pendientesTotales },
     { count: postulacionesPendientes },
     { count: totalPostulantes },
     { count: ofertasPendientes },
     esperandoCursoRes,
     { count: cursosActivos },
-    empresasSinConfirmar,
   ] = await Promise.all([
-    supabase
-      .from("empresas")
-      .select("*", { count: "exact", head: true })
-      .eq("estado_aprobacion", "pendiente"),
     supabase
       .from("postulaciones")
       .select("*", { count: "exact", head: true })
@@ -56,16 +49,7 @@ export default async function AdminDashboardPage() {
       .from("cursos")
       .select("*", { count: "exact", head: true })
       .eq("activo", true),
-    idsEmpresasSinConfirmar(supabase),
   ]);
-
-  // Las empresas que no confirmaron el email no están pendientes de revisión.
-  if (empresasSinConfirmar.error)
-    logError("empresas_email_sin_confirmar", empresasSinConfirmar.error);
-  const pendientes = Math.max(
-    0,
-    (pendientesTotales ?? 0) - (empresasSinConfirmar.ids?.length ?? 0)
-  );
 
   if (esperandoCursoRes.error)
     logError("contar_postulantes_esperando_curso", esperandoCursoRes.error);
@@ -111,10 +95,8 @@ export default async function AdminDashboardPage() {
             </div>
             <div>
               <p className="font-semibold text-foreground">Empresas</p>
-              <p className={textoEstado((pendientes ?? 0) > 0)}>
-                {(pendientes ?? 0) > 0
-                  ? `${pendientes} empresa${pendientes === 1 ? "" : "s"} pendiente${pendientes === 1 ? "" : "s"} de revisión`
-                  : "Revisá solicitudes pendientes y el historial de decisiones"}
+              <p className="text-sm text-muted-foreground">
+                Revisá solicitudes pendientes y el historial de decisiones
               </p>
             </div>
           </div>

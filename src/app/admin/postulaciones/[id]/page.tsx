@@ -21,6 +21,7 @@ import { requerirRolPagina } from "@/lib/auth";
 import { preEntrevistaYaPaso } from "@/lib/pre-entrevistas";
 import { PreEntrevistaSeccion } from "./pre-entrevista-seccion";
 import { MarcarFichaAbierta } from "./marcar-ficha-abierta";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Ficha | Postulaciones | Panel municipal | Portal de Empleo Funes",
@@ -123,18 +124,7 @@ export default async function PostulacionFichaPage({
   return (
     <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
       {postulacion.estado === "recibida" && <MarcarFichaAbierta postulacionId={postulacionId} />}
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/admin" className="hover:text-foreground">
-          Panel
-        </Link>
-        <span>/</span>
-        <Link href="/admin/postulaciones" className="hover:text-foreground">
-          Postulaciones
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">Ficha</span>
-      </div>
+      <BotonVolver href="/admin/postulaciones">Volver a postulaciones</BotonVolver>
 
       {/* Cabecera */}
       <div className="mt-4 flex flex-wrap items-center gap-3">
