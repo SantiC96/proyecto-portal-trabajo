@@ -637,6 +637,7 @@ export type Database = {
           nota_oficina: string | null
           oferta_id: string
           postulante_id: string
+          retirada_en: string | null
           revisado_por: string | null
           updated_at: string
         }
@@ -647,6 +648,7 @@ export type Database = {
           nota_oficina?: string | null
           oferta_id: string
           postulante_id: string
+          retirada_en?: string | null
           revisado_por?: string | null
           updated_at?: string
         }
@@ -657,6 +659,7 @@ export type Database = {
           nota_oficina?: string | null
           oferta_id?: string
           postulante_id?: string
+          retirada_en?: string | null
           revisado_por?: string | null
           updated_at?: string
         }
@@ -1426,6 +1429,10 @@ export type Database = {
         Returns: Database["public"]["Enums"]["estado_oferta"]
       }
       retirar_oferta: { Args: { p_oferta_id: string }; Returns: number }
+      retirar_postulacion: {
+        Args: { p_postulacion_id: string }
+        Returns: string
+      }
       rol_actual: {
         Args: never
         Returns: Database["public"]["Enums"]["rol_usuario"]
@@ -1442,6 +1449,7 @@ export type Database = {
         | "contratado"
         | "rechazado"
         | "oferta_retirada"
+        | "retirada_postulante"
       estado_oferta:
         | "borrador"
         | "activa"
@@ -1454,6 +1462,7 @@ export type Database = {
         | "derivada"
         | "rechazada_municipalidad"
         | "oferta_retirada"
+        | "retirada_postulante"
       jornada_oferta:
         | "Tiempo completo"
         | "Part-time"
@@ -1594,6 +1603,7 @@ export const Constants = {
         "contratado",
         "rechazado",
         "oferta_retirada",
+        "retirada_postulante",
       ],
       estado_oferta: [
         "borrador",
@@ -1608,6 +1618,7 @@ export const Constants = {
         "derivada",
         "rechazada_municipalidad",
         "oferta_retirada",
+        "retirada_postulante",
       ],
       jornada_oferta: [
         "Tiempo completo",
