@@ -14,6 +14,7 @@ import {
 import { MultiCombobox } from "@/components/ui/multi-combobox";
 import { actualizarPerfil, actualizarRubros } from "./actions";
 import { SeccionCvs } from "./seccion-cvs";
+import { SeccionProcedencia, type ComprobantePerfil } from "./seccion-procedencia";
 import type { CvVista } from "@/lib/cvs";
 import { LARGO_MAXIMO, validarNombre, validarDNI, validarTelefono } from "@/lib/validaciones";
 import type { Rol, Tabla } from "@/types/db";
@@ -107,6 +108,10 @@ interface PerfilFormProps {
     experienciaLaboral: string;
     cvs: CvVista[];
   };
+  procedencia: {
+    localidad: string | null;
+    comprobante: ComprobantePerfil | null;
+  };
   email: string;
   categorias: Pick<Tabla<"categorias">, "id" | "nombre">[];
   categoriasSeleccionadas: string[];
@@ -117,6 +122,7 @@ interface PerfilFormProps {
 export function PerfilForm({
   usuario,
   postulante,
+  procedencia,
   email,
   categorias,
   categoriasSeleccionadas: categoriasIniciales,
@@ -570,7 +576,13 @@ export function PerfilForm({
         </div>
       </form>
 
-      {/* ── 3. Rubros de interés ───────────────────────────────────────────── */}
+      {/* ── 3. Procedencia ─────────────────────────────────────────────────── */}
+      <SeccionProcedencia
+        localidad={procedencia.localidad}
+        comprobante={procedencia.comprobante}
+      />
+
+      {/* ── 4. Rubros de interés ───────────────────────────────────────────── */}
       <form onSubmit={handleGuardarRubros}>
         <div className="rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6">
           <div className="mb-4 flex items-center justify-between gap-3">
@@ -645,10 +657,10 @@ export function PerfilForm({
         </div>
       </form>
 
-      {/* ── 4. CV ──────────────────────────────────────────────────────────── */}
+      {/* ── 5. CV ──────────────────────────────────────────────────────────── */}
       <SeccionCvs cvs={postulante.cvs} />
 
-      {/* ── 5. Contraseña ──────────────────────────────────────────────────── */}
+      {/* ── 6. Contraseña ──────────────────────────────────────────────────── */}
       <SeccionContrasena />
 
     </div>

@@ -16,7 +16,11 @@ async function purgarOfertasEliminadas(): Promise<number> {
   return data ?? 0;
 }
 
-const BUCKET_POR_TIPO = { cv: "cvs", avatar: "avatares" } as const;
+const BUCKET_POR_TIPO = {
+  cv: "cvs",
+  avatar: "avatares",
+  comprobante_domicilio: "comprobantes",
+} as const;
 type TipoArchivo = keyof typeof BUCKET_POR_TIPO;
 
 /** Archivos por llamada a Storage y por corrida (el resto queda para mañana). */
@@ -24,7 +28,8 @@ const TANDA_STORAGE = 100;
 const LIMITE_POR_CORRIDA = 500;
 
 /**
- * Borra de Storage los CVs y fotos eliminados hace más de 30 días y después
+ * Borra de Storage los CVs, fotos y comprobantes de domicilio (migration_055)
+ * eliminados hace más de 30 días y después
  * sus filas (archivos_a_purgar y confirmar_archivos_purgados, migration_054;
  * solo service role). La base ya excluye los CVs de postulaciones en curso.
  *

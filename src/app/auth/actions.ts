@@ -21,7 +21,14 @@ import {
   validarPassword,
   validarCuitConMensaje,
   validarTextoOpcional,
+  leerArchivo,
 } from "@/lib/validaciones";
+import { esLocalidadFunes, resolverLocalidad } from "@/lib/localidades";
+import {
+  guardarComprobanteDomicilio,
+  validarComprobante,
+  type ComprobanteValidado,
+} from "@/lib/comprobantes";
 import {
   cookieReintentoOptions,
   INVITACION_COOKIE,
@@ -123,21 +130,43 @@ export async function login(credentials: {
   redirect(rutaInterna(credentials.redirectTo));
 }
 
-export async function registrarPostulante(data: {
-  nombre: string;
-  apellido: string;
-  telefono: string;
-  dni: string;
-  domicilio: string;
-  email: string;
-  password: string;
-}): Promise<Resultado<void>> {
+/**
+ * `archivos`: FormData opcional con el comprobante de domicilio ("comprobante"),
+ * solo si la localidad es Funes. Se valida antes de crear la cuenta y se sube
+ * después; si la subida falla, la cuenta queda creada igual y la página de
+ * verificación avisa que se puede subir desde el perfil.
+ */
+export async function registrarPostulante(
+  data: {
+    nombre: string;
+    apellido: string;
+    telefono: string;
+    dni: string;
+    domicilio: string;
+    localidad: string;
+    otraLocalidad: string;
+    email: string;
+    password: string;
+  },
+  archivos?: FormData,
+): Promise<Resultado<void>> {
   if (await obtenerUsuarioActual()) redirect("/");
 
   if (
     typeof data !== "object" ||
     data === null ||
-    !sonTextos(data.nombre, data.apellido, data.telefono, data.dni, data.domicilio, data.email, data.password)
+    !sonTextos(
+      data.nombre,
+      data.apellido,
+      data.telefono,
+      data.dni,
+      data.domicilio,
+      data.localidad,
+      data.otraLocalidad,
+      data.email,
+      data.password,
+    ) ||
+    (archivos !== undefined && !(archivos instanceof FormData))
   ) {
     return err("DATOS_INVALIDOS");
   }
@@ -156,6 +185,19 @@ export async function registrarPostulante(data: {
   if (errPassword) return errCampo("password", errPassword);
   const errDomicilio = validarTextoOpcional(data.domicilio, LARGO_MAXIMO.domicilio);
   if (errDomicilio) return errCampo("domicilio", errDomicilio);
+  const localidad = resolverLocalidad(data.localidad, data.otraLocalidad);
+  if (!localidad.ok) return errCampo(localidad.campo, localidad.mensaje);
+
+  const archivoComprobante = archivos ? leerArchivo(archivos, "comprobante") : null;
+  let comprobante: ComprobanteValidado | null = null;
+  if (archivoComprobante && archivoComprobante.size > 0) {
+    if (!esLocalidadFunes(localidad.localidad)) {
+      return errCampo("comprobante", "El comprobante de domicilio es solo para quienes viven en Funes.");
+    }
+    const validado = await validarComprobante(archivoComprobante);
+    if (!validado.ok) return errCampo("comprobante", validado.mensaje);
+    comprobante = validado.archivo;
+  }
 
   const dniLimpio = data.dni.replace(/\D/g, "");
 
@@ -183,7 +225,12 @@ export async function registrarPostulante(data: {
 
   const { error: profileError } = await supabaseAdmin
     .from("postulantes")
-    .insert({ usuario_id: authData.user.id, dni: dniLimpio, domicilio: data.domicilio });
+    .insert({
+      usuario_id: authData.user.id,
+      dni: dniLimpio,
+      domicilio: data.domicilio,
+      localidad: localidad.localidad,
+    });
 
   if (profileError) {
     const altaCompleta = await deshacerAltaSinPerfil("postulantes", authData.user.id, "registrarPostulante");
@@ -193,6 +240,16 @@ export async function registrarPostulante(data: {
     }
     const ref = logError("registrarPostulante:profile", profileError, { userId: authData.user.id });
     return errConRef("ERROR_INTERNO", "Error al crear el perfil. Intentá de nuevo.", ref);
+  }
+
+  if (comprobante) {
+    const subida = await guardarComprobanteDomicilio(
+      authData.user.id,
+      comprobante,
+      "registrarPostulante:comprobante",
+    );
+    // La cuenta ya está creada: no se deshace por el comprobante.
+    if (!subida.ok) redirect("/auth/verificar-email?comprobante=pendiente");
   }
 
   redirect("/auth/verificar-email");

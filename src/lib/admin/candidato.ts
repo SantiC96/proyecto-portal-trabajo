@@ -1,6 +1,8 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { COLUMNAS_CV, consultaCvsDisponibles, conUrlsFirmadas, type CvVista } from "@/lib/cvs";
 import { logError } from "@/lib/logger";
+import { obtenerComprobanteVigente, type ComprobanteVista } from "@/lib/comprobantes";
+import { nivelDe, type NivelPrioridad } from "@/lib/procedencia";
 import type { Tabla } from "@/types/db";
 
 type Categoria = Pick<Tabla<"categorias">, "id" | "nombre">;
@@ -16,7 +18,12 @@ export type DatosCandidatoResult = {
     | "situacion_laboral"
     | "disponibilidad"
     | "experiencia_laboral"
+    | "localidad"
   >;
+  /** Nivel de prioridad (migration_055). Solo para la oficina. */
+  nivel: NivelPrioridad;
+  /** Comprobante de domicilio vigente, con URL firmada. */
+  comprobante: ComprobanteVista | null;
   usuario: Pick<Tabla<"usuarios">, "id" | "nombre" | "apellido" | "telefono">;
   email: string | null;
   categorias: Categoria[];
@@ -48,7 +55,7 @@ export async function obtenerCandidato(
   const { data: postulante } = await supabase
     .from("postulantes")
     .select(
-      "id, usuario_id, dni, domicilio, nivel_educativo, situacion_laboral, disponibilidad, experiencia_laboral, usuarios!usuario_id(id, nombre, apellido, telefono)"
+      "id, usuario_id, dni, domicilio, localidad, nivel_prioridad, nivel_educativo, situacion_laboral, disponibilidad, experiencia_laboral, usuarios!usuario_id(id, nombre, apellido, telefono)"
     )
     .eq("id", postulanteId)
     .single();
@@ -60,7 +67,7 @@ export async function obtenerCandidato(
 
   const usuarioId = postulante.usuario_id;
 
-  const [categoriasResult, avatarResult, cvsResult, emailResult] = await Promise.all([
+  const [categoriasResult, avatarResult, cvsResult, emailResult, comprobante] = await Promise.all([
     supabase
       .from("postulante_categorias")
       .select("categorias!categoria_id(id, nombre)")
@@ -74,6 +81,7 @@ export async function obtenerCandidato(
       .maybeSingle(),
     consultaCvsDisponibles(supabase, usuarioId),
     supabase.rpc("emails_de_usuarios", { ids: [usuarioId] }),
+    obtenerComprobanteVigente(supabase, usuarioId, 600),
   ]);
 
   const categorias = (categoriasResult.data ?? [])
@@ -104,7 +112,10 @@ export async function obtenerCandidato(
       situacion_laboral: postulante.situacion_laboral,
       disponibilidad: postulante.disponibilidad,
       experiencia_laboral: postulante.experiencia_laboral,
+      localidad: postulante.localidad,
     },
+    nivel: nivelDe(postulante.nivel_prioridad),
+    comprobante,
     usuario: {
       id: usuario.id,
       nombre: usuario.nombre,

@@ -30,6 +30,10 @@ export type Database = {
           tamano: number
           tipo: string
           usuario_id: string
+          verificacion_estado: string | null
+          verificacion_motivo: string | null
+          verificado_en: string | null
+          verificado_por: string | null
         }
         Insert: {
           activo?: boolean
@@ -46,6 +50,10 @@ export type Database = {
           tamano: number
           tipo: string
           usuario_id: string
+          verificacion_estado?: string | null
+          verificacion_motivo?: string | null
+          verificado_en?: string | null
+          verificado_por?: string | null
         }
         Update: {
           activo?: boolean
@@ -62,11 +70,22 @@ export type Database = {
           tamano?: number
           tipo?: string
           usuario_id?: string
+          verificacion_estado?: string | null
+          verificacion_motivo?: string | null
+          verificado_en?: string | null
+          verificado_por?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "archivos_usuario_usuario_id_fkey"
             columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archivos_usuario_verificado_por_fkey"
+            columns: ["verificado_por"]
             isOneToOne: false
             referencedRelation: "usuarios"
             referencedColumns: ["id"]
@@ -736,9 +755,12 @@ export type Database = {
           disponibilidad: string | null
           dni: string | null
           domicilio: string | null
+          es_de_funes: boolean
           experiencia_laboral: string | null
           id: string
+          localidad: string | null
           nivel_educativo: string | null
+          nivel_prioridad: number
           situacion_laboral: string | null
           usuario_id: string
         }
@@ -747,9 +769,12 @@ export type Database = {
           disponibilidad?: string | null
           dni?: string | null
           domicilio?: string | null
+          es_de_funes?: boolean
           experiencia_laboral?: string | null
           id?: string
+          localidad?: string | null
           nivel_educativo?: string | null
+          nivel_prioridad?: number
           situacion_laboral?: string | null
           usuario_id: string
         }
@@ -758,9 +783,12 @@ export type Database = {
           disponibilidad?: string | null
           dni?: string | null
           domicilio?: string | null
+          es_de_funes?: boolean
           experiencia_laboral?: string | null
           id?: string
+          localidad?: string | null
           nivel_educativo?: string | null
+          nivel_prioridad?: number
           situacion_laboral?: string | null
           usuario_id?: string
         }
@@ -1255,6 +1283,8 @@ export type Database = {
           ultimo_ingreso: string
         }[]
       }
+      localidad_clave: { Args: { p_localidad: string }; Returns: string }
+      localidad_es_funes: { Args: { p_localidad: string }; Returns: boolean }
       mi_empresa_id: { Args: never; Returns: string }
       mis_cursos_asignados: {
         Args: never
@@ -1293,6 +1323,11 @@ export type Database = {
           lugar: string
           postulacion_id: string
         }[]
+      }
+      nivel_prioridad: { Args: { p_postulante_id: string }; Returns: number }
+      nivel_prioridad_calculado: {
+        Args: { p_es_de_funes: boolean; p_usuario_id: string }
+        Returns: number
       }
       normalizar_busqueda: { Args: { p_texto: string }; Returns: string }
       notificaciones_fecha: {
@@ -1401,6 +1436,10 @@ export type Database = {
         Args: { p_empresa_id: string; p_postulante_id: string }
         Returns: boolean
       }
+      postulante_puede_ver_comprobante: {
+        Args: { p_ruta: string }
+        Returns: boolean
+      }
       postulante_puede_ver_cv: { Args: { p_ruta: string }; Returns: boolean }
       postulantes_esperando_curso_ids: {
         Args: never
@@ -1467,6 +1506,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      refrescar_nivel_prioridad: {
+        Args: { p_usuario_id: string }
+        Returns: undefined
+      }
       registrar_resultado_pre_entrevista: {
         Args: {
           p_nota: string
@@ -1493,6 +1536,10 @@ export type Database = {
       retirar_postulacion: {
         Args: { p_postulacion_id: string }
         Returns: string
+      }
+      revisar_comprobante_domicilio: {
+        Args: { p_aprobar: boolean; p_archivo_id: string; p_motivo?: string }
+        Returns: undefined
       }
       rol_actual: {
         Args: never

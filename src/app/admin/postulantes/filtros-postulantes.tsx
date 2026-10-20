@@ -7,6 +7,12 @@ import { MultiCombobox } from "@/components/ui/multi-combobox";
 import { Buscador } from "@/components/ui/buscador";
 import { hrefConParams } from "@/lib/paginacion";
 import type { Tabla } from "@/types/db";
+import {
+  ETIQUETA_NIVEL,
+  NIVELES_PRIORIDAD,
+  leerNivelPrioridad,
+  type NivelPrioridad,
+} from "@/lib/procedencia";
 
 const RUTA = "/admin/postulantes";
 
@@ -15,6 +21,8 @@ type Filtros = {
   conCv: boolean;
   esperandoCurso: boolean;
   cursoPendiente: boolean;
+  nivel: NivelPrioridad | null;
+  comprobantePendiente: boolean;
 };
 
 type Props = Filtros & {
@@ -28,6 +36,8 @@ export function FiltrosPostulantes({
   conCv,
   esperandoCurso,
   cursoPendiente,
+  nivel,
+  comprobantePendiente,
   hayBusqueda,
 }: Props) {
   const router = useRouter();
@@ -39,6 +49,8 @@ export function FiltrosPostulantes({
     conCv,
     esperandoCurso,
     cursoPendiente,
+    nivel,
+    comprobantePendiente,
   });
 
   const tienesFiltros =
@@ -46,7 +58,9 @@ export function FiltrosPostulantes({
     filtros.rubros.length > 0 ||
     filtros.conCv ||
     filtros.esperandoCurso ||
-    filtros.cursoPendiente;
+    filtros.cursoPendiente ||
+    filtros.nivel !== null ||
+    filtros.comprobantePendiente;
 
   function aplicar(cambios: Partial<Filtros>) {
     const siguiente = { ...filtros, ...cambios };
@@ -55,6 +69,8 @@ export function FiltrosPostulantes({
       con_cv: siguiente.conCv ? "1" : null,
       esperando_curso: siguiente.esperandoCurso ? "1" : null,
       curso_pendiente: siguiente.cursoPendiente ? "1" : null,
+      nivel: siguiente.nivel === null ? null : String(siguiente.nivel),
+      comprobante: siguiente.comprobantePendiente ? "pendiente" : null,
       pagina: null,
     });
     startTransition(() => {
@@ -65,7 +81,14 @@ export function FiltrosPostulantes({
 
   function handleLimpiar() {
     startTransition(() => {
-      setFiltros({ rubros: [], conCv: false, esperandoCurso: false, cursoPendiente: false });
+      setFiltros({
+        rubros: [],
+        conCv: false,
+        esperandoCurso: false,
+        cursoPendiente: false,
+        nivel: null,
+        comprobantePendiente: false,
+      });
       router.push(RUTA);
     });
   }
@@ -121,6 +144,33 @@ export function FiltrosPostulantes({
             className="h-4 w-4 rounded border-border accent-primary"
           />
           Con curso pendiente
+        </label>
+      </div>
+
+      {/* Procedencia (migration_055) */}
+      <div className="flex flex-wrap gap-3">
+        <select
+          value={filtros.nivel === null ? "" : String(filtros.nivel)}
+          onChange={(e) => aplicar({ nivel: leerNivelPrioridad(e.target.value) })}
+          aria-label="Filtrar por procedencia"
+          className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-white px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 sm:max-w-xs"
+        >
+          <option value="">Todas las procedencias</option>
+          {NIVELES_PRIORIDAD.map((n) => (
+            <option key={n} value={n}>
+              {ETIQUETA_NIVEL[n]}
+            </option>
+          ))}
+        </select>
+
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 whitespace-nowrap rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground select-none">
+          <input
+            type="checkbox"
+            checked={filtros.comprobantePendiente}
+            onChange={(e) => aplicar({ comprobantePendiente: e.target.checked })}
+            className="h-4 w-4 rounded border-border accent-primary"
+          />
+          Comprobante por revisar
         </label>
       </div>
 

@@ -142,6 +142,9 @@ erDiagram
         uuid usuario_id FK "UNIQUE"
         text dni "UNIQUE"
         text domicilio
+        text localidad "NULL = sin informar"
+        bool es_de_funes "trigger"
+        smallint nivel_prioridad "1-3, trigger"
         text nivel_educativo
     }
     empresas {
@@ -205,7 +208,7 @@ erDiagram
 | Tabla | Uso |
 |---|---|
 | `usuarios` | Datos comunes y rol (`postulante`, `empresa`, `municipalidad`) de cada cuenta de Auth. La crea el trigger `on_auth_user_created`. |
-| `postulantes` | Perfil del postulante: DNI, domicilio e información laboral. |
+| `postulantes` | Perfil del postulante: DNI, domicilio, localidad e información laboral. `es_de_funes` y `nivel_prioridad` (1 Funes verificado, 2 Funes sin verificar, 3 otra localidad o sin informar) los mantienen triggers (migración 055, decisión [027](decisiones/027-procedencia-y-prioridad.md)). |
 | `empresas` | Perfil de la empresa: razón social, CUIT, rubro y estado de aprobación. |
 | `historial_aprobacion_empresa` | Eventos de la solicitud de cada empresa (aprobada, rechazada, reenviada) con su motivo. |
 | `categorias` | Rubros, compartidos por ofertas y postulantes. |
@@ -219,7 +222,7 @@ erDiagram
 | `candidatos_guardados` | Candidatos que una empresa guarda con una nota. |
 | `cursos` | Cursos de inserción laboral que carga la oficina. |
 | `asignaciones_curso` | Curso asignado a un postulante y su estado (`asignado`, `en_curso`, `completado`). |
-| `archivos_usuario` | Registro de CVs y fotos subidos (ruta, tipo, tamaño) con borrado lógico (`eliminado_en`). |
+| `archivos_usuario` | Registro de CVs, fotos y comprobantes de domicilio subidos (ruta, tipo, tamaño) con borrado lógico (`eliminado_en`). El comprobante (uno vigente por usuario, solo si la localidad es Funes) lleva su verificación en la misma fila: `verificacion_estado` (pendiente, aprobado, rechazado), `verificacion_motivo`, `verificado_por`, `verificado_en` (migración 055). |
 | `notificaciones` | Avisos de la campanita de cada usuario. |
 | `emails_pendientes` | Cola de salida de emails (solo la lee la service role). |
 
@@ -251,6 +254,7 @@ Están en [`src/migrations/`](../src/migrations/) y se ejecutan **a mano, en ord
 | 052 | Retirar una oferta rechazada que tiene postulaciones |
 | 053 | Retiro de la postulación por el postulante y volver a postularse (una postulación vigente por oferta) |
 | 054 | Hasta 5 CVs por postulante, CV elegido al postularse y borrado lógico de CVs y fotos con purga diaria |
+| 055 | Procedencia del postulante, comprobante de domicilio verificado por la oficina y nivel de prioridad |
 
 El número 014 no se usó.
 
@@ -370,17 +374,19 @@ Los triggers de avisos son `AFTER` y envuelven su trabajo en `BEGIN … EXCEPTIO
 |---|---|---|---|
 | `cvs` | CVs del postulante (hasta 5 disponibles) | PDF | 5 MB |
 | `avatares` | Foto de perfil (postulante y oficina) y logo de la empresa | JPG, PNG, WEBP | 2 MB |
+| `comprobantes` | Comprobante de domicilio en Funes (uno vigente por postulante) | PDF, JPG, PNG, WEBP | 5 MB |
 
 - **Privados:** no hay URLs públicas. Para mostrar un archivo se genera una URL firmada de corta duración (entre 5 y 60 minutos).
 - **Ruta:** `<id del usuario>/cv-<timestamp>.pdf` y `<id del usuario>/avatar-<timestamp>.<ext>`. La ruta se registra en `archivos_usuario`.
 - **Quién sube:** el CV solo el postulante (`subirCV`); la foto, los tres roles desde "Mi perfil" con `subirAvatar` (`src/app/(dashboard)/perfil/actions.ts`, la misma acción y las mismas validaciones). Las URLs firmadas de varias fotos se generan juntas con `fotosDePerfil()` (`src/lib/fotos-perfil.ts`) y las de varios CVs con `conUrlsFirmadas()` (`src/lib/cvs.ts`). Primero se sube el archivo y después se registra con `activar_archivo_usuario`: una foto nueva marca eliminada la anterior; un CV se agrega a los que ya tiene (hasta 5; si no hay lugar, la base lo rechaza y no se elimina ninguno). Si el registro falla, se borra el archivo recién subido.
 - **Quién lee:**
   - El postulante: sus CVs disponibles y su foto. Un CV eliminado ya no se abre aunque el archivo siga en el bucket ("postulante puede leer su cv", `postulante_puede_ver_cv`, migración 054).
-  - La oficina: todos los archivos, también los CVs eliminados hasta que se purgan (migración 018).
+  - La oficina: todos los archivos, también los CVs eliminados hasta que se purgan (migración 018). Los comprobantes de domicilio, todos ("comprobantes: municipalidad lee todos", 055).
+  - El postulante, además, su comprobante vigente ("comprobantes: postulante lee el suyo", `postulante_puede_ver_comprobante`, 055). La empresa no tiene ninguna política sobre el bucket `comprobantes`.
   - La empresa: la foto de los candidatos derivados o guardados (`empresa_puede_ver_avatar`, 029) y solo el CV de cada postulación derivada a una oferta suya: el elegido al postularse, o el más reciente si la postulación es anterior a la 054. Si el postulante eliminó ese CV, lo ve mientras la postulación siga en curso (`empresa_puede_ver_cv`, `cv_de_derivacion_empresa`, `cv_de_candidato_empresa`, migración 054).
 - **Quién escribe:** solo el servidor con `supabaseAdmin` (subidas en `subirAvatar` / `subirCV`, borrados en su compensación y en la purga). Desde la migración 054 los buckets no tienen políticas de `INSERT`, `UPDATE` ni `DELETE` para usuarios: nadie puede subir, sobrescribir ni borrar un archivo con la API de Storage salteando la validación del servidor y la protección de los CVs elegidos.
 - **Borrado lógico:** eliminar un CV, quitar la foto o reemplazarla marca `eliminado_en`; las acciones no borran archivos del bucket.
-- **Purga:** la tarea diaria `archivos_eliminados` (`src/lib/mantenimiento.ts`) pide a `archivos_a_purgar()` los archivos eliminados hace más de 30 días, salvo los CVs elegidos en una postulación en curso (recibida, en revisión o derivada con la derivación pendiente o en proceso); los borra de los buckets `cvs` y `avatares` y después borra sus filas con `confirmar_archivos_purgados()`. Si Storage falla, la fila queda para el día siguiente. Las postulaciones cuyo CV se purgó quedan con `cv_archivo_id` NULL y muestran el CV más reciente del postulante.
+- **Purga:** la tarea diaria `archivos_eliminados` (`src/lib/mantenimiento.ts`) pide a `archivos_a_purgar()` los archivos eliminados hace más de 30 días, salvo los CVs elegidos en una postulación en curso (recibida, en revisión o derivada con la derivación pendiente o en proceso); los borra de los buckets `cvs`, `avatares` y `comprobantes` y después borra sus filas con `confirmar_archivos_purgados()`. Si Storage falla, la fila queda para el día siguiente. Las postulaciones cuyo CV se purgó quedan con `cv_archivo_id` NULL y muestran el CV más reciente del postulante.
 
 ### Validación de tipo y tamaño en tres capas (migración 033)
 
@@ -513,7 +519,7 @@ Si falta alguna variable `SMTP_*` o `EMAIL_FROM`, la app funciona igual y los em
 ### Base de datos
 
 1. En **Storage**, crear los buckets privados `cvs` y `avatares` (la migración 033 falla si no existen).
-2. En el **SQL Editor**, ejecutar en orden numérico todos los archivos `src/migrations/migration_0XX_*.sql`, de `migration_001_schema.sql` a `migration_054_cvs_y_borrado_logico_archivos.sql`. Leer los `NOTICE` que dejan algunas migraciones.
+2. En el **SQL Editor**, ejecutar en orden numérico todos los archivos `src/migrations/migration_0XX_*.sql`, de `migration_001_schema.sql` a `migration_055_procedencia_y_prioridad.sql`. La 055 necesita el bucket privado `comprobantes` (si no existe lo crea; si es público, se detiene). Leer los `NOTICE` que dejan algunas migraciones.
 3. Los datos demo (usuarios para probar cada rol) se documentan en la sección [Usuarios demo del README](../README.md#usuarios-demo).
 4. Crear el primer usuario de la oficina siguiendo la [guía de usuarios de la oficina](guias/guia-usuarios-oficina.md); los demás se invitan desde `/admin/cuentas`.
 5. Si se cambia el esquema: `npx supabase login` y `npm run db:tipos`.
@@ -581,6 +587,7 @@ No hay tests automáticos configurados.
 | 024 | [Borradores, retiro y eliminación de ofertas](decisiones/024-borradores-retiro-y-eliminacion-de-ofertas.md) |
 | 025 | [Retiro de la postulación y volver a postularse](decisiones/025-retiro-de-postulacion.md) |
 | 026 | [Varios CVs, CV elegido al postularse y borrado lógico de archivos](decisiones/026-cvs-y-borrado-logico-de-archivos.md) |
+| 027 | [Procedencia del postulante, comprobante de domicilio y prioridad](decisiones/027-procedencia-y-prioridad.md) |
 
 ---
 

@@ -3,6 +3,21 @@
 import { useState } from "react";
 import { registrarPostulante } from "@/app/auth/actions";
 import { LARGO_MAXIMO, validarDNI } from "@/lib/validaciones";
+import {
+  LOCALIDAD_FUNES,
+  OTRA_LOCALIDAD,
+  esLocalidadFunes,
+  validarLocalidadEscrita,
+} from "@/lib/localidades";
+import {
+  COMPROBANTE_ACCEPT,
+  COMPROBANTE_HELP_TEXT,
+  COMPROBANTE_MAX_SIZE,
+  ERRORES_ARCHIVO,
+  textoTamanoArchivo,
+  validarTipoComprobante,
+} from "@/lib/archivos";
+import { CampoLocalidad } from "@/components/postulantes/campo-localidad";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import Link from "next/link";
 import {
@@ -17,12 +32,15 @@ import {
   CheckCircle2,
   AlertCircle,
   UserPlus,
+  FileText,
+  X,
 } from "lucide-react";
 import {
   CLASE_CONTROL_INVALIDO,
   ErrorCampo,
   Obligatorio,
   ariaErrorCampo,
+  idErrorCampo,
 } from "@/components/ui/obligatorio";
 import { useErroresCampo } from "@/lib/use-errores-campo";
 import { useAccion } from "@/lib/use-accion";
@@ -34,6 +52,9 @@ const CAMPOS = [
   "apellido",
   "dni",
   "domicilio",
+  "localidad",
+  "otraLocalidad",
+  "comprobante",
   "telefono",
   "email",
   "password",
@@ -82,8 +103,10 @@ export function RegistroPostulanteForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordRepeat, setShowPasswordRepeat] = useState(false);
 
-  // Residency confirmation
-  const [confirmaFunes, setConfirmaFunes] = useState(false);
+  // Procedencia (migration_055)
+  const [localidad, setLocalidad] = useState("");
+  const [otraLocalidad, setOtraLocalidad] = useState("");
+  const [comprobante, setComprobante] = useState<File | null>(null);
 
   // Submit state
   const { pendiente: isLoading, ejecutar } = useAccion();
@@ -93,15 +116,55 @@ export function RegistroPostulanteForm() {
   // ── derived ────────────────────────────────────────────────────────────────
   const passwordRepeatError =
     passwordRepeat !== "" && password !== passwordRepeat;
+  const esDeFunes =
+    localidad === LOCALIDAD_FUNES ||
+    (localidad === OTRA_LOCALIDAD && esLocalidadFunes(otraLocalidad));
+
+  // ── handlers procedencia ───────────────────────────────────────────────────
+  const elegirLocalidad = (valor: string) => {
+    setLocalidad(valor);
+    campos.limpiar("localidad");
+    campos.limpiar("otraLocalidad");
+    if (valor !== LOCALIDAD_FUNES && valor !== OTRA_LOCALIDAD) {
+      setComprobante(null);
+      campos.limpiar("comprobante");
+    }
+  };
+
+  const elegirComprobante = (file: File | undefined) => {
+    campos.limpiar("comprobante");
+    if (!file) return;
+    if (!validarTipoComprobante(file.type)) {
+      campos.marcar("comprobante", ERRORES_ARCHIVO.comprobanteTipo);
+      return;
+    }
+    if (file.size > COMPROBANTE_MAX_SIZE) {
+      campos.marcar("comprobante", ERRORES_ARCHIVO.comprobanteTamano);
+      return;
+    }
+    setComprobante(file);
+  };
 
   // ── handlers ───────────────────────────────────────────────────────────────
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitError(null);
 
+    const form = e.currentTarget;
     const completos = campos.validar(
-      { nombre, apellido, dni, domicilio, telefono, email, password, passwordRepeat },
-      e.currentTarget
+      {
+        nombre,
+        apellido,
+        dni,
+        domicilio,
+        localidad,
+        ...(localidad === OTRA_LOCALIDAD ? { otraLocalidad } : {}),
+        telefono,
+        email,
+        password,
+        passwordRepeat,
+      },
+      form
     );
     if (!completos) return;
 
@@ -109,28 +172,43 @@ export function RegistroPostulanteForm() {
       setSubmitError({ mensaje: "Las contraseñas no coinciden." });
       return;
     }
-    if (!confirmaFunes) {
-      setSubmitError({ mensaje: "Debés confirmar que sos residente de la ciudad de Funes." });
-      return;
-    }
     const dniError = validarDNI(dni);
     if (dniError) {
       campos.marcar("dni", dniError);
       return;
     }
+    if (localidad === OTRA_LOCALIDAD) {
+      const errorLocalidad = validarLocalidadEscrita(otraLocalidad);
+      if (errorLocalidad) {
+        campos.marcar("otraLocalidad", errorLocalidad, form);
+        return;
+      }
+    }
+
+    // El comprobante es opcional y solo para Funes.
+    let archivos: FormData | undefined;
+    if (esDeFunes && comprobante) {
+      archivos = new FormData();
+      archivos.append("comprobante", comprobante);
+    }
 
     setSubmitError(null);
     // En el éxito la acción redirige a la página de verificación del email.
     ejecutar(async () => {
-      const result = await registrarPostulante({
-        nombre,
-        apellido,
-        telefono,
-        dni,
-        domicilio,
-        email,
-        password,
-    });
+      const result = await registrarPostulante(
+        {
+          nombre,
+          apellido,
+          telefono,
+          dni,
+          domicilio,
+          localidad,
+          otraLocalidad,
+          email,
+          password,
+        },
+        archivos
+      );
       if (result && !result.ok && !campos.tomarDelServidor(result, CAMPOS)) {
         setSubmitError(toErrorAccion(result));
       }
@@ -265,23 +343,77 @@ export function RegistroPostulanteForm() {
                 />
               </InputWrapper>
               <ErrorCampo idCampo="reg-domicilio" mensaje={campos.errores.domicilio} />
-              {/* Ciudad/Prov/País fijo */}
-              <div className="mt-1.5 grid grid-cols-3 gap-2">
-                {[
-                  { label: "Ciudad", value: "Funes" },
-                  { label: "Provincia", value: "Santa Fe" },
-                  { label: "País", value: "Argentina" },
-                ].map(({ label, value }) => (
-                  <div key={label} className="flex flex-col gap-1">
-                    <span className="text-xs text-muted-icon">{label}</span>
-                    <div className="flex items-center gap-1.5 rounded-lg border border-border bg-surface-tinted px-3 py-2.5 text-sm font-medium text-muted-foreground-strong">
-                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
-                      {value}
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
+
+            {/* Procedencia */}
+            <CampoLocalidad
+              id="reg-localidad"
+              elegida={localidad}
+              escrita={otraLocalidad}
+              onElegida={elegirLocalidad}
+              onEscrita={(valor) => {
+                setOtraLocalidad(valor);
+                campos.limpiar("otraLocalidad");
+              }}
+              errorLocalidad={campos.errores.localidad}
+              errorOtra={campos.errores.otraLocalidad}
+            />
+
+            {esDeFunes && (
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="reg-comprobante" className="text-sm font-medium text-foreground">
+                  Comprobante de domicilio (opcional)
+                </label>
+                <p id="reg-comprobante-ayuda" className="text-xs text-muted-foreground">
+                  Cualquier documento donde figure tu dirección en Funes (por ejemplo, una
+                  factura de un servicio). Lo revisa la Oficina de Empleo.
+                </p>
+                {comprobante ? (
+                  <div className="flex items-center gap-3 rounded-lg border border-border bg-surface-tinted px-3 py-2">
+                    <FileText className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                    <div className="min-w-0 flex-1">
+                      <p className="break-all text-sm font-medium text-foreground">
+                        {comprobante.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {textoTamanoArchivo(comprobante.size)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setComprobante(null)}
+                      disabled={isLoading}
+                      className="btn-secundario inline-flex min-h-11 shrink-0 items-center gap-1.5 px-3 text-sm font-medium"
+                    >
+                      <X className="h-4 w-4" aria-hidden="true" />
+                      Quitar
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    id="reg-comprobante"
+                    type="file"
+                    accept={COMPROBANTE_ACCEPT}
+                    onChange={(e) => {
+                      elegirComprobante(e.target.files?.[0]);
+                      e.target.value = "";
+                    }}
+                    aria-invalid={campos.errores.comprobante ? true : undefined}
+                    aria-describedby={
+                      campos.errores.comprobante
+                        ? `reg-comprobante-ayuda ${idErrorCampo("reg-comprobante")}`
+                        : "reg-comprobante-ayuda"
+                    }
+                    className={
+                      "block min-h-11 w-full cursor-pointer rounded-lg border border-border bg-background text-sm text-muted-foreground file:mr-3 file:min-h-11 file:cursor-pointer file:border-0 file:bg-secondary file:px-4 file:text-sm file:font-medium file:text-primary hover:file:bg-secondary-hover " +
+                      CLASE_CONTROL_INVALIDO
+                    }
+                  />
+                )}
+                <p className="text-xs text-muted-icon">{COMPROBANTE_HELP_TEXT}</p>
+                <ErrorCampo idCampo="reg-comprobante" mensaje={campos.errores.comprobante} />
+              </div>
+            )}
 
             {/* Teléfono */}
             <div className="flex flex-col gap-1.5">
@@ -424,28 +556,6 @@ export function RegistroPostulanteForm() {
               )}
             </div>
           </div>
-        </section>
-
-        <div className="h-px bg-border" />
-
-        {/* ── 3. Confirmación de residencia ──────────────────────────────── */}
-        <section>
-          <label className="flex cursor-pointer items-start gap-3">
-            <input
-              id="reg-confirma-funes"
-              type="checkbox"
-              required
-              checked={confirmaFunes}
-              onChange={(e) => setConfirmaFunes(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-primary cursor-pointer"
-            />
-            <span className="text-sm text-muted-foreground-strong">
-              <span className="font-semibold text-foreground">
-                Confirmo que soy residente de la ciudad de Funes, Santa Fe, Argentina.
-              </span>{" "}
-              Este portal es exclusivo para habitantes de Funes.
-            </span>
-          </label>
         </section>
 
         {/* ── Error global ───────────────────────────────────────────────── */}
