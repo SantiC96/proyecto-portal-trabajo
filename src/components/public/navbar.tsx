@@ -83,6 +83,12 @@ export function Navbar({ session = null }: NavbarProps) {
 
   const menuOpen = menuOpenForPath === pathname;
 
+  useEffect(() => {
+    const openRegisterModal = () => setRegisterModalOpen(true);
+    window.addEventListener("portal:open-register-modal", openRegisterModal);
+    return () => window.removeEventListener("portal:open-register-modal", openRegisterModal);
+  }, []);
+
   function openMenu() {
     setMenuOpenForPath(pathname);
   }

@@ -364,6 +364,7 @@ button,input { font:inherit; }
 }
 
 .login-text-link:hover,
+.login-registration-footer a:hover,
 .login-back-link a:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -433,7 +434,7 @@ button,input { font:inherit; }
 
 .login-password-toggle:focus-visible,
 .login-text-link:focus-visible,
-.login-registration a:focus-visible,
+.login-registration-footer a:focus-visible,
 .login-back-link a:focus-visible {
   outline: 3px solid rgba(15, 91, 83, 0.25);
   outline-offset: 3px;
@@ -506,59 +507,31 @@ button,input { font:inherit; }
   opacity: 0.75;
 }
 
-.login-registration {
-  display: grid;
-  gap: 12px;
+.login-registration-footer {
   margin-top: 24px;
-  padding-top: 20px;
+  padding-top: 18px;
   border-top: 1px solid var(--color-border);
   text-align: center;
 }
 
-.login-registration > p {
-  margin: 0 0 2px;
+.login-registration-footer h3 {
+  margin: 0 0 5px;
+  color: var(--color-foreground);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.login-registration-footer p {
+  margin: 0;
   color: var(--color-muted-foreground);
   font-size: 12px;
+  line-height: 1.5;
 }
 
-.login-register-postulante,
-.login-register-company {
-  display: flex;
-  min-height: 44px;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border-radius: 10px;
+.login-registration-footer a {
   color: var(--color-primary);
-  font-size: 12px;
   font-weight: 700;
   text-decoration: none;
-  transition: background-color 180ms ease, color 180ms ease;
-}
-
-.login-register-postulante {
-  border: 1px solid rgba(15, 91, 83, 0.2);
-  background: #f3f8f5;
-}
-
-.login-register-postulante:hover {
-  background: #e8f0e9;
-}
-
-.login-register-company:hover {
-  color: var(--color-primary-hover);
-  background: #f3f8f5;
-}
-
-.login-register-postulante svg,
-.login-register-company svg {
-  width: 16px;
-  height: 16px;
-}
-
-.login-register-postulante svg:last-child {
-  width: 14px;
-  height: 14px;
 }
 
 .login-back-link {
@@ -682,9 +655,7 @@ button,input { font:inherit; }
   .login-input-wrap input,
   .login-input-wrap > svg,
   .login-password-toggle,
-  .login-submit,
-  .login-register-postulante,
-  .login-register-company {
+  .login-submit {
     transition: none;
   }
 

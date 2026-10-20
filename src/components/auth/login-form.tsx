@@ -6,15 +6,12 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
-  ArrowUpRight,
-  Building2,
   CheckCircle,
   Eye,
   EyeOff,
   Lock,
   LogIn,
   Mail,
-  UserRound,
 } from "lucide-react";
 import { login } from "@/app/auth/actions";
 import type { ErrorAccion } from "@/lib/resultado";
@@ -192,17 +189,18 @@ export function LoginForm({
           </button>
         </form>
 
-        <div className="login-registration">
-          <p>¿Todavía no tenés una cuenta?</p>
-          <Link href="/auth/registro" className="login-register-postulante">
-            <UserRound aria-hidden="true" />
-            Crear cuenta de postulante
-            <ArrowUpRight aria-hidden="true" />
-          </Link>
-          <Link href="/auth/registro?tipo=empresa" className="login-register-company">
-            <Building2 aria-hidden="true" />
-            ¿Representás una empresa? Registrate acá
-          </Link>
+        <div className="login-registration-footer">
+          <h3>¿Nuevo en el portal?</h3>
+          <p>
+            ¿Todavía no estás registrado?{" "}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new Event("portal:open-register-modal"))}
+              className="cursor-pointer border-0 bg-transparent p-0 font-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              Crear una cuenta
+            </button>
+          </p>
         </div>
       </div>
 
