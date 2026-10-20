@@ -29,6 +29,9 @@ import type { Tabla } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
 import { formatFechaCorta } from "@/lib/fechas";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
+import { estadosDeComprobantes } from "@/lib/comprobantes";
+import { leerNivelPrioridad, nivelDe, type NivelPrioridad } from "@/lib/procedencia";
 
 export const metadata: Metadata = {
   title: "Postulantes | Panel municipal | Portal de Empleo Funes",
@@ -42,6 +45,10 @@ type FiltrosListado = {
   conCv: boolean;
   esperandoCurso: boolean;
   cursoPendiente: boolean;
+  /** Nivel de prioridad (migration_055); null = todos. */
+  nivel: NivelPrioridad | null;
+  /** Solo con el comprobante de domicilio pendiente de revisión. */
+  comprobantePendiente: boolean;
   pagina: number;
 };
 
@@ -54,6 +61,8 @@ export default async function PostulantesPage({
     con_cv?: string;
     esperando_curso?: string;
     curso_pendiente?: string;
+    nivel?: string;
+    comprobante?: string;
     pagina?: string;
   }>;
 }) {
@@ -71,6 +80,8 @@ export default async function PostulantesPage({
     conCv: sp.con_cv === "1",
     esperandoCurso: sp.esperando_curso === "1",
     cursoPendiente: sp.curso_pendiente === "1",
+    nivel: leerNivelPrioridad(sp.nivel),
+    comprobantePendiente: sp.comprobante === "pendiente",
     pagina: leerPagina(sp.pagina),
   };
 
@@ -91,6 +102,8 @@ export default async function PostulantesPage({
       conCv={filtros.conCv}
       esperandoCurso={filtros.esperandoCurso}
       cursoPendiente={filtros.cursoPendiente}
+      nivel={filtros.nivel}
+      comprobantePendiente={filtros.comprobantePendiente}
     >
       <Suspense
         key={JSON.stringify(filtros)}
@@ -109,9 +122,16 @@ async function ListadoPostulantes({
   filtros: FiltrosListado;
   searchParams: ParamsUrl;
 }) {
-  const { q, rubroIds, conCv, esperandoCurso, cursoPendiente, pagina } = filtros;
+  const { q, rubroIds, conCv, esperandoCurso, cursoPendiente, nivel, comprobantePendiente, pagina } =
+    filtros;
   const hayFiltros =
-    rubroIds.length > 0 || conCv || q.length > 0 || esperandoCurso || cursoPendiente;
+    rubroIds.length > 0 ||
+    conCv ||
+    q.length > 0 ||
+    esperandoCurso ||
+    cursoPendiente ||
+    nivel !== null ||
+    comprobantePendiente;
 
   const supabase = await createSupabaseServerClient();
 
@@ -125,7 +145,13 @@ async function ListadoPostulantes({
   const cursosActivos = cursosRes.data ?? [];
 
   // Pre-filtros paralelos
-  const [rubroPreResult, cvPreResult, esperandoPreResult, pendientePreResult] = await Promise.all([
+  const [
+    rubroPreResult,
+    cvPreResult,
+    esperandoPreResult,
+    pendientePreResult,
+    comprobantePreResult,
+  ] = await Promise.all([
     rubroIds.length > 0
       ? supabase
           .from("postulante_categorias")
@@ -147,6 +173,14 @@ async function ListadoPostulantes({
           .from("asignaciones_curso")
           .select("postulante_id")
           .in("estado", ["asignado", "en_curso"])
+      : Promise.resolve({ data: null }),
+    comprobantePendiente
+      ? supabase
+          .from("archivos_usuario")
+          .select("usuario_id")
+          .eq("tipo", "comprobante_domicilio")
+          .is("eliminado_en", null)
+          .eq("verificacion_estado", "pendiente")
       : Promise.resolve({ data: null }),
   ]);
 
@@ -174,6 +208,12 @@ async function ListadoPostulantes({
     logError("postulantes_curso_pendiente", pendientePreResult.error);
   const cursoPendienteFilterIds: string[] | undefined = cursoPendiente
     ? (pendientePreResult.data ?? []).map((r) => r.postulante_id)
+    : undefined;
+
+  if (comprobantePendiente && "error" in comprobantePreResult && comprobantePreResult.error)
+    logError("admin_postulantes_comprobantes_pendientes", comprobantePreResult.error);
+  const comprobanteUsuarioIds: string[] | undefined = comprobantePendiente
+    ? (comprobantePreResult.data ?? []).map((r) => r.usuario_id)
     : undefined;
 
   // Pre-filtro: búsqueda de texto
@@ -232,7 +272,8 @@ async function ListadoPostulantes({
     (esperandoCursoFilterIds !== undefined &&
       esperandoCursoFilterIds.length === 0) ||
     (cursoPendienteFilterIds !== undefined &&
-      cursoPendienteFilterIds.length === 0);
+      cursoPendienteFilterIds.length === 0) ||
+    (comprobanteUsuarioIds !== undefined && comprobanteUsuarioIds.length === 0);
 
   if (emptyFilter) return vacio;
 
@@ -240,7 +281,7 @@ async function ListadoPostulantes({
     let query = supabase
       .from("postulantes")
       .select(
-        "id, usuario_id, dni, created_at, usuarios!usuario_id(nombre, apellido, telefono)",
+        "id, usuario_id, dni, created_at, localidad, nivel_prioridad, usuarios!usuario_id(nombre, apellido, telefono)",
         { count: "exact" }
       );
 
@@ -253,6 +294,9 @@ async function ListadoPostulantes({
       query = query.in("id", esperandoCursoFilterIds);
     if (cursoPendienteFilterIds !== undefined)
       query = query.in("id", cursoPendienteFilterIds);
+    if (comprobanteUsuarioIds !== undefined)
+      query = query.in("usuario_id", comprobanteUsuarioIds);
+    if (nivel !== null) query = query.eq("nivel_prioridad", nivel);
 
     return query
       .order("created_at", { ascending: false })
@@ -280,6 +324,7 @@ async function ListadoPostulantes({
     postulacionesRes,
     estadoCursosRes,
     cursosPendientesRes,
+    comprobantes,
   ] = await Promise.all([
     supabase
       .from("archivos_usuario")
@@ -309,6 +354,7 @@ async function ListadoPostulantes({
       .select("postulante_id, curso_id")
       .in("postulante_id", postulanteIds)
       .in("estado", ["asignado", "en_curso"]),
+    estadosDeComprobantes(supabase, usuarioIds),
   ]);
 
   const avatarRows = avatarRes.data ?? [];
@@ -453,6 +499,11 @@ async function ListadoPostulantes({
                       Registrado el {formatFechaCorta(p.created_at)}
                     </span>
                   </p>
+                  <BadgeProcedencia
+                    nivel={nivelDe(p.nivel_prioridad)}
+                    localidad={p.localidad}
+                    comprobante={comprobantes.get(p.usuario_id) ?? null}
+                  />
                   <RubrosPills rubros={rubros} />
                 </div>
               </div>
@@ -585,6 +636,8 @@ function PostulantesShell({
   conCv,
   esperandoCurso,
   cursoPendiente,
+  nivel,
+  comprobantePendiente,
   children,
 }: {
   opciones: Tabla<"categorias">[];
@@ -593,6 +646,8 @@ function PostulantesShell({
   conCv: boolean;
   esperandoCurso: boolean;
   cursoPendiente: boolean;
+  nivel: NivelPrioridad | null;
+  comprobantePendiente: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -614,6 +669,8 @@ function PostulantesShell({
           conCv={conCv}
           esperandoCurso={esperandoCurso}
           cursoPendiente={cursoPendiente}
+          nivel={nivel}
+          comprobantePendiente={comprobantePendiente}
         />
       </div>
 

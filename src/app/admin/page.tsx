@@ -8,6 +8,7 @@ import {
   ChartColumn,
   ChevronRight,
   ClipboardList,
+  House,
   UserCog,
   Users,
 } from "lucide-react";
@@ -35,6 +36,7 @@ export default async function AdminDashboardPage() {
     { count: ofertasPendientes },
     esperandoCursoRes,
     { count: cursosActivos },
+    { count: comprobantesPendientes },
   ] = await Promise.all([
     supabase
       .from("postulaciones")
@@ -50,7 +52,14 @@ export default async function AdminDashboardPage() {
       .from("cursos")
       .select("*", { count: "exact", head: true })
       .eq("activo", true),
+    supabase
+      .from("archivos_usuario")
+      .select("id", { count: "exact", head: true })
+      .eq("tipo", "comprobante_domicilio")
+      .is("eliminado_en", null)
+      .eq("verificacion_estado", "pendiente"),
   ]);
+  const comprobantes = comprobantesPendientes ?? 0;
 
   if (esperandoCursoRes.error)
     logError("contar_postulantes_esperando_curso", esperandoCursoRes.error);
@@ -142,6 +151,26 @@ export default async function AdminDashboardPage() {
                   : `${totalPostulantes ?? 0} registrado${
                       totalPostulantes === 1 ? "" : "s"
                     } · ${postulantesEsperando} con ${UMBRAL_RECHAZOS_CURSO} o más rechazos`}
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 flex-shrink-0 text-muted-icon" />
+        </Link>
+
+        <Link
+          href="/admin/postulantes?comprobante=pendiente"
+          className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-colors hover:bg-surface-tinted"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-primary">
+              <House className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Comprobantes por revisar</p>
+              <p className={textoEstado(comprobantes > 0)}>
+                {comprobantes > 0
+                  ? `${comprobantes} comprobante${comprobantes === 1 ? "" : "s"} de domicilio en Funes pendiente${comprobantes === 1 ? "" : "s"}`
+                  : "No hay comprobantes de domicilio pendientes"}
               </p>
             </div>
           </div>

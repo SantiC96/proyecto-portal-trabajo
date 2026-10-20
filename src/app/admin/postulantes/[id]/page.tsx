@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { DatosCandidato } from "@/components/admin/datos-candidato";
 import { CvsDelPostulante } from "@/components/admin/cv-candidato";
+import { ProcedenciaCandidato } from "@/components/admin/procedencia-candidato";
+import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
 import { obtenerCandidato } from "@/lib/admin/candidato";
 import { badgePostulacion } from "@/lib/admin/postulacion-estados";
 import { AsignarCursoDialog } from "../asignar-curso-dialog";
@@ -212,6 +214,12 @@ export default async function PostulanteFichaPage({
             <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
               {nombreCompleto}
             </h1>
+            <BadgeProcedencia
+              nivel={candidato.nivel}
+              localidad={candidato.postulante.localidad}
+              comprobante={candidato.comprobante?.estado ?? null}
+              className="mt-1"
+            />
             {necesitaCurso ? (
               <span className="mt-1 inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
                 Necesita curso · {textoRechazos(rechazosVentana)} en {VENTANA_RECHAZOS_DIAS} días
@@ -253,6 +261,12 @@ export default async function PostulanteFichaPage({
           domicilio={candidato.postulante.domicilio}
           telefono={candidato.usuario.telefono}
           categorias={candidato.categorias}
+        />
+
+        <ProcedenciaCandidato
+          localidad={candidato.postulante.localidad}
+          nivel={candidato.nivel}
+          comprobante={candidato.comprobante}
         />
 
         <CvsDelPostulante cvs={candidato.cvs} />

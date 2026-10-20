@@ -23,31 +23,28 @@ import {
   badgePostulacion,
   type BadgePostulacion,
 } from "@/lib/admin/postulacion-estados";
-import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
+import {
+  DERIVACION_ABIERTA,
+  filtrarContratados,
+  filtrarPestanaPostulaciones,
+  ofertasDePestana,
+  type PestanaPostulaciones,
+} from "@/lib/admin/postulaciones-pestanas";
 import type { FilaPostulacionNoSeleccionada, Tabla } from "@/types/db";
 import { formatFechaCorta, formatFechaHoraCorta } from "@/lib/fechas";
 import { requerirRolPagina } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
+import { estadosDeComprobantes } from "@/lib/comprobantes";
+import { nivelDe, type EstadoComprobante, type NivelPrioridad } from "@/lib/procedencia";
 
 export const metadata: Metadata = {
   title: "Postulaciones | Panel municipal | Portal de Empleo Funes",
 };
 
-// "derivada" y "contratado" se calculan con el estado de la derivación:
-//   derivada   → la empresa todavía no dio un resultado final (pendiente o
-//                en_proceso).
-//   contratado → la empresa marcó al postulante como contratado.
-// "No seleccionado" junta las que rechazó la oficina y las que rechazó la
-// empresa (RPC postulaciones_no_seleccionadas, migration_038).
-// "Retiradas": las que el postulante retiró ya revisadas o derivadas
-// (migration_053). No son rechazos.
-type EstadoFiltro =
-  | "pendiente"
-  | "derivada"
-  | "contratado"
-  | "rechazada_municipalidad"
-  | "retirada_postulante";
+// Qué entra en cada pestaña: src/lib/admin/postulaciones-pestanas.ts.
+type EstadoFiltro = PestanaPostulaciones;
 
 const ESTADOS_FILTRO: EstadoFiltro[] = [
   "pendiente",
@@ -65,7 +62,22 @@ const LABEL_FILTRO: Record<EstadoFiltro, string> = {
   retirada_postulante: "Retiradas",
 };
 
-const DERIVACION_ABIERTA: EstadoDerivacionEmpresa[] = ["pendiente", "en_proceso"];
+// "Primero verificados de Funes" (migration_055): ordena por
+// postulantes.nivel_prioridad y después por fecha. Solo en las pestañas que
+// se consultan sobre postulaciones: "Contratado" sale de derivaciones y "No
+// seleccionado" de una función, y ahí no se puede ordenar por una columna del
+// postulante sin cambiar esas consultas.
+const ESTADOS_CON_ORDEN_PRIORIDAD: EstadoFiltro[] = [
+  "pendiente",
+  "derivada",
+  "retirada_postulante",
+];
+
+type Procedencia = {
+  nivel: NivelPrioridad;
+  localidad: string | null;
+  comprobante: EstadoComprobante | null;
+};
 
 const ID_INEXISTENTE = "00000000-0000-0000-0000-000000000000";
 
@@ -99,6 +111,7 @@ export default async function PostulacionesPage({
     estado?: string;
     oferta_id?: string;
     q?: string;
+    orden?: string;
     pagina?: string;
   }>;
 }) {
@@ -110,6 +123,8 @@ export default async function PostulacionesPage({
   const ofertaId = (sp.oferta_id ?? "").trim();
   const q = limpiarBusqueda(sp.q);
   const pagina = leerPagina(sp.pagina);
+  const ordenDisponible = ESTADOS_CON_ORDEN_PRIORIDAD.includes(estado);
+  const primeroFunes = ordenDisponible && sp.orden === "prioridad";
 
   const supabase = await createSupabaseServerClient();
 
@@ -149,20 +164,13 @@ export default async function PostulacionesPage({
       .eq("estado", "retirada_postulante"),
   ]);
 
-  // Ofertas que tienen al menos una postulación (para el selector de filtro)
-  const { data: ofertaIdsData } = await supabase
-    .from("postulaciones")
-    .select("oferta_id");
-  const ofertaIdsUnicos = [
-    ...new Set((ofertaIdsData ?? []).map((r) => r.oferta_id)),
-  ];
-  const { data: ofertasDisponibles } = ofertaIdsUnicos.length > 0
-    ? await supabase
-        .from("ofertas")
-        .select("id, titulo, empresa_nombre")
-        .in("id", ofertaIdsUnicos)
-        .order("titulo")
-    : { data: [] };
+  const resOfertas = await ofertasDePestana(supabase, estado, ofertaId);
+  if (!resOfertas.ok) logError("admin_postulaciones_ofertas_filtro", resOfertas.error, { estado });
+  const ofertasDisponibles = resOfertas.ok ? resOfertas.valor : [];
+  const ofertaSinPostulaciones =
+    resOfertas.ok &&
+    ofertaId !== "" &&
+    (ofertasDisponibles.find((o) => o.id === ofertaId)?.cantidad ?? 0) === 0;
 
   const pendientesTotal = (cRecibidas ?? 0) + (cRevision ?? 0);
 
@@ -193,6 +201,7 @@ export default async function PostulacionesPage({
             estado: tab,
             oferta_id: ofertaId || null,
             q: sp.q ?? null,
+            orden: sp.orden === "prioridad" ? "prioridad" : null,
           }),
           label: LABEL_FILTRO[tab],
           activa: tab === estado,
@@ -206,23 +215,35 @@ export default async function PostulacionesPage({
           className="flex-1 sm:min-w-[180px]"
           placeholder="Nombre, apellido o DNI…"
         />
-        <form method="GET" action={RUTA} className="flex gap-3">
+        <form method="GET" action={RUTA} className="flex flex-wrap gap-3">
           <input type="hidden" name="estado" value={estado} />
           {sp.q && <input type="hidden" name="q" value={sp.q} />}
+          {ordenDisponible && (
+            <select
+              name="orden"
+              defaultValue={primeroFunes ? "prioridad" : ""}
+              aria-label="Ordenar postulaciones"
+              className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 sm:max-w-xs"
+            >
+              <option value="">Más recientes primero</option>
+              <option value="prioridad">Primero verificados de Funes</option>
+            </select>
+          )}
+          {/* key: las opciones cambian con la pestaña y defaultValue solo
+              se aplica al montar. */}
           <select
+            key={`${estado}-${ofertaId}`}
             name="oferta_id"
             defaultValue={ofertaId}
             aria-label="Filtrar por oferta"
             className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 sm:max-w-xs"
           >
             <option value="">Todas las ofertas</option>
-            {(ofertasDisponibles ?? []).map(
-              (o: { id: string; titulo: string; empresa_nombre: string }) => (
-                <option key={o.id} value={o.id}>
-                  {o.titulo} — {o.empresa_nombre}
-                </option>
-              )
-            )}
+            {ofertasDisponibles.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.empresaNombre ? `${o.titulo} — ${o.empresaNombre}` : o.titulo} ({o.cantidad})
+              </option>
+            ))}
           </select>
           <button
             type="submit"
@@ -232,7 +253,7 @@ export default async function PostulacionesPage({
           </button>
         </form>
       </div>
-      {(q || ofertaId) && (
+      {(q || ofertaId || primeroFunes) && (
         <Link
           href={hrefConParams(RUTA, {}, { estado })}
           className="mt-2 inline-flex min-h-11 items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -243,14 +264,16 @@ export default async function PostulacionesPage({
 
       {/* Resultados */}
       <Suspense
-        key={JSON.stringify({ estado, ofertaId, q, pagina })}
+        key={JSON.stringify({ estado, ofertaId, q, primeroFunes, pagina })}
         fallback={<EsqueletoLista filas={5} className="mt-4" />}
       >
         <ListadoPostulaciones
           estado={estado}
           ofertaId={ofertaId}
           q={q}
+          primeroFunes={primeroFunes}
           pagina={pagina}
+          ofertaSinPostulaciones={ofertaSinPostulaciones}
           searchParams={sp}
         />
       </Suspense>
@@ -270,15 +293,33 @@ async function ListadoPostulaciones({
   estado,
   ofertaId,
   q,
+  primeroFunes,
   pagina,
+  ofertaSinPostulaciones,
   searchParams,
 }: {
   estado: EstadoFiltro;
   ofertaId: string;
   q: string;
+  primeroFunes: boolean;
   pagina: number;
+  /** La oferta de la URL no tiene postulaciones en esta pestaña. */
+  ofertaSinPostulaciones: boolean;
   searchParams: ParamsUrl;
 }) {
+  if (ofertaSinPostulaciones) {
+    return (
+      <EstadoVacio
+        tipo="sin-resultados"
+        className="mt-4"
+        titulo="No hay postulaciones de esta oferta en esta pestaña."
+        descripcion="Elegí otra pestaña u otra oferta."
+        hrefLimpiar={hrefConParams(RUTA, searchParams, { oferta_id: null, pagina: null })}
+        textoLimpiar="Ver todas las ofertas"
+      />
+    );
+  }
+
   const supabase = await createSupabaseServerClient();
 
   // Pre-filtro por texto: buscar postulante_ids que coincidan
@@ -329,9 +370,8 @@ async function ListadoPostulaciones({
 
   if (estado === "contratado") {
     const resultado = await consultarPagina(pagina, (desde, hasta) => {
-      let query = supabase
-        .from("derivaciones")
-        .select(
+      let query = filtrarContratados(
+        supabase.from("derivaciones").select(
           `
           id,
           fecha_respuesta,
@@ -351,7 +391,7 @@ async function ListadoPostulaciones({
         `,
           { count: "exact" }
         )
-        .eq("estado_empresa", "contratado");
+      );
 
       if (ofertaId) query = query.eq("postulaciones.oferta_id", ofertaId);
       if (idsBusqueda) query = query.in("postulaciones.postulante_id", idsBusqueda);
@@ -438,6 +478,7 @@ async function ListadoPostulaciones({
           id,
           usuario_id,
           dni,
+          nivel_prioridad,
           usuarios!usuario_id(nombre, apellido)
         ),
         retirada_en,
@@ -446,28 +487,26 @@ async function ListadoPostulaciones({
       `;
 
       // "Derivadas" se filtra por el estado de la derivación (relación 1 a 1).
-      let query = supabase
-        .from("postulaciones")
-        .select(
-          estado === "derivada"
-            ? `${columnas}, derivaciones!inner(estado_empresa)`
-            : `${columnas}, derivaciones(estado_empresa)`,
-          { count: "exact" }
-        );
-
-      if (estado === "pendiente") {
-        query = query.in("estado", ["recibida", "en_revision"]);
-      } else if (estado === "retirada_postulante") {
-        query = query.eq("estado", "retirada_postulante");
-      } else {
-        query = query
-          .eq("estado", "derivada")
-          .in("derivaciones.estado_empresa", DERIVACION_ABIERTA);
-      }
+      let query = filtrarPestanaPostulaciones(
+        supabase
+          .from("postulaciones")
+          .select(
+            estado === "derivada"
+              ? `${columnas}, derivaciones!inner(estado_empresa)`
+              : `${columnas}, derivaciones(estado_empresa)`,
+            { count: "exact" }
+          ),
+        estado
+      );
 
       if (ofertaId) query = query.eq("oferta_id", ofertaId);
       if (idsBusqueda) query = query.in("postulante_id", idsBusqueda);
 
+      // Nivel 1, 2, 3 y dentro de cada nivel el orden de siempre. El id
+      // desempata, así cada página es estable.
+      if (primeroFunes) {
+        query = query.order("postulantes(nivel_prioridad)", { ascending: true });
+      }
       if (estado === "retirada_postulante") {
         query = query.order("retirada_en", { ascending: false, nullsFirst: false });
       }
@@ -526,6 +565,31 @@ async function ListadoPostulaciones({
   const usuarioIds = filas
     .map((f) => f.postulante?.usuario_id)
     .filter((id): id is string => Boolean(id));
+
+  // Procedencia de cada candidato (badge; solo la oficina la ve)
+  const postulanteIds = filas
+    .map((f) => f.postulante?.id)
+    .filter((id): id is string => Boolean(id));
+  const [procedenciaRes, comprobantes] = await Promise.all([
+    postulanteIds.length > 0
+      ? supabase
+          .from("postulantes")
+          .select("id, localidad, nivel_prioridad")
+          .in("id", postulanteIds)
+      : Promise.resolve({ data: [], error: null }),
+    estadosDeComprobantes(supabase, usuarioIds),
+  ]);
+  if (procedenciaRes.error) logError("admin_postulaciones_procedencia", procedenciaRes.error);
+  const procedenciaMap = new Map<string, Procedencia>();
+  for (const fila of filas) {
+    const p = (procedenciaRes.data ?? []).find((r) => r.id === fila.postulante?.id);
+    if (!p || !fila.postulante) continue;
+    procedenciaMap.set(fila.postulacionId, {
+      nivel: nivelDe(p.nivel_prioridad),
+      localidad: p.localidad,
+      comprobante: comprobantes.get(fila.postulante.usuario_id) ?? null,
+    });
+  }
 
   const avatarMap = new Map<
     string,
@@ -622,11 +686,14 @@ async function ListadoPostulaciones({
                             ajuste={avatar?.ajuste}
                             size="sm"
                           />
-                          <span className="font-medium text-foreground">
-                            {usuario
-                              ? `${usuario.nombre} ${usuario.apellido}`
-                              : "—"}
-                          </span>
+                          <div className="min-w-0 space-y-1">
+                            <span className="block font-medium text-foreground">
+                              {usuario
+                                ? `${usuario.nombre} ${usuario.apellido}`
+                                : "—"}
+                            </span>
+                            <ProcedenciaFila procedencia={procedenciaMap.get(fila.postulacionId)} />
+                          </div>
                         </div>
                       </td>
                       <td className="py-4 pr-4 font-mono text-muted-foreground">
@@ -698,6 +765,10 @@ async function ListadoPostulaciones({
                       {fila.badge.label}
                     </Badge>
                   </div>
+                  <ProcedenciaFila
+                    procedencia={procedenciaMap.get(fila.postulacionId)}
+                    className="mt-2"
+                  />
                   <dl className="mt-3 space-y-1.5 text-sm">
                     <div className="flex gap-2">
                       <dt className="w-24 flex-shrink-0 text-muted-foreground">
@@ -754,6 +825,24 @@ async function ListadoPostulaciones({
             total={total}
           />
     </>
+  );
+}
+
+function ProcedenciaFila({
+  procedencia,
+  className,
+}: {
+  procedencia: Procedencia | undefined;
+  className?: string;
+}) {
+  if (!procedencia) return null;
+  return (
+    <BadgeProcedencia
+      nivel={procedencia.nivel}
+      localidad={procedencia.localidad}
+      comprobante={procedencia.comprobante}
+      className={className}
+    />
   );
 }
 
