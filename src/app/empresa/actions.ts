@@ -14,6 +14,7 @@ import {
   validarTelefono,
   validarTextoOpcional,
 } from "@/lib/validaciones";
+import { programarEnvioEmails } from "@/lib/emails/cola";
 
 export async function reenviarSolicitudEmpresa(data: {
   razonSocial: string;
@@ -100,7 +101,8 @@ export async function reenviarSolicitudEmpresa(data: {
     return errConRef("ERROR_INTERNO", "Error al enviar la solicitud. Intentá de nuevo.", ref);
   }
 
-  revalidatePath("/empresa");
-  revalidatePath("/empresa/solicitud");
+  programarEnvioEmails();
+  // La razón social es el nombre que se muestra de la sesión (menú del usuario).
+  revalidatePath("/", "layout");
   return okMsg("Solicitud reenviada. La Oficina de Empleo la revisará pronto.");
 }

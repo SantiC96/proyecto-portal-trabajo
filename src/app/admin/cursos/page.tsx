@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { AvisoUrl } from "@/components/ui/aviso-url";
 import Link from "next/link";
 import { Plus, BookOpen } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
@@ -17,6 +18,7 @@ import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { UMBRAL_RECHAZOS_CURSO, VENTANA_RECHAZOS_DIAS } from "@/lib/cursos";
 import { requerirRolPagina } from "@/lib/auth";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Cursos | Panel municipal | Portal de Empleo Funes",
@@ -37,13 +39,10 @@ export default async function CursosPage({
 
   return (
     <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/admin" className="hover:text-foreground">
-          Panel
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">Cursos</span>
-      </div>
+      <Suspense>
+        <AvisoUrl />
+      </Suspense>
+      <BotonVolver href="/admin">Volver al panel</BotonVolver>
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div>

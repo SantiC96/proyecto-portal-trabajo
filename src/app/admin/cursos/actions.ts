@@ -14,9 +14,10 @@ import {
   type Resultado,
   type ResultadoError,
 } from "@/lib/resultado";
-import { MENSAJE_CURSO_ACTIVO, MENSAJE_SOLO_SI_NECESITA_CURSO } from "@/lib/cursos";
+import { MENSAJE_MISMO_CURSO_PENDIENTE, MENSAJE_SOLO_SI_PUEDE_RECIBIR_CURSO } from "@/lib/cursos";
 import { esUuid, LARGO_MAXIMO, MENSAJE_OBLIGATORIO, validarTextoOpcional } from "@/lib/validaciones";
 import type { Tabla } from "@/types/db";
+import { programarEnvioEmails } from "@/lib/emails/cola";
 
 type CursoData = Pick<Tabla<"cursos">, "nombre" | "descripcion" | "link" | "indicaciones">;
 
@@ -164,7 +165,7 @@ export async function eliminarCurso(cursoId: string): Promise<Resultado<void>> {
   }
 
   revalidarCursos();
-  redirect("/admin/cursos");
+  redirect("/admin/cursos?aviso=curso-eliminado");
 }
 
 export async function asignarCurso(
@@ -182,7 +183,9 @@ export async function asignarCurso(
 
   const supabase = await createSupabaseServerClient();
 
-  // La misma regla la aplica el trigger asignaciones_curso_alta (migration_039).
+  // La misma regla la aplica el trigger asignaciones_curso_alta (migration_046):
+  // alcanza con cumplir la regla de rechazos aunque tenga otros cursos
+  // pendientes; el mismo curso pendiente lo rechaza el trigger (P0001).
   const { data: estados, error: errorEstado } = await supabase.rpc(
     "estado_cursos_postulantes",
     { p_postulante_ids: [postulanteId] }
@@ -193,8 +196,8 @@ export async function asignarCurso(
   }
   const estado = estados?.[0];
   if (!estado) return err("NO_ENCONTRADO", "Postulante no encontrado.");
-  if (estado.asignacion_activa_id) return err("REGLA_DE_NEGOCIO", MENSAJE_CURSO_ACTIVO);
-  if (!estado.necesita_curso) return err("REGLA_DE_NEGOCIO", MENSAJE_SOLO_SI_NECESITA_CURSO);
+  if (!estado.puede_recibir_curso)
+    return err("REGLA_DE_NEGOCIO", MENSAJE_SOLO_SI_PUEDE_RECIBIR_CURSO);
 
   const { error } = await supabase.from("asignaciones_curso").insert({
     postulante_id: postulanteId,
@@ -204,15 +207,16 @@ export async function asignarCurso(
   });
 
   if (error) {
-    // 23505: dos asignaciones simultáneas pasaron el trigger y el índice
-    // asignaciones_curso_una_activa_idx rechazó la segunda.
-    if (error.code === "23505") return err("CONFLICTO", MENSAJE_CURSO_ACTIVO);
+    // 23505: el índice asignaciones_curso_mismo_curso_activo_idx rechazó una
+    // segunda asignación activa del mismo curso.
+    if (error.code === "23505") return err("CONFLICTO", MENSAJE_MISMO_CURSO_PENDIENTE);
     // P0001 messages (e.g. "El curso no está activo") are user-friendly and safe to show
     if (error.code === "P0001") return fromSupabaseError(error);
     const ref = logError("asignarCurso", error, { postulanteId, cursoId });
     return errConRef("ERROR_INTERNO", "No se pudo asignar el curso. Intentá de nuevo.", ref);
   }
 
+  programarEnvioEmails();
   revalidarAsignaciones(cursoId, postulanteId);
   return okMsg("Curso asignado.");
 }

@@ -12,11 +12,10 @@ import {
   type ParamsUrl,
 } from "@/lib/paginacion";
 import { Buscador } from "@/components/ui/buscador";
-import { BotonFormulario } from "@/components/ui/boton-formulario";
+import { ContadoresEstado, PestanasEstado, type Contador } from "@/components/ui/pestanas-estado";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
-import { abrirFicha } from "./actions";
 import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import {
@@ -29,6 +28,7 @@ import type { FilaPostulacionNoSeleccionada, Tabla } from "@/types/db";
 import { formatFechaCorta, formatFechaHoraCorta } from "@/lib/fechas";
 import { requerirRolPagina } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Postulaciones | Panel municipal | Portal de Empleo Funes",
@@ -40,13 +40,21 @@ export const metadata: Metadata = {
 //   contratado → la empresa marcó al postulante como contratado.
 // "No seleccionado" junta las que rechazó la oficina y las que rechazó la
 // empresa (RPC postulaciones_no_seleccionadas, migration_038).
-type EstadoFiltro = "pendiente" | "derivada" | "contratado" | "rechazada_municipalidad";
+// "Retiradas": las que el postulante retiró ya revisadas o derivadas
+// (migration_053). No son rechazos.
+type EstadoFiltro =
+  | "pendiente"
+  | "derivada"
+  | "contratado"
+  | "rechazada_municipalidad"
+  | "retirada_postulante";
 
 const ESTADOS_FILTRO: EstadoFiltro[] = [
   "pendiente",
   "derivada",
   "contratado",
   "rechazada_municipalidad",
+  "retirada_postulante",
 ];
 
 const LABEL_FILTRO: Record<EstadoFiltro, string> = {
@@ -54,6 +62,7 @@ const LABEL_FILTRO: Record<EstadoFiltro, string> = {
   derivada: "Derivadas",
   contratado: "Contratado",
   rechazada_municipalidad: "No seleccionado",
+  retirada_postulante: "Retiradas",
 };
 
 const DERIVACION_ABIERTA: EstadoDerivacionEmpresa[] = ["pendiente", "en_proceso"];
@@ -111,6 +120,7 @@ export default async function PostulacionesPage({
     { count: cDerivadas },
     { count: cContratados },
     { count: cRechazadas },
+    { count: cRetiradas },
   ] = await Promise.all([
     supabase
       .from("postulaciones")
@@ -133,6 +143,10 @@ export default async function PostulacionesPage({
       count: "exact",
       head: true,
     }),
+    supabase
+      .from("postulaciones")
+      .select("*", { count: "exact", head: true })
+      .eq("estado", "retirada_postulante"),
   ]);
 
   // Ofertas que tienen al menos una postulación (para el selector de filtro)
@@ -152,67 +166,39 @@ export default async function PostulacionesPage({
 
   const pendientesTotal = (cRecibidas ?? 0) + (cRevision ?? 0);
 
-  const contadores: { label: string; valor: number; color: string }[] = [
+  const contadores: Contador[] = [
     { label: "Recibidas", valor: cRecibidas ?? 0, color: "text-foreground" },
     { label: "En revisión", valor: cRevision ?? 0, color: "text-blue-700" },
     { label: "Derivadas", valor: cDerivadas ?? 0, color: "text-primary" },
     { label: "Contratado", valor: cContratados ?? 0, color: "text-emerald-700" },
     { label: "No seleccionado", valor: cRechazadas ?? 0, color: "text-red-600" },
+    { label: "Retiradas", valor: cRetiradas ?? 0, color: "text-muted-foreground" },
   ];
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/admin" className="hover:text-foreground">
-          Panel
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">Postulaciones</span>
-      </div>
+      <BotonVolver href="/admin">Volver al panel</BotonVolver>
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         Postulaciones
       </h1>
 
-      {/* Contadores */}
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {contadores.map((c) => (
-          <div
-            key={c.label}
-            className="rounded-[var(--radius-lg)] border border-border bg-surface p-4"
-          >
-            <p className="text-xs font-medium text-muted-foreground">{c.label}</p>
-            <p className={`mt-1 text-2xl font-bold ${c.color}`}>{c.valor}</p>
-          </div>
-        ))}
-      </div>
+      <ContadoresEstado className="mt-6" contadores={contadores} />
 
-      {/* Barra de pestañas de estado */}
-      <div className="mt-6 flex gap-1 overflow-x-auto rounded-[var(--radius-md)] border border-border bg-surface p-1">
-        {ESTADOS_FILTRO.map((tab) => (
-          <Link
-            key={tab}
-            href={hrefConParams(RUTA, {}, {
-              estado: tab,
-              oferta_id: ofertaId || null,
-              q: sp.q ?? null,
-            })}
-            className={
-              tab === estado
-                ? "flex-1 whitespace-nowrap rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
-                : "flex-1 whitespace-nowrap rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
-            }
-          >
-            {LABEL_FILTRO[tab]}
-            {tab === "pendiente" && pendientesTotal > 0 && (
-              <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/20 px-1 text-xs font-semibold text-primary">
-                {pendientesTotal}
-              </span>
-            )}
-          </Link>
-        ))}
-      </div>
+      <PestanasEstado
+        className="mt-6"
+        etiqueta="Estado de las postulaciones"
+        pestanas={ESTADOS_FILTRO.map((tab) => ({
+          href: hrefConParams(RUTA, {}, {
+            estado: tab,
+            oferta_id: ofertaId || null,
+            q: sp.q ?? null,
+          }),
+          label: LABEL_FILTRO[tab],
+          activa: tab === estado,
+          cantidad: tab === "pendiente" ? pendientesTotal : undefined,
+        }))}
+      />
 
       {/* Filtros de búsqueda */}
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
@@ -277,6 +263,7 @@ const TEXTO_VACIO: Record<EstadoFiltro, string> = {
   derivada: "No hay postulaciones derivadas esperando el resultado de la empresa.",
   contratado: "Todavía ninguna empresa marcó a un postulante como contratado.",
   rechazada_municipalidad: "No hay postulaciones no seleccionadas en este momento.",
+  retirada_postulante: "Ningún postulante retiró una postulación en revisión o derivada.",
 };
 
 async function ListadoPostulaciones({
@@ -453,6 +440,7 @@ async function ListadoPostulaciones({
           dni,
           usuarios!usuario_id(nombre, apellido)
         ),
+        retirada_en,
         ofertas!oferta_id(id, titulo, empresa_nombre),
         pre_entrevistas(estado, fecha_hora)
       `;
@@ -469,6 +457,8 @@ async function ListadoPostulaciones({
 
       if (estado === "pendiente") {
         query = query.in("estado", ["recibida", "en_revision"]);
+      } else if (estado === "retirada_postulante") {
+        query = query.eq("estado", "retirada_postulante");
       } else {
         query = query
           .eq("estado", "derivada")
@@ -477,6 +467,10 @@ async function ListadoPostulaciones({
 
       if (ofertaId) query = query.eq("oferta_id", ofertaId);
       if (idsBusqueda) query = query.in("postulante_id", idsBusqueda);
+
+      if (estado === "retirada_postulante") {
+        query = query.order("retirada_en", { ascending: false, nullsFirst: false });
+      }
 
       return query
         .order("created_at", { ascending: false })
@@ -493,7 +487,7 @@ async function ListadoPostulaciones({
       postulacionId: r.id,
       postulante: r.postulantes,
       oferta: r.ofertas,
-      fecha: r.created_at,
+      fecha: estado === "retirada_postulante" ? (r.retirada_en ?? r.created_at) : r.created_at,
       badge: badgePostulacion(r.estado, r.derivaciones?.estado_empresa),
       preEntrevista: estado === "pendiente" ? r.pre_entrevistas : undefined,
     }));
@@ -524,7 +518,9 @@ async function ListadoPostulaciones({
       ? "Contratado el"
       : estado === "rechazada_municipalidad"
         ? "Rechazado el"
-        : "Fecha";
+        : estado === "retirada_postulante"
+          ? "Retirada el"
+          : "Fecha";
 
   // Avatares en batch
   const usuarioIds = filas
@@ -594,7 +590,9 @@ async function ListadoPostulaciones({
                       ? "Fecha de contratación"
                       : estado === "rechazada_municipalidad"
                         ? "Fecha de rechazo"
-                        : "Fecha"}
+                        : estado === "retirada_postulante"
+                          ? "Fecha de retiro"
+                          : "Fecha"}
                   </th>
                   <th className="py-3 pr-4 font-medium text-muted-foreground">
                     Estado
@@ -653,14 +651,12 @@ async function ListadoPostulaciones({
                         <PreEntrevistaCoordinada pre={fila.preEntrevista} className="mt-1.5" />
                       </td>
                       <td className="py-4">
-                        <form action={abrirFicha.bind(null, fila.postulacionId)}>
-                          <BotonFormulario
-                            textoPendiente="Abriendo…"
-                            className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface-tinted disabled:opacity-60"
-                          >
-                            Ver ficha
-                          </BotonFormulario>
-                        </form>
+                        <Link
+                          href={`/admin/postulaciones/${fila.postulacionId}`}
+                          className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface-tinted"
+                        >
+                          Ver ficha
+                        </Link>
                       </td>
                     </tr>
                   );
@@ -738,14 +734,12 @@ async function ListadoPostulaciones({
                   </dl>
                   <PreEntrevistaCoordinada pre={fila.preEntrevista} className="mt-3" />
                   <div className="mt-4">
-                    <form action={abrirFicha.bind(null, fila.postulacionId)}>
-                      <BotonFormulario
-                        textoPendiente="Abriendo…"
-                        className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-tinted disabled:opacity-60"
-                      >
-                        Ver ficha
-                      </BotonFormulario>
-                    </form>
+                    <Link
+                      href={`/admin/postulaciones/${fila.postulacionId}`}
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-tinted"
+                    >
+                      Ver ficha
+                    </Link>
                   </div>
                 </div>
               );

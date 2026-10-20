@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { getCategoriasConId } from "@/lib/ofertas";
 import { OfertaForm } from "@/app/empresa/(panel)/ofertas/_components/oferta-form";
 import { requerirEmpresaPagina } from "@/lib/auth";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Publicar oferta | Portal de Empleo Funes",
@@ -15,13 +14,7 @@ export default async function NuevaOfertaPage() {
 
   return (
     <section className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
-      <Link
-        href="/empresa/ofertas"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground-strong transition hover:text-primary"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Volver a mis ofertas
-      </Link>
+      <BotonVolver href="/empresa/ofertas">Volver a mis ofertas</BotonVolver>
 
       <div className="mt-6">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Publicar oferta</h1>

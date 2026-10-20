@@ -6,6 +6,7 @@ import { requerirRol } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { err, errCampo, errConRef, okMsg, type Resultado } from "@/lib/resultado";
 import { esUuid, LARGO_MAXIMO, MENSAJE_OBLIGATORIO, validarTextoOpcional } from "@/lib/validaciones";
+import { programarEnvioEmails } from "@/lib/emails/cola";
 
 // Aprobar y rechazar son updates condicionales (estado = 'pendiente_aprobacion'):
 // si otra pestaña ya la resolvió o la empresa la cerró entre la lectura y el
@@ -63,6 +64,7 @@ export async function aprobarOferta(ofertaId: string): Promise<Resultado<void>> 
   }
   if (!data || data.length === 0) return err("ESTADO_INVALIDO", MENSAJE_YA_NO_PENDIENTE);
 
+  programarEnvioEmails();
   revalidarOfertas(ofertaId);
   return okMsg("Oferta aprobada.");
 }
@@ -114,6 +116,7 @@ export async function rechazarOferta(
   }
   if (!data || data.length === 0) return err("ESTADO_INVALIDO", MENSAJE_YA_NO_PENDIENTE);
 
+  programarEnvioEmails();
   revalidarOfertas(ofertaId);
   return okMsg("Oferta rechazada.");
 }

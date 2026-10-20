@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { AlertCircle } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirRolPagina } from "@/lib/auth";
 import { PerfilForm } from "./perfil-form";
 import { AvisoCursoPendiente } from "@/components/cursos/aviso-curso-pendiente";
+import { BotonVolver } from "@/components/ui/boton-volver";
+import { consultaCvsDisponibles, conUrlsFirmadas } from "@/lib/cvs";
 
 export const metadata: Metadata = {
   title: "Mi perfil | Portal de Empleo Funes",
@@ -13,7 +16,7 @@ export default async function PerfilPage() {
   // Verify role FIRST — before querying any role-specific table.
   // Next preloads navbar links, so /perfil executes for empresa/municipalidad users too.
   // Querying postulantes before this check would generate spurious error logs.
-  const user = await requerirRolPagina("postulante", { siNoCorresponde: "panel" });
+  const user = await requerirRolPagina("postulante");
   const usuario = user.perfil;
 
   const supabase = await createSupabaseServerClient();
@@ -22,22 +25,18 @@ export default async function PerfilPage() {
   const [
     postulanteResult,
     categoriasResult,
-    cvActivoResult,
+    cvsResult,
     avatarActivoResult,
   ] = await Promise.all([
     supabase
       .from("postulantes")
-      .select("id, dni, domicilio, postulante_categorias(categoria_id)")
+      .select(
+        "id, dni, domicilio, nivel_educativo, situacion_laboral, disponibilidad, experiencia_laboral, postulante_categorias(categoria_id)"
+      )
       .eq("usuario_id", user.id)
       .maybeSingle(),
     supabase.from("categorias").select("id, nombre").order("nombre"),
-    supabase
-      .from("archivos_usuario")
-      .select("ruta, nombre_original, creado_en, tamano")
-      .eq("usuario_id", user.id)
-      .eq("tipo", "cv")
-      .eq("activo", true)
-      .maybeSingle(),
+    consultaCvsDisponibles(supabase, user.id),
     supabase
       .from("archivos_usuario")
       .select("ruta, nombre_original, ajuste_x, ajuste_y, ajuste_zoom")
@@ -55,9 +54,7 @@ export default async function PerfilPage() {
       <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
         <h1 className="mb-8 text-2xl font-bold tracking-tight text-foreground">Mi perfil</h1>
         <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
-          <svg xmlns="http://www.w3.org/2000/svg" className="mt-0.5 h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
           <div>
             <p className="font-semibold">No pudimos cargar tu perfil</p>
             <p className="mt-0.5 text-red-600">Intentá de nuevo más tarde. Si el problema persiste, comunicate con la oficina de empleo.</p>
@@ -78,23 +75,7 @@ export default async function PerfilPage() {
     avatarUrl = signed?.signedUrl ?? null;
   }
 
-  let cvUrl: string | null = null;
-  if (cvActivoResult.data?.ruta) {
-    const { data: signed } = await supabase.storage
-      .from("cvs")
-      .createSignedUrl(cvActivoResult.data.ruta, 300);
-    cvUrl = signed?.signedUrl ?? null;
-  }
-
-  const cvActivo = cvActivoResult.data
-    ? {
-        ruta: cvActivoResult.data.ruta,
-        nombreOriginal: cvActivoResult.data.nombre_original,
-        creadoEn: cvActivoResult.data.creado_en,
-        tamano: cvActivoResult.data.tamano,
-        url: cvUrl,
-      }
-    : null;
+  const cvs = await conUrlsFirmadas(supabase, cvsResult.data ?? [], 300);
 
   const avatarActivo = avatarActivoResult.data
     ? {
@@ -110,6 +91,7 @@ export default async function PerfilPage() {
 
   return (
     <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+      <BotonVolver href="/">Volver al inicio</BotonVolver>
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-foreground">
         Mi perfil
       </h1>
@@ -128,7 +110,11 @@ export default async function PerfilPage() {
           id: postulante.id ?? "",
           dni: postulante.dni ?? "",
           domicilio: postulante.domicilio ?? "",
-          cvActivo,
+          nivelEducativo: postulante.nivel_educativo ?? "",
+          situacionLaboral: postulante.situacion_laboral ?? "",
+          disponibilidad: postulante.disponibilidad ?? "",
+          experienciaLaboral: postulante.experiencia_laboral ?? "",
+          cvs,
         }}
         email={user.email ?? ""}
         categorias={categorias}

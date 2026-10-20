@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Mail, AlertCircle } from "lucide-react";
 import { PublicFooter } from "@/components/public/public-footer";
 import { RecuperarContrasenaForm } from "./form";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Recuperar contraseña | Portal de Empleo Funes",
@@ -20,7 +20,11 @@ export default async function RecuperarContrasenaPage({
   return (
     <>
       <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
-        <div className="w-full max-w-md rounded-2xl border border-border bg-white px-8 py-10 shadow-sm">
+        <div className="w-full max-w-md">
+          <BotonVolver href="/auth/login" className="mb-3">
+            Volver al inicio de sesión
+          </BotonVolver>
+          <div className="rounded-2xl border border-border bg-white px-5 py-8 shadow-sm sm:px-8 sm:py-10">
           <div className="mb-6 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
               <Mail className="h-7 w-7" />
@@ -42,15 +46,7 @@ export default async function RecuperarContrasenaPage({
           )}
 
           <RecuperarContrasenaForm />
-
-          <p className="mt-6 text-center text-xs text-muted-icon">
-            <Link
-              href="/auth/login"
-              className="hover:text-primary hover:underline"
-            >
-              ← Volver al inicio de sesión
-            </Link>
-          </p>
+          </div>
         </div>
       </main>
 

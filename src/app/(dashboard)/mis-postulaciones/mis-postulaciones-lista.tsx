@@ -1,30 +1,40 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { X, AlertCircle, Briefcase, CheckCircle, AlertTriangle, CalendarClock } from "lucide-react";
-import { useMounted } from "@/lib/use-mounted";
+import { CheckCircle, AlertTriangle, CalendarClock, FileText } from "lucide-react";
 import { retirarPostulacion } from "@/app/(dashboard)/postulaciones/actions";
-import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
-import { mostrarAviso } from "@/lib/avisos";
+import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { getOfertaEstadoBadge } from "@/lib/oferta-estados";
-import { useAccion } from "@/lib/use-accion";
-import type { Enum, FilaEstadoDerivacionPostulante, FilaMiPreEntrevista, Tabla } from "@/types/db";
+import type {
+  Enum,
+  FilaCvDeMiPostulacion,
+  FilaEstadoDerivacionPostulante,
+  FilaMiPreEntrevista,
+  Tabla,
+} from "@/types/db";
 
 type EstadoPostulacion = Enum<"estado_postulacion">;
 
-export type Postulacion = Pick<Tabla<"postulaciones">, "id" | "estado" | "created_at"> & {
+export type Postulacion = Pick<
+  Tabla<"postulaciones">,
+  "id" | "estado" | "created_at" | "retirada_en"
+> & {
   /** null cuando RLS no deja ver la oferta (por ejemplo, si está cerrada). */
   oferta: Pick<
     Tabla<"ofertas">,
-    "id" | "titulo" | "empresa_nombre" | "estado" | "contenido_editado_en"
+    "id" | "titulo" | "empresa_nombre" | "estado" | "vence_en" | "contenido_editado_en"
   > | null;
   derivacion: FilaEstadoDerivacionPostulante | null;
   /** Pre-entrevista con la oficina (sin la nota interna). */
   preEntrevista: FilaMiPreEntrevista | null;
+  /** CV elegido al postularse; null en postulaciones anteriores a poder elegirlo. */
+  cv: FilaCvDeMiPostulacion | null;
+  /**
+   * Retirada, con la oferta todavía abierta y sin otra postulación vigente a
+   * esa oferta: se muestra el link para volver a postularse.
+   */
+  puedeVolverAPostularse: boolean;
 };
 
 function getBadgeEstado(estado: EstadoPostulacion) {
@@ -37,167 +47,53 @@ function getBadgeEstado(estado: EstadoPostulacion) {
       return { label: "Enviada a la empresa", className: "bg-blue-100 text-blue-800" };
     case "rechazada_municipalidad":
       return { label: "No seleccionada", className: "bg-red-100 text-red-700" };
+    case "oferta_retirada":
+      return { label: "Cerrada", className: "bg-gray-100 text-gray-600" };
+    case "retirada_postulante":
+      return { label: "Retirada", className: "bg-slate-100 text-slate-600" };
   }
 }
 
-function RetirarBoton({
-  postulacionId,
-}: {
-  postulacionId: string;
-}) {
-  const mounted = useMounted();
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [error, setError] = useState<ErrorAccion | null>(null);
-  const { pendiente: isPending, ejecutar } = useAccion();
-  const confirmRef = useRef<HTMLButtonElement>(null);
-  const needsRefresh = useRef(false);
+/**
+ * Se puede retirar mientras el proceso siga abierto: recibida, en revisión o
+ * derivada con la empresa todavía sin resultado. Un seleccionado o un proceso
+ * cerrado no se retiran (retirar_postulacion, migration_053).
+ */
+function sePuedeRetirar(p: Postulacion): boolean {
+  if (p.estado === "recibida" || p.estado === "en_revision") return true;
+  return (
+    p.estado === "derivada" &&
+    (p.derivacion?.estado_empresa === "pendiente" || p.derivacion?.estado_empresa === "en_proceso")
+  );
+}
 
-  useEffect(() => {
-    if (open) {
-      setTimeout(() => confirmRef.current?.focus(), 50);
-    }
-  }, [open]);
+const AVISO_OFERTA_RETIRADA =
+  "La empresa retiró la oferta. Tu postulación quedó cerrada; podés seguir postulándote a otras ofertas.";
 
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !isPending) {
-        setOpen(false);
-        setError(null);
-      }
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [open, isPending]);
-
-  useEffect(() => {
-    if (!isPending && needsRefresh.current) {
-      needsRefresh.current = false;
-      router.refresh();
-    }
-  }, [isPending, router]);
-
-  function handleConfirm() {
-    setError(null);
-    ejecutar(async () => {
-      const result = await retirarPostulacion(postulacionId);
-      mostrarAviso(result);
-      if (!result.ok) {
-        setError(toErrorAccion(result));
-      } else {
-        needsRefresh.current = true;
-        setOpen(false);
-      }
-    });
-  }
+function RetirarBoton({ postulacion }: { postulacion: Postulacion }) {
+  const titulo = postulacion.oferta
+    ? `¿Retirar tu postulación a «${postulacion.oferta.titulo}»?`
+    : "¿Retirar tu postulación?";
+  const derivada = postulacion.estado === "derivada";
+  const conPreEntrevista = postulacion.preEntrevista?.estado === "coordinada";
+  const descripcion = derivada
+    ? "La empresa va a recibir un aviso."
+    : conPreEntrevista
+      ? "Se cancela la pre-entrevista coordinada con la Oficina de Empleo."
+      : undefined;
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => {
-          setError(null);
-          setOpen(true);
-        }}
-        className="mt-2 text-xs font-medium text-red-600 underline-offset-2 hover:underline"
-      >
-        Retirar postulación
-      </button>
-
-      {mounted &&
-        open &&
-        createPortal(
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="retirar-titulo"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
-            onClick={(e) => {
-              if (e.target === e.currentTarget && !isPending) {
-                setOpen(false);
-                setError(null);
-              }
-            }}
-          >
-            <div className="relative w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-xl">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!isPending) {
-                    setOpen(false);
-                    setError(null);
-                  }
-                }}
-                disabled={isPending}
-                className="absolute top-4 right-4 rounded-full p-1.5 text-muted-foreground transition hover:bg-gray-100 hover:text-foreground disabled:opacity-40"
-                aria-label="Cerrar ventana"
-              >
-                <X className="h-5 w-5" />
-              </button>
-
-              <div className="mb-5 text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
-                  <Briefcase className="h-6 w-6" />
-                </div>
-                <h3 id="retirar-titulo" className="text-xl font-bold text-foreground">
-                  ¿Retirar postulación?
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Tu postulación se va a eliminar y la Oficina de Empleo ya no la va a ver. Si cambiás de opinión, podés volver a postularte mientras la oferta siga publicada.
-                </p>
-              </div>
-
-              {error && (
-                <div className="mb-4 flex flex-col gap-1 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-600">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                    {error.mensaje}
-                  </div>
-                  {error.ref && (
-                    <p className="ml-6 text-xs text-gray-500">
-                      Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <div className="flex flex-col gap-3">
-                <button
-                  ref={confirmRef}
-                  type="button"
-                  onClick={handleConfirm}
-                  disabled={isPending}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 text-sm font-semibold text-white shadow-xs transition hover:bg-red-700 disabled:opacity-60"
-                >
-                  {isPending ? (
-                    <>
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                      Retirando…
-                    </>
-                  ) : (
-                    "Sí, retirar"
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!isPending) {
-                      setOpen(false);
-                      setError(null);
-                    }
-                  }}
-                  disabled={isPending}
-                  className="flex h-11 w-full items-center justify-center rounded-xl border border-border bg-white text-sm font-medium text-foreground transition hover:bg-surface-tinted disabled:opacity-40"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )}
-    </>
+    <DialogoConfirmacion
+      textoBoton="Retirar postulación"
+      estiloBoton="peligro"
+      claseBoton="mt-3"
+      titulo={titulo}
+      descripcion={descripcion}
+      textoConfirmar="Sí, retirar"
+      textoPendiente="Retirando…"
+      destructivo
+      accion={() => retirarPostulacion(postulacion.id)}
+    />
   );
 }
 
@@ -273,6 +169,18 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
 
             <p className="mt-2 text-xs text-muted-foreground">Postulado el {fecha}</p>
 
+            {p.cv && (
+              <p className="mt-1 flex min-w-0 items-start gap-1.5 text-xs text-muted-foreground">
+                <FileText className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="min-w-0 break-all">
+                  Con el CV{" "}
+                  <span className="font-medium text-foreground">{p.cv.nombre_original}</span>{" "}
+                  (subido el {formatFecha(p.cv.subido_en)})
+                  {p.cv.eliminado && " · lo eliminaste de tu perfil"}
+                </span>
+              </p>
+            )}
+
             {(p.estado === "recibida" || p.estado === "en_revision") &&
               p.preEntrevista?.estado === "coordinada" && (
                 <div className="mt-3 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm text-blue-800">
@@ -288,8 +196,21 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
               )}
 
             {/* Derivacion: estado de la empresa (nunca notas) */}
+            {p.estado === "oferta_retirada" && (
+              <p className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-600">
+                {AVISO_OFERTA_RETIRADA}
+              </p>
+            )}
+
             {p.estado === "derivada" && p.derivacion && (() => {
               const d = p.derivacion;
+              if (d.estado_empresa === "oferta_retirada") {
+                return (
+                  <p className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-600">
+                    {AVISO_OFERTA_RETIRADA}
+                  </p>
+                );
+              }
               if (d.estado_empresa === "contratado") {
                 return (
                   <div className="mt-3 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
@@ -350,11 +271,24 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
               </div>
             )}
 
-            {p.estado === "recibida" && (
-              <RetirarBoton
-                postulacionId={p.id}
-              />
+            {p.estado === "retirada_postulante" && (
+              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
+                <p>
+                  Retiraste esta postulación
+                  {p.retirada_en ? ` el ${formatFecha(p.retirada_en)}` : ""}.
+                </p>
+                {p.puedeVolverAPostularse && oferta && (
+                  <Link
+                    href={`/ofertas/${oferta.id}`}
+                    className="mt-1 inline-flex min-h-11 items-center font-medium text-primary underline-offset-2 hover:underline"
+                  >
+                    Volver a postularme
+                  </Link>
+                )}
+              </div>
             )}
+
+            {sePuedeRetirar(p) && <RetirarBoton postulacion={p} />}
           </article>
         );
       })}
@@ -380,6 +314,10 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
           <li>
             <span className="font-medium text-red-700">No seleccionada</span>
             {" — "}La Oficina de Empleo no seleccionó tu perfil para esta búsqueda.
+          </li>
+          <li>
+            <span className="font-medium text-slate-600">Retirada</span>
+            {" — "}Retiraste tu postulación. Si la oferta sigue abierta, podés volver a postularte.
           </li>
         </ul>
       </section>

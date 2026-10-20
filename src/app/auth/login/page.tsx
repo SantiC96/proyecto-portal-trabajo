@@ -20,7 +20,9 @@ export default async function LoginPage({
         <LoginForm
           confirmacionError={error === "confirmacion"}
           inactividad={motivo === "inactividad"}
+          sesionAnterior={motivo === "sesion-anterior"}
           contrasenaActualizada={motivo === "contrasena-actualizada"}
+          cuentaDesactivada={motivo === "cuenta-desactivada"}
           redirect={redirect}
         />
       </main>

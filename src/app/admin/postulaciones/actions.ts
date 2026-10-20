@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirRol } from "@/lib/auth";
@@ -14,6 +13,7 @@ import {
   validarDatosPreEntrevista,
   type ResultadoPreEntrevista,
 } from "@/lib/pre-entrevistas";
+import { programarEnvioEmails } from "@/lib/emails/cola";
 
 function revalidarVistas(postulacionId: string) {
   revalidatePath("/admin/postulaciones");
@@ -22,40 +22,33 @@ function revalidarVistas(postulacionId: string) {
   revalidatePath("/mis-postulaciones");
 }
 
-export async function abrirFicha(postulacionId: string): Promise<void> {
-  if (!esUuid(postulacionId)) redirect("/admin/postulaciones");
+/** Idempotente y silenciosa: true si la pasó de recibida a en_revision. */
+export async function abrirFicha(postulacionId: string): Promise<boolean> {
+  if (!esUuid(postulacionId)) return false;
   const auth = await requerirRol("municipalidad");
-  if (!auth.ok) {
-    redirect(`/admin/postulaciones/${postulacionId}`);
-  }
+  if (!auth.ok) return false;
 
   const supabase = await createSupabaseServerClient();
-  const { data: postulacion } = await supabase
+  // Condicional: si entretanto se derivó o descartó, no la pisa.
+  const { data, error } = await supabase
     .from("postulaciones")
-    .select("estado")
+    .update({
+      estado: "en_revision",
+      revisado_por: auth.usuario.id,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", postulacionId)
-    .single();
+    .eq("estado", "recibida")
+    .select("id");
 
-  if (postulacion?.estado === "recibida") {
-    // Condicional: si entretanto se derivó o descartó, no la pisa.
-    const { error } = await supabase
-      .from("postulaciones")
-      .update({
-        estado: "en_revision",
-        revisado_por: auth.usuario.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", postulacionId)
-      .eq("estado", "recibida");
-
-    if (error) {
-      logError("abrirFicha", error, { postulacionId });
-    } else {
-      revalidarVistas(postulacionId);
-    }
+  if (error) {
+    logError("abrirFicha", error, { postulacionId });
+    return false;
   }
+  if (!data?.length) return false;
 
-  redirect(`/admin/postulaciones/${postulacionId}`);
+  revalidarVistas(postulacionId);
+  return true;
 }
 
 export async function marcarEnRevision(
@@ -162,6 +155,7 @@ export async function descartarPostulacion(
   }
   if (!data || data.length === 0) return err("ESTADO_INVALIDO", mensajeEstado);
 
+  programarEnvioEmails();
   revalidarVistas(postulacionId);
   return okMsg("Postulante marcado como «No seleccionado».");
 }
@@ -192,6 +186,7 @@ export async function derivarPostulacion(
     return errConRef("ERROR_INTERNO", "Error al derivar la postulación. Intentá de nuevo.", ref);
   }
 
+  programarEnvioEmails();
   revalidarVistas(postulacionId);
   return okMsg("Postulación derivada a la empresa.");
 }
@@ -229,6 +224,7 @@ export async function coordinarPreEntrevista(
     return errConRef("ERROR_INTERNO", "No se pudo coordinar la pre-entrevista. Intentá de nuevo.", ref);
   }
 
+  programarEnvioEmails();
   revalidarVistas(postulacionId);
   return okMsg("Pre-entrevista coordinada. Le avisamos al postulante.");
 }
@@ -261,6 +257,7 @@ export async function reprogramarPreEntrevista(
     return errConRef("ERROR_INTERNO", "No se pudo reprogramar la pre-entrevista. Intentá de nuevo.", ref);
   }
 
+  programarEnvioEmails();
   revalidarVistas(postulacionId);
   return okMsg("Pre-entrevista reprogramada. Le avisamos al postulante.");
 }
@@ -309,7 +306,8 @@ export async function corregirEstadoDerivacion(
   if (!auth.ok) return auth;
 
   if (!esUuid(postulacionId) || !esUuid(derivacionId)) return err("DATOS_INVALIDOS");
-  if (!esValorEnum("estado_empresa", nuevoEstado))
+  // "oferta_retirada" solo lo pone retirar_oferta (migration_051).
+  if (!esValorEnum("estado_empresa", nuevoEstado) || nuevoEstado === "oferta_retirada")
     return errCampo("estado", "Elegí un estado de la lista.");
 
   const supabase = await createSupabaseServerClient();
@@ -325,6 +323,7 @@ export async function corregirEstadoDerivacion(
     return errConRef("ERROR_INTERNO", "No se pudo corregir el estado. Intentá de nuevo.", ref);
   }
 
+  programarEnvioEmails();
   revalidarVistas(postulacionId);
   return okMsg("Estado corregido.");
 }

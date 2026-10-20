@@ -1,6 +1,10 @@
 # Cómo crear un usuario de la Oficina de Empleo
 
-Los usuarios con rol `municipalidad` no pueden registrarse por el portal público. Se crean manualmente desde el panel de Supabase y se les asigna el rol con una consulta SQL.
+Los usuarios con rol `municipalidad` no pueden registrarse por el portal público.
+
+> Esta guía es solo para la **primera** cuenta de la oficina. Las siguientes se invitan desde el portal, en **Cuentas de la oficina** (`/admin/cuentas`), y ahí también se desactivan y reactivan (decisión [023](../decisiones/023-cuentas-de-la-oficina.md)).
+
+La primera se crea manualmente desde el panel de Supabase y se le asigna el rol con una consulta SQL.
 
 ---
 

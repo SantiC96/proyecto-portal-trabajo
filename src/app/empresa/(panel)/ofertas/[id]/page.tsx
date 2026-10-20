@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { ArrowLeft, Pencil, Users } from "lucide-react";
+import { notFound, redirect } from "next/navigation";
+import { Pencil, Users } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirEmpresaPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
@@ -16,6 +16,9 @@ import type { FilaCandidatoParaEmpresa, FilaDerivacionDeOfertaEmpresa } from "@/
 import { VencimientoOferta } from "@/components/ofertas/vencimiento-oferta";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 import { RenovarOfertaBtn } from "../_components/renovar-oferta-btn";
+import { BajaOfertaBtn } from "../_components/baja-oferta-btn";
+import { bajasDeOfertas } from "@/lib/empresa/bajas-oferta";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Detalle de oferta | Portal de Empleo Funes",
@@ -39,13 +42,17 @@ export default async function OfertaDetallePage({
     .select("id, titulo, estado, empresa_nombre, vence_en, duracion_dias, motivo_rechazo")
     .eq("id", ofertaId)
     .eq("empresa_id", empresa.id)
+    .is("eliminada_en", null)
     .maybeSingle();
 
   if (!oferta) notFound();
+  // Un borrador no tiene candidatos: se completa en el formulario.
+  if (oferta.estado === "borrador") redirect(`/empresa/ofertas/${ofertaId}/editar`);
 
-  const [vacantesResult, contratadosResult] = await Promise.all([
+  const [vacantesResult, contratadosResult, bajas] = await Promise.all([
     supabase.from("oferta_vacantes").select("cantidad").eq("oferta_id", ofertaId).maybeSingle(),
     supabase.rpc("contratados_en_oferta", { p_oferta_id: ofertaId }),
+    bajasDeOfertas([oferta]),
   ]);
 
   const vacantes = vacantesResult.data?.cantidad ?? null;
@@ -54,23 +61,9 @@ export default async function OfertaDetallePage({
 
   return (
     <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/empresa/ofertas" className="hover:text-foreground">
-          Mis ofertas
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">{oferta.titulo}</span>
-      </div>
+      <BotonVolver href="/empresa/ofertas">Volver a mis ofertas</BotonVolver>
 
       <div className="mt-4 flex items-center gap-3">
-        <Link
-          href="/empresa/ofertas"
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-white text-muted-foreground transition hover:bg-surface-tinted hover:text-foreground"
-          aria-label="Volver"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
         <div>
           <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
             {oferta.titulo}
@@ -82,6 +75,10 @@ export default async function OfertaDetallePage({
             venceEn={oferta.vence_en}
           />
         </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2 empty:hidden">
+        <BajaOfertaBtn oferta={oferta} baja={bajas[oferta.id]} volverA="/empresa/ofertas" />
       </div>
 
       {oferta.estado === "rechazada" && (
@@ -234,7 +231,7 @@ async function ListadoDerivados({
                     <p className="text-xs text-muted-foreground">
                       Derivado el {formatFecha(d.derivacion_created_at)}
                     </p>
-                    {d.fecha_entrevista && (
+                    {d.fecha_entrevista && d.estado_empresa !== "retirada_postulante" && (
                       <p className="text-xs text-muted-foreground">
                         Entrevista: {formatFechaHora(d.fecha_entrevista)}
                         {d.lugar_entrevista ? ` · ${d.lugar_entrevista}` : ""}

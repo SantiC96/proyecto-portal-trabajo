@@ -219,3 +219,60 @@ export function validarOfertaRecibida(
   }
   return { ok: true, oferta: { ...data, modalidad, jornada } };
 }
+
+/**
+ * Un borrador se guarda aunque falten obligatorios: solo exige el título y
+ * controla lo que sí vino (largos, cantidades, valores de las listas). Al
+ * enviarlo a revisión se usa validarOfertaRecibida y la base vuelve a exigir
+ * los obligatorios (migration_051).
+ */
+export function validarBorradorRecibido(
+  data: OfertaData,
+): { ok: true; oferta: OfertaValidada } | { ok: false; mensaje: string; campo?: keyof OfertaData } {
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    typeof data.titulo !== "string" ||
+    typeof data.descripcion !== "string" ||
+    typeof data.modalidad !== "string" ||
+    typeof data.jornada !== "string" ||
+    !esListaDeTextos(data.requisitos) ||
+    !esListaDeTextos(data.beneficios) ||
+    !sonUuids(data.categorias) ||
+    typeof data.cantidadVacantes !== "number" ||
+    typeof data.duracionDias !== "number"
+  ) {
+    return { ok: false, mensaje: "Los datos de la oferta no son válidos." };
+  }
+
+  const errTitulo = validarTextoObligatorio(data.titulo, LARGO_MAXIMO.tituloOferta);
+  if (errTitulo) return { ok: false, campo: "titulo", mensaje: errTitulo };
+  if (data.descripcion.trim().length > LARGO_MAXIMO.descripcion)
+    return { ok: false, campo: "descripcion", mensaje: `La descripción puede tener hasta ${LARGO_MAXIMO.descripcion} caracteres.` };
+  if (data.categorias.length > 5)
+    return { ok: false, campo: "categorias", mensaje: "Seleccioná entre 1 y 5 categorías." };
+
+  const { modalidad, jornada } = data;
+  if (!esValorEnum("modalidad_oferta", modalidad))
+    return { ok: false, campo: "modalidad", mensaje: "La modalidad no es válida." };
+  if (!esValorEnum("jornada_oferta", jornada))
+    return { ok: false, campo: "jornada", mensaje: "La jornada no es válida." };
+  if (!esDuracionOferta(data.duracionDias))
+    return { ok: false, campo: "duracionDias", mensaje: "La duración no es válida." };
+
+  for (const [campo, lista] of [["requisitos", data.requisitos], ["beneficios", data.beneficios]] as const) {
+    if (lista.filter((t) => t.trim()).length > 15)
+      return { ok: false, campo, mensaje: `Podés agregar hasta 15 ${campo}.` };
+    if (lista.some((t) => t.trim().length > LARGO_MAXIMO.itemOferta))
+      return { ok: false, campo, mensaje: `Cada elemento puede tener hasta ${LARGO_MAXIMO.itemOferta} caracteres.` };
+  }
+
+  if (!Number.isInteger(data.cantidadVacantes) || data.cantidadVacantes < 1)
+    return {
+      ok: false,
+      campo: "cantidadVacantes",
+      mensaje: "La cantidad de vacantes debe ser un número entero mayor o igual a 1.",
+    };
+
+  return { ok: true, oferta: { ...data, modalidad, jornada } };
+}

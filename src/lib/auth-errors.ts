@@ -1,8 +1,14 @@
 import type { AuthError } from "@supabase/supabase-js";
 import { err, type Resultado } from "@/lib/resultado";
 
+/** Login o acción de una cuenta de la oficina desactivada (decisión 023). */
+export const MENSAJE_CUENTA_DESACTIVADA =
+  "Tu cuenta está desactivada. Comunicate con la Oficina de Empleo.";
+
 export function traducirErrorAuth(error: AuthError): Resultado<never> {
   switch (error.code) {
+    case "user_banned":
+      return err("SIN_PERMISO", MENSAJE_CUENTA_DESACTIVADA);
     case "invalid_credentials":
       return err("DATOS_INVALIDOS", "El email o la contraseña no son correctos.");
     case "email_not_confirmed":

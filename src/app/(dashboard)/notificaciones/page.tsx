@@ -13,13 +13,13 @@ export default async function NotificacionesPostulantePage({
   searchParams: Promise<{ pagina?: string }>;
 }) {
   const sp = await searchParams;
-  const user = await requerirRolPagina("postulante", { siNoCorresponde: "panel" });
+  const user = await requerirRolPagina("postulante");
 
   return (
     <PaginaNotificaciones
       usuarioId={user.id}
       ruta={rutaNotificaciones("postulante")}
-      panel={{ href: "/perfil", label: "Mi perfil" }}
+      panel={{ href: "/perfil", label: "Volver a mi perfil" }}
       textoVacio="Te avisamos acá cuando deriven tu postulación, te coordinen una entrevista o te asignen un curso."
       searchParams={sp}
     />

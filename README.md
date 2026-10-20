@@ -1,192 +1,86 @@
-# Portal Municipal de Empleo
+# Portal de Empleo Funes
 
-Portal web de gestión de empleo para la Municipalidad de Funes. Conecta a postulantes, empresas y la municipalidad en una misma plataforma.
+Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las personas que buscan trabajo con las empresas de la ciudad, y le da a la oficina un lugar único para revisar empresas y ofertas, acompañar a cada postulante y derivarlo a las empresas.
 
-**Stack:** Next.js 16 · React 19 · TypeScript · Tailwind CSS v4 · Supabase
-
-**Tres roles:** postulante · empresa · municipalidad (admin)
+- **Sitio publicado:** URL_DEL_SITIO
+- **Repositorio:** https://github.com/SantiC96/proyecto-portal-trabajo
+- **Documentación técnica:** [docs/documentacion-tecnica.md](docs/documentacion-tecnica.md)
 
 ## Integrantes
 
 - Santiago Cancio
 - Jessica Lopez
 
----
+## Usuarios demo
 
-## Funcionalidades actuales
+| Rol | Email | Contraseña | Qué probar |
+|---|---|---|---|
+| Postulante | PENDIENTE_DATOS_DEMO | PENDIENTE_DATOS_DEMO | Completar el perfil, subir el CV, postularse a una oferta y seguir su estado. |
+| Empresa | PENDIENTE_DATOS_DEMO | PENDIENTE_DATOS_DEMO | Publicar una oferta, ver los candidatos derivados y coordinar una entrevista. |
+| Oficina de Empleo | PENDIENTE_DATOS_DEMO | PENDIENTE_DATOS_DEMO | Aprobar empresas y ofertas, derivar postulaciones, asignar cursos y ver indicadores. |
 
-**Implementadas:**
+## Funcionalidades
 
-- Registro de postulantes con DNI (detecta duplicados)
-- Login y logout
-- Confirmación de cuenta por email (flujo PKCE)
-- Recuperación de contraseña por email
-- Listado de ofertas laborales desde Supabase
-- Filtros client-side: búsqueda de texto, rubro y modalidad
-- Detalle de oferta
-- Dashboard `/inicio` protegido por sesión (bienvenida al usuario)
+### Postulante
 
-**Pendiente:**
+- Buscar ofertas por texto, rubro y modalidad, sin necesidad de registrarse.
+- Postularse a una oferta eligiendo con cuál de sus CVs (el más reciente viene elegido) y retirarla en cualquier momento salvo si ya fue seleccionado; la retirada queda en el historial y se puede volver a postular mientras la oferta siga abierta.
+- Ver el estado de cada postulación, con qué CV se postuló, la pre-entrevista y la entrevista con la empresa.
+- Completar el perfil: datos personales, rubros de interés, información laboral y foto.
+- Tener hasta 5 CVs en PDF, verlos y eliminarlos; eliminar un CV no cambia las postulaciones ya hechas con él. Los CVs y fotos eliminados se borran definitivamente a los 30 días, salvo un CV de una postulación en curso.
+- Ver los cursos asignados por la oficina, empezarlos y marcarlos como completados.
+- Cambiar la contraseña.
 
-- Dashboard empresa (placeholder)
-- Dashboard municipalidad / admin (placeholder)
-- Sistema de postulaciones
-- Registro de empresas
+### Empresa
 
----
+- Registrarse con razón social y CUIT, y esperar la aprobación de la oficina.
+- Ver el motivo si la solicitud fue rechazada, corregir los datos y reenviarla.
+- Publicar ofertas con vacantes y duración (15 a 60 días); cada oferta pasa por revisión de la oficina.
+- Guardar una oferta como borrador con lo que haya (al menos el título) y enviarla a revisión cuando esté completa.
+- Editar, renovar ofertas vencidas y retirar una oferta en revisión o publicada: los candidatos en proceso quedan cerrados y reciben un aviso.
+- Eliminar un borrador, una oferta rechazada o una pendiente sin postulaciones, y restaurarla durante 30 días desde la pestaña "Eliminadas".
+- Ver los candidatos que deriva la oficina, con su foto y el CV que eligieron al postularse.
+- Coordinar y reprogramar entrevistas, y seleccionar o descartar candidatos.
+- Guardar candidatos con una nota para tenerlos en cuenta más adelante.
+- Dashboard de indicadores: ofertas por estado, vacantes cubiertas, candidatos derivados, entrevistas y seleccionados del período, con el detalle de cada oferta.
+- Mi perfil: logo de la empresa, datos de contacto de la persona responsable y cambio de contraseña; los datos de la empresa se ven sin editar.
 
-## Puesta en marcha
+### Oficina de Empleo
 
-### 1. Clonar e instalar
+- Aprobar o rechazar empresas (con motivo) y ver el historial de cada solicitud.
+- Aprobar o rechazar ofertas antes de que se publiquen.
+- Revisar postulaciones, coordinar una pre-entrevista opcional y derivar a la empresa o descartar.
+- Corregir el resultado de una derivación cuando hace falta.
+- Consultar la base de postulantes con filtros (rubro, con CV, esperando curso) y ver la ficha de cada uno, con sus CVs y el CV de cada postulación.
+- Crear cursos de inserción laboral y asignarlos a quien acumula rechazos.
+- Gestionar las cuentas de la oficina: invitar por email, desactivar y reactivar (siempre queda al menos una activa; nadie se desactiva a sí mismo).
+- Mi perfil: foto, datos de contacto y cambio de contraseña.
 
-```bash
-git clone https://github.com/SantiC96/proyecto-portal-trabajo.git
-cd proyecto-portal-trabajo
-npm install
-```
+### Autenticación y cuentas
 
-### 2. Variables de entorno
+- Registro de postulantes y de empresas con confirmación por email.
+- Recuperación de contraseña por email.
+- Cierre de sesión automático después de 30 minutos sin actividad.
+- Cada rol entra solo a su panel; después de iniciar sesión se vuelve a la página pedida.
 
-```bash
-cp .env.example .env.local
-```
+### Avisos y emails
 
-Completar `.env.local` con los valores del proyecto en Supabase:
+- Campanita con avisos para los tres roles (derivaciones, entrevistas, aprobaciones, vencimientos, cursos).
+- Los avisos importantes también llegan por email.
+- Página de avisos con marcar como leído y marcar todos.
 
-| Variable | Dónde se obtiene |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Project Settings → API → Project URL |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Project Settings → API → anon / public key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Project Settings → API → service_role key |
-| `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` en desarrollo local |
+### Dashboard de indicadores de la oficina
 
-### 3. Migraciones
+- Postulantes, ofertas vigentes y empresas por estado.
+- Postulaciones, derivaciones, contrataciones y cursos del período elegido.
+- Tasa de contratación, días promedio hasta la derivación y gráficos por mes y por rubro.
 
-Ejecutar en el **SQL Editor de Supabase** en este orden:
+## Cómo está construido
 
-```
-src/migrations/migration_001_schema.sql
-src/migrations/migration_002_telefono_rubro.sql
-src/migrations/migration_003_dni_a_postulantes.sql
-src/migrations/migration_004_rls.sql
-src/migrations/migration_005_limpiar_duplicados.sql
-src/migrations/migration_006_trigger_nuevo_usuario.sql
-src/migrations/migration_007_campos_ofertas.sql
-src/migrations/seed_ofertas.sql          ← después de migration_007
-```
+- **Next.js 16 (App Router) con React 19 y TypeScript**, publicado en Vercel. Las páginas se arman en el servidor y los cambios pasan por server actions.
+- **Supabase** como base de datos (Postgres), autenticación y almacenamiento de archivos (CV y fotos en buckets privados).
+- **Seguridad por roles en la base:** Row Level Security, permisos por columna y funciones SQL que validan rol, propiedad y estado.
+- **Emails por Gmail (SMTP)** con una cola en la base y un cron diario de respaldo.
+- **Git** con `main` (producción) y `develop` (integración), ramas `feat/`, `fix/`, `refactor/`, `docs/` y pull requests.
 
-### 4. URLs de autenticación en Supabase
-
-En **Authentication → URL Configuration**:
-
-- **Site URL:** `http://localhost:3000`
-- **Redirect URLs:** agregar `http://localhost:3000/auth/callback` y `http://localhost:3000/auth/nueva-contrasena`
-
-### 5. Iniciar el servidor
-
-```bash
-npm run dev   # http://localhost:3000
-```
-
-Otros comandos:
-
-```bash
-npm run build   # build de producción
-npm run lint    # verificar errores de código
-```
-
----
-
-## Rutas del proyecto
-
-| URL | Archivo | Acceso |
-|---|---|---|
-| `/` | `src/app/page.tsx` | Pública |
-| `/auth/login` | `src/app/auth/login/page.tsx` | Pública |
-| `/auth/registro` | `src/app/auth/registro/page.tsx` | Pública |
-| `/auth/verificar-email` | `src/app/auth/verificar-email/page.tsx` | Pública |
-| `/auth/recuperar-contrasena` | `src/app/auth/recuperar-contrasena/page.tsx` | Pública |
-| `/auth/reset-enviado` | `src/app/auth/reset-enviado/page.tsx` | Pública |
-| `/auth/nueva-contrasena` | `src/app/auth/nueva-contrasena/page.tsx` | Pública (token en URL o cookie de reintento) |
-| `/ofertas` | `src/app/ofertas/page.tsx` | Pública |
-| `/ofertas/[id]` | `src/app/ofertas/[id]/page.tsx` | Pública |
-| `/inicio` | `src/app/(dashboard)/inicio/page.tsx` | Requiere sesión |
-| `/empresa` | `src/app/empresa/page.tsx` | Solo rol `empresa` (aprobada) |
-| `/admin` | `src/app/admin/page.tsx` | Solo rol `municipalidad` |
-| `/admin/empresas` | `src/app/admin/empresas/page.tsx` | Solo rol `municipalidad` |
-
-> El Route Handler `/auth/callback` es interno del flujo de autenticación y no es una página navegable. `/auth/nueva-contrasena` es una página pública accesible desde el link del email de recuperación.
-
----
-
-## Estructura de carpetas
-
-```
-src/
-├── app/
-│   ├── (dashboard)/          # Páginas que requieren sesión activa
-│   │   ├── inicio/           # /inicio — bienvenida al usuario autenticado
-│   │   └── layout.tsx        # Guard SSR: redirige a /auth/login sin sesión
-│   ├── auth/                 # Flujos de autenticación
-│   │   ├── actions.ts        # Server Actions: login, registro, reset, logout
-│   │   ├── callback/         # Route Handler: canjea code PKCE (confirmación de email)
-│   │   ├── login/
-│   │   ├── nueva-contrasena/ # Route Handler + formulario de nueva contraseña
-│   │   ├── recuperar-contrasena/
-│   │   ├── registro/
-│   │   ├── reset-enviado/
-│   │   └── verificar-email/
-│   ├── admin/                # Placeholder dashboard municipal
-│   ├── empresa/              # Placeholder dashboard empresa
-│   ├── ofertas/              # Listado y detalle de ofertas
-│   ├── globals.css           # Tokens de color + import Tailwind v4
-│   ├── layout.tsx            # Layout raíz
-│   └── page.tsx              # / — página pública de inicio
-├── components/
-│   ├── auth/                 # Formularios de login y registro
-│   ├── public/               # Componentes de la landing (Navbar, Hero, JobCard…)
-│   └── ui/                   # Primitivos shadcn (Button, Input, Calendar)
-├── lib/
-│   ├── ofertas.ts            # Data access: getOfertasActivas, getCategorias, getOfertaById
-│   ├── supabase-admin.ts     # Cliente admin (service role, bypasses RLS)
-│   ├── supabase-browser.ts   # Cliente browser
-│   ├── supabase-server.ts    # Cliente servidor (respeta RLS + cookies de sesión)
-│   └── utils.ts              # cn()
-└── migrations/               # SQL a ejecutar en el SQL Editor de Supabase
-    ├── migration_001 → migration_007
-    └── seed_ofertas.sql
-
-docs/
-├── DESIGN_SYSTEM_Portal_Municipal_Empleo.md
-├── decisiones/               # Decisiones de arquitectura (ADRs 001–004)
-├── guias/                    # Guías técnicas del proyecto
-└── clase/                    # Prompts de aprendizaje
-```
-
----
-
-## Flujo de trabajo con Git
-
-- **`main`** — código productivo. Nunca se trabaja directamente acá.
-- **`develop`** — rama de integración. Tampoco se commitea directo.
-- Ramas de trabajo se crean desde `develop` con prefijos: `feat/`, `fix/`, `refactor/`, `docs/`.
-- Todo PR tiene base `develop`. `develop` se mergea a `main` con cada versión lista.
-
-```bash
-git checkout develop && git pull origin develop
-git checkout -b feat/nombre-tarea
-# ... trabajar, commitear ...
-git push origin feat/nombre-tarea
-# → abrir PR con base develop
-```
-
----
-
-## Documentación
-
-- [`CLAUDE.md`](CLAUDE.md) — convenciones de arquitectura, patrones y reglas del repositorio
-- [`docs/DESIGN_SYSTEM_Portal_Municipal_Empleo.md`](docs/DESIGN_SYSTEM_Portal_Municipal_Empleo.md) — tokens, colores, tipografía
-- [`docs/guias/`](docs/guias/) — guías técnicas (auth, emails, migraciones, RLS, variables de entorno…)
-- [`docs/guias/guia-usuarios-oficina.md`](docs/guias/guia-usuarios-oficina.md) — cómo crear un usuario con rol `municipalidad`
-- [`docs/guias/guia-nextjs-basico.md`](docs/guias/guia-nextjs-basico.md) — conceptos de Next.js 16, HTTP, hooks y Git
-- [`docs/decisiones/`](docs/decisiones/) — decisiones de arquitectura (ADRs)
+El detalle (arquitectura, base de datos, seguridad, storage, puesta en marcha y deploy) está en la [documentación técnica](docs/documentacion-tecnica.md).

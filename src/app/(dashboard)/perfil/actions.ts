@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { requerirPostulante, requerirRol, requerirUsuario } from "@/lib/auth";
+import { requerirPostulante, requerirRol, requerirUsuario, type Rol } from "@/lib/auth";
+import { createSupabaseEphemeralClient } from "@/lib/supabase-ephemeral";
 import { traducirErrorAuth } from "@/lib/auth-errors";
 import { logError } from "@/lib/logger";
 import { err, errCampo, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
 import {
   LARGO_MAXIMO,
+  esUuid,
   leerArchivo,
   leerTexto,
   sonUuids,
@@ -20,12 +22,23 @@ import {
 } from "@/lib/validaciones";
 import {
   AVATAR_MAX_SIZE,
+  CV_MAXIMOS,
   CV_MAX_SIZE,
   ERRORES_ARCHIVO,
   validarTipoAvatar,
   validarTipoCV,
   detectarMimeType,
 } from "@/lib/archivos";
+import { validarInformacionLaboral } from "@/lib/informacion-laboral";
+
+// La foto de perfil, los datos de contacto y la contraseña se comparten con
+// "Mi perfil" de la empresa (/empresa/perfil) y de la oficina (/admin/perfil).
+const ROLES_CON_PERFIL: readonly Rol[] = ["postulante", "empresa", "municipalidad"];
+const RUTAS_PERFIL = ["/perfil", "/empresa/perfil", "/admin/perfil"] as const;
+
+function revalidarPerfiles() {
+  for (const ruta of RUTAS_PERFIL) revalidatePath(ruta);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Actualizar datos personales
@@ -37,6 +50,10 @@ export async function actualizarPerfil(data: {
   telefono: string;
   domicilio: string;
   dni: string;
+  nivelEducativo: string;
+  situacionLaboral: string;
+  disponibilidad: string;
+  experienciaLaboral: string;
 }): Promise<Resultado<void>> {
   const auth = await requerirRol("postulante");
   if (!auth.ok) return auth;
@@ -62,11 +79,13 @@ export async function actualizarPerfil(data: {
   if (errTelefono) return errCampo("telefono", errTelefono);
   const errDomicilio = validarTextoOpcional(data.domicilio, LARGO_MAXIMO.domicilio);
   if (errDomicilio) return errCampo("domicilio", errDomicilio);
+  const errLaboral = validarInformacionLaboral(data);
+  if (errLaboral) return errCampo(errLaboral.campo, errLaboral.mensaje);
 
   const dniLimpio = data.dni.replace(/\D/g, "");
 
-  // usuarios y postulantes se actualizan en una transacción: si el DNI está
-  // repetido no se guarda nada (migration_040).
+  // usuarios y postulantes (con la información laboral) se actualizan en una
+  // transacción: si el DNI está repetido no se guarda nada (040 y 046).
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.rpc("actualizar_mi_perfil_postulante", {
     p_nombre: data.nombre.trim(),
@@ -74,6 +93,10 @@ export async function actualizarPerfil(data: {
     p_telefono: data.telefono.trim(),
     p_domicilio: data.domicilio.trim(),
     p_dni: dniLimpio,
+    p_nivel_educativo: data.nivelEducativo,
+    p_situacion_laboral: data.situacionLaboral,
+    p_disponibilidad: data.disponibilidad,
+    p_experiencia_laboral: data.experienciaLaboral.trim(),
   });
 
   if (error) {
@@ -163,7 +186,7 @@ async function descartarArchivoSubido(
 export async function subirAvatar(
   formData: FormData
 ): Promise<Resultado<void>> {
-  const auth = await requerirRol("postulante");
+  const auth = await requerirRol(ROLES_CON_PERFIL);
   if (!auth.ok) return auth;
   const user = auth.usuario;
 
@@ -200,7 +223,7 @@ export async function subirAvatar(
     return errConRef("ERROR_INTERNO", "Error al subir la imagen. Intentá de nuevo.", ref);
   }
 
-  // Activar nuevo y desactivar anterior en una sola transacción
+  // Activar la nueva y marcar eliminada la anterior en una sola transacción
   const { error: rpcError } = await supabaseAdmin.rpc("activar_archivo_usuario", {
     p_usuario_id: user.id,
     p_tipo: "avatar",
@@ -216,7 +239,7 @@ export async function subirAvatar(
     return errConRef("ERROR_INTERNO", "Error al guardar la foto. Intentá de nuevo.", ref);
   }
 
-  revalidatePath("/perfil");
+  revalidarPerfiles();
   return okMsg("Foto de perfil actualizada.");
 }
 
@@ -225,7 +248,7 @@ export async function ajustarAvatar(data: {
   y: number;
   zoom: number;
 }): Promise<Resultado<void>> {
-  const auth = await requerirRol("postulante");
+  const auth = await requerirRol(ROLES_CON_PERFIL);
   if (!auth.ok) return auth;
   const user = auth.usuario;
 
@@ -255,30 +278,30 @@ export async function ajustarAvatar(data: {
     return errConRef("ERROR_INTERNO", "Error al guardar el ajuste. Intentá de nuevo.", ref);
   }
 
-  revalidatePath("/perfil");
+  revalidarPerfiles();
   revalidatePath("/", "layout");
   return okMsg("Ajuste guardado.");
 }
 
 export async function quitarAvatar(): Promise<Resultado<void>> {
-  const auth = await requerirRol("postulante");
+  const auth = await requerirRol(ROLES_CON_PERFIL);
   if (!auth.ok) return auth;
   const user = auth.usuario;
 
-  // Eliminación lógica: marcar el activo como inactivo, no borrar del bucket
+  // Borrado lógico: el archivo lo borra de Storage la purga diaria (migration_054).
   const { error } = await supabaseAdmin
     .from("archivos_usuario")
-    .update({ activo: false, desactivado_en: new Date().toISOString() })
+    .update({ eliminado_en: new Date().toISOString() })
     .eq("usuario_id", user.id)
     .eq("tipo", "avatar")
-    .eq("activo", true);
+    .is("eliminado_en", null);
 
   if (error) {
     const ref = logError("quitarAvatar", error, { userId: user.id });
     return errConRef("ERROR_INTERNO", "Error al quitar la foto. Intentá de nuevo.", ref);
   }
 
-  revalidatePath("/perfil");
+  revalidarPerfiles();
   return okMsg("Foto de perfil quitada.");
 }
 
@@ -314,6 +337,21 @@ export async function subirCV(
     return err("ARCHIVO_INVALIDO", ERRORES_ARCHIVO.cvFirma);
   }
 
+  // Para no subir el archivo en vano. El límite lo garantiza la base al
+  // registrarlo (trigger de archivos_usuario, migration_054).
+  const { count, error: errorConteo } = await supabaseAdmin
+    .from("archivos_usuario")
+    .select("id", { count: "exact", head: true })
+    .eq("usuario_id", user.id)
+    .eq("tipo", "cv")
+    .is("eliminado_en", null);
+
+  if (errorConteo) {
+    const ref = logError("subirCV:conteo", errorConteo, { userId: user.id });
+    return errConRef("ERROR_INTERNO", "Error al subir el CV. Intentá de nuevo.", ref);
+  }
+  if ((count ?? 0) >= CV_MAXIMOS) return err("REGLA_DE_NEGOCIO", ERRORES_ARCHIVO.cvLimite);
+
   // Nombre único por timestamp para no sobrescribir archivos anteriores
   const nuevaRuta = `${user.id}/cv-${Date.now()}.pdf`;
 
@@ -326,7 +364,7 @@ export async function subirCV(
     return errConRef("ERROR_INTERNO", "Error al subir el CV. Intentá de nuevo.", ref);
   }
 
-  // Activar nuevo y desactivar anterior en una sola transacción
+  // Se agrega a los que ya tiene; los anteriores siguen disponibles.
   const { error: rpcError } = await supabaseAdmin.rpc("activar_archivo_usuario", {
     p_usuario_id: user.id,
     p_tipo: "cv",
@@ -337,32 +375,44 @@ export async function subirCV(
   });
 
   if (rpcError) {
-    const ref = logError("subirCV:rpc", rpcError, { userId: user.id });
     await descartarArchivoSubido("cvs", nuevaRuta, "subirCV");
+    // P0001: ya tiene el máximo de CVs (otra subida terminó antes que esta).
+    if (rpcError.code === "P0001") return fromSupabaseError(rpcError);
+    const ref = logError("subirCV:rpc", rpcError, { userId: user.id });
     return errConRef("ERROR_INTERNO", "Error al guardar la ruta del CV. Intentá de nuevo.", ref);
   }
 
   revalidatePath("/perfil");
-  return okMsg("CV actualizado.");
+  return okMsg("CV subido correctamente.");
 }
 
-export async function eliminarCV(): Promise<Resultado<void>> {
+/**
+ * Borrado lógico de un CV propio (migration_054): deja de verse en el perfil
+ * y no se puede elegir al postularse. Las postulaciones hechas con ese CV lo
+ * siguen mostrando a la oficina y a la empresa mientras estén en curso; el
+ * archivo lo borra de Storage la purga diaria.
+ */
+export async function eliminarCV(archivoId: string): Promise<Resultado<void>> {
   const auth = await requerirRol("postulante");
   if (!auth.ok) return auth;
   const user = auth.usuario;
 
-  // Eliminación lógica: marcar el activo como inactivo, no borrar del bucket
-  const { error } = await supabaseAdmin
+  if (!esUuid(archivoId)) return err("NO_ENCONTRADO", "Ese CV ya no está en tu perfil.");
+
+  const { data, error } = await supabaseAdmin
     .from("archivos_usuario")
-    .update({ activo: false, desactivado_en: new Date().toISOString() })
+    .update({ eliminado_en: new Date().toISOString() })
+    .eq("id", archivoId)
     .eq("usuario_id", user.id)
     .eq("tipo", "cv")
-    .eq("activo", true);
+    .is("eliminado_en", null)
+    .select("id");
 
   if (error) {
     const ref = logError("eliminarCV", error, { userId: user.id });
     return errConRef("ERROR_INTERNO", "Error al eliminar el CV. Intentá de nuevo.", ref);
   }
+  if (data.length === 0) return err("NO_ENCONTRADO", "Ese CV ya no está en tu perfil.");
 
   revalidatePath("/perfil");
   return okMsg("CV eliminado.");
@@ -393,12 +443,17 @@ export async function cambiarContrasena(
   const user = auth.usuario;
   if (!user.email) return err("NO_AUTENTICADO");
 
-  // Verificar contraseña actual con el cliente admin (no toca la sesión de cookies)
-  const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+  // Verificar la contraseña actual con un cliente efímero: no toca la sesión de
+  // las cookies. No se usa supabaseAdmin porque el login le dejaría guardada
+  // esa sesión y sus consultas siguientes saldrían con el token del usuario en
+  // lugar de la service role.
+  const verificador = createSupabaseEphemeralClient();
+  const { error: signInError } = await verificador.auth.signInWithPassword({
     email: user.email,
     password: contrasenaActual,
   });
   if (signInError) return errCampo("contrasenaActual", "La contraseña actual es incorrecta.");
+  await verificador.auth.signOut({ scope: "local" });
 
   const supabase = await createSupabaseServerClient();
   const { error: updateError } = await supabase.auth.updateUser({
@@ -414,4 +469,60 @@ export async function cambiarContrasena(
   }
 
   return okMsg("Contraseña actualizada.");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Datos de contacto (empresa y oficina)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Nombre, apellido y teléfono de la persona en "Mi perfil" de la empresa y
+ * de la oficina. El postulante los guarda con actualizarPerfil, junto con
+ * sus otros datos.
+ */
+export async function actualizarDatosContacto(data: {
+  nombre: string;
+  apellido: string;
+  telefono: string;
+}): Promise<Resultado<void>> {
+  const auth = await requerirRol(["empresa", "municipalidad"]);
+  if (!auth.ok) return auth;
+  const user = auth.usuario;
+
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    [data.nombre, data.apellido, data.telefono].some((v) => typeof v !== "string")
+  ) {
+    return err("DATOS_INVALIDOS");
+  }
+
+  const errNombre = validarNombre(data.nombre);
+  if (errNombre) return errCampo("nombre", errNombre);
+  const errApellido = validarNombre(data.apellido);
+  if (errApellido) return errCampo("apellido", errApellido);
+  const errTelefono = validarTelefono(data.telefono);
+  if (errTelefono) return errCampo("telefono", errTelefono);
+
+  // RLS solo deja editar la fila propia y los permisos por columna (018),
+  // solo estos tres campos.
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("usuarios")
+    .update({
+      nombre: data.nombre.trim(),
+      apellido: data.apellido.trim(),
+      telefono: data.telefono.trim(),
+    })
+    .eq("id", user.id);
+
+  if (error) {
+    if (error.code === "P0001" || error.code === "42501") return fromSupabaseError(error);
+    const ref = logError("actualizarDatosContacto", error, { userId: user.id });
+    return errConRef("ERROR_INTERNO", "Error al guardar los datos. Intentá de nuevo.", ref);
+  }
+
+  revalidarPerfiles();
+  revalidatePath("/", "layout");
+  return okMsg("Datos actualizados.");
 }

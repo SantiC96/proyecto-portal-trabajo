@@ -5,6 +5,7 @@ import { PublicFooter } from "@/components/public/public-footer";
 import { getCategorias, leerFiltrosOfertasPublicas } from "@/lib/ofertas";
 import { obtenerSesionActual } from "@/lib/sesion";
 import { SesionActivaLanding } from "@/components/auth/sesion-activa-landing";
+import { esRol, rutaInterna, urlLogin } from "@/lib/redirect";
 import type { Rol } from "@/types/db";
 
 export default async function HomePage({
@@ -14,6 +15,7 @@ export default async function HomePage({
     aviso?: string;
     redirectTo?: string;
     accion?: string;
+    rol?: string;
     q?: string;
     categoria?: string;
     modalidad?: string;
@@ -29,20 +31,33 @@ export default async function HomePage({
     nombre: string;
     rol: Rol | null;
     redirectTo: string;
-    accion: "registro" | "login";
+    accion: "registro" | "login" | "otro-rol";
+    rolesDestino?: Rol[];
     profileHref?: string;
   } | null = null;
   if (params.aviso === "sesion-activa") {
     const sesion = await obtenerSesionActual();
     if (sesion) {
-      const accion = params.accion === "login" ? "login" : "registro";
+      const accion =
+        params.accion === "login" || params.accion === "otro-rol"
+          ? params.accion
+          : "registro";
+      // searchParams ya viene decodificado: decodificar de nuevo rompería los
+      // ?redirect= anidados.
+      let redirectTo: string;
+      if (accion === "otro-rol") {
+        // Al cerrar sesión, el login vuelve a la página que pidió otro rol.
+        redirectTo = urlLogin(rutaInterna(params.redirectTo, ""));
+      } else {
+        const porDefecto = accion === "login" ? "/auth/login" : "/auth/registro";
+        redirectTo = rutaInterna(params.redirectTo, porDefecto);
+      }
       sesionAviso = {
         nombre: sesion.nombre,
         rol: sesion.rol,
-        redirectTo: decodeURIComponent(
-          params.redirectTo ?? (accion === "login" ? "/auth/login" : "/auth/registro")
-        ),
+        redirectTo,
         accion,
+        rolesDestino: (params.rol ?? "").split(",").filter(esRol),
         profileHref: sesion.profileHref,
       };
     }
@@ -56,6 +71,7 @@ export default async function HomePage({
           rol={sesionAviso.rol}
           redirectTo={sesionAviso.redirectTo}
           accion={sesionAviso.accion}
+          rolesDestino={sesionAviso.rolesDestino}
           profileHref={sesionAviso.profileHref}
         />
       )}

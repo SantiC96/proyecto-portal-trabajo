@@ -14,6 +14,7 @@ import {
   type ResultadoError,
 } from "@/lib/resultado";
 import { esUuid, LARGO_MAXIMO, MENSAJE_OBLIGATORIO, validarTextoOpcional } from "@/lib/validaciones";
+import { programarEnvioEmails } from "@/lib/emails/cola";
 
 // Los campos "fecha" y "lugar" son los del diálogo de entrevista de la empresa.
 function validarEntrevista(fechaEntrevistaISO: string, lugarEntrevista: string): ResultadoError | null {
@@ -68,6 +69,7 @@ export async function coordinarEntrevista(
     return errConRef("ERROR_INTERNO", "No se pudo coordinar la entrevista.", ref);
   }
 
+  programarEnvioEmails();
   revalidarOferta(ofertaId);
   return okMsg("Entrevista coordinada.");
 }
@@ -102,6 +104,7 @@ export async function reprogramarEntrevista(
     return errConRef("ERROR_INTERNO", "No se pudo reprogramar la entrevista.", ref);
   }
 
+  programarEnvioEmails();
   revalidarOferta(ofertaId);
   return okMsg("Entrevista reprogramada.");
 }
@@ -134,6 +137,7 @@ export async function seleccionarCandidato(
     .eq("id", ofertaId)
     .maybeSingle();
 
+  programarEnvioEmails();
   revalidarOferta(ofertaId);
   return { ok: true, data: { ofertaCerrada: ofertaData?.estado === "cerrada" }, mensaje: "Candidato seleccionado." };
 }
@@ -165,6 +169,7 @@ export async function rechazarCandidato(
     return errConRef("ERROR_INTERNO", "No se pudo registrar la decisión.", ref);
   }
 
+  programarEnvioEmails();
   revalidarOferta(ofertaId);
   return okMsg("Decisión guardada.");
 }

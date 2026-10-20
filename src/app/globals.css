@@ -59,6 +59,15 @@
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30
            disabled:opacity-60;
   }
+
+  /* Botón que dispara una acción destructiva (eliminar, quitar, rechazar).
+     La confirmación dentro del diálogo usa Button variant="destructive". */
+  .btn-peligro {
+    @apply rounded-lg border border-red-200 bg-white text-red-600 transition
+           hover:border-red-300 hover:bg-red-50
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/30
+           disabled:opacity-60;
+  }
 }
 
 * { box-sizing:border-box; }

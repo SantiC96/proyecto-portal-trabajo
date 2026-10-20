@@ -1,8 +1,13 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { obtenerUsuarioActual, panelDeRol, type Rol } from "@/lib/auth";
+import { obtenerEmpresaActual, obtenerUsuarioActual, panelDeRol, type Rol } from "@/lib/auth";
 import { rutaNotificaciones } from "@/lib/notificaciones";
 
 export type SesionData = {
+  /**
+   * Nombre que se muestra de la sesión. En una cuenta de empresa es la razón
+   * social (con el apellido vacío); si la empresa todavía no tiene fila o el
+   * nombre está vacío, queda el de la persona que gestiona la cuenta.
+   */
   nombre: string;
   apellido: string;
   rol: Rol | null;
@@ -36,9 +41,17 @@ export async function obtenerSesionActual(): Promise<SesionData | null> {
     .maybeSingle();
 
   const u = user.perfil;
-  const nombre = u?.nombre ?? textoDeMetadata(user.metadata.nombre);
-  const apellido = u?.apellido ?? textoDeMetadata(user.metadata.apellido);
+  let nombre = u?.nombre ?? textoDeMetadata(user.metadata.nombre);
+  let apellido = u?.apellido ?? textoDeMetadata(user.metadata.apellido);
   const rol = u?.rol ?? null;
+
+  if (rol === "empresa") {
+    const razonSocial = (await obtenerEmpresaActual())?.razon_social.trim();
+    if (razonSocial) {
+      nombre = razonSocial;
+      apellido = "";
+    }
+  }
 
   const profileHref = rol ? panelDeRol(rol) : "/perfil";
 

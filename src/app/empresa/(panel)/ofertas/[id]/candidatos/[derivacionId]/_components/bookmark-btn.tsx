@@ -3,11 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bookmark, BookmarkCheck } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
+import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
 import { guardarCandidato, quitarGuardado } from "@/app/empresa/(panel)/candidatos-guardados/actions";
-import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
@@ -25,16 +24,12 @@ export function BookmarkBtn({ postulanteId, ofertaOrigenId, guardadoId }: Props)
   const { pendiente: isPending, ejecutar } = useAccion();
   const [openGuardar, setOpenGuardar] = useState(false);
   const [nota, setNota] = useState("");
-  const [error, setError] = useState<ErrorAccion | null>(null);
 
   function handleGuardar() {
-    setError(null);
     ejecutar(async () => {
       const result = await guardarCandidato(postulanteId, ofertaOrigenId, nota.trim() || null);
       mostrarAviso(result);
-      if (!result.ok) {
-        setError(toErrorAccion(result));
-      } else {
+      if (result.ok) {
         setOpenGuardar(false);
         setNota("");
         router.refresh();
@@ -57,10 +52,11 @@ export function BookmarkBtn({ postulanteId, ofertaOrigenId, guardadoId }: Props)
         type="button"
         onClick={handleQuitar}
         disabled={isPending}
-        className="btn-secundario inline-flex h-9 items-center gap-2 px-4 text-sm font-medium disabled:opacity-50"
+        aria-busy={isPending}
+        className="btn-secundario inline-flex min-h-11 items-center justify-center gap-2 px-4 text-sm font-medium"
       >
-        <BookmarkCheck className="h-4 w-4 text-primary" />
-        Guardado — Quitar
+        {isPending ? <Spinner /> : <BookmarkCheck className="h-4 w-4 text-primary" />}
+        {isPending ? "Quitando…" : "Guardado — Quitar"}
       </button>
     );
   }
@@ -69,9 +65,9 @@ export function BookmarkBtn({ postulanteId, ofertaOrigenId, guardadoId }: Props)
     <>
       <button
         type="button"
-        onClick={() => { setError(null); setOpenGuardar(true); }}
+        onClick={() => setOpenGuardar(true)}
         disabled={isPending}
-        className="btn-secundario inline-flex h-9 items-center gap-2 px-4 text-sm font-medium disabled:opacity-50"
+        className="btn-secundario inline-flex min-h-11 items-center justify-center gap-2 px-4 text-sm font-medium"
       >
         <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
         Guardar para futuras búsquedas
@@ -80,7 +76,7 @@ export function BookmarkBtn({ postulanteId, ofertaOrigenId, guardadoId }: Props)
       <Dialog
         open={openGuardar}
         onOpenChange={(v) => {
-          if (!v && !isPending) { setOpenGuardar(false); setNota(""); setError(null); }
+          if (!v && !isPending) { setOpenGuardar(false); setNota(""); }
         }}
       >
         <DialogContent>
@@ -110,30 +106,13 @@ export function BookmarkBtn({ postulanteId, ofertaOrigenId, guardadoId }: Props)
             />
             <ContadorCaracteres actual={nota.length} maximo={LARGO_MAXIMO.nota} />
           </div>
-          {error && (
-            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-              <p>{error.mensaje}</p>
-              {error.ref && (
-                <p className="mt-0.5 text-xs text-gray-500">
-                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-                </p>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => { setOpenGuardar(false); setNota(""); setError(null); }}
-              disabled={isPending}
-              className="btn-secundario inline-flex h-9 items-center justify-center px-4 text-sm font-medium disabled:opacity-40"
-            >
-              Cancelar
-            </button>
-            <Button onClick={handleGuardar} disabled={isPending}>
-              {isPending && <Spinner className="mr-1" />}
-              {isPending ? "Guardando…" : "Guardar"}
-            </Button>
-          </DialogFooter>
+          <BotonesDialogo
+            pendiente={isPending}
+            onCancelar={() => { setOpenGuardar(false); setNota(""); }}
+            onConfirmar={handleGuardar}
+            textoConfirmar="Guardar"
+            textoPendiente="Guardando…"
+          />
         </DialogContent>
       </Dialog>
     </>
