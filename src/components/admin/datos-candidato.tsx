@@ -1,11 +1,9 @@
-import { ExternalLink } from "lucide-react";
 import type { Tabla } from "@/types/db";
 
 type Props = Pick<Tabla<"postulantes">, "dni" | "domicilio"> & {
   email: string | null;
   telefono: string | null;
   categorias: Pick<Tabla<"categorias">, "id" | "nombre">[];
-  cvUrl: string | null;
 };
 
 export function DatosCandidato({
@@ -14,7 +12,6 @@ export function DatosCandidato({
   domicilio,
   telefono,
   categorias,
-  cvUrl,
 }: Props) {
   return (
     <>
@@ -56,28 +53,6 @@ export function DatosCandidato({
             </div>
           )}
         </dl>
-      </div>
-
-      {/* CV */}
-      <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
-        <h2 className="font-semibold text-foreground">Currículum vitae</h2>
-        <div className="mt-3">
-          {cvUrl ? (
-            <a
-              href={cvUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-primario h-9"
-            >
-              Ver CV
-              <ExternalLink className="h-4 w-4" />
-            </a>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              El candidato retiró o eliminó su CV.
-            </p>
-          )}
-        </div>
       </div>
     </>
   );

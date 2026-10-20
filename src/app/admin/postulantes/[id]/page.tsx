@@ -7,6 +7,7 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { DatosCandidato } from "@/components/admin/datos-candidato";
+import { CvsDelPostulante } from "@/components/admin/cv-candidato";
 import { obtenerCandidato } from "@/lib/admin/candidato";
 import { badgePostulacion } from "@/lib/admin/postulacion-estados";
 import { AsignarCursoDialog } from "../asignar-curso-dialog";
@@ -52,7 +53,7 @@ function consultaPostulaciones(supabase: ClienteSupabase, postulanteId: string) 
   return supabase
     .from("postulaciones")
     .select(
-      "id, estado, created_at, ofertas!oferta_id(id, titulo, empresa_nombre), derivaciones(estado_empresa), pre_entrevistas(estado, fecha_hora, lugar, nota_oficina)",
+      "id, estado, created_at, ofertas!oferta_id(id, titulo, empresa_nombre), derivaciones(estado_empresa), pre_entrevistas(estado, fecha_hora, lugar, nota_oficina), cv:archivos_usuario!cv_archivo_id(nombre_original, creado_en, eliminado_en)",
       { count: "exact" }
     )
     .eq("postulante_id", postulanteId);
@@ -252,8 +253,9 @@ export default async function PostulanteFichaPage({
           domicilio={candidato.postulante.domicilio}
           telefono={candidato.usuario.telefono}
           categorias={candidato.categorias}
-          cvUrl={candidato.cvUrl}
         />
+
+        <CvsDelPostulante cvs={candidato.cvs} />
 
         <InformacionLaboralResumen info={candidato.postulante} className="bg-surface" />
 
@@ -518,6 +520,7 @@ function HistorialPostulaciones({
                   <th className="pb-2 pr-4 font-medium text-muted-foreground">Empresa</th>
                   <th className="pb-2 pr-4 font-medium text-muted-foreground">Fecha</th>
                   <th className="pb-2 pr-4 font-medium text-muted-foreground">Estado</th>
+                  <th className="pb-2 pr-4 font-medium text-muted-foreground">CV</th>
                   <th className="pb-2 pr-4 font-medium text-muted-foreground">Pre-entrevista</th>
                   <th className="pb-2"></th>
                 </tr>
@@ -540,6 +543,9 @@ function HistorialPostulaciones({
                         <Badge variant={badgeCfg.variant} className={badgeCfg.className}>
                           {badgeCfg.label}
                         </Badge>
+                      </td>
+                      <td className="py-3 pr-4">
+                        <CvHistorial cv={p.cv} />
                       </td>
                       <td className="py-3 pr-4">
                         <PreEntrevistaHistorial pre={p.pre_entrevistas} />
@@ -580,6 +586,10 @@ function HistorialPostulaciones({
                     {p.ofertas?.empresa_nombre ?? "—"} · {formatFecha(p.created_at)}
                   </p>
                   <div className="text-xs">
+                    <p className="mb-1 text-muted-foreground">CV</p>
+                    <CvHistorial cv={p.cv} />
+                  </div>
+                  <div className="text-xs">
                     <p className="mb-1 text-muted-foreground">Pre-entrevista</p>
                     <PreEntrevistaHistorial pre={p.pre_entrevistas} />
                   </div>
@@ -606,6 +616,25 @@ function HistorialPostulaciones({
           />
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * CV elegido al postularse (migration_054). Las postulaciones anteriores no
+ * lo guardan: en su ficha se muestra el CV más reciente del perfil.
+ */
+function CvHistorial({ cv }: { cv: PostulacionHistorial["cv"] }) {
+  if (!cv) {
+    return <span className="text-xs text-muted-foreground">Sin CV elegido</span>;
+  }
+  return (
+    <div className="space-y-0.5 text-xs">
+      <p className="break-all text-foreground">{cv.nombre_original}</p>
+      <p className="text-muted-foreground">
+        Subido el {formatFechaCorta(cv.creado_en)}
+        {cv.eliminado_en && " · eliminado del perfil"}
+      </p>
     </div>
   );
 }

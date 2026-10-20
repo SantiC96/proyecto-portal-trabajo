@@ -6,8 +6,10 @@ import { requerirEmpresaPagina } from "@/lib/auth";
 import { formatFecha } from "@/lib/fechas";
 import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_STYLE } from "@/lib/derivacion-estados";
 import { esUuid } from "@/lib/validaciones";
+import { logError } from "@/lib/logger";
 import type {
   FilaCandidatoParaEmpresaCompleto,
+  FilaCvParaEmpresa,
   FilaDerivacionDePostulanteEmpresa,
 } from "@/types/db";
 import { NotaGuardadoEditor } from "@/app/empresa/(panel)/candidatos-guardados/_components/nota-editor";
@@ -29,8 +31,10 @@ export default async function PerfilCandidatoPage({
   if (!esUuid(postulanteId)) notFound();
   const supabase = await createSupabaseServerClient();
 
-  const [candidatoResult, historialResult, guardadoResult] = await Promise.all([
+  const [candidatoResult, cvResult, historialResult, guardadoResult] = await Promise.all([
     supabase.rpc("candidato_para_empresa_completo", { p_postulante_id: postulanteId }),
+    // El CV de su derivación más reciente a esta empresa (migration_054).
+    supabase.rpc("cv_de_candidato_empresa", { p_postulante_id: postulanteId }),
     supabase.rpc("derivaciones_de_postulante_empresa", { p_postulante_id: postulanteId }),
     supabase
       .from("candidatos_guardados")
@@ -44,13 +48,15 @@ export default async function PerfilCandidatoPage({
 
   const historial: FilaDerivacionDePostulanteEmpresa[] = historialResult.data ?? [];
   const guardado = guardadoResult.data;
+  if (cvResult.error) logError("empresa_perfil_candidato_cv", cvResult.error, { postulanteId });
+  const cv: FilaCvParaEmpresa | null = cvResult.data?.[0] ?? null;
 
   // Signed URL for CV (10 min)
   let cvUrl: string | null = null;
-  if (candidato.cv_ruta) {
+  if (cv) {
     const { data: signed } = await supabase.storage
       .from("cvs")
-      .createSignedUrl(candidato.cv_ruta, 600);
+      .createSignedUrl(cv.ruta, 600);
     cvUrl = signed?.signedUrl ?? null;
   }
 
@@ -122,10 +128,18 @@ export default async function PerfilCandidatoPage({
             )}
             <div className="flex items-start gap-3">
               <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <div>
+              <div className="min-w-0">
                 <dt className="text-xs text-muted-foreground">Currículum</dt>
-                <dd>
-                  {cvUrl ? (
+                {cv && cvUrl && (
+                  <>
+                    <dd className="break-all font-medium text-foreground">{cv.nombre_original}</dd>
+                    <dd className="text-xs text-muted-foreground">
+                      Subido el {formatFecha(cv.subido_en)}
+                    </dd>
+                  </>
+                )}
+                <dd className={cv && cvUrl ? "mt-1" : undefined}>
+                  {cv && cvUrl ? (
                     <a
                       href={cvUrl}
                       target="_blank"
@@ -136,7 +150,7 @@ export default async function PerfilCandidatoPage({
                       <ExternalLink className="h-3.5 w-3.5" />
                     </a>
                   ) : (
-                    <span className="text-muted-foreground">Sin CV cargado</span>
+                    <span className="text-muted-foreground">Sin CV disponible</span>
                   )}
                 </dd>
               </div>

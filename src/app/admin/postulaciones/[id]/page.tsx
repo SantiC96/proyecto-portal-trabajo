@@ -6,7 +6,8 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { DatosCandidato } from "@/components/admin/datos-candidato";
-import { obtenerCandidato } from "@/lib/admin/candidato";
+import { obtenerCandidato, obtenerCvDePostulacion } from "@/lib/admin/candidato";
+import { CvDePostulacionCard } from "@/components/admin/cv-candidato";
 import {
   BADGE_ESTADO_VISIBLE,
   estadoVisiblePostulacion,
@@ -50,6 +51,7 @@ export default async function PostulacionFichaPage({
       revisado_por,
       postulante_id,
       oferta_id,
+      cv_archivo_id,
       postulantes!postulante_id(id, usuario_id),
       ofertas!oferta_id(id, titulo, empresa_nombre, modalidad, jornada, estado, contenido_editado_en)
     `
@@ -112,6 +114,9 @@ export default async function PostulacionFichaPage({
 
   const derivacion = derivacionResult.data;
   const revisor = revisorResult.data;
+  const cvPostulacion = candidato
+    ? await obtenerCvDePostulacion(postulacion.cv_archivo_id, candidato.cvs)
+    : null;
 
   const estadoVisible = estadoVisiblePostulacion(
     postulacion.estado,
@@ -169,14 +174,16 @@ export default async function PostulacionFichaPage({
         {/* Columna principal */}
         <div className="space-y-6 lg:col-span-2">
           {candidato ? (
-            <DatosCandidato
-              email={candidato.email}
-              dni={candidato.postulante.dni}
-              domicilio={candidato.postulante.domicilio}
-              telefono={candidato.usuario.telefono}
-              categorias={candidato.categorias}
-              cvUrl={candidato.cvUrl}
-            />
+            <>
+              <DatosCandidato
+                email={candidato.email}
+                dni={candidato.postulante.dni}
+                domicilio={candidato.postulante.domicilio}
+                telefono={candidato.usuario.telefono}
+                categorias={candidato.categorias}
+              />
+              <CvDePostulacionCard cvPostulacion={cvPostulacion} />
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">
               Candidato no encontrado.
