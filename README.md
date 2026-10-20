@@ -27,6 +27,7 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 - Postularse a una oferta eligiendo con cuál de sus CVs (el más reciente viene elegido) y retirarla en cualquier momento salvo si ya fue seleccionado; la retirada queda en el historial y se puede volver a postular mientras la oferta siga abierta.
 - Ver el estado de cada postulación, con qué CV se postuló, la pre-entrevista y la entrevista con la empresa.
 - Completar el perfil: datos personales, rubros de interés, información laboral y foto.
+- Indicar de dónde es (Funes, una localidad de la zona u otra escrita a mano) al registrarse o desde el perfil. Quien vive en Funes puede subir un comprobante de domicilio (PDF o imagen) para que la oficina lo verifique, y ve su estado: en revisión, verificado o rechazado con el motivo. Cambiar de localidad reinicia la verificación.
 - Tener hasta 5 CVs en PDF, verlos y eliminarlos; eliminar un CV no cambia las postulaciones ya hechas con él. Los CVs y fotos eliminados se borran definitivamente a los 30 días, salvo un CV de una postulación en curso.
 - Ver los cursos asignados por la oficina, empezarlos y marcarlos como completados.
 - Cambiar la contraseña.
@@ -51,7 +52,8 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 - Aprobar o rechazar ofertas antes de que se publiquen.
 - Revisar postulaciones, coordinar una pre-entrevista opcional y derivar a la empresa o descartar.
 - Corregir el resultado de una derivación cuando hace falta.
-- Consultar la base de postulantes con filtros (rubro, con CV, esperando curso) y ver la ficha de cada uno, con sus CVs y el CV de cada postulación.
+- Consultar la base de postulantes con filtros (rubro, con CV, esperando curso, procedencia, comprobante por revisar) y ver la ficha de cada uno, con sus CVs y el CV de cada postulación.
+- Ver la procedencia de cada postulante con un badge ("Funes · Verificado", "Funes · Sin verificar", "Otra localidad: …") en listas y fichas, revisar el comprobante de domicilio (aprobar, o rechazar con motivo) y ordenar las postulaciones con "Primero verificados de Funes". Las empresas no ven nada de esto.
 - Crear cursos de inserción laboral y asignarlos a quien acumula rechazos.
 - Gestionar las cuentas de la oficina: invitar por email, desactivar y reactivar (siempre queda al menos una activa; nadie se desactiva a sí mismo).
 - Mi perfil: foto, datos de contacto y cambio de contraseña.
