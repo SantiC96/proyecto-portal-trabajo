@@ -2,7 +2,7 @@
 
 Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las personas que buscan trabajo con las empresas de la ciudad, y le da a la oficina un lugar único para revisar empresas y ofertas, acompañar a cada postulante y derivarlo a las empresas.
 
-- **Sitio publicado:** URL_DEL_SITIO
+- **Sitio publicado:** https://proyecto-portal-trabajo.vercel.app/
 - **Repositorio:** https://github.com/SantiC96/proyecto-portal-trabajo
 - **Documentación técnica:** [docs/documentacion-tecnica.md](docs/documentacion-tecnica.md)
 
