@@ -246,6 +246,8 @@ Están en [`src/migrations/`](../src/migrations/) y se ejecutan **a mano, en ord
 | 048 | Cola de emails |
 | 049 | Indicadores del dashboard de la empresa |
 | 050 | Cuentas de la oficina: activar, desactivar y mínimo de una activa |
+| 051 | Borradores de ofertas, retiro de la oferta con cierre de procesos, requisito mínimo y borrado lógico |
+| 052 | Retirar una oferta rechazada que tiene postulaciones |
 
 El número 014 no se usó.
 
@@ -318,6 +320,9 @@ Las acciones que escriben en más de una tabla son una sola función `SECURITY D
 | `reenviarSolicitudEmpresa` | `reenviar_solicitud_empresa` |
 | `coordinarPreEntrevista` y relacionadas | `coordinar_pre_entrevista`, `reprogramar_pre_entrevista`, `registrar_resultado_pre_entrevista` |
 | `renovarOferta` | `renovar_oferta` |
+| `guardarBorrador` / `enviarBorrador` | `guardar_borrador_oferta` (con `p_enviar` también manda a revisión) |
+| `retirarOferta` | `retirar_oferta` (cierra la oferta y sus procesos abiertos; también una rechazada con postulaciones, migración 052) |
+| `eliminarOferta` / `restaurarOferta` | `eliminar_oferta` / `restaurar_oferta` (borrado lógico) |
 
 Cada función controla el rol con `rol_actual()`, toma la propiedad de `auth.uid()`, bloquea la fila con `FOR UPDATE` y falla con un mensaje para el usuario (`P0001`). La server action traduce el error a un `Resultado`. Cuando alcanza con un solo `UPDATE`, se agrega el estado esperado al `WHERE` y se verifica que afectó una fila (por ejemplo, `aprobarOferta` exige `estado = 'pendiente_aprobacion'`).
 
@@ -325,18 +330,19 @@ Cada función controla el rol con `rol_actual()`, toma la propiedad de `auth.uid
 
 | Entidad | Regla (trigger) |
 |---|---|
-| Ofertas | Una oferta en revisión no se edita; editar una oferta publicada la vuelve a `pendiente_aprobacion`; `vence_en` se fija al pasar a `activa` (`vencimiento_ofertas`). |
-| Derivaciones | `pendiente → en_proceso → contratado / rechazado`; los estados finales no vuelven atrás para la empresa (`derivaciones_empresa_update`). |
+| Ofertas | Una oferta en revisión no se edita; editar una oferta publicada la vuelve a `pendiente_aprobacion`; `vence_en` se fija al pasar a `activa` (`vencimiento_ofertas`). Un borrador solo pasa a `pendiente_aprobacion` y solo con todos los obligatorios; una oferta enviada no vuelve a borrador; una eliminada no se modifica (`ofertas_reglas_borrador_y_eliminacion`). |
+| Derivaciones | `pendiente → en_proceso → contratado / rechazado`; los estados finales no vuelven atrás para la empresa (`derivaciones_empresa_update`). `oferta_retirada` solo lo pone `retirar_oferta` y es final. |
 | Cursos | El postulante pasa `asignado → en_curso → completado`; la oficina no cambia el estado (`asignaciones_curso_transicion`). |
 | Pre-entrevistas | `coordinada → realizada / no_asistio`, con fecha pasada; `no_asistio → coordinada` al reprogramar. |
 | Empresas | Al editar los datos de una empresa rechazada vuelve a `pendiente` y se registra en el historial. |
-| Postulaciones | No se aceptan postulaciones a ofertas vencidas (`postulaciones_oferta_vigente`). |
+| Postulaciones | No se aceptan postulaciones a ofertas vencidas (`postulaciones_oferta_vigente`). `oferta_retirada` solo lo pone `retirar_oferta` y no cambia después (`postulaciones_proteger_oferta_retirada`). |
 
 ### Restricciones
 
 - **Únicos:** DNI, CUIT, una postulación por oferta y postulante, una derivación y una pre-entrevista por postulación, un candidato guardado por empresa, un CV y una foto activos por usuario, un mismo curso pendiente por postulante, nombre de curso.
 - **`CHECK`:** `duracion_dias` en 15, 30, 45 o 60; `oferta_vacantes.cantidad >= 1`; estados de texto; lugar de pre-entrevista no vacío; tipos y links de `notificaciones`; tipo MIME y tamaño en `archivos_usuario`.
-- **Requisito mínimo:** toda oferta tiene al menos un requisito (trigger de la migración 032).
+- **Requisito mínimo:** toda oferta que no es borrador tiene al menos un requisito (`CHECK ofertas_requisito_minimo_check`, migración 051; el trigger de 032 da el mensaje).
+- **Borrado lógico de ofertas:** "Eliminar" marca `ofertas.eliminada_en`; un `CHECK` exige que la oferta nunca se haya publicado (borrador, rechazada o pendiente). Las políticas RLS la sacan del público, la oficina y el postulante; la empresa la ve solo en "Eliminadas" y la restaura durante 30 días. Después la purga diaria la borra con sus filas dependientes (ver [Deploy](#11-deploy-en-vercel)).
 - **Límite de vacantes:** el trigger `derivaciones_limite_vacantes` bloquea la oferta y no deja seleccionar más candidatos que vacantes, aunque dos selecciones lleguen a la vez. Al cubrirse las vacantes la oferta se cierra sola (`derivaciones_auto_cerrar_oferta`).
 - **Borrado en cascada:** borrar una cuenta en `auth.users` borra en cascada su perfil y sus datos (decisión [006](decisiones/006-borrado-en-cascada.md)).
 
@@ -497,7 +503,7 @@ Si falta alguna variable `SMTP_*` o `EMAIL_FROM`, la app funciona igual y los em
 ### Base de datos
 
 1. En **Storage**, crear los buckets privados `cvs` y `avatares` (la migración 033 falla si no existen).
-2. En el **SQL Editor**, ejecutar en orden numérico todos los archivos `src/migrations/migration_0XX_*.sql`, de `migration_001_schema.sql` a `migration_050_gestion_admins.sql`. Leer los `NOTICE` que dejan algunas migraciones.
+2. En el **SQL Editor**, ejecutar en orden numérico todos los archivos `src/migrations/migration_0XX_*.sql`, de `migration_001_schema.sql` a `migration_052_retirar_oferta_rechazada.sql`. Leer los `NOTICE` que dejan algunas migraciones.
 3. Los datos demo (usuarios para probar cada rol) se documentan en la sección [Usuarios demo del README](../README.md#usuarios-demo).
 4. Crear el primer usuario de la oficina siguiendo la [guía de usuarios de la oficina](guias/guia-usuarios-oficina.md); los demás se invitan desde `/admin/cuentas`.
 5. Si se cambia el esquema: `npx supabase login` y `npm run db:tipos`.
@@ -530,7 +536,7 @@ No hay tests automáticos configurados.
 - El proyecto se importa desde GitHub; Vercel detecta Next.js y usa `npm run build`.
 - **Variables:** cargar en *Settings → Environment Variables* las mismas de `.env.local` salvo `SUPABASE_PROJECT_ID`. Son secretas `SUPABASE_SERVICE_ROLE_KEY`, `SMTP_PASS` y `CRON_SECRET`. `NEXT_PUBLIC_SITE_URL` tiene que ser la URL del sitio, no `localhost`.
 - **Los cambios de variables aplican en el próximo deploy:** después de cambiar una, hay que volver a desplegar. Las `NEXT_PUBLIC_*` además quedan fijas en el código del navegador al momento del build.
-- **Cron:** `vercel.json` programa `GET /api/emails/procesar` todos los días a las 12:00 UTC (9:00 en Argentina). Vercel manda `Authorization: Bearer <CRON_SECRET>` si la variable está definida. El plan Hobby permite un cron diario, por eso el envío normal va con `after()`.
+- **Cron:** `vercel.json` programa `GET /api/emails/procesar` todos los días a las 12:00 UTC (9:00 en Argentina) y `GET /api/mantenimiento/purgar` a las 7:00 UTC (purga las ofertas eliminadas hace más de 30 días con `purgar_ofertas_eliminadas()`, solo service role; `src/lib/mantenimiento.ts` deja lugar para sumar la limpieza de Storage). Vercel manda `Authorization: Bearer <CRON_SECRET>` si la variable está definida; las dos rutas lo validan con `cronAutorizado()` (`src/lib/cron.ts`, comparación en tiempo constante) y son públicas en `proxy.ts`. El plan Hobby solo permite crons diarios, por eso el envío normal de emails va con `after()`.
 - En Supabase, agregar la URL del sitio en *Site URL* y en *Redirect URLs*.
 
 ---
@@ -562,6 +568,7 @@ No hay tests automáticos configurados.
 | 021 | [Dashboard de indicadores de la empresa](decisiones/021-dashboard-de-empresa.md) |
 | 022 | [Sesión: cierre del navegador e inactividad](decisiones/022-sesion-y-cierre-del-navegador.md) |
 | 023 | [Cuentas de la Oficina de Empleo](decisiones/023-cuentas-de-la-oficina.md) |
+| 024 | [Borradores, retiro y eliminación de ofertas](decisiones/024-borradores-retiro-y-eliminacion-de-ofertas.md) |
 
 ---
 
