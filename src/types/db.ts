@@ -56,13 +56,19 @@ export type FilaOfertaPublica = ConNulos<
   FilaRpc<"buscar_ofertas_publicas">,
   "publicado_en" | "requisitos" | "beneficios" | "categorias"
 >;
+/** Columnas opcionales de información laboral de postulantes (migration_046). */
+type CamposInformacionLaboral =
+  | "nivel_educativo"
+  | "situacion_laboral"
+  | "disponibilidad"
+  | "experiencia_laboral";
 export type FilaCandidatoParaEmpresa = ConNulos<
   FilaRpc<"candidato_para_empresa">,
-  "telefono" | "cv_ruta"
+  "telefono" | "cv_ruta" | CamposInformacionLaboral
 >;
 export type FilaCandidatoParaEmpresaCompleto = ConNulos<
   FilaRpc<"candidato_para_empresa_completo">,
-  "telefono" | "cv_ruta" | "foto_ruta"
+  "telefono" | "cv_ruta" | "foto_ruta" | CamposInformacionLaboral
 >;
 export type FilaDerivacionDeOfertaEmpresa = ConNulos<
   FilaRpc<"derivaciones_de_oferta_empresa">,
@@ -82,3 +88,22 @@ export type FilaPostulacionNoSeleccionada = ConNulos<
   "usuario_id" | "nombre" | "apellido" | "dni" | "empresa_nombre"
 >;
 export type FilaEmailDeUsuario = FilaRpc<"emails_de_usuarios">;
+export type FilaMiPreEntrevista = FilaRpc<"mis_pre_entrevistas">;
+/** CVs (migration_054): con qué CV se postuló y el CV que ve la empresa. */
+export type FilaCvDeMiPostulacion = FilaRpc<"cvs_de_mis_postulaciones">;
+export type FilaCvParaEmpresa = FilaRpc<"cv_de_derivacion_empresa">;
+
+/** Indicadores del dashboard (migration_047): las tasas son NULL sin datos. */
+export type FilaIndicadoresPortal = ConNulos<
+  FilaRpc<"indicadores_portal">,
+  "tasa_contratacion" | "dias_promedio_derivacion"
+>;
+/** Indicadores de la empresa (migration_049): el promedio es NULL sin seleccionados. */
+export type FilaIndicadoresEmpresa = ConNulos<
+  FilaRpc<"indicadores_empresa">,
+  "dias_promedio_contratacion"
+>;
+export type FilaIndicadoresPorOfertaEmpresa = ConNulos<
+  FilaRpc<"indicadores_por_oferta_empresa">,
+  "vacantes" | "vence_en"
+>;

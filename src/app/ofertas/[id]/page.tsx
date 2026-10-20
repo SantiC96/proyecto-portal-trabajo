@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building, MapPin, Clock, Briefcase } from "lucide-react";
+import { Building, MapPin, Clock, Briefcase } from "lucide-react";
 import { PublicFooter } from "@/components/public/public-footer";
 import { getOfertaById } from "@/lib/ofertas";
 import { formatFecha } from "@/lib/fechas";
@@ -9,6 +9,8 @@ import { obtenerPostulanteActual, obtenerUsuarioActual } from "@/lib/auth";
 import { PostularseCta, type Postulacion } from "./postularse-cta";
 import { RequisitosList, BeneficiosList } from "@/components/ofertas/requisitos-beneficios";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
+import { BotonVolver } from "@/components/ui/boton-volver";
+import { consultaCvsDisponibles, conUrlsFirmadas, type CvVista } from "@/lib/cvs";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -32,7 +34,7 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
 
   let ctaVariant: "sin-sesion" | "puede-postularse" | "sin-cv" | "ya-postulado" | "otro-rol" =
     "sin-sesion";
-  let cvNombre: string | undefined;
+  let cvs: CvVista[] = [];
   let postulacion: Postulacion | undefined;
   let autoOpen = false;
 
@@ -46,31 +48,28 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
 
       if (postulante) {
         const supabase = await createSupabaseServerClient();
-        // Parallel: check existing application, check CV
+        // Parallel: check existing application, list the CVs to choose from.
+        // Solo la postulación vigente: una retirada queda en el historial y
+        // no impide volver a postularse (migration_053, una vigente por oferta).
         const [postulacionResult, cvResult] = await Promise.all([
           supabase
             .from("postulaciones")
             .select("id, estado, created_at")
             .eq("oferta_id", oferta.id)
             .eq("postulante_id", postulante.id)
+            .is("retirada_en", null)
             .maybeSingle(),
-          supabase
-            .from("archivos_usuario")
-            .select("nombre_original")
-            .eq("usuario_id", user.id)
-            .eq("tipo", "cv")
-            .eq("activo", true)
-            .maybeSingle(),
+          consultaCvsDisponibles(supabase, user.id),
         ]);
 
         if (postulacionResult.data) {
           ctaVariant = "ya-postulado";
           postulacion = postulacionResult.data;
-        } else if (!cvResult.data) {
+        } else if (!cvResult.data?.length) {
           ctaVariant = "sin-cv";
         } else {
           ctaVariant = "puede-postularse";
-          cvNombre = cvResult.data.nombre_original;
+          cvs = await conUrlsFirmadas(supabase, cvResult.data, 600);
           autoOpen = sp.accion === "postular";
         }
       }
@@ -83,14 +82,7 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
     <>
       <main className="flex-1 px-4 py-8 sm:px-6 sm:py-12">
         <div className="mx-auto max-w-3xl">
-          {/* Back link */}
-          <Link
-            href="/ofertas"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground-strong transition hover:text-primary"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Volver a ofertas
-          </Link>
+          <BotonVolver href="/ofertas">Volver a ofertas</BotonVolver>
 
           {/* Card */}
           <article className="mt-6 rounded-2xl border border-border bg-white p-6 shadow-xs sm:p-8">
@@ -184,7 +176,7 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
                 ofertaTitulo={oferta.titulo}
                 ofertaEmpresa={oferta.empresa}
                 loginHref={loginHref}
-                cvNombre={cvNombre}
+                cvs={cvs}
                 postulacion={postulacion}
                 autoOpen={autoOpen}
               />

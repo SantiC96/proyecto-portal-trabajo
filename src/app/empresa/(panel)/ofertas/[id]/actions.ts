@@ -4,19 +4,29 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirEmpresa } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errConRef, okMsg, type Resultado } from "@/lib/resultado";
-import { esUuid, LARGO_MAXIMO, validarTextoOpcional } from "@/lib/validaciones";
+import {
+  err,
+  errCampo,
+  errConRef,
+  fromSupabaseError,
+  okMsg,
+  type Resultado,
+  type ResultadoError,
+} from "@/lib/resultado";
+import { esUuid, LARGO_MAXIMO, MENSAJE_OBLIGATORIO, validarTextoOpcional } from "@/lib/validaciones";
+import { programarEnvioEmails } from "@/lib/emails/cola";
 
-function validarEntrevista(fechaEntrevistaISO: string, lugarEntrevista: string): string | null {
-  if (typeof fechaEntrevistaISO !== "string") return "Fecha inválida.";
+// Los campos "fecha" y "lugar" son los del diálogo de entrevista de la empresa.
+function validarEntrevista(fechaEntrevistaISO: string, lugarEntrevista: string): ResultadoError | null {
+  if (typeof fechaEntrevistaISO !== "string") return errCampo("fecha", "Fecha inválida.");
   const fechaDate = new Date(fechaEntrevistaISO);
-  if (isNaN(fechaDate.getTime())) return "Fecha inválida.";
-  if (fechaDate <= new Date()) return "La fecha debe ser posterior al momento actual.";
+  if (isNaN(fechaDate.getTime())) return errCampo("fecha", "Fecha inválida.");
+  if (fechaDate <= new Date()) return errCampo("fecha", "La fecha debe ser posterior al momento actual.");
 
   if (typeof lugarEntrevista !== "string" || !lugarEntrevista.trim())
-    return "El lugar o indicaciones es obligatorio.";
+    return errCampo("lugar", MENSAJE_OBLIGATORIO);
   const errLugar = validarTextoOpcional(lugarEntrevista, LARGO_MAXIMO.lugarEntrevista);
-  if (errLugar) return `Lugar o indicaciones: ${errLugar}`;
+  if (errLugar) return errCampo("lugar", errLugar);
   return null;
 }
 
@@ -38,8 +48,11 @@ export async function coordinarEntrevista(
   if (!esUuid(derivacionId) || !esUuid(ofertaId)) return err("DATOS_INVALIDOS");
 
   const errEntrevista = validarEntrevista(fechaEntrevistaISO, lugarEntrevista);
-  if (errEntrevista) return err("DATOS_INVALIDOS", errEntrevista);
+  if (errEntrevista) return errEntrevista;
 
+  // El trigger derivaciones_empresa_update (028/029) valida la transición; sus
+  // mensajes (P0001) llegan al usuario, por ejemplo si otra pestaña ya cerró
+  // el proceso.
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase
     .from("derivaciones")
@@ -51,10 +64,12 @@ export async function coordinarEntrevista(
     .eq("id", derivacionId);
 
   if (error) {
+    if (error.code === "P0001") return fromSupabaseError(error);
     const ref = logError("coordinarEntrevista", error, { derivacionId });
     return errConRef("ERROR_INTERNO", "No se pudo coordinar la entrevista.", ref);
   }
 
+  programarEnvioEmails();
   revalidarOferta(ofertaId);
   return okMsg("Entrevista coordinada.");
 }
@@ -71,7 +86,7 @@ export async function reprogramarEntrevista(
   if (!esUuid(derivacionId) || !esUuid(ofertaId)) return err("DATOS_INVALIDOS");
 
   const errEntrevista = validarEntrevista(fechaEntrevistaISO, lugarEntrevista);
-  if (errEntrevista) return err("DATOS_INVALIDOS", errEntrevista);
+  if (errEntrevista) return errEntrevista;
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase
@@ -84,10 +99,12 @@ export async function reprogramarEntrevista(
     .eq("id", derivacionId);
 
   if (error) {
+    if (error.code === "P0001") return fromSupabaseError(error);
     const ref = logError("reprogramarEntrevista", error, { derivacionId });
     return errConRef("ERROR_INTERNO", "No se pudo reprogramar la entrevista.", ref);
   }
 
+  programarEnvioEmails();
   revalidarOferta(ofertaId);
   return okMsg("Entrevista reprogramada.");
 }
@@ -108,6 +125,7 @@ export async function seleccionarCandidato(
     .eq("id", derivacionId);
 
   if (error) {
+    if (error.code === "P0001") return fromSupabaseError(error);
     const ref = logError("seleccionarCandidato", error, { derivacionId });
     return errConRef("ERROR_INTERNO", "No se pudo seleccionar al candidato.", ref);
   }
@@ -119,6 +137,7 @@ export async function seleccionarCandidato(
     .eq("id", ofertaId)
     .maybeSingle();
 
+  programarEnvioEmails();
   revalidarOferta(ofertaId);
   return { ok: true, data: { ofertaCerrada: ofertaData?.estado === "cerrada" }, mensaje: "Candidato seleccionado." };
 }
@@ -134,9 +153,9 @@ export async function rechazarCandidato(
   if (!esUuid(derivacionId) || !esUuid(ofertaId)) return err("DATOS_INVALIDOS");
 
   if (typeof motivo !== "string" || !motivo.trim())
-    return err("DATOS_INVALIDOS", "Debés indicar el motivo.");
+    return errCampo("motivo", MENSAJE_OBLIGATORIO);
   const errMotivo = validarTextoOpcional(motivo, LARGO_MAXIMO.motivo);
-  if (errMotivo) return err("DATOS_INVALIDOS", `Motivo: ${errMotivo}`);
+  if (errMotivo) return errCampo("motivo", errMotivo);
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase
@@ -145,10 +164,12 @@ export async function rechazarCandidato(
     .eq("id", derivacionId);
 
   if (error) {
+    if (error.code === "P0001") return fromSupabaseError(error);
     const ref = logError("rechazarCandidato", error, { derivacionId });
     return errConRef("ERROR_INTERNO", "No se pudo registrar la decisión.", ref);
   }
 
+  programarEnvioEmails();
   revalidarOferta(ofertaId);
   return okMsg("Decisión guardada.");
 }

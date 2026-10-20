@@ -19,6 +19,23 @@ import { reenviarSolicitudEmpresa } from "@/app/empresa/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { useAccion } from "@/lib/use-accion";
 import type { Tabla } from "@/types/db";
+import {
+  CLASE_CONTROL_INVALIDO,
+  ErrorCampo,
+  Obligatorio,
+  ariaErrorCampo,
+} from "@/components/ui/obligatorio";
+import { useErroresCampo } from "@/lib/use-errores-campo";
+
+const CAMPOS = [
+  "razonSocial",
+  "cuit",
+  "rubro",
+  "descripcion",
+  "nombre",
+  "apellido",
+  "telefono",
+] as const;
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -33,10 +50,12 @@ function FieldIcon({ icon: Icon }: { icon: React.ElementType }) {
 }
 
 const inputClass =
-  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60";
+  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 " +
+  CLASE_CONTROL_INVALIDO;
 
 const selectClass =
-  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-8 text-sm text-foreground outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 appearance-none cursor-pointer";
+  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-8 text-sm text-foreground outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 appearance-none cursor-pointer " +
+  CLASE_CONTROL_INVALIDO;
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -72,7 +91,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
   const [nombre, setNombre] = useState(datos.nombre);
   const [apellido, setApellido] = useState(datos.apellido);
   const [telefono, setTelefono] = useState(datos.telefono ?? "");
-  const [telefonoError, setTelefonoError] = useState<string | null>(null);
+  const campos = useErroresCampo<(typeof CAMPOS)[number]>();
 
   const [submitError, setSubmitError] = useState<ErrorAccion | null>(null);
   const { pendiente: isPending, ejecutar } = useAccion();
@@ -85,11 +104,15 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
     e.preventDefault();
     setSubmitError(null);
 
-    const errTelefono = telefono.trim()
-      ? validarTelefono(telefono)
-      : "Ingresá un teléfono de contacto.";
-    setTelefonoError(errTelefono);
+    const completos = campos.validar(
+      { razonSocial, cuit, rubro, nombre, apellido, telefono },
+      e.currentTarget
+    );
+    if (!completos) return;
+
+    const errTelefono = validarTelefono(telefono);
     if (errTelefono) {
+      campos.marcar("telefono", errTelefono);
       document.getElementById("sol-telefono")?.focus();
       return;
     }
@@ -106,7 +129,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
       });
 
       if (!result.ok) {
-        setSubmitError(toErrorAccion(result));
+        if (!campos.tomarDelServidor(result, CAMPOS)) setSubmitError(toErrorAccion(result));
       } else {
         router.push("/empresa?aviso=reenviada");
       }
@@ -140,7 +163,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                 htmlFor="sol-razon-social"
                 className="text-sm font-medium text-foreground"
               >
-                Razón social <span className="text-red-500">*</span>
+                Razón social <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Building2} />
@@ -150,12 +173,17 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                   autoComplete="organization"
                   required
                   value={razonSocial}
-                  onChange={(e) => setRazonSocial(e.target.value)}
+                  onChange={(e) => {
+                    setRazonSocial(e.target.value);
+                    campos.limpiar("razonSocial");
+                  }}
                   placeholder="Ej: Construcciones del Sur S.R.L."
                   className={inputClass}
                   disabled={isPending}
+                  {...ariaErrorCampo("sol-razon-social", campos.errores.razonSocial)}
                 />
               </InputWrapper>
+              <ErrorCampo idCampo="sol-razon-social" mensaje={campos.errores.razonSocial} />
             </div>
 
             {/* CUIT */}
@@ -164,7 +192,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                 htmlFor="sol-cuit"
                 className="text-sm font-medium text-foreground"
               >
-                CUIT <span className="text-red-500">*</span>
+                CUIT <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Hash} />
@@ -174,9 +202,10 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                   inputMode="numeric"
                   required
                   value={formatearCUIT(cuit)}
-                  onChange={(e) =>
-                    setCuit(e.target.value.replace(/\D/g, "").slice(0, 11))
-                  }
+                  onChange={(e) => {
+                    setCuit(e.target.value.replace(/\D/g, "").slice(0, 11));
+                    campos.limpiar("cuit");
+                  }}
                   placeholder="30-12345678-9"
                   className={`${inputClass} ${
                     cuitError
@@ -184,8 +213,10 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                       : ""
                   }`}
                   disabled={isPending}
+                  {...ariaErrorCampo("sol-cuit", campos.errores.cuit)}
                 />
               </InputWrapper>
+              <ErrorCampo idCampo="sol-cuit" mensaje={campos.errores.cuit} />
               {cuitError && (
                 <p className="flex items-center gap-1.5 text-xs text-red-500">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
@@ -206,7 +237,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                 htmlFor="sol-rubro"
                 className="text-sm font-medium text-foreground"
               >
-                Rubro <span className="text-red-500">*</span>
+                Rubro <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Briefcase} />
@@ -214,9 +245,13 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                   id="sol-rubro"
                   required
                   value={rubro}
-                  onChange={(e) => setRubro(e.target.value)}
+                  onChange={(e) => {
+                    setRubro(e.target.value);
+                    campos.limpiar("rubro");
+                  }}
                   className={selectClass}
                   disabled={isPending}
+                  {...ariaErrorCampo("sol-rubro", campos.errores.rubro)}
                 >
                   <option value="" disabled>
                     Seleccioná un rubro…
@@ -228,6 +263,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                   ))}
                 </select>
               </InputWrapper>
+              <ErrorCampo idCampo="sol-rubro" mensaje={campos.errores.rubro} />
             </div>
 
             {/* Descripción */}
@@ -245,12 +281,17 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                 id="sol-descripcion"
                 rows={3}
                 value={descripcion}
-                onChange={(e) => setDescripcion(e.target.value)}
+                onChange={(e) => {
+                  setDescripcion(e.target.value);
+                  campos.limpiar("descripcion");
+                }}
                 placeholder="Contanos brevemente a qué se dedica tu empresa…"
                 maxLength={LARGO_MAXIMO.descripcion}
-                className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+                className={`w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:opacity-60 ${CLASE_CONTROL_INVALIDO}`}
                 disabled={isPending}
+                {...ariaErrorCampo("sol-descripcion", campos.errores.descripcion)}
               />
+              <ErrorCampo idCampo="sol-descripcion" mensaje={campos.errores.descripcion} />
               <ContadorCaracteres actual={descripcion.length} maximo={LARGO_MAXIMO.descripcion} />
             </div>
           </div>
@@ -268,7 +309,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                   htmlFor="sol-nombre"
                   className="text-sm font-medium text-foreground"
                 >
-                  Nombre <span className="text-red-500">*</span>
+                  Nombre <Obligatorio />
                 </label>
                 <InputWrapper>
                   <FieldIcon icon={User} />
@@ -278,19 +319,24 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                     autoComplete="given-name"
                     required
                     value={nombre}
-                    onChange={(e) => setNombre(e.target.value)}
+                    onChange={(e) => {
+                      setNombre(e.target.value);
+                      campos.limpiar("nombre");
+                    }}
                     placeholder="Ej: Carlos"
                     className={inputClass}
                     disabled={isPending}
+                    {...ariaErrorCampo("sol-nombre", campos.errores.nombre)}
                   />
                 </InputWrapper>
+                <ErrorCampo idCampo="sol-nombre" mensaje={campos.errores.nombre} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="sol-apellido"
                   className="text-sm font-medium text-foreground"
                 >
-                  Apellido <span className="text-red-500">*</span>
+                  Apellido <Obligatorio />
                 </label>
                 <InputWrapper>
                   <FieldIcon icon={User} />
@@ -300,12 +346,17 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                     autoComplete="family-name"
                     required
                     value={apellido}
-                    onChange={(e) => setApellido(e.target.value)}
+                    onChange={(e) => {
+                      setApellido(e.target.value);
+                      campos.limpiar("apellido");
+                    }}
                     placeholder="Ej: Ramírez"
                     className={inputClass}
                     disabled={isPending}
+                    {...ariaErrorCampo("sol-apellido", campos.errores.apellido)}
                   />
                 </InputWrapper>
+                <ErrorCampo idCampo="sol-apellido" mensaje={campos.errores.apellido} />
               </div>
             </div>
 
@@ -314,7 +365,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                 htmlFor="sol-telefono"
                 className="text-sm font-medium text-foreground"
               >
-                Teléfono / Celular <span className="text-red-500">*</span>
+                Teléfono / Celular <Obligatorio />
               </label>
               <InputWrapper>
                 <FieldIcon icon={Phone} />
@@ -326,28 +377,15 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                   value={telefono}
                   onChange={(e) => {
                     setTelefono(e.target.value);
-                    if (telefonoError) setTelefonoError(null);
+                    campos.limpiar("telefono");
                   }}
                   placeholder="Ej: 341 5678901"
-                  aria-invalid={telefonoError ? true : undefined}
-                  aria-describedby={telefonoError ? "sol-telefono-error" : undefined}
-                  className={`${inputClass} ${
-                    telefonoError
-                      ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
-                      : ""
-                  }`}
+                  {...ariaErrorCampo("sol-telefono", campos.errores.telefono)}
+                  className={inputClass}
                   disabled={isPending}
                 />
               </InputWrapper>
-              {telefonoError && (
-                <p
-                  id="sol-telefono-error"
-                  className="flex items-center gap-1.5 text-xs text-red-500"
-                >
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  {telefonoError}
-                </p>
-              )}
+              <ErrorCampo idCampo="sol-telefono" mensaje={campos.errores.telefono} />
             </div>
           </div>
         </section>

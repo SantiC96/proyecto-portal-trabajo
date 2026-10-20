@@ -1,11 +1,13 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { obtenerUsuarioActual, panelDeRol, type Rol } from "@/lib/auth";
-import {
-  obtenerResumenNotificaciones,
-  type ResumenNotificaciones,
-} from "@/lib/notificaciones";
+import { obtenerEmpresaActual, obtenerUsuarioActual, panelDeRol, type Rol } from "@/lib/auth";
+import { rutaNotificaciones } from "@/lib/notificaciones";
 
 export type SesionData = {
+  /**
+   * Nombre que se muestra de la sesión. En una cuenta de empresa es la razón
+   * social (con el apellido vacío); si la empresa todavía no tiene fila o el
+   * nombre está vacío, queda el de la persona que gestiona la cuenta.
+   */
   nombre: string;
   apellido: string;
   rol: Rol | null;
@@ -14,8 +16,11 @@ export type SesionData = {
   profileHref: string;
   /** Solo postulantes: cursos asignados o en curso (indicador de la navbar). */
   cursosPendientes: number;
-  /** Solo municipalidad: campanita de notificaciones de la navbar. */
-  notificaciones: ResumenNotificaciones | null;
+  /**
+   * Listado de notificaciones del rol (campanita de la navbar). El contador
+   * no se carga acá: lo pide la campanita al navegar.
+   */
+  notificacionesHref: string | null;
 };
 
 function textoDeMetadata(valor: unknown): string {
@@ -36,9 +41,17 @@ export async function obtenerSesionActual(): Promise<SesionData | null> {
     .maybeSingle();
 
   const u = user.perfil;
-  const nombre = u?.nombre ?? textoDeMetadata(user.metadata.nombre);
-  const apellido = u?.apellido ?? textoDeMetadata(user.metadata.apellido);
+  let nombre = u?.nombre ?? textoDeMetadata(user.metadata.nombre);
+  let apellido = u?.apellido ?? textoDeMetadata(user.metadata.apellido);
   const rol = u?.rol ?? null;
+
+  if (rol === "empresa") {
+    const razonSocial = (await obtenerEmpresaActual())?.razon_social.trim();
+    if (razonSocial) {
+      nombre = razonSocial;
+      apellido = "";
+    }
+  }
 
   const profileHref = rol ? panelDeRol(rol) : "/perfil";
 
@@ -50,8 +63,7 @@ export async function obtenerSesionActual(): Promise<SesionData | null> {
     cursosPendientes = count ?? 0;
   }
 
-  const notificaciones =
-    rol === "municipalidad" ? await obtenerResumenNotificaciones(user.id) : null;
+  const notificacionesHref = rol ? rutaNotificaciones(rol) : null;
 
   let avatarUrl: string | null = null;
   if (avatarActivo?.ruta) {
@@ -77,6 +89,6 @@ export async function obtenerSesionActual(): Promise<SesionData | null> {
     ajuste,
     profileHref,
     cursosPendientes,
-    notificaciones,
+    notificacionesHref,
   };
 }

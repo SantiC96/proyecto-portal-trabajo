@@ -3,9 +3,9 @@ import { cn } from "@/lib/utils";
 import { FotoPrivada } from "@/components/ui/foto-privada";
 
 const sizeMap = {
-  sm: { wrapper: "h-8 w-8",   icon: "h-4 w-4",   px: 32 },
-  md: { wrapper: "h-14 w-14", icon: "h-7 w-7",   px: 56 },
-  lg: { wrapper: "h-24 w-24", icon: "h-12 w-12", px: 96 },
+  sm: { wrapper: "h-8 w-8",   icon: "h-4 w-4",   texto: "text-xs",  px: 32 },
+  md: { wrapper: "h-14 w-14", icon: "h-7 w-7",   texto: "text-lg",  px: 56 },
+  lg: { wrapper: "h-24 w-24", icon: "h-12 w-12", texto: "text-3xl", px: 96 },
 };
 
 const DEFAULT_AJUSTE = { x: 50, y: 50, zoom: 1 };
@@ -16,6 +16,8 @@ interface AvatarAjustadoProps {
   ajuste?: { x: number; y: number; zoom: number };
   size?: "sm" | "md" | "lg";
   className?: string;
+  /** Sin foto (o si no carga) se muestran estas iniciales en lugar del ícono. */
+  iniciales?: string;
 }
 
 export function AvatarAjustado({
@@ -24,8 +26,20 @@ export function AvatarAjustado({
   ajuste,
   size = "md",
   className,
+  iniciales,
 }: AvatarAjustadoProps) {
-  const { wrapper, icon, px } = sizeMap[size];
+  const { wrapper, icon, texto, px } = sizeMap[size];
+  const relleno = iniciales ? (
+    <span aria-hidden="true" className={cn("font-semibold leading-none", texto)}>
+      {iniciales}
+    </span>
+  ) : (
+    <UserRound className={icon} />
+  );
+  // alt="" = decorativa (por ejemplo, en el menú, junto al nombre).
+  const etiqueta = alt
+    ? { role: "img" as const, "aria-label": alt }
+    : { "aria-hidden": true as const };
   const { x, y, zoom } = ajuste ?? DEFAULT_AJUSTE;
 
   if (src) {
@@ -48,10 +62,10 @@ export function AvatarAjustado({
           }}
           fallback={
             <div
-              aria-label={alt}
+              {...etiqueta}
               className="flex h-full w-full items-center justify-center bg-primary text-primary-foreground"
             >
-              <UserRound className={icon} />
+              {relleno}
             </div>
           }
         />
@@ -61,14 +75,14 @@ export function AvatarAjustado({
 
   return (
     <div
-      aria-label={alt}
+      {...etiqueta}
       className={cn(
         "flex shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground",
         wrapper,
         className
       )}
     >
-      <UserRound className={icon} />
+      {relleno}
     </div>
   );
 }

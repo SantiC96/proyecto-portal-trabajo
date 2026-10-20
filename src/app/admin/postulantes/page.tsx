@@ -21,11 +21,17 @@ import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
 import {
   VENTANA_RECHAZOS_DIAS,
   aEstadoCursos,
+  textoCursosPendientes,
   textoRechazos,
   type EstadoCursosPostulante,
 } from "@/lib/cursos";
 import type { Tabla } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
+import { formatFechaCorta } from "@/lib/fechas";
+import { BotonVolver } from "@/components/ui/boton-volver";
+import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
+import { estadosDeComprobantes } from "@/lib/comprobantes";
+import { leerNivelPrioridad, nivelDe, type NivelPrioridad } from "@/lib/procedencia";
 
 export const metadata: Metadata = {
   title: "Postulantes | Panel municipal | Portal de Empleo Funes",
@@ -33,20 +39,16 @@ export const metadata: Metadata = {
 
 const RUTA = "/admin/postulantes";
 
-function formatearFecha(iso: string) {
-  return new Date(iso).toLocaleDateString("es-AR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
 type FiltrosListado = {
   q: string;
   rubroIds: string[];
   conCv: boolean;
   esperandoCurso: boolean;
   cursoPendiente: boolean;
+  /** Nivel de prioridad (migration_055); null = todos. */
+  nivel: NivelPrioridad | null;
+  /** Solo con el comprobante de domicilio pendiente de revisión. */
+  comprobantePendiente: boolean;
   pagina: number;
 };
 
@@ -59,6 +61,8 @@ export default async function PostulantesPage({
     con_cv?: string;
     esperando_curso?: string;
     curso_pendiente?: string;
+    nivel?: string;
+    comprobante?: string;
     pagina?: string;
   }>;
 }) {
@@ -76,6 +80,8 @@ export default async function PostulantesPage({
     conCv: sp.con_cv === "1",
     esperandoCurso: sp.esperando_curso === "1",
     cursoPendiente: sp.curso_pendiente === "1",
+    nivel: leerNivelPrioridad(sp.nivel),
+    comprobantePendiente: sp.comprobante === "pendiente",
     pagina: leerPagina(sp.pagina),
   };
 
@@ -96,6 +102,8 @@ export default async function PostulantesPage({
       conCv={filtros.conCv}
       esperandoCurso={filtros.esperandoCurso}
       cursoPendiente={filtros.cursoPendiente}
+      nivel={filtros.nivel}
+      comprobantePendiente={filtros.comprobantePendiente}
     >
       <Suspense
         key={JSON.stringify(filtros)}
@@ -114,9 +122,16 @@ async function ListadoPostulantes({
   filtros: FiltrosListado;
   searchParams: ParamsUrl;
 }) {
-  const { q, rubroIds, conCv, esperandoCurso, cursoPendiente, pagina } = filtros;
+  const { q, rubroIds, conCv, esperandoCurso, cursoPendiente, nivel, comprobantePendiente, pagina } =
+    filtros;
   const hayFiltros =
-    rubroIds.length > 0 || conCv || q.length > 0 || esperandoCurso || cursoPendiente;
+    rubroIds.length > 0 ||
+    conCv ||
+    q.length > 0 ||
+    esperandoCurso ||
+    cursoPendiente ||
+    nivel !== null ||
+    comprobantePendiente;
 
   const supabase = await createSupabaseServerClient();
 
@@ -130,7 +145,13 @@ async function ListadoPostulantes({
   const cursosActivos = cursosRes.data ?? [];
 
   // Pre-filtros paralelos
-  const [rubroPreResult, cvPreResult, esperandoPreResult, pendientePreResult] = await Promise.all([
+  const [
+    rubroPreResult,
+    cvPreResult,
+    esperandoPreResult,
+    pendientePreResult,
+    comprobantePreResult,
+  ] = await Promise.all([
     rubroIds.length > 0
       ? supabase
           .from("postulante_categorias")
@@ -142,7 +163,7 @@ async function ListadoPostulantes({
           .from("archivos_usuario")
           .select("usuario_id")
           .eq("tipo", "cv")
-          .eq("activo", true)
+          .is("eliminado_en", null)
       : Promise.resolve({ data: null }),
     esperandoCurso
       ? supabase.rpc("postulantes_esperando_curso_ids")
@@ -152,6 +173,14 @@ async function ListadoPostulantes({
           .from("asignaciones_curso")
           .select("postulante_id")
           .in("estado", ["asignado", "en_curso"])
+      : Promise.resolve({ data: null }),
+    comprobantePendiente
+      ? supabase
+          .from("archivos_usuario")
+          .select("usuario_id")
+          .eq("tipo", "comprobante_domicilio")
+          .is("eliminado_en", null)
+          .eq("verificacion_estado", "pendiente")
       : Promise.resolve({ data: null }),
   ]);
 
@@ -164,8 +193,9 @@ async function ListadoPostulantes({
         ]
       : undefined;
 
+  // Con CV: al menos un CV disponible (puede tener varios, migration_054).
   const cvUsuarioIds: string[] | undefined = conCv
-    ? (cvPreResult.data ?? []).map((r) => r.usuario_id)
+    ? [...new Set((cvPreResult.data ?? []).map((r) => r.usuario_id))]
     : undefined;
 
   if (esperandoCurso && "error" in esperandoPreResult && esperandoPreResult.error)
@@ -178,6 +208,12 @@ async function ListadoPostulantes({
     logError("postulantes_curso_pendiente", pendientePreResult.error);
   const cursoPendienteFilterIds: string[] | undefined = cursoPendiente
     ? (pendientePreResult.data ?? []).map((r) => r.postulante_id)
+    : undefined;
+
+  if (comprobantePendiente && "error" in comprobantePreResult && comprobantePreResult.error)
+    logError("admin_postulantes_comprobantes_pendientes", comprobantePreResult.error);
+  const comprobanteUsuarioIds: string[] | undefined = comprobantePendiente
+    ? (comprobantePreResult.data ?? []).map((r) => r.usuario_id)
     : undefined;
 
   // Pre-filtro: búsqueda de texto
@@ -236,7 +272,8 @@ async function ListadoPostulantes({
     (esperandoCursoFilterIds !== undefined &&
       esperandoCursoFilterIds.length === 0) ||
     (cursoPendienteFilterIds !== undefined &&
-      cursoPendienteFilterIds.length === 0);
+      cursoPendienteFilterIds.length === 0) ||
+    (comprobanteUsuarioIds !== undefined && comprobanteUsuarioIds.length === 0);
 
   if (emptyFilter) return vacio;
 
@@ -244,7 +281,7 @@ async function ListadoPostulantes({
     let query = supabase
       .from("postulantes")
       .select(
-        "id, usuario_id, dni, created_at, usuarios!usuario_id(nombre, apellido, telefono)",
+        "id, usuario_id, dni, created_at, localidad, nivel_prioridad, usuarios!usuario_id(nombre, apellido, telefono)",
         { count: "exact" }
       );
 
@@ -257,6 +294,9 @@ async function ListadoPostulantes({
       query = query.in("id", esperandoCursoFilterIds);
     if (cursoPendienteFilterIds !== undefined)
       query = query.in("id", cursoPendienteFilterIds);
+    if (comprobanteUsuarioIds !== undefined)
+      query = query.in("usuario_id", comprobanteUsuarioIds);
+    if (nivel !== null) query = query.eq("nivel_prioridad", nivel);
 
     return query
       .order("created_at", { ascending: false })
@@ -284,6 +324,7 @@ async function ListadoPostulantes({
     postulacionesRes,
     estadoCursosRes,
     cursosPendientesRes,
+    comprobantes,
   ] = await Promise.all([
     supabase
       .from("archivos_usuario")
@@ -300,7 +341,7 @@ async function ListadoPostulantes({
       .select("usuario_id")
       .in("usuario_id", usuarioIds)
       .eq("tipo", "cv")
-      .eq("activo", true),
+      .is("eliminado_en", null),
     supabase
       .from("postulaciones")
       .select("postulante_id")
@@ -310,9 +351,10 @@ async function ListadoPostulantes({
     }),
     supabase
       .from("asignaciones_curso")
-      .select("postulante_id")
+      .select("postulante_id, curso_id")
       .in("postulante_id", postulanteIds)
       .in("estado", ["asignado", "en_curso"]),
+    estadosDeComprobantes(supabase, usuarioIds),
   ]);
 
   const avatarRows = avatarRes.data ?? [];
@@ -373,12 +415,13 @@ async function ListadoPostulantes({
 
   if (cursosPendientesRes.error)
     logError("admin_postulantes_cursos_pendientes", cursosPendientesRes.error);
-  const cursosPendientesMap = new Map<string, number>();
+  // Cursos pendientes (asignados o en curso) de cada postulante: la cantidad
+  // para el texto y los ids para no ofrecerlos de nuevo en el diálogo.
+  const cursosPendientesMap = new Map<string, string[]>();
   for (const row of cursosPendientesRes.data ?? []) {
-    cursosPendientesMap.set(
-      row.postulante_id,
-      (cursosPendientesMap.get(row.postulante_id) ?? 0) + 1
-    );
+    const ids = cursosPendientesMap.get(row.postulante_id) ?? [];
+    ids.push(row.curso_id);
+    cursosPendientesMap.set(row.postulante_id, ids);
   }
 
   const volverUrl = hrefConParams(RUTA, searchParams, {
@@ -408,8 +451,9 @@ async function ListadoPostulantes({
           const numPostulaciones = conteosMap.get(p.id) ?? 0;
           const cursos = cursosMap.get(p.id);
           const rechazos = cursos?.rechazos_ventana ?? 0;
-          const necesitaCurso = cursos?.necesita_curso ?? false;
-          const pendientes = cursosPendientesMap.get(p.id) ?? 0;
+          const puedeRecibirCurso = cursos?.puede_recibir_curso ?? false;
+          const cursosPendientesIds = cursosPendientesMap.get(p.id) ?? [];
+          const pendientes = cursosPendientesIds.length;
           const nombreCompleto = usuario
             ? `${usuario.nombre} ${usuario.apellido}`
             : "—";
@@ -452,9 +496,14 @@ async function ListadoPostulantes({
                     </span>
                     <span aria-hidden="true"> · </span>
                     <span className="whitespace-nowrap">
-                      Registrado el {formatearFecha(p.created_at)}
+                      Registrado el {formatFechaCorta(p.created_at)}
                     </span>
                   </p>
+                  <BadgeProcedencia
+                    nivel={nivelDe(p.nivel_prioridad)}
+                    localidad={p.localidad}
+                    comprobante={comprobantes.get(p.usuario_id) ?? null}
+                  />
                   <RubrosPills rubros={rubros} />
                 </div>
               </div>
@@ -491,11 +540,12 @@ async function ListadoPostulantes({
 
               {/* Acciones */}
               <div className="flex flex-wrap gap-2 lg:w-36 lg:flex-none lg:flex-col lg:items-stretch">
-                {necesitaCurso && (
+                {puedeRecibirCurso && (
                   <AsignarCursoDialog
                     postulanteId={p.id}
                     postulanteNombre={nombreCompleto}
                     cursosActivos={cursosActivos}
+                    cursosPendientesIds={cursosPendientesIds}
                     claseBoton="min-h-11 px-4 text-sm lg:min-h-9 lg:px-3"
                   />
                 )}
@@ -519,12 +569,6 @@ async function ListadoPostulantes({
       />
     </>
   );
-}
-
-function textoCursosPendientes(cantidad: number): string {
-  return cantidad === 1
-    ? "1 curso pendiente por terminar"
-    : `${cantidad} cursos pendientes por terminar`;
 }
 
 function EtiquetaCurso({
@@ -592,6 +636,8 @@ function PostulantesShell({
   conCv,
   esperandoCurso,
   cursoPendiente,
+  nivel,
+  comprobantePendiente,
   children,
 }: {
   opciones: Tabla<"categorias">[];
@@ -600,17 +646,13 @@ function PostulantesShell({
   conCv: boolean;
   esperandoCurso: boolean;
   cursoPendiente: boolean;
+  nivel: NivelPrioridad | null;
+  comprobantePendiente: boolean;
   children: React.ReactNode;
 }) {
   return (
     <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/admin" className="hover:text-foreground">
-          Panel
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">Postulantes</span>
-      </div>
+      <BotonVolver href="/admin">Volver al panel</BotonVolver>
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         Postulantes
@@ -627,6 +669,8 @@ function PostulantesShell({
           conCv={conCv}
           esperandoCurso={esperandoCurso}
           cursoPendiente={cursoPendiente}
+          nivel={nivel}
+          comprobantePendiente={comprobantePendiente}
         />
       </div>
 

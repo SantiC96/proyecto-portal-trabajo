@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import Link from "next/link";
 import { Building2 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
@@ -14,12 +13,18 @@ import {
 } from "@/lib/paginacion";
 import { Badge } from "@/components/ui/badge";
 import { Buscador } from "@/components/ui/buscador";
+import { ContadoresEstado, PestanasEstado } from "@/components/ui/pestanas-estado";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { EmpresaAcciones } from "./acciones";
 import type { Tabla } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
+import { idsEmpresasSinConfirmar, listaIn } from "@/lib/admin/empresas-sin-confirmar";
+import { formatFechaCorta } from "@/lib/fechas";
+import { BotonVolver } from "@/components/ui/boton-volver";
+import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
+import { fotosDePerfil } from "@/lib/fotos-perfil";
 
 export const metadata: Metadata = {
   title: "Empresas | Panel municipal | Portal de Empleo Funes",
@@ -52,14 +57,6 @@ const BADGE_VARIANT: Record<EstadoAprobacion, "secondary" | "default" | "destruc
   rechazada: "destructive",
 };
 
-function formatearFecha(iso: string) {
-  return new Date(iso).toLocaleDateString("es-AR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
 const RUTA = "/admin/empresas";
 
 export default async function AdminEmpresasPage({
@@ -73,36 +70,55 @@ export default async function AdminEmpresasPage({
   const q = limpiarBusqueda(sp.q);
   const pagina = leerPagina(sp.pagina);
 
+  const supabase = await createSupabaseServerClient();
+  const contar = (e: EstadoAprobacion) =>
+    supabase
+      .from("empresas")
+      .select("*", { count: "exact", head: true })
+      .eq("estado_aprobacion", e);
+  const [
+    { count: cPendientesTotales },
+    { count: cAprobadas },
+    { count: cRechazadas },
+    sinConfirmar,
+  ] = await Promise.all([
+    contar("pendiente"),
+    contar("aprobada"),
+    contar("rechazada"),
+    idsEmpresasSinConfirmar(supabase),
+  ]);
+
+  // Las empresas que no confirmaron el email no cuentan como pendientes: la
+  // base solo las deja en ese estado (migration_042).
+  if (sinConfirmar.error) logError("admin_empresas_contador_sin_confirmar", sinConfirmar.error);
+  const cPendientes = Math.max(0, (cPendientesTotales ?? 0) - (sinConfirmar.ids?.length ?? 0));
+
   return (
     <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/admin" className="hover:text-foreground">
-          Panel
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">Empresas</span>
-      </div>
+      <BotonVolver href="/admin">Volver al panel</BotonVolver>
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         Empresas
       </h1>
 
-      {/* Barra de pestañas */}
-      <div className="mt-6 flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
-        {ESTADOS.map((tab) => (
-          <Link
-            key={tab}
-            href={hrefConParams(RUTA, {}, { estado: tab, q: sp.q ?? null })}
-            className={
-              tab === estado
-                ? "flex-1 rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
-                : "flex-1 rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
-            }
-          >
-            {LABELS[tab]}
-          </Link>
-        ))}
-      </div>
+      <ContadoresEstado
+        className="mt-6"
+        contadores={[
+          { label: "Pendientes", valor: cPendientes, color: "text-amber-700" },
+          { label: "Aprobadas", valor: cAprobadas ?? 0, color: "text-emerald-700" },
+          { label: "Rechazadas", valor: cRechazadas ?? 0, color: "text-red-600" },
+        ]}
+      />
+
+      <PestanasEstado
+        className="mt-6"
+        etiqueta="Estado de las empresas"
+        pestanas={ESTADOS.map((tab) => ({
+          href: hrefConParams(RUTA, {}, { estado: tab, q: sp.q ?? null }),
+          label: LABELS[tab],
+          activa: tab === estado,
+        }))}
+      />
 
       {/* Búsqueda */}
       <Buscador className="mt-4" placeholder="Buscar por razón social o CUIT…" />
@@ -111,7 +127,13 @@ export default async function AdminEmpresasPage({
         key={JSON.stringify({ estado, q, pagina })}
         fallback={<EsqueletoLista filas={5} className="mt-4" />}
       >
-        <ListadoEmpresas estado={estado} q={q} pagina={pagina} searchParams={sp} />
+        <ListadoEmpresas
+          estado={estado}
+          q={q}
+          pagina={pagina}
+          searchParams={sp}
+          empresasSinConfirmar={sinConfirmar}
+        />
       </Suspense>
     </section>
   );
@@ -122,14 +144,29 @@ async function ListadoEmpresas({
   q,
   pagina,
   searchParams,
+  empresasSinConfirmar,
 }: {
   estado: EstadoAprobacion;
   q: string;
   pagina: number;
   searchParams: ParamsUrl;
+  /** Calculadas en la página, que también las usa para el contador. */
+  empresasSinConfirmar: Awaited<ReturnType<typeof idsEmpresasSinConfirmar>>;
 }) {
   const supabase = await createSupabaseServerClient();
   const ascendente = estado === "pendiente";
+
+  // Para la oficina, una empresa que no confirmó su email todavía no existe.
+  // Solo pueden estar pendientes: la base no deja aprobarlas ni rechazarlas
+  // (migration_042).
+  let sinConfirmar: string[] = [];
+  if (estado === "pendiente") {
+    if (empresasSinConfirmar.error) {
+      const ref = logError("admin_empresas_sin_confirmar", empresasSinConfirmar.error, { estado });
+      return <ErrorListado className="mt-4" refError={ref} />;
+    }
+    sinConfirmar = empresasSinConfirmar.ids;
+  }
 
   const resultado = await consultarPagina(pagina, (desde, hasta) => {
     let query = supabase
@@ -139,6 +176,10 @@ async function ListadoEmpresas({
         { count: "exact" }
       )
       .eq("estado_aprobacion", estado);
+
+    if (sinConfirmar.length > 0) {
+      query = query.not("id", "in", listaIn(sinConfirmar));
+    }
 
     if (q) {
       // El CUIT se guarda como XX-XXXXXXXX-X: además del texto tal cual se
@@ -195,11 +236,12 @@ async function ListadoEmpresas({
   const empresaIds = empresas.map((e) => e.id);
   const usuarioIds = empresas.map((e) => e.usuario_id);
 
-  // Consultas paralelas: emails y historial de las empresas de la página actual.
-  const [{ data: emailRows }, { data: historialRows }] = await Promise.all([
+  // Consultas paralelas: emails, logos e historial de las empresas de la página actual.
+  const [{ data: emailRows }, logos, { data: historialRows }] = await Promise.all([
     usuarioIds.length > 0
       ? supabase.rpc("emails_de_usuarios", { ids: usuarioIds })
       : Promise.resolve({ data: [] }),
+    fotosDePerfil(usuarioIds),
     empresaIds.length > 0
       ? supabase
           .from("historial_aprobacion_empresa")
@@ -277,7 +319,15 @@ async function ListadoEmpresas({
                     className="border-b border-border last:border-0"
                   >
                     <td className="py-4 pr-4 font-medium text-foreground">
-                      {empresa.razon_social}
+                      <div className="flex items-center gap-2.5">
+                        <AvatarAjustado
+                          src={logos.get(empresa.usuario_id)?.url}
+                          ajuste={logos.get(empresa.usuario_id)?.ajuste}
+                          alt={`Logo de ${empresa.razon_social}`}
+                          size="sm"
+                        />
+                        {empresa.razon_social}
+                      </div>
                     </td>
                     <td className="py-4 pr-4 font-mono text-muted-foreground">
                       {formatearCUIT(empresa.cuit)}
@@ -297,7 +347,7 @@ async function ListadoEmpresas({
                       {emailMap.get(empresa.usuario_id) || "—"}
                     </td>
                     <td className="py-4 pr-4 text-muted-foreground">
-                      {formatearFecha(empresa.created_at)}
+                      {formatFechaCorta(empresa.created_at)}
                     </td>
                     <td className="py-4">
                       <EmpresaAcciones
@@ -322,9 +372,17 @@ async function ListadoEmpresas({
                 className="rounded-[var(--radius-lg)] border border-border bg-surface p-4"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold text-foreground">
-                    {empresa.razon_social}
-                  </p>
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <AvatarAjustado
+                      src={logos.get(empresa.usuario_id)?.url}
+                      ajuste={logos.get(empresa.usuario_id)?.ajuste}
+                      alt={`Logo de ${empresa.razon_social}`}
+                      size="sm"
+                    />
+                    <p className="font-semibold text-foreground">
+                      {empresa.razon_social}
+                    </p>
+                  </div>
                   <div className="flex flex-wrap justify-end gap-1">
                     <Badge variant={BADGE_VARIANT[estado]}>{LABELS[estado]}</Badge>
                     {estado === "pendiente" && reenviadas.has(empresa.id) && (
@@ -380,7 +438,7 @@ async function ListadoEmpresas({
                       Registro
                     </dt>
                     <dd className="text-foreground">
-                      {formatearFecha(empresa.created_at)}
+                      {formatFechaCorta(empresa.created_at)}
                     </dd>
                   </div>
                 </dl>

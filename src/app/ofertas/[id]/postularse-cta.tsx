@@ -1,22 +1,32 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { X, Briefcase, CheckCircle, FileText, AlertCircle } from "lucide-react";
-import { useMounted } from "@/lib/use-mounted";
+import { Briefcase, CheckCircle, ExternalLink, FileText } from "lucide-react";
 import { postularme } from "@/app/(dashboard)/postulaciones/actions";
-import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { BotonesDialogo, CLASE_ACCION_DIALOGO } from "@/components/ui/dialogo-confirmacion";
 import type { Enum, Tabla } from "@/types/db";
+import { formatFecha } from "@/lib/fechas";
+import type { CvVista } from "@/lib/cvs";
+import { cn } from "@/lib/utils";
 
 const ESTADO_LABEL: Record<Enum<"estado_postulacion">, string> = {
   recibida: "Recibida",
   en_revision: "En revisión",
   derivada: "Enviada a la empresa",
   rechazada_municipalidad: "No seleccionada",
+  oferta_retirada: "Cerrada",
+  retirada_postulante: "Retirada",
 };
 
 export type Postulacion = Pick<Tabla<"postulaciones">, "id" | "estado" | "created_at">;
@@ -29,7 +39,8 @@ interface Props {
   ofertaTitulo: string;
   ofertaEmpresa: string;
   loginHref: string;
-  cvNombre?: string;
+  /** CVs disponibles, del más nuevo al más viejo (solo para "puede-postularse"). */
+  cvs?: CvVista[];
   postulacion?: Postulacion;
   autoOpen?: boolean;
 }
@@ -40,18 +51,18 @@ export function PostularseCta({
   ofertaTitulo,
   ofertaEmpresa,
   loginHref,
-  cvNombre,
+  cvs = [],
   postulacion,
   autoOpen = false,
 }: Props) {
-  const mounted = useMounted();
   const router = useRouter();
   // Initialize open from autoOpen so the overlay shows immediately on first render
   // without needing a setState call inside an effect
   const [open, setOpen] = useState(autoOpen);
-  const [error, setError] = useState<ErrorAccion | null>(null);
   const { pendiente: isPending, ejecutar } = useAccion();
-  const confirmRef = useRef<HTMLButtonElement>(null);
+  // El más reciente, salvo que el postulante elija otro.
+  const [cvElegidoId, setCvElegidoId] = useState<string | null>(null);
+  const cvElegido = cvs.find((cv) => cv.id === cvElegidoId) ?? cvs[0] ?? null;
 
   // Clean the ?accion=postular param from the URL after the auto-open
   useEffect(() => {
@@ -62,34 +73,18 @@ export function PostularseCta({
     }
   }, [autoOpen, router]);
 
-  // Focus confirm button when overlay opens
-  useEffect(() => {
-    if (open) {
-      setTimeout(() => confirmRef.current?.focus(), 50);
-    }
-  }, [open]);
-
-  // Escape closes overlay
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-        setError(null);
-      }
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [open]);
+  // Mientras se envía la postulación el diálogo no se cierra.
+  function cambiarAbierto(abierto: boolean) {
+    if (!isPending) setOpen(abierto);
+  }
 
   function handleConfirm() {
-    setError(null);
+    if (!cvElegido) return;
+    const cvId = cvElegido.id;
     ejecutar(async () => {
-      const result = await postularme(ofertaId);
+      const result = await postularme(ofertaId, cvId);
       mostrarAviso(result);
-      if (!result.ok) {
-        setError(toErrorAccion(result));
-      } else {
+      if (result.ok) {
         setOpen(false);
         router.refresh();
       }
@@ -120,11 +115,7 @@ export function PostularseCta({
 
   // --- ya postulado ---
   if (variant === "ya-postulado" && postulacion) {
-    const fecha = new Date(postulacion.created_at).toLocaleDateString("es-AR", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+    const fecha = formatFecha(postulacion.created_at);
     return (
       <div className="flex flex-col gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
         <div className="flex items-center gap-2">
@@ -161,60 +152,27 @@ export function PostularseCta({
           Postularme
         </button>
 
-        {mounted &&
-          open &&
-          createPortal(
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="sin-cv-titulo"
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
-              onClick={(e) => {
-                if (e.target === e.currentTarget) setOpen(false);
-              }}
-            >
-              <div className="relative w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-xl">
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  className="absolute top-4 right-4 rounded-full p-1.5 text-muted-foreground transition hover:bg-gray-100 hover:text-foreground"
-                  aria-label="Cerrar ventana"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-
-                <div className="mb-5 text-center">
-                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-600">
-                    <FileText className="h-6 w-6" />
-                  </div>
-                  <h3 id="sin-cv-titulo" className="text-xl font-bold text-foreground">
-                    Necesitás cargar tu CV
-                  </h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Para postularte a <span className="font-medium text-foreground">{ofertaTitulo}</span> necesitás tener tu CV cargado en tu perfil.
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <Link
-                    href="/perfil"
-                    className="flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-white shadow-xs transition hover:bg-primary-hover"
-                    onClick={() => setOpen(false)}
-                  >
-                    Ir a mi perfil
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => setOpen(false)}
-                    className="flex h-11 w-full items-center justify-center rounded-xl border border-border bg-white text-sm font-medium text-foreground transition hover:bg-surface-tinted"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            </div>,
-            document.body,
-          )}
+        <Dialog open={open} onOpenChange={cambiarAbierto}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Necesitás cargar tu CV</DialogTitle>
+              <DialogDescription>
+                Para postularte a{" "}
+                <span className="font-medium text-foreground">{ofertaTitulo}</span> necesitás
+                tener tu CV cargado en tu perfil.
+              </DialogDescription>
+            </DialogHeader>
+            <BotonesDialogo pendiente={false} onCancelar={() => setOpen(false)}>
+              <Link
+                href="/perfil"
+                onClick={() => setOpen(false)}
+                className={CLASE_ACCION_DIALOGO.primario}
+              >
+                Ir a mi perfil
+              </Link>
+            </BotonesDialogo>
+          </DialogContent>
+        </Dialog>
       </>
     );
   }
@@ -224,109 +182,92 @@ export function PostularseCta({
     <>
       <button
         type="button"
-        onClick={() => {
-          setError(null);
-          setOpen(true);
-        }}
+        onClick={() => setOpen(true)}
         className={buttonBase}
       >
         <Briefcase className="h-4 w-4" />
         Postularme
       </button>
 
-      {mounted &&
-        open &&
-        createPortal(
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="postularse-titulo"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
-            onClick={(e) => {
-              if (e.target === e.currentTarget && !isPending) {
-                setOpen(false);
-                setError(null);
-              }
-            }}
-          >
-            <div className="relative w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-xl">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!isPending) {
-                    setOpen(false);
-                    setError(null);
-                  }
-                }}
-                disabled={isPending}
-                className="absolute top-4 right-4 rounded-full p-1.5 text-muted-foreground transition hover:bg-gray-100 hover:text-foreground disabled:opacity-40"
-                aria-label="Cerrar ventana"
-              >
-                <X className="h-5 w-5" />
-              </button>
+      <Dialog open={open} onOpenChange={cambiarAbierto}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Postularte a {ofertaTitulo}</DialogTitle>
+            <DialogDescription>
+              Te postulás en <span className="font-medium text-foreground">{ofertaEmpresa}</span>.
+              {cvs.length > 1
+                ? " La Oficina de Empleo va a revisar tu postulación junto con el CV que elijas."
+                : " La Oficina de Empleo va a revisar tu postulación junto con este CV."}
+            </DialogDescription>
+          </DialogHeader>
 
-              <div className="mb-5 text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Briefcase className="h-6 w-6" />
-                </div>
-                <h3 id="postularse-titulo" className="text-xl font-bold text-foreground">
-                  Postularte a {ofertaTitulo}
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Te postulás en <span className="font-medium text-foreground">{ofertaEmpresa}</span>. La Oficina de Empleo va a revisar tu postulación junto con tu CV:{" "}
-                  <span className="font-medium text-foreground">{cvNombre}</span>.
-                </p>
-              </div>
-
-              {error && (
-                <div className="mb-4 flex flex-col gap-1 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-600">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                    {error.mensaje}
-                  </div>
-                  {error.ref && (
-                    <p className="ml-6 text-xs text-gray-500">
-                      Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <div className="flex flex-col gap-3">
-                <button
-                  ref={confirmRef}
-                  type="button"
-                  onClick={handleConfirm}
-                  disabled={isPending}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-white shadow-xs transition hover:bg-primary-hover disabled:opacity-60"
-                >
-                  {isPending ? (
-                    <>
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                      Enviando…
-                    </>
-                  ) : (
-                    "Confirmar postulación"
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!isPending) {
-                      setOpen(false);
-                      setError(null);
-                    }
-                  }}
-                  disabled={isPending}
-                  className="flex h-11 w-full items-center justify-center rounded-xl border border-border bg-white text-sm font-medium text-foreground transition hover:bg-surface-tinted disabled:opacity-40"
-                >
-                  Cancelar
-                </button>
-              </div>
+          {cvs.length === 1 && cvElegido ? (
+            <div className="flex items-start gap-3 rounded-xl border border-border bg-surface-tinted px-4 py-3">
+              <FileText className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+              <DatosCv cv={cvElegido} />
             </div>
-          </div>,
-          document.body,
-        )}
+          ) : (
+            <fieldset disabled={isPending} className="flex flex-col gap-2">
+              <legend className="mb-2 text-sm font-medium text-foreground">
+                ¿Con qué CV te postulás?
+              </legend>
+              {cvs.map((cv) => {
+                const elegido = cv.id === cvElegido?.id;
+                return (
+                  <label
+                    key={cv.id}
+                    className={cn(
+                      "flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition",
+                      elegido
+                        ? "border-primary bg-surface-tinted"
+                        : "border-border bg-surface hover:bg-surface-tinted",
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="cv-postulacion"
+                      value={cv.id}
+                      checked={elegido}
+                      onChange={() => setCvElegidoId(cv.id)}
+                      className="mt-1 h-4 w-4 shrink-0 accent-primary"
+                    />
+                    <DatosCv cv={cv} />
+                  </label>
+                );
+              })}
+            </fieldset>
+          )}
+
+          <BotonesDialogo
+            pendiente={isPending}
+            onCancelar={() => cambiarAbierto(false)}
+            onConfirmar={handleConfirm}
+            textoConfirmar="Confirmar postulación"
+            textoPendiente="Enviando…"
+            deshabilitado={!cvElegido}
+          />
+        </DialogContent>
+      </Dialog>
     </>
+  );
+}
+
+function DatosCv({ cv }: { cv: CvVista }) {
+  return (
+    <div className="min-w-0 flex-1">
+      <p className="break-all text-sm font-medium text-foreground">{cv.nombreOriginal}</p>
+      <p className="text-xs text-muted-foreground">Subido el {formatFecha(cv.subidoEn)}</p>
+      {cv.url && (
+        <a
+          href={cv.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-1 inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary underline-offset-2 hover:underline sm:min-h-0"
+        >
+          Ver CV
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+        </a>
+      )}
+    </div>
   );
 }

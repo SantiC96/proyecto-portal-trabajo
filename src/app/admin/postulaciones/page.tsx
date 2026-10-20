@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { ClipboardList } from "lucide-react";
+import { CalendarClock, ClipboardList } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
 import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
@@ -12,11 +12,10 @@ import {
   type ParamsUrl,
 } from "@/lib/paginacion";
 import { Buscador } from "@/components/ui/buscador";
-import { BotonFormulario } from "@/components/ui/boton-formulario";
+import { ContadoresEstado, PestanasEstado, type Contador } from "@/components/ui/pestanas-estado";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
-import { abrirFicha } from "./actions";
 import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import {
@@ -24,28 +23,35 @@ import {
   badgePostulacion,
   type BadgePostulacion,
 } from "@/lib/admin/postulacion-estados";
-import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
+import {
+  DERIVACION_ABIERTA,
+  filtrarContratados,
+  filtrarPestanaPostulaciones,
+  ofertasDePestana,
+  type PestanaPostulaciones,
+} from "@/lib/admin/postulaciones-pestanas";
 import type { FilaPostulacionNoSeleccionada, Tabla } from "@/types/db";
-import { formatFechaCorta } from "@/lib/fechas";
+import { formatFechaCorta, formatFechaHoraCorta } from "@/lib/fechas";
 import { requerirRolPagina } from "@/lib/auth";
+import { cn } from "@/lib/utils";
+import { BotonVolver } from "@/components/ui/boton-volver";
+import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
+import { estadosDeComprobantes } from "@/lib/comprobantes";
+import { nivelDe, type EstadoComprobante, type NivelPrioridad } from "@/lib/procedencia";
 
 export const metadata: Metadata = {
   title: "Postulaciones | Panel municipal | Portal de Empleo Funes",
 };
 
-// "derivada" y "contratado" se calculan con el estado de la derivación:
-//   derivada   → la empresa todavía no dio un resultado final (pendiente o
-//                en_proceso).
-//   contratado → la empresa marcó al postulante como contratado.
-// "No seleccionado" junta las que rechazó la oficina y las que rechazó la
-// empresa (RPC postulaciones_no_seleccionadas, migration_038).
-type EstadoFiltro = "pendiente" | "derivada" | "contratado" | "rechazada_municipalidad";
+// Qué entra en cada pestaña: src/lib/admin/postulaciones-pestanas.ts.
+type EstadoFiltro = PestanaPostulaciones;
 
 const ESTADOS_FILTRO: EstadoFiltro[] = [
   "pendiente",
   "derivada",
   "contratado",
   "rechazada_municipalidad",
+  "retirada_postulante",
 ];
 
 const LABEL_FILTRO: Record<EstadoFiltro, string> = {
@@ -53,9 +59,25 @@ const LABEL_FILTRO: Record<EstadoFiltro, string> = {
   derivada: "Derivadas",
   contratado: "Contratado",
   rechazada_municipalidad: "No seleccionado",
+  retirada_postulante: "Retiradas",
 };
 
-const DERIVACION_ABIERTA: EstadoDerivacionEmpresa[] = ["pendiente", "en_proceso"];
+// "Primero verificados de Funes" (migration_055): ordena por
+// postulantes.nivel_prioridad y después por fecha. Solo en las pestañas que
+// se consultan sobre postulaciones: "Contratado" sale de derivaciones y "No
+// seleccionado" de una función, y ahí no se puede ordenar por una columna del
+// postulante sin cambiar esas consultas.
+const ESTADOS_CON_ORDEN_PRIORIDAD: EstadoFiltro[] = [
+  "pendiente",
+  "derivada",
+  "retirada_postulante",
+];
+
+type Procedencia = {
+  nivel: NivelPrioridad;
+  localidad: string | null;
+  comprobante: EstadoComprobante | null;
+};
 
 const ID_INEXISTENTE = "00000000-0000-0000-0000-000000000000";
 
@@ -67,6 +89,8 @@ type PostulanteEmbebido =
 
 type OfertaEmbebida = Pick<Tabla<"ofertas">, "id" | "titulo" | "empresa_nombre"> | null;
 
+type PreEntrevistaEmbebida = Pick<Tabla<"pre_entrevistas">, "estado" | "fecha_hora"> | null;
+
 /** Fila común a las cuatro secciones. */
 type Fila = {
   postulacionId: string;
@@ -74,6 +98,8 @@ type Fila = {
   oferta: OfertaEmbebida;
   fecha: string;
   badge: BadgePostulacion;
+  /** Solo en Pendientes (migration_044). */
+  preEntrevista?: PreEntrevistaEmbebida;
 };
 
 const RUTA = "/admin/postulaciones";
@@ -85,6 +111,7 @@ export default async function PostulacionesPage({
     estado?: string;
     oferta_id?: string;
     q?: string;
+    orden?: string;
     pagina?: string;
   }>;
 }) {
@@ -96,6 +123,8 @@ export default async function PostulacionesPage({
   const ofertaId = (sp.oferta_id ?? "").trim();
   const q = limpiarBusqueda(sp.q);
   const pagina = leerPagina(sp.pagina);
+  const ordenDisponible = ESTADOS_CON_ORDEN_PRIORIDAD.includes(estado);
+  const primeroFunes = ordenDisponible && sp.orden === "prioridad";
 
   const supabase = await createSupabaseServerClient();
 
@@ -106,6 +135,7 @@ export default async function PostulacionesPage({
     { count: cDerivadas },
     { count: cContratados },
     { count: cRechazadas },
+    { count: cRetiradas },
   ] = await Promise.all([
     supabase
       .from("postulaciones")
@@ -128,86 +158,56 @@ export default async function PostulacionesPage({
       count: "exact",
       head: true,
     }),
+    supabase
+      .from("postulaciones")
+      .select("*", { count: "exact", head: true })
+      .eq("estado", "retirada_postulante"),
   ]);
 
-  // Ofertas que tienen al menos una postulación (para el selector de filtro)
-  const { data: ofertaIdsData } = await supabase
-    .from("postulaciones")
-    .select("oferta_id");
-  const ofertaIdsUnicos = [
-    ...new Set((ofertaIdsData ?? []).map((r) => r.oferta_id)),
-  ];
-  const { data: ofertasDisponibles } = ofertaIdsUnicos.length > 0
-    ? await supabase
-        .from("ofertas")
-        .select("id, titulo, empresa_nombre")
-        .in("id", ofertaIdsUnicos)
-        .order("titulo")
-    : { data: [] };
+  const resOfertas = await ofertasDePestana(supabase, estado, ofertaId);
+  if (!resOfertas.ok) logError("admin_postulaciones_ofertas_filtro", resOfertas.error, { estado });
+  const ofertasDisponibles = resOfertas.ok ? resOfertas.valor : [];
+  const ofertaSinPostulaciones =
+    resOfertas.ok &&
+    ofertaId !== "" &&
+    (ofertasDisponibles.find((o) => o.id === ofertaId)?.cantidad ?? 0) === 0;
 
   const pendientesTotal = (cRecibidas ?? 0) + (cRevision ?? 0);
 
-  const contadores: { label: string; valor: number; color: string }[] = [
+  const contadores: Contador[] = [
     { label: "Recibidas", valor: cRecibidas ?? 0, color: "text-foreground" },
     { label: "En revisión", valor: cRevision ?? 0, color: "text-blue-700" },
     { label: "Derivadas", valor: cDerivadas ?? 0, color: "text-primary" },
     { label: "Contratado", valor: cContratados ?? 0, color: "text-emerald-700" },
     { label: "No seleccionado", valor: cRechazadas ?? 0, color: "text-red-600" },
+    { label: "Retiradas", valor: cRetiradas ?? 0, color: "text-muted-foreground" },
   ];
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/admin" className="hover:text-foreground">
-          Panel
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">Postulaciones</span>
-      </div>
+      <BotonVolver href="/admin">Volver al panel</BotonVolver>
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         Postulaciones
       </h1>
 
-      {/* Contadores */}
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {contadores.map((c) => (
-          <div
-            key={c.label}
-            className="rounded-[var(--radius-lg)] border border-border bg-surface p-4"
-          >
-            <p className="text-xs font-medium text-muted-foreground">{c.label}</p>
-            <p className={`mt-1 text-2xl font-bold ${c.color}`}>{c.valor}</p>
-          </div>
-        ))}
-      </div>
+      <ContadoresEstado className="mt-6" contadores={contadores} />
 
-      {/* Barra de pestañas de estado */}
-      <div className="mt-6 flex gap-1 overflow-x-auto rounded-[var(--radius-md)] border border-border bg-surface p-1">
-        {ESTADOS_FILTRO.map((tab) => (
-          <Link
-            key={tab}
-            href={hrefConParams(RUTA, {}, {
-              estado: tab,
-              oferta_id: ofertaId || null,
-              q: sp.q ?? null,
-            })}
-            className={
-              tab === estado
-                ? "flex-1 whitespace-nowrap rounded-[var(--radius-sm)] bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
-                : "flex-1 whitespace-nowrap rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
-            }
-          >
-            {LABEL_FILTRO[tab]}
-            {tab === "pendiente" && pendientesTotal > 0 && (
-              <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/20 px-1 text-xs font-semibold text-primary">
-                {pendientesTotal}
-              </span>
-            )}
-          </Link>
-        ))}
-      </div>
+      <PestanasEstado
+        className="mt-6"
+        etiqueta="Estado de las postulaciones"
+        pestanas={ESTADOS_FILTRO.map((tab) => ({
+          href: hrefConParams(RUTA, {}, {
+            estado: tab,
+            oferta_id: ofertaId || null,
+            q: sp.q ?? null,
+            orden: sp.orden === "prioridad" ? "prioridad" : null,
+          }),
+          label: LABEL_FILTRO[tab],
+          activa: tab === estado,
+          cantidad: tab === "pendiente" ? pendientesTotal : undefined,
+        }))}
+      />
 
       {/* Filtros de búsqueda */}
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
@@ -215,23 +215,35 @@ export default async function PostulacionesPage({
           className="flex-1 sm:min-w-[180px]"
           placeholder="Nombre, apellido o DNI…"
         />
-        <form method="GET" action={RUTA} className="flex gap-3">
+        <form method="GET" action={RUTA} className="flex flex-wrap gap-3">
           <input type="hidden" name="estado" value={estado} />
           {sp.q && <input type="hidden" name="q" value={sp.q} />}
+          {ordenDisponible && (
+            <select
+              name="orden"
+              defaultValue={primeroFunes ? "prioridad" : ""}
+              aria-label="Ordenar postulaciones"
+              className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 sm:max-w-xs"
+            >
+              <option value="">Más recientes primero</option>
+              <option value="prioridad">Primero verificados de Funes</option>
+            </select>
+          )}
+          {/* key: las opciones cambian con la pestaña y defaultValue solo
+              se aplica al montar. */}
           <select
+            key={`${estado}-${ofertaId}`}
             name="oferta_id"
             defaultValue={ofertaId}
             aria-label="Filtrar por oferta"
             className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 sm:max-w-xs"
           >
             <option value="">Todas las ofertas</option>
-            {(ofertasDisponibles ?? []).map(
-              (o: { id: string; titulo: string; empresa_nombre: string }) => (
-                <option key={o.id} value={o.id}>
-                  {o.titulo} — {o.empresa_nombre}
-                </option>
-              )
-            )}
+            {ofertasDisponibles.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.empresaNombre ? `${o.titulo} — ${o.empresaNombre}` : o.titulo} ({o.cantidad})
+              </option>
+            ))}
           </select>
           <button
             type="submit"
@@ -241,7 +253,7 @@ export default async function PostulacionesPage({
           </button>
         </form>
       </div>
-      {(q || ofertaId) && (
+      {(q || ofertaId || primeroFunes) && (
         <Link
           href={hrefConParams(RUTA, {}, { estado })}
           className="mt-2 inline-flex min-h-11 items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -252,14 +264,16 @@ export default async function PostulacionesPage({
 
       {/* Resultados */}
       <Suspense
-        key={JSON.stringify({ estado, ofertaId, q, pagina })}
+        key={JSON.stringify({ estado, ofertaId, q, primeroFunes, pagina })}
         fallback={<EsqueletoLista filas={5} className="mt-4" />}
       >
         <ListadoPostulaciones
           estado={estado}
           ofertaId={ofertaId}
           q={q}
+          primeroFunes={primeroFunes}
           pagina={pagina}
+          ofertaSinPostulaciones={ofertaSinPostulaciones}
           searchParams={sp}
         />
       </Suspense>
@@ -272,21 +286,40 @@ const TEXTO_VACIO: Record<EstadoFiltro, string> = {
   derivada: "No hay postulaciones derivadas esperando el resultado de la empresa.",
   contratado: "Todavía ninguna empresa marcó a un postulante como contratado.",
   rechazada_municipalidad: "No hay postulaciones no seleccionadas en este momento.",
+  retirada_postulante: "Ningún postulante retiró una postulación en revisión o derivada.",
 };
 
 async function ListadoPostulaciones({
   estado,
   ofertaId,
   q,
+  primeroFunes,
   pagina,
+  ofertaSinPostulaciones,
   searchParams,
 }: {
   estado: EstadoFiltro;
   ofertaId: string;
   q: string;
+  primeroFunes: boolean;
   pagina: number;
+  /** La oferta de la URL no tiene postulaciones en esta pestaña. */
+  ofertaSinPostulaciones: boolean;
   searchParams: ParamsUrl;
 }) {
+  if (ofertaSinPostulaciones) {
+    return (
+      <EstadoVacio
+        tipo="sin-resultados"
+        className="mt-4"
+        titulo="No hay postulaciones de esta oferta en esta pestaña."
+        descripcion="Elegí otra pestaña u otra oferta."
+        hrefLimpiar={hrefConParams(RUTA, searchParams, { oferta_id: null, pagina: null })}
+        textoLimpiar="Ver todas las ofertas"
+      />
+    );
+  }
+
   const supabase = await createSupabaseServerClient();
 
   // Pre-filtro por texto: buscar postulante_ids que coincidan
@@ -337,9 +370,8 @@ async function ListadoPostulaciones({
 
   if (estado === "contratado") {
     const resultado = await consultarPagina(pagina, (desde, hasta) => {
-      let query = supabase
-        .from("derivaciones")
-        .select(
+      let query = filtrarContratados(
+        supabase.from("derivaciones").select(
           `
           id,
           fecha_respuesta,
@@ -359,7 +391,7 @@ async function ListadoPostulaciones({
         `,
           { count: "exact" }
         )
-        .eq("estado_empresa", "contratado");
+      );
 
       if (ofertaId) query = query.eq("postulaciones.oferta_id", ofertaId);
       if (idsBusqueda) query = query.in("postulaciones.postulante_id", idsBusqueda);
@@ -446,31 +478,38 @@ async function ListadoPostulaciones({
           id,
           usuario_id,
           dni,
+          nivel_prioridad,
           usuarios!usuario_id(nombre, apellido)
         ),
-        ofertas!oferta_id(id, titulo, empresa_nombre)
+        retirada_en,
+        ofertas!oferta_id(id, titulo, empresa_nombre),
+        pre_entrevistas(estado, fecha_hora)
       `;
 
       // "Derivadas" se filtra por el estado de la derivación (relación 1 a 1).
-      let query = supabase
-        .from("postulaciones")
-        .select(
-          estado === "derivada"
-            ? `${columnas}, derivaciones!inner(estado_empresa)`
-            : `${columnas}, derivaciones(estado_empresa)`,
-          { count: "exact" }
-        );
-
-      if (estado === "pendiente") {
-        query = query.in("estado", ["recibida", "en_revision"]);
-      } else {
-        query = query
-          .eq("estado", "derivada")
-          .in("derivaciones.estado_empresa", DERIVACION_ABIERTA);
-      }
+      let query = filtrarPestanaPostulaciones(
+        supabase
+          .from("postulaciones")
+          .select(
+            estado === "derivada"
+              ? `${columnas}, derivaciones!inner(estado_empresa)`
+              : `${columnas}, derivaciones(estado_empresa)`,
+            { count: "exact" }
+          ),
+        estado
+      );
 
       if (ofertaId) query = query.eq("oferta_id", ofertaId);
       if (idsBusqueda) query = query.in("postulante_id", idsBusqueda);
+
+      // Nivel 1, 2, 3 y dentro de cada nivel el orden de siempre. El id
+      // desempata, así cada página es estable.
+      if (primeroFunes) {
+        query = query.order("postulantes(nivel_prioridad)", { ascending: true });
+      }
+      if (estado === "retirada_postulante") {
+        query = query.order("retirada_en", { ascending: false, nullsFirst: false });
+      }
 
       return query
         .order("created_at", { ascending: false })
@@ -487,8 +526,9 @@ async function ListadoPostulaciones({
       postulacionId: r.id,
       postulante: r.postulantes,
       oferta: r.ofertas,
-      fecha: r.created_at,
+      fecha: estado === "retirada_postulante" ? (r.retirada_en ?? r.created_at) : r.created_at,
       badge: badgePostulacion(r.estado, r.derivaciones?.estado_empresa),
+      preEntrevista: estado === "pendiente" ? r.pre_entrevistas : undefined,
     }));
     paginaActual = resultado.pagina;
     total = resultado.total;
@@ -517,12 +557,39 @@ async function ListadoPostulaciones({
       ? "Contratado el"
       : estado === "rechazada_municipalidad"
         ? "Rechazado el"
-        : "Fecha";
+        : estado === "retirada_postulante"
+          ? "Retirada el"
+          : "Fecha";
 
   // Avatares en batch
   const usuarioIds = filas
     .map((f) => f.postulante?.usuario_id)
     .filter((id): id is string => Boolean(id));
+
+  // Procedencia de cada candidato (badge; solo la oficina la ve)
+  const postulanteIds = filas
+    .map((f) => f.postulante?.id)
+    .filter((id): id is string => Boolean(id));
+  const [procedenciaRes, comprobantes] = await Promise.all([
+    postulanteIds.length > 0
+      ? supabase
+          .from("postulantes")
+          .select("id, localidad, nivel_prioridad")
+          .in("id", postulanteIds)
+      : Promise.resolve({ data: [], error: null }),
+    estadosDeComprobantes(supabase, usuarioIds),
+  ]);
+  if (procedenciaRes.error) logError("admin_postulaciones_procedencia", procedenciaRes.error);
+  const procedenciaMap = new Map<string, Procedencia>();
+  for (const fila of filas) {
+    const p = (procedenciaRes.data ?? []).find((r) => r.id === fila.postulante?.id);
+    if (!p || !fila.postulante) continue;
+    procedenciaMap.set(fila.postulacionId, {
+      nivel: nivelDe(p.nivel_prioridad),
+      localidad: p.localidad,
+      comprobante: comprobantes.get(fila.postulante.usuario_id) ?? null,
+    });
+  }
 
   const avatarMap = new Map<
     string,
@@ -587,7 +654,9 @@ async function ListadoPostulaciones({
                       ? "Fecha de contratación"
                       : estado === "rechazada_municipalidad"
                         ? "Fecha de rechazo"
-                        : "Fecha"}
+                        : estado === "retirada_postulante"
+                          ? "Fecha de retiro"
+                          : "Fecha"}
                   </th>
                   <th className="py-3 pr-4 font-medium text-muted-foreground">
                     Estado
@@ -617,11 +686,14 @@ async function ListadoPostulaciones({
                             ajuste={avatar?.ajuste}
                             size="sm"
                           />
-                          <span className="font-medium text-foreground">
-                            {usuario
-                              ? `${usuario.nombre} ${usuario.apellido}`
-                              : "—"}
-                          </span>
+                          <div className="min-w-0 space-y-1">
+                            <span className="block font-medium text-foreground">
+                              {usuario
+                                ? `${usuario.nombre} ${usuario.apellido}`
+                                : "—"}
+                            </span>
+                            <ProcedenciaFila procedencia={procedenciaMap.get(fila.postulacionId)} />
+                          </div>
                         </div>
                       </td>
                       <td className="py-4 pr-4 font-mono text-muted-foreground">
@@ -643,16 +715,15 @@ async function ListadoPostulaciones({
                         >
                           {fila.badge.label}
                         </Badge>
+                        <PreEntrevistaCoordinada pre={fila.preEntrevista} className="mt-1.5" />
                       </td>
                       <td className="py-4">
-                        <form action={abrirFicha.bind(null, fila.postulacionId)}>
-                          <BotonFormulario
-                            textoPendiente="Abriendo…"
-                            className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface-tinted disabled:opacity-60"
-                          >
-                            Ver ficha
-                          </BotonFormulario>
-                        </form>
+                        <Link
+                          href={`/admin/postulaciones/${fila.postulacionId}`}
+                          className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface-tinted"
+                        >
+                          Ver ficha
+                        </Link>
                       </td>
                     </tr>
                   );
@@ -694,6 +765,10 @@ async function ListadoPostulaciones({
                       {fila.badge.label}
                     </Badge>
                   </div>
+                  <ProcedenciaFila
+                    procedencia={procedenciaMap.get(fila.postulacionId)}
+                    className="mt-2"
+                  />
                   <dl className="mt-3 space-y-1.5 text-sm">
                     <div className="flex gap-2">
                       <dt className="w-24 flex-shrink-0 text-muted-foreground">
@@ -728,15 +803,14 @@ async function ListadoPostulaciones({
                       </dd>
                     </div>
                   </dl>
+                  <PreEntrevistaCoordinada pre={fila.preEntrevista} className="mt-3" />
                   <div className="mt-4">
-                    <form action={abrirFicha.bind(null, fila.postulacionId)}>
-                      <BotonFormulario
-                        textoPendiente="Abriendo…"
-                        className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-tinted disabled:opacity-60"
-                      >
-                        Ver ficha
-                      </BotonFormulario>
-                    </form>
+                    <Link
+                      href={`/admin/postulaciones/${fila.postulacionId}`}
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-tinted"
+                    >
+                      Ver ficha
+                    </Link>
                   </div>
                 </div>
               );
@@ -751,5 +825,42 @@ async function ListadoPostulaciones({
             total={total}
           />
     </>
+  );
+}
+
+function ProcedenciaFila({
+  procedencia,
+  className,
+}: {
+  procedencia: Procedencia | undefined;
+  className?: string;
+}) {
+  if (!procedencia) return null;
+  return (
+    <BadgeProcedencia
+      nivel={procedencia.nivel}
+      localidad={procedencia.localidad}
+      comprobante={procedencia.comprobante}
+      className={className}
+    />
+  );
+}
+
+/** Solo la pre-entrevista coordinada; el resto del detalle está en la ficha. */
+function PreEntrevistaCoordinada({
+  pre,
+  className,
+}: {
+  pre: PreEntrevistaEmbebida | undefined;
+  className?: string;
+}) {
+  if (pre?.estado !== "coordinada") return null;
+  return (
+    <p
+      className={cn("flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground", className)}
+    >
+      <CalendarClock className="h-3.5 w-3.5 flex-shrink-0 text-primary" aria-hidden="true" />
+      Pre-entrevista: {formatFechaHoraCorta(pre.fecha_hora)}
+    </p>
   );
 }

@@ -1,16 +1,14 @@
 import Link from "next/link";
 import { OfertaLaboral } from "@/types/oferta";
 import { MapPin, Building, Clock, Briefcase, ArrowRight } from "lucide-react";
+import { formatFechaDiaMes } from "@/lib/fechas";
 
 interface JobCardProps {
   oferta: OfertaLaboral;
 }
 
 export function JobCard({ oferta }: JobCardProps) {
-  const formattedDate = new Date(oferta.fechaPublicacion).toLocaleDateString("es-AR", {
-    day: "numeric",
-    month: "short",
-  });
+  const formattedDate = formatFechaDiaMes(oferta.fechaPublicacion);
 
   return (
     <Link

@@ -4,10 +4,16 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   INACTIVITY_TIMEOUT_MS,
   LAST_ACTIVITY_COOKIE,
+  lastActivityCookieOptions,
   sessionCookieOptions,
 } from "@/lib/session-config";
+import { HEADER_RUTA_ACTUAL, urlLogin } from "@/lib/redirect";
 
 export async function proxy(request: NextRequest) {
+  // Siempre se pisa: el valor que mande el cliente no se usa.
+  const rutaActual = request.nextUrl.pathname + request.nextUrl.search;
+  request.headers.set(HEADER_RUTA_ACTUAL, rutaActual);
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient<Database>(
@@ -34,14 +40,19 @@ export async function proxy(request: NextRequest) {
 
   // Refreshes the session and validates the token server-side
   const {
-    data: { user },
+    data: { user: usuarioDeCookies },
   } = await supabase.auth.getUser();
+  let user = usuarioDeCookies;
 
   const { pathname } = request.nextUrl;
   const isPublic =
     pathname === "/" ||
     pathname.startsWith("/ofertas") ||
-    pathname.startsWith("/auth");
+    pathname.startsWith("/auth") ||
+    // Crons (emails y mantenimiento): sin sesión, los protege CRON_SECRET en
+    // la ruta (src/lib/cron.ts).
+    pathname === "/api/emails/procesar" ||
+    pathname === "/api/mantenimiento/purgar";
 
   // Routes only accessible to guests — logged-in users are bounced to home
   const AUTH_GUEST_ONLY = [
@@ -54,71 +65,82 @@ export async function proxy(request: NextRequest) {
   // Don't redirect Server Action POSTs — a redirect there breaks the action
   const isServerAction = request.headers.get("next-action") !== null;
 
+  // Ruta a la que se vuelve después del login. Las APIs no son una página a
+  // la que volver.
+  const rutaDeVuelta =
+    pathname.startsWith("/api/") || isServerAction ? null : rutaActual;
+
   // Auth exchange routes must not trigger the inactivity check mid-flow
-  const INACTIVITY_EXEMPT_PATHS = ["/auth/callback", "/auth/nueva-contrasena"];
+  const INACTIVITY_EXEMPT_PATHS = [
+    "/auth/callback",
+    "/auth/nueva-contrasena",
+    "/auth/aceptar-invitacion",
+  ];
   const isInactivityExempt =
     isServerAction ||
     INACTIVITY_EXEMPT_PATHS.some(
       (p) => pathname === p || pathname.startsWith(p + "/")
     );
 
-  // ── Inactivity timeout ────────────────────────────────────────────────────
+  // ── Inactivity timeout / sesión de un navegador anterior ──────────────────
   if (user && !isInactivityExempt) {
     const lastActivityRaw = request.cookies.get(LAST_ACTIVITY_COOKIE)?.value;
     const now = Date.now();
+    const lastActivity = lastActivityRaw ? parseInt(lastActivityRaw, 10) : NaN;
 
-    if (lastActivityRaw) {
-      const lastActivity = parseInt(lastActivityRaw, 10);
-      // isNaN guard: corrupted cookie value → reset instead of forcing logout
-      const isExpired =
-        !isNaN(lastActivity) && now - lastActivity > INACTIVITY_TIMEOUT_MS;
+    // Sin cookie de actividad (es de sesión) la sesión viene de un navegador que
+    // se cerró: los flujos que inician sesión la crean antes del primer request.
+    const sesionAnterior = !lastActivityRaw;
+    // isNaN guard: corrupted cookie value → reset instead of forcing logout
+    const isExpired =
+      !sesionAnterior &&
+      !isNaN(lastActivity) &&
+      now - lastActivity > INACTIVITY_TIMEOUT_MS;
 
-      if (isExpired) {
-        // signOut updates supabaseResponse with auth cookie deletions (maxAge: 0)
-        await supabase.auth.signOut();
+    if (sesionAnterior || isExpired) {
+      // signOut updates supabaseResponse with auth cookie deletions (maxAge: 0).
+      // Por sesión anterior se cierra solo este navegador: los otros
+      // dispositivos del usuario pueden tener una sesión válida.
+      await supabase.auth.signOut(sesionAnterior ? { scope: "local" } : undefined);
 
-        // For the session-check API, return JSON instead of redirecting so the
-        // client can handle the expired state without a full page navigation.
-        if (pathname === "/api/sesion") {
-          const jsonResponse = NextResponse.json({ activa: false });
-          supabaseResponse.cookies.getAll().forEach(({ name, value, ...opts }) => {
-            jsonResponse.cookies.set(name, value, opts);
-          });
-          jsonResponse.cookies.set(LAST_ACTIVITY_COOKIE, "", {
-            maxAge: 0,
-            path: "/",
-            httpOnly: true,
-          });
-          return jsonResponse;
-        }
-
-        const timeoutUrl = request.nextUrl.clone();
-        timeoutUrl.pathname = "/auth/login";
-        timeoutUrl.searchParams.set("motivo", "inactividad");
-        const timeoutResponse = NextResponse.redirect(timeoutUrl);
-
-        // Transfer auth cookie deletions to the redirect response.
-        // Destructure name/value to avoid passing 'name' inside the options object.
+      // Transfer auth cookie deletions to the response.
+      // Destructure name/value to avoid passing 'name' inside the options object.
+      const conCookiesDeCierre = (response: NextResponse) => {
         supabaseResponse.cookies.getAll().forEach(({ name, value, ...opts }) => {
-          timeoutResponse.cookies.set(name, value, opts);
+          response.cookies.set(name, value, opts);
         });
-
-        timeoutResponse.cookies.set(LAST_ACTIVITY_COOKIE, "", {
+        response.cookies.set(LAST_ACTIVITY_COOKIE, "", {
           maxAge: 0,
           path: "/",
           httpOnly: true,
         });
+        return response;
+      };
 
-        return timeoutResponse;
+      // For the session-check API, return JSON instead of redirecting so the
+      // client can handle the expired state without a full page navigation.
+      if (pathname === "/api/sesion") {
+        return conCookiesDeCierre(NextResponse.json({ activa: false }));
       }
-    }
 
-    // Active session: stamp current time (session cookie — no maxAge/expires)
-    supabaseResponse.cookies.set(LAST_ACTIVITY_COOKIE, String(now), {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-    });
+      if (sesionAnterior && isPublic) {
+        // Las rutas públicas se siguen mostrando, ahora como visitante. Los
+        // borrados de signOut ya están en la request y en supabaseResponse.
+        user = null;
+      } else {
+        const motivo = isExpired ? "inactividad" : "sesion-anterior";
+        return conCookiesDeCierre(
+          NextResponse.redirect(new URL(urlLogin(rutaDeVuelta, { motivo }), request.url))
+        );
+      }
+    } else {
+      // Active session: stamp current time (session cookie — no maxAge/expires)
+      supabaseResponse.cookies.set(
+        LAST_ACTIVITY_COOKIE,
+        String(now),
+        lastActivityCookieOptions()
+      );
+    }
   }
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -147,9 +169,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!user && !isPublic) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/auth/login";
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(new URL(urlLogin(rutaDeVuelta), request.url));
   }
 
   return supabaseResponse;

@@ -2,24 +2,27 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { aprobarOferta, rechazarOferta } from "../actions";
-import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
+import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
-import { Spinner } from "@/components/ui/spinner";
 import type { Enum } from "@/types/db";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
+import {
+  ErrorCampo,
+  Obligatorio,
+  ariaErrorCampo,
+} from "@/components/ui/obligatorio";
+import { useErroresCampo } from "@/lib/use-errores-campo";
 
 type Props = {
   ofertaId: string;
@@ -31,24 +34,21 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
   const [abrirAprobar, setAbrirAprobar] = useState(false);
   const [abrirRechazar, setAbrirRechazar] = useState(false);
   const [motivo, setMotivo] = useState("");
-  const [error, setError] = useState<ErrorAccion | null>(null);
+  const campos = useErroresCampo<"motivo">();
   const { pendiente: isPending, ejecutar } = useAccion();
 
   function cerrarTodo() {
     setAbrirAprobar(false);
     setAbrirRechazar(false);
-    setError(null);
     setMotivo("");
+    campos.limpiarTodos();
   }
 
   function handleAprobar() {
-    setError(null);
     ejecutar(async () => {
       const res = await aprobarOferta(ofertaId);
       mostrarAviso(res);
-      if (!res.ok) {
-        setError(toErrorAccion(res));
-      } else {
+      if (res.ok) {
         cerrarTodo();
         router.push("/admin/ofertas");
       }
@@ -56,17 +56,11 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
   }
 
   function handleRechazar() {
-    if (!motivo.trim()) {
-      setError({ mensaje: "El motivo del rechazo es obligatorio." });
-      return;
-    }
-    setError(null);
+    if (!campos.validar({ motivo })) return;
     ejecutar(async () => {
       const res = await rechazarOferta(ofertaId, motivo);
-      mostrarAviso(res);
-      if (!res.ok) {
-        setError(toErrorAccion(res));
-      } else {
+      if (!campos.tomarDelServidor(res, ["motivo"])) mostrarAviso(res);
+      if (res.ok) {
         cerrarTodo();
         router.push("/admin/ofertas");
       }
@@ -87,36 +81,20 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
 
   return (
     <div className="space-y-3">
-      {error && (
-        <div>
-          <p className="text-sm text-red-600">{error.mensaje}</p>
-          {error.ref && (
-            <p className="mt-0.5 text-xs text-gray-500">
-              Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-            </p>
-          )}
-        </div>
-      )}
-
       <div className="flex flex-col gap-2">
-        <Button
-          onClick={() => {
-            setError(null);
-            setAbrirAprobar(true);
-          }}
-          disabled={isPending}
-          className="min-h-11"
-        >
-          Aprobar
-        </Button>
         <button
           type="button"
-          onClick={() => {
-            setError(null);
-            setAbrirRechazar(true);
-          }}
+          onClick={() => setAbrirAprobar(true)}
           disabled={isPending}
-          className="btn-secundario inline-flex items-center justify-center whitespace-nowrap min-h-11 px-4 text-sm font-medium disabled:opacity-60"
+          className="btn-primario min-h-11 justify-center"
+        >
+          Aprobar
+        </button>
+        <button
+          type="button"
+          onClick={() => setAbrirRechazar(true)}
+          disabled={isPending}
+          className="btn-peligro inline-flex min-h-11 items-center justify-center whitespace-nowrap px-4 text-sm font-medium"
         >
           Rechazar
         </button>
@@ -126,8 +104,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
       <Dialog
         open={abrirAprobar}
         onOpenChange={(open) => {
-          setAbrirAprobar(open);
-          if (!open) setError(null);
+          if (!isPending) setAbrirAprobar(open);
         }}
       >
         <DialogContent>
@@ -139,33 +116,13 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
               será visible para los postulantes.
             </DialogDescription>
           </DialogHeader>
-          {error && (
-            <div>
-              <p className="text-sm text-red-600">{error.mensaje}</p>
-              {error.ref && (
-                <p className="mt-0.5 text-xs text-gray-500">
-                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-                </p>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => {
-                setAbrirAprobar(false);
-                setError(null);
-              }}
-              disabled={isPending}
-              className="btn-secundario inline-flex items-center justify-center whitespace-nowrap h-9 px-4 text-sm font-medium"
-            >
-              Cancelar
-            </button>
-            <Button onClick={handleAprobar} disabled={isPending}>
-              {isPending && <Spinner className="mr-1" />}
-              {isPending ? "Aprobando..." : "Confirmar aprobación"}
-            </Button>
-          </DialogFooter>
+          <BotonesDialogo
+            pendiente={isPending}
+            onCancelar={() => setAbrirAprobar(false)}
+            onConfirmar={handleAprobar}
+            textoConfirmar="Aprobar oferta"
+            textoPendiente="Aprobando…"
+          />
         </DialogContent>
       </Dialog>
 
@@ -173,10 +130,11 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
       <Dialog
         open={abrirRechazar}
         onOpenChange={(open) => {
+          if (isPending) return;
           setAbrirRechazar(open);
           if (!open) {
             setMotivo("");
-            setError(null);
+            campos.limpiarTodos();
           }
         }}
       >
@@ -194,52 +152,36 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
               className="text-sm font-medium text-foreground"
             >
               Motivo del rechazo{" "}
-              <span className="font-normal text-red-600">(obligatorio)</span>
+              <Obligatorio />
             </label>
             <Textarea
               id="motivo-rechazo"
               value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
+              onChange={(e) => {
+                setMotivo(e.target.value);
+                campos.limpiar("motivo");
+              }}
               placeholder="Explicá brevemente por qué no se aprueba la oferta…"
               maxLength={LARGO_MAXIMO.motivo}
               className="min-h-24"
               disabled={isPending}
+              {...ariaErrorCampo("motivo-rechazo", campos.errores.motivo)}
             />
+            <ErrorCampo idCampo="motivo-rechazo" mensaje={campos.errores.motivo} />
             <ContadorCaracteres actual={motivo.length} maximo={LARGO_MAXIMO.motivo} />
           </div>
-          {error && (
-            <div>
-              <p className="text-sm text-red-600">{error.mensaje}</p>
-              {error.ref && (
-                <p className="mt-0.5 text-xs text-gray-500">
-                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-                </p>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => {
-                setAbrirRechazar(false);
-                setMotivo("");
-                setError(null);
-              }}
-              disabled={isPending}
-              className="btn-secundario inline-flex items-center justify-center whitespace-nowrap h-9 px-4 text-sm font-medium"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={handleRechazar}
-              disabled={isPending || !motivo.trim()}
-              className="inline-flex items-center justify-center whitespace-nowrap h-9 rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-60"
-            >
-              {isPending && <Spinner className="mr-1" />}
-              {isPending ? "Rechazando..." : "Rechazar oferta"}
-            </button>
-          </DialogFooter>
+          <BotonesDialogo
+            pendiente={isPending}
+            onCancelar={() => {
+              setAbrirRechazar(false);
+              setMotivo("");
+              campos.limpiarTodos();
+            }}
+            onConfirmar={handleRechazar}
+            textoConfirmar="Rechazar oferta"
+            textoPendiente="Rechazando…"
+            destructivo
+          />
         </DialogContent>
       </Dialog>
     </div>

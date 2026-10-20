@@ -9,11 +9,19 @@ interface Props {
   nombre: string;
   rol: Rol | null;
   redirectTo: string;
-  accion?: "registro" | "login";
+  accion?: "registro" | "login" | "otro-rol";
+  rolesDestino?: Rol[];
   profileHref?: string;
 }
 
-export function SesionActivaLanding({ nombre, rol, redirectTo, accion = "registro", profileHref }: Props) {
+export function SesionActivaLanding({
+  nombre,
+  rol,
+  redirectTo,
+  accion = "registro",
+  rolesDestino,
+  profileHref,
+}: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(true);
 
@@ -25,6 +33,7 @@ export function SesionActivaLanding({ nombre, rol, redirectTo, accion = "registr
       rol={rol}
       redirectTo={redirectTo}
       accion={accion}
+      rolesDestino={rolesDestino}
       profileHref={profileHref}
       onClose={() => {
         setOpen(false);

@@ -4,15 +4,17 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { obtenerEmpresaActual, requerirRol } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errConRef, okMsg, type Resultado } from "@/lib/resultado";
+import { err, errCampo, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
 import { formatearCUIT } from "@/lib/cuit";
 import {
   LARGO_MAXIMO,
+  MENSAJE_OBLIGATORIO,
   validarCuitConMensaje,
   validarNombre,
   validarTelefono,
   validarTextoOpcional,
 } from "@/lib/validaciones";
+import { programarEnvioEmails } from "@/lib/emails/cola";
 
 export async function reenviarSolicitudEmpresa(data: {
   razonSocial: string;
@@ -25,7 +27,6 @@ export async function reenviarSolicitudEmpresa(data: {
 }): Promise<Resultado<void>> {
   const auth = await requerirRol("empresa");
   if (!auth.ok) return auth;
-  const user = auth.usuario;
 
   const empresa = await obtenerEmpresaActual();
   if (!empresa) return err("NO_ENCONTRADO", "Empresa no encontrada.");
@@ -52,96 +53,56 @@ export async function reenviarSolicitudEmpresa(data: {
   }
 
   const errRazon = validarNombre(data.razonSocial);
-  if (errRazon) return err("DATOS_INVALIDOS", `Razón social: ${errRazon}`);
+  if (errRazon) return errCampo("razonSocial", errRazon);
 
   const errCuit = validarCuitConMensaje(data.cuit);
-  if (errCuit) return err("DATOS_INVALIDOS", errCuit);
+  if (errCuit) return errCampo("cuit", errCuit);
 
-  if (!data.rubro.trim()) return err("DATOS_INVALIDOS", "El rubro es obligatorio.");
+  if (!data.rubro.trim()) return errCampo("rubro", MENSAJE_OBLIGATORIO);
   const errRubro = validarTextoOpcional(data.rubro, LARGO_MAXIMO.rubro);
-  if (errRubro) return err("DATOS_INVALIDOS", `Rubro: ${errRubro}`);
+  if (errRubro) return errCampo("rubro", errRubro);
   const errDescripcion = validarTextoOpcional(data.descripcion, LARGO_MAXIMO.descripcion);
-  if (errDescripcion) return err("DATOS_INVALIDOS", `Descripción: ${errDescripcion}`);
+  if (errDescripcion) return errCampo("descripcion", errDescripcion);
 
   const errNombre = validarNombre(data.nombre);
-  if (errNombre) return err("DATOS_INVALIDOS", `Nombre: ${errNombre}`);
+  if (errNombre) return errCampo("nombre", errNombre);
 
   const errApellido = validarNombre(data.apellido);
-  if (errApellido) return err("DATOS_INVALIDOS", `Apellido: ${errApellido}`);
+  if (errApellido) return errCampo("apellido", errApellido);
 
   // Mismo criterio que el formulario de registro de empresa, que lo pide como obligatorio.
-  if (!data.telefono.trim()) return err("DATOS_INVALIDOS", "El teléfono es obligatorio.");
+  if (!data.telefono.trim()) return errCampo("telefono", MENSAJE_OBLIGATORIO);
   const errTelefono = validarTelefono(data.telefono);
-  if (errTelefono) return err("DATOS_INVALIDOS", errTelefono);
+  if (errTelefono) return errCampo("telefono", errTelefono);
 
-  // ── Verificar que al menos un dato de empresa cambió ────────────────────
-  // Solo los cambios en razon_social / cuit / rubro / descripcion disparan
-  // el reset de estado en el trigger (mismo comportamiento que la 027 para
-  // ofertas). Si solo cambiaron datos de contacto, actualizamos usuarios
-  // pero no hay reenvío de solicitud.
-  const cuitNormalizado = formatearCUIT(data.cuit);
-  const empresaDataCambio =
-    data.razonSocial.trim() !== empresa.razon_social ||
-    cuitNormalizado !== empresa.cuit ||
-    data.rubro !== empresa.rubro ||
-    (data.descripcion.trim() || null) !== (empresa.descripcion ?? null);
-
-  if (!empresaDataCambio) {
-    return err("DATOS_INVALIDOS", "Modificá los datos que te indicaron antes de reenviar.");
-  }
-
-  // ── Verificar unicidad del CUIT si cambió ────────────────────────────────
+  // ── Reenviar ─────────────────────────────────────────────────────────────
+  // usuarios y empresas se actualizan en una transacción (migration_040). La
+  // función bloquea la empresa y vuelve a controlar el estado: un segundo
+  // envío ve la solicitud ya pendiente. El reset a 'pendiente' y el historial
+  // los hace el trigger de la 031, que solo resetea si cambió algún dato de
+  // la empresa; si no cambió, la función lo rechaza.
   const supabase = await createSupabaseServerClient();
-  if (cuitNormalizado !== empresa.cuit) {
-    const { data: otra } = await supabase
-      .from("empresas")
-      .select("id")
-      .eq("cuit", cuitNormalizado)
-      .neq("id", empresa.id)
-      .maybeSingle();
+  const { error } = await supabase.rpc("reenviar_solicitud_empresa", {
+    p_razon_social: data.razonSocial.trim(),
+    p_cuit: formatearCUIT(data.cuit),
+    p_rubro: data.rubro,
+    p_descripcion: data.descripcion.trim(),
+    p_nombre: data.nombre.trim(),
+    p_apellido: data.apellido.trim(),
+    p_telefono: data.telefono.trim(),
+  });
 
-    if (otra) {
+  if (error) {
+    if (error.code === "23505") {
       return err("CONFLICTO", "Ya hay una empresa registrada con ese CUIT.");
     }
-  }
-
-  // ── Actualizar datos de contacto en usuarios ─────────────────────────────
-  // Va antes que empresas: el update de empresas dispara el reenvío, así que
-  // si el contacto falla la solicitud no queda reenviada a medias.
-  const { error: errUsuario } = await supabase
-    .from("usuarios")
-    .update({
-      nombre: data.nombre.trim(),
-      apellido: data.apellido.trim(),
-      telefono: data.telefono.trim(),
-    })
-    .eq("id", user.id);
-
-  if (errUsuario) {
-    const ref = logError("reenviarSolicitudEmpresa:usuario", errUsuario, { userId: user.id });
+    if (error.code === "P0001" || error.code === "42501") return fromSupabaseError(error);
+    const ref = logError("reenviarSolicitudEmpresa", error, { empresaId: empresa.id });
     return errConRef("ERROR_INTERNO", "Error al enviar la solicitud. Intentá de nuevo.", ref);
   }
 
-  // ── Actualizar empresa (trigger resetea estado_aprobacion → 'pendiente') ─
-  const { error: errEmpresa } = await supabase
-    .from("empresas")
-    .update({
-      razon_social: data.razonSocial.trim(),
-      cuit: cuitNormalizado,
-      rubro: data.rubro,
-      descripcion: data.descripcion.trim() || null,
-    })
-    .eq("id", empresa.id);
-
-  if (errEmpresa) {
-    if (errEmpresa.code === "23505") {
-      return err("CONFLICTO", "Ya hay una empresa registrada con ese CUIT.");
-    }
-    const ref = logError("reenviarSolicitudEmpresa:empresa", errEmpresa, { empresaId: empresa.id });
-    return errConRef("ERROR_INTERNO", "Error al enviar la solicitud. Intentá de nuevo.", ref);
-  }
-
-  revalidatePath("/empresa");
-  revalidatePath("/empresa/solicitud");
+  programarEnvioEmails();
+  // La razón social es el nombre que se muestra de la sesión (menú del usuario).
+  revalidatePath("/", "layout");
   return okMsg("Solicitud reenviada. La Oficina de Empleo la revisará pronto.");
 }

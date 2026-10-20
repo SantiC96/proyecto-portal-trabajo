@@ -39,14 +39,19 @@ export function cursoPendiente(estado: EstadoAsignacionCurso): boolean {
   return estado === "asignado" || estado === "en_curso";
 }
 
-/** Mismos textos que el trigger asignaciones_curso_alta (migration_039). */
-export const MENSAJE_SOLO_SI_NECESITA_CURSO =
+/** Mismos textos que el trigger asignaciones_curso_alta (migration_046). */
+export const MENSAJE_SOLO_SI_PUEDE_RECIBIR_CURSO =
   "Solo se puede asignar un curso a postulantes con 3 o más rechazos recientes.";
-export const MENSAJE_CURSO_ACTIVO =
-  "Este postulante ya tiene un curso asignado o en curso. Podrá recibir otro cuando complete el actual.";
+export const MENSAJE_MISMO_CURSO_PENDIENTE = "Este postulante ya tiene este curso pendiente.";
 
 export function textoRechazos(cantidad: number): string {
   return `${cantidad} rechazo${cantidad === 1 ? "" : "s"}`;
+}
+
+export function textoCursosPendientes(cantidad: number): string {
+  return cantidad === 1
+    ? "1 curso pendiente por terminar"
+    : `${cantidad} cursos pendientes por terminar`;
 }
 
 type FilaMiCurso = FilaRpc<"mis_cursos_con_estado">;
@@ -80,7 +85,14 @@ export function aMisCursos(filas: readonly FilaMiCurso[]): MiCurso[] {
 
 type FilaEstadoCursos = FilaRpc<"estado_cursos_postulantes">;
 
-/** Fila de public.estado_cursos_postulantes() (migration_035). */
+/**
+ * Fila de public.estado_cursos_postulantes() (035, 046).
+ *   puede_recibir_curso  cumple la regla de rechazos (se le puede asignar un
+ *                        curso aunque tenga otros pendientes).
+ *   necesita_curso       puede_recibir_curso y sin cursos pendientes.
+ *   asignacion_activa_*  una de las pendientes (la en curso más reciente o,
+ *                        si no hay, la asignada más reciente).
+ */
 export type EstadoCursosPostulante = Omit<
   ConNulos<FilaEstadoCursos, "asignacion_activa_id" | "ultimo_completado_en">,
   "asignacion_activa_estado" | "ultima_asignacion_estado"
@@ -99,7 +111,7 @@ export function aEstadoCursos(fila: FilaEstadoCursos): EstadoCursosPostulante {
 }
 
 /**
- * Misma regla que public.estado_cursos_postulantes() (migration_035): un
+ * Misma regla que public.estado_cursos_calculo() (035, 046): un
  * rechazo cuenta para el curso si cae dentro de la ventana y es posterior al
  * último curso completado.
  */
@@ -118,7 +130,7 @@ export const DIAS_CURSOS_COMPLETADOS_RECIENTES = 7;
 
 /**
  * Aviso que ve la oficina antes de derivar a un postulante que necesita curso,
- * tiene uno pendiente o cuya última asignación figura como abandonada (dato
+ * tiene cursos pendientes o cuya última asignación figura como abandonada (dato
  * histórico: desde migration_038 la oficina ya no marca abandonos). Es solo
  * informativo: la derivación no se bloquea. Devuelve null si no corresponde
  * avisar.
@@ -126,8 +138,11 @@ export const DIAS_CURSOS_COMPLETADOS_RECIENTES = 7;
 export function avisoCursoAlDerivar(estado: EstadoCursosPostulante | null): string | null {
   if (!estado) return null;
 
+  const pendientes = Number(estado.cursos_activos);
   let situacion: string;
-  if (estado.asignacion_activa_estado) {
+  if (pendientes > 1) {
+    situacion = `no completó los ${pendientes} cursos asignados`;
+  } else if (pendientes === 1) {
     situacion = "no completó el curso asignado";
   } else if (estado.ultima_asignacion_estado === "abandonado") {
     situacion = "abandonó el curso";

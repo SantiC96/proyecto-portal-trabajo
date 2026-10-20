@@ -5,27 +5,39 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirRol } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
-import { MENSAJE_CURSO_ACTIVO, MENSAJE_SOLO_SI_NECESITA_CURSO } from "@/lib/cursos";
-import { esUuid, LARGO_MAXIMO, validarTextoOpcional } from "@/lib/validaciones";
+import {
+  err,
+  errCampo,
+  errConRef,
+  fromSupabaseError,
+  okMsg,
+  type Resultado,
+  type ResultadoError,
+} from "@/lib/resultado";
+import { MENSAJE_MISMO_CURSO_PENDIENTE, MENSAJE_SOLO_SI_PUEDE_RECIBIR_CURSO } from "@/lib/cursos";
+import { esUuid, LARGO_MAXIMO, MENSAJE_OBLIGATORIO, validarTextoOpcional } from "@/lib/validaciones";
 import type { Tabla } from "@/types/db";
+import { programarEnvioEmails } from "@/lib/emails/cola";
 
 type CursoData = Pick<Tabla<"cursos">, "nombre" | "descripcion" | "link" | "indicaciones">;
 
-function validarCursoData(data: CursoData): string | null {
-  if (typeof data !== "object" || data === null) return "Los datos del curso no son válidos.";
+const MENSAJE_CURSO_REPETIDO = "Ya existe un curso con ese nombre.";
+
+function validarCursoData(data: CursoData): ResultadoError | null {
+  if (typeof data !== "object" || data === null)
+    return err("DATOS_INVALIDOS", "Los datos del curso no son válidos.");
   if (typeof data.nombre !== "string" || !data.nombre.trim())
-    return "El nombre del curso es obligatorio.";
+    return errCampo("nombre", MENSAJE_OBLIGATORIO);
   const errNombre = validarTextoOpcional(data.nombre, LARGO_MAXIMO.nombreCurso);
-  if (errNombre) return `Nombre: ${errNombre}`;
+  if (errNombre) return errCampo("nombre", errNombre);
   const errDescripcion = validarTextoOpcional(data.descripcion, LARGO_MAXIMO.descripcion);
-  if (errDescripcion) return `Descripción: ${errDescripcion}`;
+  if (errDescripcion) return errCampo("descripcion", errDescripcion);
   const errIndicaciones = validarTextoOpcional(data.indicaciones, LARGO_MAXIMO.descripcion);
-  if (errIndicaciones) return `Indicaciones: ${errIndicaciones}`;
+  if (errIndicaciones) return errCampo("indicaciones", errIndicaciones);
   const errLink = validarTextoOpcional(data.link, LARGO_MAXIMO.linkCurso);
-  if (errLink) return `Link: ${errLink}`;
+  if (errLink) return errCampo("link", errLink);
   if (data.link && !data.link.startsWith("https://"))
-    return "El link debe comenzar con https://";
+    return errCampo("link", "El link debe comenzar con https://");
   return null;
 }
 
@@ -40,7 +52,7 @@ export async function crearCurso(data: CursoData): Promise<Resultado<void>> {
   if (!auth.ok) return auth;
 
   const errVal = validarCursoData(data);
-  if (errVal) return err("DATOS_INVALIDOS", errVal);
+  if (errVal) return errVal;
 
   const supabase = await createSupabaseServerClient();
   const { data: nuevo, error } = await supabase
@@ -55,6 +67,8 @@ export async function crearCurso(data: CursoData): Promise<Resultado<void>> {
     .single();
 
   if (error || !nuevo) {
+    // Índice único sobre el nombre (migration_040): también frena el doble envío.
+    if (error?.code === "23505") return err("CONFLICTO", MENSAJE_CURSO_REPETIDO);
     const ref = logError("crearCurso", error);
     return errConRef("ERROR_INTERNO", "No se pudo crear el curso. Intentá de nuevo.", ref);
   }
@@ -72,7 +86,7 @@ export async function editarCurso(
 
   if (!esUuid(cursoId)) return err("DATOS_INVALIDOS");
   const errVal = validarCursoData(data);
-  if (errVal) return err("DATOS_INVALIDOS", errVal);
+  if (errVal) return errVal;
 
   const supabase = await createSupabaseServerClient();
   const { data: updated, error } = await supabase
@@ -88,6 +102,7 @@ export async function editarCurso(
     .select("id");
 
   if (error) {
+    if (error.code === "23505") return err("CONFLICTO", MENSAJE_CURSO_REPETIDO);
     const ref = logError("editarCurso", error, { cursoId });
     return errConRef("ERROR_INTERNO", "No se pudo actualizar el curso. Intentá de nuevo.", ref);
   }
@@ -142,12 +157,15 @@ export async function eliminarCurso(cursoId: string): Promise<Resultado<void>> {
   const { error } = await supabase.from("cursos").delete().eq("id", cursoId);
 
   if (error) {
+    // 23503: se asignó entre el conteo y el borrado; la FK lo impide.
+    if (error.code === "23503")
+      return err("REGLA_DE_NEGOCIO", "No se puede eliminar un curso que ya tiene asignaciones.");
     const ref = logError("eliminarCurso", error, { cursoId });
     return errConRef("ERROR_INTERNO", "No se pudo eliminar el curso.", ref);
   }
 
   revalidarCursos();
-  redirect("/admin/cursos");
+  redirect("/admin/cursos?aviso=curso-eliminado");
 }
 
 export async function asignarCurso(
@@ -158,14 +176,16 @@ export async function asignarCurso(
   const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
 
-  if (!cursoId) return err("DATOS_INVALIDOS", "Debés seleccionar un curso.");
+  if (!cursoId) return errCampo("cursoId", MENSAJE_OBLIGATORIO);
   if (!esUuid(cursoId) || !esUuid(postulanteId)) return err("DATOS_INVALIDOS");
   const errNota = validarTextoOpcional(nota, LARGO_MAXIMO.nota);
-  if (errNota) return err("DATOS_INVALIDOS", `Nota: ${errNota}`);
+  if (errNota) return errCampo("nota", errNota);
 
   const supabase = await createSupabaseServerClient();
 
-  // La misma regla la aplica el trigger asignaciones_curso_alta (migration_039).
+  // La misma regla la aplica el trigger asignaciones_curso_alta (migration_046):
+  // alcanza con cumplir la regla de rechazos aunque tenga otros cursos
+  // pendientes; el mismo curso pendiente lo rechaza el trigger (P0001).
   const { data: estados, error: errorEstado } = await supabase.rpc(
     "estado_cursos_postulantes",
     { p_postulante_ids: [postulanteId] }
@@ -176,8 +196,8 @@ export async function asignarCurso(
   }
   const estado = estados?.[0];
   if (!estado) return err("NO_ENCONTRADO", "Postulante no encontrado.");
-  if (estado.asignacion_activa_id) return err("REGLA_DE_NEGOCIO", MENSAJE_CURSO_ACTIVO);
-  if (!estado.necesita_curso) return err("REGLA_DE_NEGOCIO", MENSAJE_SOLO_SI_NECESITA_CURSO);
+  if (!estado.puede_recibir_curso)
+    return err("REGLA_DE_NEGOCIO", MENSAJE_SOLO_SI_PUEDE_RECIBIR_CURSO);
 
   const { error } = await supabase.from("asignaciones_curso").insert({
     postulante_id: postulanteId,
@@ -187,14 +207,16 @@ export async function asignarCurso(
   });
 
   if (error) {
+    // 23505: el índice asignaciones_curso_mismo_curso_activo_idx rechazó una
+    // segunda asignación activa del mismo curso.
+    if (error.code === "23505") return err("CONFLICTO", MENSAJE_MISMO_CURSO_PENDIENTE);
     // P0001 messages (e.g. "El curso no está activo") are user-friendly and safe to show
-    if (error.code === "P0001" || error.code === "23505") {
-      return fromSupabaseError(error);
-    }
+    if (error.code === "P0001") return fromSupabaseError(error);
     const ref = logError("asignarCurso", error, { postulanteId, cursoId });
     return errConRef("ERROR_INTERNO", "No se pudo asignar el curso. Intentá de nuevo.", ref);
   }
 
+  programarEnvioEmails();
   revalidarAsignaciones(cursoId, postulanteId);
   return okMsg("Curso asignado.");
 }

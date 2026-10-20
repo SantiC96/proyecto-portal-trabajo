@@ -5,8 +5,11 @@ import {
   BookOpen,
   Briefcase,
   Building2,
+  ChartColumn,
   ChevronRight,
   ClipboardList,
+  House,
+  UserCog,
   Users,
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
@@ -28,27 +31,13 @@ export default async function AdminDashboardPage() {
   const supabase = await createSupabaseServerClient();
 
   const [
-    { count: pendientes },
-    { count: aprobadas },
-    { count: rechazadas },
     { count: postulacionesPendientes },
     { count: totalPostulantes },
     { count: ofertasPendientes },
     esperandoCursoRes,
     { count: cursosActivos },
+    { count: comprobantesPendientes },
   ] = await Promise.all([
-    supabase
-      .from("empresas")
-      .select("*", { count: "exact", head: true })
-      .eq("estado_aprobacion", "pendiente"),
-    supabase
-      .from("empresas")
-      .select("*", { count: "exact", head: true })
-      .eq("estado_aprobacion", "aprobada"),
-    supabase
-      .from("empresas")
-      .select("*", { count: "exact", head: true })
-      .eq("estado_aprobacion", "rechazada"),
     supabase
       .from("postulaciones")
       .select("*", { count: "exact", head: true })
@@ -63,7 +52,14 @@ export default async function AdminDashboardPage() {
       .from("cursos")
       .select("*", { count: "exact", head: true })
       .eq("activo", true),
+    supabase
+      .from("archivos_usuario")
+      .select("id", { count: "exact", head: true })
+      .eq("tipo", "comprobante_domicilio")
+      .is("eliminado_en", null)
+      .eq("verificacion_estado", "pendiente"),
   ]);
+  const comprobantes = comprobantesPendientes ?? 0;
 
   if (esperandoCursoRes.error)
     logError("contar_postulantes_esperando_curso", esperandoCursoRes.error);
@@ -75,35 +71,10 @@ export default async function AdminDashboardPage() {
         Panel de la Oficina de Empleo
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Revisá empresas, postulaciones y postulantes.
+        Revisá empresas, postulaciones y postulantes, y consultá los indicadores del portal.
       </p>
 
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-6">
-          <p className="text-sm font-medium text-muted-foreground">
-            Pendientes
-          </p>
-          <p className="mt-2 text-4xl font-bold text-foreground">
-            {pendientes ?? 0}
-          </p>
-        </div>
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-6">
-          <p className="text-sm font-medium text-muted-foreground">Aprobadas</p>
-          <p className="mt-2 text-4xl font-bold text-primary">
-            {aprobadas ?? 0}
-          </p>
-        </div>
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-6">
-          <p className="text-sm font-medium text-muted-foreground">
-            Rechazadas
-          </p>
-          <p className="mt-2 text-4xl font-bold text-red-600">
-            {rechazadas ?? 0}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-6 space-y-3">
+      <div className="mt-8 space-y-3">
         <Link
           href="/admin/ofertas"
           className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-colors hover:bg-surface-tinted"
@@ -134,10 +105,8 @@ export default async function AdminDashboardPage() {
             </div>
             <div>
               <p className="font-semibold text-foreground">Empresas</p>
-              <p className={textoEstado((pendientes ?? 0) > 0)}>
-                {(pendientes ?? 0) > 0
-                  ? `${pendientes} empresa${pendientes === 1 ? "" : "s"} pendiente${pendientes === 1 ? "" : "s"} de revisión`
-                  : "Revisá solicitudes pendientes y el historial de decisiones"}
+              <p className="text-sm text-muted-foreground">
+                Revisá solicitudes pendientes y el historial de decisiones
               </p>
             </div>
           </div>
@@ -189,6 +158,26 @@ export default async function AdminDashboardPage() {
         </Link>
 
         <Link
+          href="/admin/postulantes?comprobante=pendiente"
+          className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-colors hover:bg-surface-tinted"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-primary">
+              <House className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Comprobantes por revisar</p>
+              <p className={textoEstado(comprobantes > 0)}>
+                {comprobantes > 0
+                  ? `${comprobantes} comprobante${comprobantes === 1 ? "" : "s"} de domicilio en Funes pendiente${comprobantes === 1 ? "" : "s"}`
+                  : "No hay comprobantes de domicilio pendientes"}
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 flex-shrink-0 text-muted-icon" />
+        </Link>
+
+        <Link
           href="/admin/cursos"
           className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-colors hover:bg-surface-tinted"
         >
@@ -208,6 +197,41 @@ export default async function AdminDashboardPage() {
           <ChevronRight className="h-5 w-5 flex-shrink-0 text-muted-icon" />
         </Link>
 
+        <Link
+          href="/admin/indicadores"
+          className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-colors hover:bg-surface-tinted"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-primary">
+              <ChartColumn className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Indicadores</p>
+              <p className="text-sm text-muted-foreground">
+                Postulaciones, derivaciones, contrataciones y cursos por período
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 flex-shrink-0 text-muted-icon" />
+        </Link>
+
+        <Link
+          href="/admin/cuentas"
+          className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-colors hover:bg-surface-tinted"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-primary">
+              <UserCog className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Cuentas de la oficina</p>
+              <p className="text-sm text-muted-foreground">
+                Invitá, desactivá o reactivá las cuentas del personal de la oficina
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 flex-shrink-0 text-muted-icon" />
+        </Link>
       </div>
     </section>
   );

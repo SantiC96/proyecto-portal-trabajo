@@ -1,34 +1,91 @@
 "use client";
 
-import { useActionState, useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Lock, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
-import { restablecerContrasena } from "@/app/auth/actions";
+import { aceptarInvitacion, restablecerContrasena } from "@/app/auth/actions";
+import {
+  CLASE_CONTROL_INVALIDO,
+  ErrorCampo,
+  Obligatorio,
+  ariaErrorCampo,
+} from "@/components/ui/obligatorio";
+import { useErroresCampo } from "@/lib/use-errores-campo";
+import { useAccion } from "@/lib/use-accion";
+import { Spinner } from "@/components/ui/spinner";
+import type { Resultado } from "@/lib/resultado";
 
-export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
-  const [state, action, isPending] = useActionState(restablecerContrasena, null);
+type Campo = "password" | "confirmar";
+
+// La misma pantalla sirve para recuperar la contraseña y para aceptar la
+// invitación de la oficina (/auth/aceptar-invitacion).
+const VARIANTES = {
+  recuperacion: {
+    accion: restablecerContrasena,
+    titulo: "Nueva contraseña",
+    descripcion: "Elegí una nueva contraseña para tu cuenta.",
+    etiqueta: "Nueva contraseña",
+    linkVencido: { href: "/auth/recuperar-contrasena", texto: "Pedir un link nuevo" },
+  },
+  invitacion: {
+    accion: aceptarInvitacion,
+    titulo: "Activá tu cuenta",
+    descripcion:
+      "Te invitaron a la cuenta de la Oficina de Empleo. Elegí tu contraseña para entrar al panel.",
+    etiqueta: "Contraseña",
+    linkVencido: {
+      href: "/auth/login",
+      texto: "Si ya elegiste tu contraseña, iniciá sesión. Si no, pedí una invitación nueva a la Oficina de Empleo.",
+    },
+  },
+} as const;
+
+export function NuevaContrasenaForm({
+  tokenHash,
+  variante = "recuperacion",
+}: {
+  tokenHash: string;
+  variante?: keyof typeof VARIANTES;
+}) {
+  const textos = VARIANTES[variante];
+  const [state, setState] = useState<Resultado<void> | null>(null);
+  const { pendiente: isPending, ejecutar } = useAccion();
   const [password, setPassword] = useState("");
   const [confirmar, setConfirmar] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmar, setShowConfirmar] = useState(false);
+  const campos = useErroresCampo<Campo>();
 
   const stateError = state && !state.ok ? state.mensaje : undefined;
-
-  // Clear fields on server error so the user doesn't re-submit stale values.
-  useEffect(() => {
-    if (stateError) {
-      const id = setTimeout(() => {
-        setPassword("");
-        setConfirmar("");
-      }, 0);
-      return () => clearTimeout(id);
-    }
-  }, [stateError]);
+  // Error de un campo devuelto por el servidor: va debajo del campo, no arriba del botón.
+  const campoServidor =
+    state && !state.ok && (state.campo === "password" || state.campo === "confirmar")
+      ? state.campo
+      : null;
+  const errorCampo = (campo: Campo) =>
+    campos.errores[campo] ?? (campoServidor === campo ? stateError : undefined);
 
   const confirmarTocado = confirmar.length > 0;
   const coinciden = password === confirmar;
-  const passwordValida = password.length >= 6;
-  const puedeEnviar = passwordValida && confirmarTocado && coinciden;
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!campos.validar({ password, confirmar }, e.currentTarget) || !coinciden) return;
+    const fd = new FormData();
+    fd.append("password", password);
+    fd.append("confirmar", confirmar);
+    fd.append("token_hash", tokenHash);
+    ejecutar(async () => {
+      // En el éxito la acción redirige al login.
+      const res = await textos.accion(null, fd);
+      setState(res);
+      if (res && !res.ok) {
+        // Se limpian los campos para no reenviar valores viejos.
+        setPassword("");
+        setConfirmar("");
+      }
+    });
+  }
 
   const inputBase =
     "w-full rounded-lg border bg-background py-2.5 pl-10 pr-10 text-sm text-foreground placeholder:text-placeholder outline-none transition";
@@ -45,21 +102,20 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
   const errorRef = state && !state.ok && state.codigo === "ERROR_INTERNO" ? state.ref : undefined;
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-border bg-white px-8 py-10 shadow-sm">
+    <div className="w-full max-w-md rounded-2xl border border-border bg-white px-5 py-8 shadow-sm sm:px-8 sm:py-10">
       <div className="mb-6 text-center">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Lock className="h-7 w-7" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Nueva contraseña
+          {textos.titulo}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Elegí una nueva contraseña para tu cuenta.
+          {textos.descripcion}
         </p>
       </div>
 
-      <form action={action} className="flex flex-col gap-5">
-        <input type="hidden" name="token_hash" value={tokenHash} />
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
 
         {/* Nueva contraseña */}
         <div className="flex flex-col gap-1.5">
@@ -67,7 +123,7 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
             htmlFor="nueva-password"
             className="text-sm font-medium text-foreground"
           >
-            Nueva contraseña
+            {textos.etiqueta} <Obligatorio />
           </label>
           <div className="relative">
             <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-icon" />
@@ -78,9 +134,13 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
               autoComplete="new-password"
               required
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                campos.limpiar("password");
+              }}
               placeholder="Mínimo 6 caracteres"
-              className={`${inputBase} ${inputNormal}`}
+              {...ariaErrorCampo("nueva-password", errorCampo("password"))}
+              className={`${inputBase} ${inputNormal} ${CLASE_CONTROL_INVALIDO}`}
             />
             <button
               type="button"
@@ -95,6 +155,7 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
               )}
             </button>
           </div>
+          <ErrorCampo idCampo="nueva-password" mensaje={errorCampo("password")} />
         </div>
 
         {/* Repetir contraseña */}
@@ -103,7 +164,7 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
             htmlFor="confirmar-password"
             className="text-sm font-medium text-foreground"
           >
-            Repetir contraseña
+            Repetir contraseña <Obligatorio />
           </label>
           <div className="relative">
             <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-icon" />
@@ -114,9 +175,13 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
               autoComplete="new-password"
               required
               value={confirmar}
-              onChange={(e) => setConfirmar(e.target.value)}
+              onChange={(e) => {
+                setConfirmar(e.target.value);
+                campos.limpiar("confirmar");
+              }}
               placeholder="Repetí la contraseña"
-              className={confirmarInputClass}
+              {...ariaErrorCampo("confirmar-password", errorCampo("confirmar"))}
+              className={`${confirmarInputClass} ${CLASE_CONTROL_INVALIDO}`}
             />
             <button
               type="button"
@@ -131,6 +196,7 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
               )}
             </button>
           </div>
+          <ErrorCampo idCampo="confirmar-password" mensaje={errorCampo("confirmar")} />
 
           {/* Feedback en vivo */}
           {confirmarTocado && (
@@ -155,7 +221,7 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
         </div>
 
         {/* Error de la server action */}
-        {stateError && (
+        {stateError && !campoServidor && (
           <div className="flex flex-col gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
             <div className="flex items-start gap-2.5">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -168,10 +234,10 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
             )}
             {tokenVencido && (
               <Link
-                href="/auth/recuperar-contrasena"
+                href={textos.linkVencido.href}
                 className="ml-6 font-medium underline hover:text-red-700"
               >
-                Pedir un link nuevo
+                {textos.linkVencido.texto}
               </Link>
             )}
           </div>
@@ -179,14 +245,11 @@ export function NuevaContrasenaForm({ tokenHash }: { tokenHash: string }) {
 
         <button
           type="submit"
-          disabled={!puedeEnviar || isPending}
+          disabled={isPending}
+          aria-busy={isPending}
           className="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isPending ? (
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-          ) : (
-            <Lock className="h-4 w-4" />
-          )}
+          {isPending ? <Spinner /> : <Lock className="h-4 w-4" />}
           {isPending ? "Guardando…" : "Guardar contraseña"}
         </button>
       </form>

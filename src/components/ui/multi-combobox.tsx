@@ -19,6 +19,8 @@ interface MultiComboboxProps {
   id?: string
   vacioTexto?: string
   campoClassName?: string
+  /** aria-invalid / aria-describedby del input cuando el campo tiene un error. */
+  ariaInput?: { "aria-invalid"?: true; "aria-describedby"?: string }
 }
 
 function normalizar(texto: string): string {
@@ -36,6 +38,7 @@ export function MultiCombobox({
   id,
   vacioTexto = "No hay rubros que coincidan",
   campoClassName,
+  ariaInput,
 }: MultiComboboxProps) {
   const [inputValue, setInputValue] = useState("")
   const [open, setOpen] = useState(false)
@@ -70,6 +73,7 @@ export function MultiCombobox({
         className={cn(
           "flex min-h-[2.75rem] cursor-text items-start gap-2 rounded-lg border border-border bg-background px-3 py-2 transition",
           "focus-within:border-primary focus-within:bg-white focus-within:ring-2 focus-within:ring-primary/20",
+          ariaInput?.["aria-invalid"] && "border-red-500 ring-2 ring-red-500/20",
           campoClassName,
         )}
         onClick={() => inputRef.current?.focus()}
@@ -104,6 +108,7 @@ export function MultiCombobox({
             id={id}
             placeholder={seleccionados.length === 0 ? placeholder : ""}
             onKeyDown={handleKeyDown}
+            {...ariaInput}
             className="min-w-[8rem] flex-1 bg-transparent text-sm text-foreground placeholder:text-placeholder focus:outline-none"
           />
         </div>

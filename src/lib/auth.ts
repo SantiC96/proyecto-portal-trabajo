@@ -2,8 +2,11 @@ import "server-only";
 
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { err, type ResultadoError } from "@/lib/resultado";
+import { MENSAJE_CUENTA_DESACTIVADA } from "@/lib/auth-errors";
+import { HEADER_RUTA_ACTUAL, urlAvisoOtroRol, urlLogin } from "@/lib/redirect";
 import type { Rol, Tabla } from "@/types/db";
 
 // Estos controles son una capa más: la protección principal siguen siendo las
@@ -57,10 +60,22 @@ export const obtenerUsuarioActual = cache(async (): Promise<UsuarioActual | null
   };
 });
 
+/**
+ * Cuenta de la oficina desactivada (migration_050): no tiene permisos de
+ * ningún rol. La base ya la trata igual (rol_actual() devuelve NULL).
+ */
+export function cuentaDesactivada(usuario: UsuarioActual): boolean {
+  return usuario.perfil?.activo === false;
+}
+
+/** Route Handler que cierra la sesión de una cuenta desactivada. */
+export const RUTA_CUENTA_DESACTIVADA = "/auth/cuenta-desactivada";
+
 function tieneRol<R extends Rol>(
   usuario: UsuarioActual,
   roles: readonly R[],
 ): usuario is UsuarioConRol<R> {
+  if (cuentaDesactivada(usuario)) return false;
   const rol = usuario.perfil?.rol;
   return roles.some((r) => r === rol);
 }
@@ -106,6 +121,7 @@ export async function requerirUsuario(): Promise<
 > {
   const usuario = await obtenerUsuarioActual();
   if (!usuario) return err("NO_AUTENTICADO");
+  if (cuentaDesactivada(usuario)) return err("SIN_PERMISO", MENSAJE_CUENTA_DESACTIVADA);
   return { ok: true, usuario };
 }
 
@@ -114,6 +130,7 @@ export async function requerirRol<R extends Rol>(
 ): Promise<Autorizado<{ usuario: UsuarioConRol<R> }> | ResultadoError> {
   const usuario = await obtenerUsuarioActual();
   if (!usuario) return err("NO_AUTENTICADO");
+  if (cuentaDesactivada(usuario)) return err("SIN_PERMISO", MENSAJE_CUENTA_DESACTIVADA);
   if (!tieneRol(usuario, comoLista(roles))) return err("SIN_PERMISO");
   return { ok: true, usuario };
 }
@@ -156,27 +173,37 @@ export async function requerirPostulante(opciones?: {
 
 // ── Páginas y layouts: redirigen en vez de devolver un error ────────────────
 
-/** Sin sesión redirige al login. */
+/** Ruta pedida (pathname + search), según el encabezado que pone el proxy. */
+async function rutaActual(): Promise<string | null> {
+  return (await headers()).get(HEADER_RUTA_ACTUAL);
+}
+
+/**
+ * Sin sesión redirige al login, que después vuelve a la ruta pedida. Una
+ * cuenta desactivada pierde la sesión acá: todos los layouts protegidos
+ * pasan por esta función.
+ */
 export async function requerirUsuarioPagina(): Promise<UsuarioActual> {
   const usuario = await obtenerUsuarioActual();
-  if (!usuario) redirect("/auth/login");
+  if (!usuario) redirect(urlLogin(await rutaActual()));
+  if (cuentaDesactivada(usuario)) redirect(RUTA_CUENTA_DESACTIVADA);
   return usuario;
 }
 
 /**
- * Sin sesión redirige al login. Con otro rol redirige al inicio ("/") o, con
- * `siNoCorresponde: "panel"`, al panel de su propio rol.
+ * Sin sesión redirige al login. Con la sesión de otro rol redirige al inicio
+ * con el aviso de sesión activa, que explica para qué cuenta es la página y
+ * ofrece cerrar sesión y volver a ella. Sin rol cargado va al inicio.
  */
 export async function requerirRolPagina<R extends Rol>(
   roles: R | readonly R[],
-  opciones?: { siNoCorresponde?: "inicio" | "panel" },
 ): Promise<UsuarioConRol<R>> {
   const usuario = await requerirUsuarioPagina();
-  if (tieneRol(usuario, comoLista(roles))) return usuario;
+  const lista = comoLista(roles);
+  if (tieneRol(usuario, lista)) return usuario;
 
-  const rol = usuario.perfil?.rol;
-  if (opciones?.siNoCorresponde === "panel" && rol) redirect(panelDeRol(rol));
-  redirect("/");
+  if (!usuario.perfil?.rol) redirect("/");
+  redirect(urlAvisoOtroRol(lista, await rutaActual()));
 }
 
 /** Sin sesión redirige al login; si el usuario no tiene empresa, a `siNoHay`. */

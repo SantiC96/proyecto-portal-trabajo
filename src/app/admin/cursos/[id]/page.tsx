@@ -10,7 +10,7 @@ import { logError } from "@/lib/logger";
 import { consultarPagina, hrefConParams, leerPagina, type ParamsUrl } from "@/lib/paginacion";
 import { AvisoUrl } from "@/components/ui/aviso-url";
 import { Paginacion } from "@/components/ui/paginacion";
-import { ErrorListado } from "@/components/ui/estado-listado";
+import { ErrorListado, EstadoVacio } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
 import {
@@ -22,6 +22,7 @@ import {
 } from "@/lib/cursos";
 import type { Tabla } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Detalle del curso | Panel municipal | Portal de Empleo Funes",
@@ -88,17 +89,7 @@ export default async function CursoDetallePage({
       <Suspense>
         <AvisoUrl />
       </Suspense>
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/admin" className="hover:text-foreground">
-          Panel
-        </Link>
-        <span>/</span>
-        <Link href="/admin/cursos" className="hover:text-foreground">
-          Cursos
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">{curso.nombre}</span>
-      </div>
+      <BotonVolver href="/admin/cursos">Volver a cursos</BotonVolver>
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         {curso.nombre}
@@ -245,12 +236,22 @@ async function ListadoAsignados({
   const asignaciones = conEstadoCurso(resultado.filas);
 
   if (asignaciones.length === 0) {
-    return (
-      <p className="mt-3 text-sm text-muted-foreground">
-        {estado
-          ? `No hay asignaciones en estado «${ESTADO_CURSO_LABEL[estado]}».`
-          : "Todavía no se asignó este curso a ningún postulante."}
-      </p>
+    return estado ? (
+      <EstadoVacio
+        tipo="sin-resultados"
+        className="mt-3"
+        titulo={`No hay asignaciones en estado «${ESTADO_CURSO_LABEL[estado]}»`}
+        descripcion="Probá con otro estado o mirá todas las asignaciones."
+        hrefLimpiar={hrefConParams(`/admin/cursos/${cursoId}`, searchParams, { estado: null, pagina: null }, "asignados")}
+        textoLimpiar="Ver todas"
+      />
+    ) : (
+      <EstadoVacio
+        tipo="sin-registros"
+        className="mt-3"
+        titulo="Todavía no se asignó este curso a ningún postulante"
+        descripcion="Se asigna desde la ficha de un postulante o desde el listado de postulantes."
+      />
     );
   }
 

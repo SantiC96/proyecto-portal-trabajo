@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Mail, Phone, FileText, ExternalLink, User } from "lucide-react";
+import { Mail, Phone, FileText, ExternalLink, User } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirEmpresaPagina } from "@/lib/auth";
-import { formatFechaHora } from "@/lib/fechas";
+import { logError } from "@/lib/logger";
+import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_STYLE } from "@/lib/derivacion-estados";
-import type { FilaCandidatoParaEmpresa, FilaDerivacionDeOfertaEmpresa } from "@/types/db";
+import type {
+  FilaCandidatoParaEmpresa,
+  FilaCvParaEmpresa,
+  FilaDerivacionDeOfertaEmpresa,
+} from "@/types/db";
+import { InformacionLaboralResumen } from "@/components/postulantes/informacion-laboral-resumen";
 import { AccionesDerivacion } from "./_components/acciones-derivacion";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Ficha de candidato | Portal de Empleo Funes",
@@ -44,26 +51,40 @@ export default async function CandidatoFichaPage({
   if (!derivacion) notFound();
 
   // Get candidate data and saved status in parallel
-  const [candidatoResult, guardadoResult] = await Promise.all([
+  const [candidatoResult, cvResult, guardadoResult, vacantesResult, contratadosResult] = await Promise.all([
     supabase.rpc("candidato_para_empresa", {
       p_postulante_id: derivacion.postulante_id,
     }),
+    // El CV elegido en esta postulación, o el más reciente si es anterior a
+    // poder elegirlo (migration_054).
+    supabase.rpc("cv_de_derivacion_empresa", { p_derivacion_id: derivacionId }),
     supabase
       .from("candidatos_guardados")
       .select("id, nota, oferta_origen_id")
       .eq("postulante_id", derivacion.postulante_id)
       .maybeSingle(),
+    supabase.from("oferta_vacantes").select("cantidad").eq("oferta_id", ofertaId).maybeSingle(),
+    supabase.rpc("contratados_en_oferta", { p_oferta_id: ofertaId }),
   ]);
 
   const candidato: FilaCandidatoParaEmpresa | null = candidatoResult.data?.[0] ?? null;
   const guardado = guardadoResult.data;
+  if (cvResult.error) logError("empresa_candidato_cv", cvResult.error, { derivacionId });
+  const cv: FilaCvParaEmpresa | null = cvResult.data?.[0] ?? null;
 
-  // Generate signed CV URL if available (10 min lifetime)
+  // Solo informativo: el límite lo hace cumplir derivaciones_limite_vacantes (040).
+  if (contratadosResult.error) logError("empresa_candidato_contratados", contratadosResult.error);
+  const vacantes = vacantesResult.data?.cantidad ?? null;
+  const vacantesCubiertas =
+    vacantes !== null && contratadosResult.data != null && contratadosResult.data >= vacantes;
+
+  // URL firmada del CV (10 min). La política del bucket solo deja abrir el
+  // CV de esta postulación (empresa_puede_ver_cv, migration_054).
   let cvUrl: string | null = null;
-  if (candidato?.cv_ruta) {
+  if (cv) {
     const { data: signed } = await supabase.storage
       .from("cvs")
-      .createSignedUrl(candidato.cv_ruta, 600);
+      .createSignedUrl(cv.ruta, 600);
     cvUrl = signed?.signedUrl ?? null;
   }
 
@@ -74,28 +95,10 @@ export default async function CandidatoFichaPage({
 
   return (
     <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/empresa/ofertas" className="hover:text-foreground">
-          Mis ofertas
-        </Link>
-        <span>/</span>
-        <Link href={`/empresa/ofertas/${ofertaId}`} className="hover:text-foreground">
-          {oferta.titulo}
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">Candidato</span>
-      </div>
+      <BotonVolver href={`/empresa/ofertas/${ofertaId}`}>Volver a la oferta</BotonVolver>
 
       {/* Cabecera */}
       <div className="mt-4 flex items-center gap-3">
-        <Link
-          href={`/empresa/ofertas/${ofertaId}`}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-white text-muted-foreground transition hover:bg-surface-tinted hover:text-foreground"
-          aria-label="Volver"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
         <div>
           <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
             {candidato
@@ -141,12 +144,16 @@ export default async function CandidatoFichaPage({
                     </div>
                   </div>
                 )}
-                {cvUrl ? (
+                {cv && cvUrl ? (
                   <div className="flex items-start gap-3">
                     <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                    <div>
+                    <div className="min-w-0">
                       <dt className="text-xs text-muted-foreground">Currículum</dt>
-                      <dd>
+                      <dd className="break-all font-medium text-foreground">{cv.nombre_original}</dd>
+                      <dd className="text-xs text-muted-foreground">
+                        Subido el {formatFecha(cv.subido_en)}
+                      </dd>
+                      <dd className="mt-1">
                         <a
                           href={cvUrl}
                           target="_blank"
@@ -164,7 +171,7 @@ export default async function CandidatoFichaPage({
                     <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                     <div>
                       <dt className="text-xs text-muted-foreground">Currículum</dt>
-                      <dd className="text-muted-foreground">Sin CV cargado</dd>
+                      <dd className="text-muted-foreground">Sin CV disponible</dd>
                     </div>
                   </div>
                 )}
@@ -175,6 +182,10 @@ export default async function CandidatoFichaPage({
               </p>
             )}
           </div>
+
+          {candidato && (
+            <InformacionLaboralResumen info={candidato} className="bg-white shadow-xs" />
+          )}
 
           {/* Nota de la municipalidad */}
           {derivacion.nota_municipalidad && (
@@ -238,6 +249,7 @@ export default async function CandidatoFichaPage({
                 lugarEntrevista={derivacion.lugar_entrevista}
                 postulanteId={derivacion.postulante_id}
                 guardadoId={guardado?.id ?? null}
+                vacantesCubiertas={vacantesCubiertas}
               />
             </div>
           </div>

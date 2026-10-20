@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Building, MapPin, Clock, Briefcase } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
@@ -10,6 +9,9 @@ import { VencimientoOferta } from "@/components/ofertas/vencimiento-oferta";
 import { OfertaAcciones } from "./oferta-acciones";
 import { RequisitosList, BeneficiosList } from "@/components/ofertas/requisitos-beneficios";
 import { requerirRolPagina } from "@/lib/auth";
+import { BotonVolver } from "@/components/ui/boton-volver";
+import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
+import { fotoDePerfil } from "@/lib/fotos-perfil";
 
 export const metadata: Metadata = {
   title: "Oferta | Panel municipal | Portal de Empleo Funes",
@@ -45,7 +47,7 @@ export default async function AdminOfertaDetallePage({
     oferta.empresa_id
       ? supabase
           .from("empresas")
-          .select("razon_social, rubro, descripcion")
+          .select("razon_social, rubro, descripcion, usuario_id")
           .eq("id", oferta.empresa_id)
           .single()
       : Promise.resolve({ data: null }),
@@ -56,10 +58,12 @@ export default async function AdminOfertaDetallePage({
           .eq("id", oferta.revisado_por)
           .single()
       : Promise.resolve({ data: null }),
+    // Sin las retiradas: quien se retiró y volvió a postularse cuenta una vez.
     supabase
       .from("postulaciones")
       .select("*", { count: "exact", head: true })
-      .eq("oferta_id", ofertaId),
+      .eq("oferta_id", ofertaId)
+      .is("retirada_en", null),
     supabase
       .from("oferta_vacantes")
       .select("cantidad")
@@ -69,6 +73,7 @@ export default async function AdminOfertaDetallePage({
   ]);
 
   const empresa = empresaResult.data;
+  const logoEmpresa = empresa ? await fotoDePerfil(empresa.usuario_id) : null;
   const revisor = revisorResult.data;
   const totalPostulaciones = postulacionesResult.count ?? 0;
   const vacantes = vacantesResult.data?.cantidad ?? null;
@@ -80,18 +85,7 @@ export default async function AdminOfertaDetallePage({
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/admin" className="hover:text-foreground">
-          Panel
-        </Link>
-        <span>/</span>
-        <Link href="/admin/ofertas" className="hover:text-foreground">
-          Ofertas
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">Detalle</span>
-      </div>
+      <BotonVolver href="/admin/ofertas">Volver a ofertas</BotonVolver>
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Columna principal */}
@@ -161,7 +155,15 @@ export default async function AdminOfertaDetallePage({
           {/* Empresa */}
           {empresa && (
             <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
-              <h2 className="font-semibold text-foreground">Empresa</h2>
+              <div className="flex items-center gap-3">
+                <AvatarAjustado
+                  src={logoEmpresa?.url}
+                  ajuste={logoEmpresa?.ajuste}
+                  alt={`Logo de ${empresa.razon_social}`}
+                  size="md"
+                />
+                <h2 className="font-semibold text-foreground">Empresa</h2>
+              </div>
               <dl className="mt-4 grid grid-cols-1 gap-y-3 text-sm sm:grid-cols-2">
                 <div>
                   <dt className="text-muted-foreground">Razón social</dt>

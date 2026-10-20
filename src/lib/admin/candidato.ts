@@ -1,10 +1,29 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { COLUMNAS_CV, consultaCvsDisponibles, conUrlsFirmadas, type CvVista } from "@/lib/cvs";
+import { logError } from "@/lib/logger";
+import { obtenerComprobanteVigente, type ComprobanteVista } from "@/lib/comprobantes";
+import { nivelDe, type NivelPrioridad } from "@/lib/procedencia";
 import type { Tabla } from "@/types/db";
 
 type Categoria = Pick<Tabla<"categorias">, "id" | "nombre">;
 
 export type DatosCandidatoResult = {
-  postulante: Pick<Tabla<"postulantes">, "id" | "usuario_id" | "dni" | "domicilio">;
+  postulante: Pick<
+    Tabla<"postulantes">,
+    | "id"
+    | "usuario_id"
+    | "dni"
+    | "domicilio"
+    | "nivel_educativo"
+    | "situacion_laboral"
+    | "disponibilidad"
+    | "experiencia_laboral"
+    | "localidad"
+  >;
+  /** Nivel de prioridad (migration_055). Solo para la oficina. */
+  nivel: NivelPrioridad;
+  /** Comprobante de domicilio vigente, con URL firmada. */
+  comprobante: ComprobanteVista | null;
   usuario: Pick<Tabla<"usuarios">, "id" | "nombre" | "apellido" | "telefono">;
   email: string | null;
   categorias: Categoria[];
@@ -12,7 +31,20 @@ export type DatosCandidatoResult = {
     url: string | null;
     ajuste?: { x: number; y: number; zoom: number };
   };
-  cvUrl: string | null;
+  /** CVs disponibles, del más nuevo al más viejo. */
+  cvs: CvVista[];
+};
+
+/**
+ * CV que se muestra en una postulación: el elegido al postularse
+ * (cv_archivo_id) o, si es NULL, el disponible más reciente (migration_054).
+ */
+export type CvDePostulacion = {
+  cv: CvVista;
+  /** false: la postulación no tiene CV elegido y se muestra el más reciente. */
+  elegido: boolean;
+  /** El postulante lo eliminó de su perfil (la oficina lo sigue viendo). */
+  eliminado: boolean;
 };
 
 export async function obtenerCandidato(
@@ -23,7 +55,7 @@ export async function obtenerCandidato(
   const { data: postulante } = await supabase
     .from("postulantes")
     .select(
-      "id, usuario_id, dni, domicilio, usuarios!usuario_id(id, nombre, apellido, telefono)"
+      "id, usuario_id, dni, domicilio, localidad, nivel_prioridad, nivel_educativo, situacion_laboral, disponibilidad, experiencia_laboral, usuarios!usuario_id(id, nombre, apellido, telefono)"
     )
     .eq("id", postulanteId)
     .single();
@@ -35,33 +67,34 @@ export async function obtenerCandidato(
 
   const usuarioId = postulante.usuario_id;
 
-  const [categoriasResult, archivosResult, emailResult] = await Promise.all([
+  const [categoriasResult, avatarResult, cvsResult, emailResult, comprobante] = await Promise.all([
     supabase
       .from("postulante_categorias")
       .select("categorias!categoria_id(id, nombre)")
       .eq("postulante_id", postulanteId),
     supabase
       .from("archivos_usuario")
-      .select("tipo, ruta, ajuste_x, ajuste_y, ajuste_zoom")
+      .select("ruta, ajuste_x, ajuste_y, ajuste_zoom")
       .eq("usuario_id", usuarioId)
-      .eq("activo", true),
+      .eq("tipo", "avatar")
+      .eq("activo", true)
+      .maybeSingle(),
+    consultaCvsDisponibles(supabase, usuarioId),
     supabase.rpc("emails_de_usuarios", { ids: [usuarioId] }),
+    obtenerComprobanteVigente(supabase, usuarioId, 600),
   ]);
 
   const categorias = (categoriasResult.data ?? [])
     .map((r) => r.categorias)
     .filter((c): c is Categoria => Boolean(c));
 
-  const archivos = archivosResult.data ?? [];
-  const cvArchivo = archivos.find((a) => a.tipo === "cv") ?? null;
-  const avatarArchivo = archivos.find((a) => a.tipo === "avatar") ?? null;
+  const avatarArchivo = avatarResult.data;
+  if (cvsResult.error) logError("obtenerCandidato:cvs", cvsResult.error, { postulanteId });
 
   const email = emailResult.data?.[0]?.email ?? null;
 
-  const [cvUrlResult, avatarUrlResult] = await Promise.all([
-    cvArchivo
-      ? supabase.storage.from("cvs").createSignedUrl(cvArchivo.ruta, 600)
-      : Promise.resolve({ data: null }),
+  const [cvs, avatarUrlResult] = await Promise.all([
+    conUrlsFirmadas(supabase, cvsResult.data ?? [], 600),
     avatarArchivo
       ? supabase.storage
           .from("avatares")
@@ -75,7 +108,14 @@ export async function obtenerCandidato(
       usuario_id: postulante.usuario_id,
       dni: postulante.dni,
       domicilio: postulante.domicilio,
+      nivel_educativo: postulante.nivel_educativo,
+      situacion_laboral: postulante.situacion_laboral,
+      disponibilidad: postulante.disponibilidad,
+      experiencia_laboral: postulante.experiencia_laboral,
+      localidad: postulante.localidad,
     },
+    nivel: nivelDe(postulante.nivel_prioridad),
+    comprobante,
     usuario: {
       id: usuario.id,
       nombre: usuario.nombre,
@@ -94,6 +134,33 @@ export async function obtenerCandidato(
           }
         : undefined,
     },
-    cvUrl: cvUrlResult.data?.signedUrl ?? null,
+    cvs,
   };
+}
+
+export async function obtenerCvDePostulacion(
+  cvArchivoId: string | null,
+  cvsDisponibles: CvVista[],
+): Promise<CvDePostulacion | null> {
+  if (!cvArchivoId) {
+    const masReciente = cvsDisponibles[0];
+    return masReciente ? { cv: masReciente, elegido: false, eliminado: false } : null;
+  }
+
+  const disponible = cvsDisponibles.find((cv) => cv.id === cvArchivoId);
+  if (disponible) return { cv: disponible, elegido: true, eliminado: false };
+
+  // Eliminado por el postulante: la oficina lee todos los archivos (018).
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("archivos_usuario")
+    .select(COLUMNAS_CV)
+    .eq("id", cvArchivoId)
+    .eq("tipo", "cv")
+    .maybeSingle();
+  if (error) logError("obtenerCvDePostulacion", error, { cvArchivoId });
+  if (!data) return null;
+
+  const [cv] = await conUrlsFirmadas(supabase, [data], 600);
+  return { cv, elegido: true, eliminado: true };
 }

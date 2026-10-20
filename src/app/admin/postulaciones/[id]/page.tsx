@@ -6,7 +6,10 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { DatosCandidato } from "@/components/admin/datos-candidato";
-import { obtenerCandidato } from "@/lib/admin/candidato";
+import { obtenerCandidato, obtenerCvDePostulacion } from "@/lib/admin/candidato";
+import { CvDePostulacionCard } from "@/components/admin/cv-candidato";
+import { ProcedenciaCandidato } from "@/components/admin/procedencia-candidato";
+import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
 import {
   BADGE_ESTADO_VISIBLE,
   estadoVisiblePostulacion,
@@ -18,6 +21,10 @@ import { logError } from "@/lib/logger";
 import { aEstadoCursos, avisoCursoAlDerivar } from "@/lib/cursos";
 import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_STYLE } from "@/lib/derivacion-estados";
 import { requerirRolPagina } from "@/lib/auth";
+import { preEntrevistaYaPaso } from "@/lib/pre-entrevistas";
+import { PreEntrevistaSeccion } from "./pre-entrevista-seccion";
+import { MarcarFichaAbierta } from "./marcar-ficha-abierta";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Ficha | Postulaciones | Panel municipal | Portal de Empleo Funes",
@@ -41,10 +48,12 @@ export default async function PostulacionFichaPage({
       estado,
       created_at,
       updated_at,
+      retirada_en,
       nota_oficina,
       revisado_por,
       postulante_id,
       oferta_id,
+      cv_archivo_id,
       postulantes!postulante_id(id, usuario_id),
       ofertas!oferta_id(id, titulo, empresa_nombre, modalidad, jornada, estado, contenido_editado_en)
     `
@@ -59,10 +68,13 @@ export default async function PostulacionFichaPage({
 
   const puedeDerivarse =
     postulacion.estado === "recibida" || postulacion.estado === "en_revision";
+  // Una retirada que estaba derivada conserva su derivación (migration_053).
+  const tieneDerivacion =
+    postulacion.estado === "derivada" || postulacion.estado === "retirada_postulante";
 
-  const [candidato, derivacionResult, revisorResult, estadoCursosResult] = await Promise.all([
+  const [candidato, derivacionResult, revisorResult, estadoCursosResult, preEntrevistaResult] = await Promise.all([
     postulanteId ? obtenerCandidato(postulanteId) : Promise.resolve(null),
-    postulacion.estado === "derivada"
+    tieneDerivacion
       ? supabase
           .from("derivaciones")
           .select(
@@ -81,7 +93,19 @@ export default async function PostulacionFichaPage({
     postulanteId && puedeDerivarse
       ? supabase.rpc("estado_cursos_postulantes", { p_postulante_ids: [postulanteId] })
       : Promise.resolve({ data: null, error: null }),
+    supabase
+      .from("pre_entrevistas")
+      .select("id, estado, fecha_hora, lugar, nota_oficina, updated_at")
+      .eq("postulacion_id", postulacion.id)
+      .maybeSingle(),
   ]);
+
+  if (preEntrevistaResult.error)
+    logError("ficha_pre_entrevista", preEntrevistaResult.error, { postulacionId });
+  const preEntrevista = preEntrevistaResult.data;
+  const preEntrevistaFechaPasada = preEntrevista
+    ? preEntrevistaYaPaso(preEntrevista.fecha_hora)
+    : false;
 
   if (estadoCursosResult.error)
     logError("estado_cursos_postulantes", estadoCursosResult.error, { postulacionId });
@@ -92,6 +116,9 @@ export default async function PostulacionFichaPage({
 
   const derivacion = derivacionResult.data;
   const revisor = revisorResult.data;
+  const cvPostulacion = candidato
+    ? await obtenerCvDePostulacion(postulacion.cv_archivo_id, candidato.cvs)
+    : null;
 
   const estadoVisible = estadoVisiblePostulacion(
     postulacion.estado,
@@ -107,18 +134,8 @@ export default async function PostulacionFichaPage({
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/admin" className="hover:text-foreground">
-          Panel
-        </Link>
-        <span>/</span>
-        <Link href="/admin/postulaciones" className="hover:text-foreground">
-          Postulaciones
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">Ficha</span>
-      </div>
+      {postulacion.estado === "recibida" && <MarcarFichaAbierta postulacionId={postulacionId} />}
+      <BotonVolver href="/admin/postulaciones">Volver a postulaciones</BotonVolver>
 
       {/* Cabecera */}
       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -138,10 +155,17 @@ export default async function PostulacionFichaPage({
               ? `${candidato.usuario.nombre} ${candidato.usuario.apellido}`
               : "Candidato desconocido"}
           </h1>
-          <div className="mt-1">
+          <div className="mt-1 flex flex-wrap items-center gap-2">
             <Badge variant={badge.variant} className={badge.className}>
               {badge.label}
             </Badge>
+            {candidato && (
+              <BadgeProcedencia
+                nivel={candidato.nivel}
+                localidad={candidato.postulante.localidad}
+                comprobante={candidato.comprobante?.estado ?? null}
+              />
+            )}
           </div>
           {fechaContratacion && (
             <p className="mt-1 text-sm text-muted-foreground">
@@ -159,14 +183,21 @@ export default async function PostulacionFichaPage({
         {/* Columna principal */}
         <div className="space-y-6 lg:col-span-2">
           {candidato ? (
-            <DatosCandidato
-              email={candidato.email}
-              dni={candidato.postulante.dni}
-              domicilio={candidato.postulante.domicilio}
-              telefono={candidato.usuario.telefono}
-              categorias={candidato.categorias}
-              cvUrl={candidato.cvUrl}
-            />
+            <>
+              <DatosCandidato
+                email={candidato.email}
+                dni={candidato.postulante.dni}
+                domicilio={candidato.postulante.domicilio}
+                telefono={candidato.usuario.telefono}
+                categorias={candidato.categorias}
+              />
+              <ProcedenciaCandidato
+                localidad={candidato.postulante.localidad}
+                nivel={candidato.nivel}
+                comprobante={candidato.comprobante}
+              />
+              <CvDePostulacionCard cvPostulacion={cvPostulacion} />
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">
               Candidato no encontrado.
@@ -253,6 +284,14 @@ export default async function PostulacionFichaPage({
                     </dd>
                   </div>
                 )}
+              {postulacion.retirada_en && (
+                <div>
+                  <dt className="text-muted-foreground">Retirada por el postulante</dt>
+                  <dd className="mt-0.5 text-foreground">
+                    {formatFechaHora(postulacion.retirada_en)}
+                  </dd>
+                </div>
+              )}
               {postulacion.revisado_por && (
                 <div>
                   <dt className="text-muted-foreground">Revisada por</dt>
@@ -325,20 +364,31 @@ export default async function PostulacionFichaPage({
           )}
         </div>
 
-        {/* Columna lateral: acciones */}
+        {/* Columna lateral: pre-entrevista y acciones */}
         <div className="lg:col-span-1">
-          <div className="sticky top-6 rounded-[var(--radius-lg)] border border-border bg-surface p-5">
-            <h2 className="font-semibold text-foreground">Acciones</h2>
-            <div className="mt-4">
-              <FichaAcciones
+          <div className="space-y-6 lg:sticky lg:top-6">
+            {(puedeDerivarse || preEntrevista) && (
+              <PreEntrevistaSeccion
+                key={preEntrevista?.updated_at ?? "sin-pre-entrevista"}
                 postulacionId={postulacion.id}
-                estado={postulacion.estado}
-                estadoVisible={estadoVisible}
-                empresaNombre={oferta?.empresa_nombre ?? null}
-                ofertaEstado={oferta?.estado}
-                derivacion={derivacion}
-                avisoCurso={avisoCurso}
+                preEntrevista={preEntrevista}
+                gestionable={puedeDerivarse}
+                fechaPasada={preEntrevistaFechaPasada}
               />
+            )}
+            <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
+              <h2 className="font-semibold text-foreground">Acciones</h2>
+              <div className="mt-4">
+                <FichaAcciones
+                  postulacionId={postulacion.id}
+                  estado={postulacion.estado}
+                  estadoVisible={estadoVisible}
+                  empresaNombre={oferta?.empresa_nombre ?? null}
+                  ofertaEstado={oferta?.estado}
+                  derivacion={derivacion}
+                  avisoCurso={avisoCurso}
+                />
+              </div>
             </div>
           </div>
         </div>
