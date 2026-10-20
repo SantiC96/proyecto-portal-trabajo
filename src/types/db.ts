@@ -89,6 +89,9 @@ export type FilaPostulacionNoSeleccionada = ConNulos<
 >;
 export type FilaEmailDeUsuario = FilaRpc<"emails_de_usuarios">;
 export type FilaMiPreEntrevista = FilaRpc<"mis_pre_entrevistas">;
+/** CVs (migration_054): con qué CV se postuló y el CV que ve la empresa. */
+export type FilaCvDeMiPostulacion = FilaRpc<"cvs_de_mis_postulaciones">;
+export type FilaCvParaEmpresa = FilaRpc<"cv_de_derivacion_empresa">;
 
 /** Indicadores del dashboard (migration_047): las tasas son NULL sin datos. */
 export type FilaIndicadoresPortal = ConNulos<

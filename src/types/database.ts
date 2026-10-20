@@ -22,6 +22,7 @@ export type Database = {
           ajuste_zoom: number
           creado_en: string
           desactivado_en: string | null
+          eliminado_en: string | null
           id: string
           mime_type: string | null
           nombre_original: string
@@ -37,6 +38,7 @@ export type Database = {
           ajuste_zoom?: number
           creado_en?: string
           desactivado_en?: string | null
+          eliminado_en?: string | null
           id?: string
           mime_type?: string | null
           nombre_original: string
@@ -52,6 +54,7 @@ export type Database = {
           ajuste_zoom?: number
           creado_en?: string
           desactivado_en?: string | null
+          eliminado_en?: string | null
           id?: string
           mime_type?: string | null
           nombre_original?: string
@@ -632,6 +635,7 @@ export type Database = {
       postulaciones: {
         Row: {
           created_at: string
+          cv_archivo_id: string | null
           estado: Database["public"]["Enums"]["estado_postulacion"]
           id: string
           nota_oficina: string | null
@@ -643,6 +647,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          cv_archivo_id?: string | null
           estado?: Database["public"]["Enums"]["estado_postulacion"]
           id?: string
           nota_oficina?: string | null
@@ -654,6 +659,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          cv_archivo_id?: string | null
           estado?: Database["public"]["Enums"]["estado_postulacion"]
           id?: string
           nota_oficina?: string | null
@@ -664,6 +670,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "postulaciones_cv_archivo_id_fkey"
+            columns: ["cv_archivo_id"]
+            isOneToOne: false
+            referencedRelation: "archivos_usuario"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "postulaciones_oferta_id_fkey"
             columns: ["oferta_id"]
@@ -887,6 +900,15 @@ export type Database = {
             }
             Returns: undefined
           }
+      archivos_a_purgar: {
+        Args: { p_limite?: number }
+        Returns: {
+          id: string
+          ruta: string
+          tipo: string
+        }[]
+      }
+      archivos_dias_purga: { Args: never; Returns: number }
       bloquear_pre_entrevista: {
         Args: { p_pre_entrevista_id: string }
         Returns: Record<string, unknown>
@@ -949,6 +971,10 @@ export type Database = {
         Args: { p_categoria_ids: string[] }
         Returns: string[]
       }
+      confirmar_archivos_purgados: {
+        Args: { p_ids: string[] }
+        Returns: number
+      }
       contar_postulantes_esperando_curso: { Args: never; Returns: number }
       contratados_en_oferta: { Args: { p_oferta_id: string }; Returns: number }
       coordinar_pre_entrevista: {
@@ -976,6 +1002,33 @@ export type Database = {
         }
         Returns: string
       }
+      cv_de_candidato_empresa: {
+        Args: { p_postulante_id: string }
+        Returns: {
+          nombre_original: string
+          ruta: string
+          subido_en: string
+        }[]
+      }
+      cv_de_derivacion_empresa: {
+        Args: { p_derivacion_id: string }
+        Returns: {
+          nombre_original: string
+          ruta: string
+          subido_en: string
+        }[]
+      }
+      cv_de_postulacion: { Args: { p_postulacion_id: string }; Returns: string }
+      cvs_de_mis_postulaciones: {
+        Args: { p_postulacion_ids: string[] }
+        Returns: {
+          eliminado: boolean
+          nombre_original: string
+          postulacion_id: string
+          subido_en: string
+        }[]
+      }
+      cvs_maximo: { Args: never; Returns: number }
       derivaciones_de_oferta_empresa: {
         Args: { p_oferta_id: string }
         Returns: {
@@ -1306,6 +1359,13 @@ export type Database = {
           ventana_dias: number
         }[]
       }
+      postulacion_en_curso: {
+        Args: {
+          p_estado: Database["public"]["Enums"]["estado_postulacion"]
+          p_estado_empresa: Database["public"]["Enums"]["estado_empresa"]
+        }
+        Returns: boolean
+      }
       postulaciones_no_seleccionadas: {
         Args: never
         Returns: {
@@ -1341,6 +1401,7 @@ export type Database = {
         Args: { p_empresa_id: string; p_postulante_id: string }
         Returns: boolean
       }
+      postulante_puede_ver_cv: { Args: { p_ruta: string }; Returns: boolean }
       postulantes_esperando_curso_ids: {
         Args: never
         Returns: {
