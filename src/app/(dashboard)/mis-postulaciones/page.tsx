@@ -11,7 +11,11 @@ import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { MisPostulacionesLista, type Postulacion } from "./mis-postulaciones-lista";
-import type { FilaEstadoDerivacionPostulante, FilaMiPreEntrevista } from "@/types/db";
+import type {
+  FilaCvDeMiPostulacion,
+  FilaEstadoDerivacionPostulante,
+  FilaMiPreEntrevista,
+} from "@/types/db";
 import { AvisoCursoPendiente } from "@/components/cursos/aviso-curso-pendiente";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
@@ -160,6 +164,17 @@ async function ListadoMisPostulaciones({
     for (const fila of data ?? []) preEntrevistas[fila.postulacion_id] = fila;
   }
 
+  // Con qué CV se postuló (migration_054): nombre y fecha aunque después lo
+  // haya eliminado de su perfil.
+  const cvsPorPostulacion: Record<string, FilaCvDeMiPostulacion> = {};
+  {
+    const { data, error } = await supabase.rpc("cvs_de_mis_postulaciones", {
+      p_postulacion_ids: rawList.map((r) => r.id),
+    });
+    if (error) logError("cvs_de_mis_postulaciones", error);
+    for (const fila of data ?? []) cvsPorPostulacion[fila.postulacion_id] = fila;
+  }
+
   // Postulaciones retiradas (migration_053): se puede volver a postular si la
   // oferta sigue abierta y no hay ya otra postulación vigente a esa oferta
   // (puede estar en otra página del listado).
@@ -194,6 +209,7 @@ async function ListadoMisPostulaciones({
     oferta: r.ofertas,
     derivacion: derivacionEstados[r.id] ?? null,
     preEntrevista: preEntrevistas[r.id] ?? null,
+    cv: cvsPorPostulacion[r.id] ?? null,
     puedeVolverAPostularse:
       r.retirada_en != null &&
       ofertaAbierta(r.ofertas) &&

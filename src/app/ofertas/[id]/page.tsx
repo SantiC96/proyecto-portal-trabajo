@@ -10,6 +10,7 @@ import { PostularseCta, type Postulacion } from "./postularse-cta";
 import { RequisitosList, BeneficiosList } from "@/components/ofertas/requisitos-beneficios";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { consultaCvsDisponibles, conUrlsFirmadas, type CvVista } from "@/lib/cvs";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -33,7 +34,7 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
 
   let ctaVariant: "sin-sesion" | "puede-postularse" | "sin-cv" | "ya-postulado" | "otro-rol" =
     "sin-sesion";
-  let cvNombre: string | undefined;
+  let cvs: CvVista[] = [];
   let postulacion: Postulacion | undefined;
   let autoOpen = false;
 
@@ -47,7 +48,7 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
 
       if (postulante) {
         const supabase = await createSupabaseServerClient();
-        // Parallel: check existing application, check CV.
+        // Parallel: check existing application, list the CVs to choose from.
         // Solo la postulación vigente: una retirada queda en el historial y
         // no impide volver a postularse (migration_053, una vigente por oferta).
         const [postulacionResult, cvResult] = await Promise.all([
@@ -58,23 +59,17 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
             .eq("postulante_id", postulante.id)
             .is("retirada_en", null)
             .maybeSingle(),
-          supabase
-            .from("archivos_usuario")
-            .select("nombre_original")
-            .eq("usuario_id", user.id)
-            .eq("tipo", "cv")
-            .eq("activo", true)
-            .maybeSingle(),
+          consultaCvsDisponibles(supabase, user.id),
         ]);
 
         if (postulacionResult.data) {
           ctaVariant = "ya-postulado";
           postulacion = postulacionResult.data;
-        } else if (!cvResult.data) {
+        } else if (!cvResult.data?.length) {
           ctaVariant = "sin-cv";
         } else {
           ctaVariant = "puede-postularse";
-          cvNombre = cvResult.data.nombre_original;
+          cvs = await conUrlsFirmadas(supabase, cvResult.data, 600);
           autoOpen = sp.accion === "postular";
         }
       }
@@ -181,7 +176,7 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
                 ofertaTitulo={oferta.titulo}
                 ofertaEmpresa={oferta.empresa}
                 loginHref={loginHref}
-                cvNombre={cvNombre}
+                cvs={cvs}
                 postulacion={postulacion}
                 autoOpen={autoOpen}
               />

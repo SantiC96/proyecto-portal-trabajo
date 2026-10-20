@@ -1,12 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle, AlertTriangle, CalendarClock } from "lucide-react";
+import { CheckCircle, AlertTriangle, CalendarClock, FileText } from "lucide-react";
 import { retirarPostulacion } from "@/app/(dashboard)/postulaciones/actions";
 import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { getOfertaEstadoBadge } from "@/lib/oferta-estados";
-import type { Enum, FilaEstadoDerivacionPostulante, FilaMiPreEntrevista, Tabla } from "@/types/db";
+import type {
+  Enum,
+  FilaCvDeMiPostulacion,
+  FilaEstadoDerivacionPostulante,
+  FilaMiPreEntrevista,
+  Tabla,
+} from "@/types/db";
 
 type EstadoPostulacion = Enum<"estado_postulacion">;
 
@@ -22,6 +28,8 @@ export type Postulacion = Pick<
   derivacion: FilaEstadoDerivacionPostulante | null;
   /** Pre-entrevista con la oficina (sin la nota interna). */
   preEntrevista: FilaMiPreEntrevista | null;
+  /** CV elegido al postularse; null en postulaciones anteriores a poder elegirlo. */
+  cv: FilaCvDeMiPostulacion | null;
   /**
    * Retirada, con la oferta todavía abierta y sin otra postulación vigente a
    * esa oferta: se muestra el link para volver a postularse.
@@ -160,6 +168,18 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
             )}
 
             <p className="mt-2 text-xs text-muted-foreground">Postulado el {fecha}</p>
+
+            {p.cv && (
+              <p className="mt-1 flex min-w-0 items-start gap-1.5 text-xs text-muted-foreground">
+                <FileText className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="min-w-0 break-all">
+                  Con el CV{" "}
+                  <span className="font-medium text-foreground">{p.cv.nombre_original}</span>{" "}
+                  (subido el {formatFecha(p.cv.subido_en)})
+                  {p.cv.eliminado && " · lo eliminaste de tu perfil"}
+                </span>
+              </p>
+            )}
 
             {(p.estado === "recibida" || p.estado === "en_revision") &&
               p.preEntrevista?.estado === "coordinada" && (

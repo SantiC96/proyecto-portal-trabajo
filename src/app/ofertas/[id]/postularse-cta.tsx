@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Briefcase, CheckCircle } from "lucide-react";
+import { Briefcase, CheckCircle, ExternalLink, FileText } from "lucide-react";
 import { postularme } from "@/app/(dashboard)/postulaciones/actions";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
@@ -17,6 +17,8 @@ import {
 import { BotonesDialogo, CLASE_ACCION_DIALOGO } from "@/components/ui/dialogo-confirmacion";
 import type { Enum, Tabla } from "@/types/db";
 import { formatFecha } from "@/lib/fechas";
+import type { CvVista } from "@/lib/cvs";
+import { cn } from "@/lib/utils";
 
 const ESTADO_LABEL: Record<Enum<"estado_postulacion">, string> = {
   recibida: "Recibida",
@@ -37,7 +39,8 @@ interface Props {
   ofertaTitulo: string;
   ofertaEmpresa: string;
   loginHref: string;
-  cvNombre?: string;
+  /** CVs disponibles, del más nuevo al más viejo (solo para "puede-postularse"). */
+  cvs?: CvVista[];
   postulacion?: Postulacion;
   autoOpen?: boolean;
 }
@@ -48,7 +51,7 @@ export function PostularseCta({
   ofertaTitulo,
   ofertaEmpresa,
   loginHref,
-  cvNombre,
+  cvs = [],
   postulacion,
   autoOpen = false,
 }: Props) {
@@ -57,6 +60,9 @@ export function PostularseCta({
   // without needing a setState call inside an effect
   const [open, setOpen] = useState(autoOpen);
   const { pendiente: isPending, ejecutar } = useAccion();
+  // El más reciente, salvo que el postulante elija otro.
+  const [cvElegidoId, setCvElegidoId] = useState<string | null>(null);
+  const cvElegido = cvs.find((cv) => cv.id === cvElegidoId) ?? cvs[0] ?? null;
 
   // Clean the ?accion=postular param from the URL after the auto-open
   useEffect(() => {
@@ -73,8 +79,10 @@ export function PostularseCta({
   }
 
   function handleConfirm() {
+    if (!cvElegido) return;
+    const cvId = cvElegido.id;
     ejecutar(async () => {
-      const result = await postularme(ofertaId);
+      const result = await postularme(ofertaId, cvId);
       mostrarAviso(result);
       if (result.ok) {
         setOpen(false);
@@ -187,19 +195,79 @@ export function PostularseCta({
             <DialogTitle>Postularte a {ofertaTitulo}</DialogTitle>
             <DialogDescription>
               Te postulás en <span className="font-medium text-foreground">{ofertaEmpresa}</span>.
-              La Oficina de Empleo va a revisar tu postulación junto con tu CV:{" "}
-              <span className="font-medium text-foreground">{cvNombre}</span>.
+              {cvs.length > 1
+                ? " La Oficina de Empleo va a revisar tu postulación junto con el CV que elijas."
+                : " La Oficina de Empleo va a revisar tu postulación junto con este CV."}
             </DialogDescription>
           </DialogHeader>
+
+          {cvs.length === 1 && cvElegido ? (
+            <div className="flex items-start gap-3 rounded-xl border border-border bg-surface-tinted px-4 py-3">
+              <FileText className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+              <DatosCv cv={cvElegido} />
+            </div>
+          ) : (
+            <fieldset disabled={isPending} className="flex flex-col gap-2">
+              <legend className="mb-2 text-sm font-medium text-foreground">
+                ¿Con qué CV te postulás?
+              </legend>
+              {cvs.map((cv) => {
+                const elegido = cv.id === cvElegido?.id;
+                return (
+                  <label
+                    key={cv.id}
+                    className={cn(
+                      "flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition",
+                      elegido
+                        ? "border-primary bg-surface-tinted"
+                        : "border-border bg-surface hover:bg-surface-tinted",
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="cv-postulacion"
+                      value={cv.id}
+                      checked={elegido}
+                      onChange={() => setCvElegidoId(cv.id)}
+                      className="mt-1 h-4 w-4 shrink-0 accent-primary"
+                    />
+                    <DatosCv cv={cv} />
+                  </label>
+                );
+              })}
+            </fieldset>
+          )}
+
           <BotonesDialogo
             pendiente={isPending}
             onCancelar={() => cambiarAbierto(false)}
             onConfirmar={handleConfirm}
             textoConfirmar="Confirmar postulación"
             textoPendiente="Enviando…"
+            deshabilitado={!cvElegido}
           />
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function DatosCv({ cv }: { cv: CvVista }) {
+  return (
+    <div className="min-w-0 flex-1">
+      <p className="break-all text-sm font-medium text-foreground">{cv.nombreOriginal}</p>
+      <p className="text-xs text-muted-foreground">Subido el {formatFecha(cv.subidoEn)}</p>
+      {cv.url && (
+        <a
+          href={cv.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-1 inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary underline-offset-2 hover:underline sm:min-h-0"
+        >
+          Ver CV
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+        </a>
+      )}
+    </div>
   );
 }
