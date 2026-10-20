@@ -10,16 +10,30 @@ export const CV_MIME_TYPES = ["application/pdf"] as const;
 
 export type CvMimeType = (typeof CV_MIME_TYPES)[number];
 
+/** Comprobante de domicilio (migration_055): PDF o imagen. */
+export const COMPROBANTE_MIME_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+] as const;
+
+export type ComprobanteMimeType = (typeof COMPROBANTE_MIME_TYPES)[number];
+
 /** 2 MB en bytes */
 export const AVATAR_MAX_SIZE = 2 * 1024 * 1024;
 /** 5 MB en bytes */
 export const CV_MAX_SIZE = 5 * 1024 * 1024;
+/** 5 MB en bytes */
+export const COMPROBANTE_MAX_SIZE = 5 * 1024 * 1024;
 
 export const AVATAR_ACCEPT = "image/jpeg,image/png,image/webp";
 export const CV_ACCEPT = "application/pdf";
+export const COMPROBANTE_ACCEPT = "application/pdf,image/jpeg,image/png,image/webp";
 
 export const AVATAR_HELP_TEXT = "JPG, PNG o WEBP, hasta 2 MB";
 export const CV_HELP_TEXT = "PDF, hasta 5 MB";
+export const COMPROBANTE_HELP_TEXT = "PDF, JPG, PNG o WEBP, hasta 5 MB";
 
 /** CVs disponibles por postulante. El límite lo hace cumplir la base (cvs_maximo(), migration_054). */
 export const CV_MAXIMOS = 5;
@@ -34,6 +48,9 @@ export const ERRORES_ARCHIVO = {
   cvTamano:     "El CV no puede superar los 5 MB.",
   cvFirma:      "El archivo no es válido. Subí un PDF.",
   cvLimite:     `Podés tener hasta ${CV_MAXIMOS} CVs. Para subir otro, eliminá alguno de los que tenés.`,
+  comprobanteTipo:   "El comprobante debe ser un PDF o una imagen JPG, PNG o WEBP.",
+  comprobanteTamano: "El comprobante no puede superar los 5 MB.",
+  comprobanteFirma:  "El archivo no es válido. Subí un PDF, JPG, PNG o WEBP.",
 } as const;
 
 /** "120 KB"; vacío si el tamaño no se conoce (filas viejas con 0). */
@@ -47,6 +64,10 @@ export function validarTipoAvatar(mimeType: string): mimeType is AvatarMimeType 
 
 export function validarTipoCV(mimeType: string): mimeType is CvMimeType {
   return mimeType === "application/pdf";
+}
+
+export function validarTipoComprobante(mimeType: string): mimeType is ComprobanteMimeType {
+  return COMPROBANTE_MIME_TYPES.some((tipo) => tipo === mimeType);
 }
 
 /**
