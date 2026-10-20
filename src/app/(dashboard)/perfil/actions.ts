@@ -30,6 +30,9 @@ import {
   detectarMimeType,
 } from "@/lib/archivos";
 import { validarInformacionLaboral } from "@/lib/informacion-laboral";
+import { descartarArchivoSubido } from "@/lib/archivos-servidor";
+import { guardarComprobanteDomicilio, validarComprobante } from "@/lib/comprobantes";
+import { resolverLocalidad } from "@/lib/localidades";
 
 // La foto de perfil, los datos de contacto y la contraseña se comparten con
 // "Mi perfil" de la empresa (/empresa/perfil) y de la oficina (/admin/perfil).
@@ -143,40 +146,6 @@ export async function actualizarRubros(
 
   revalidatePath("/perfil");
   return okMsg("Rubros actualizados.");
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Archivos: Storage y la base no comparten transacción
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Compensación cuando el archivo se subió pero no se pudo registrar en
- * archivos_usuario: borra el archivo para no dejarlo huérfano.
- *
- * Antes de borrar se confirma que ninguna fila apunte a esa ruta: si el
- * registro llegó a guardarse y solo se perdió la respuesta, borrar el archivo
- * dejaría un registro activo sin archivo. Si no se puede confirmar, el archivo
- * queda (huérfano, inofensivo) y se registra en el log.
- */
-async function descartarArchivoSubido(
-  bucket: "avatares" | "cvs",
-  ruta: string,
-  contexto: string,
-): Promise<void> {
-  const { data: registros, error: errorConsulta } = await supabaseAdmin
-    .from("archivos_usuario")
-    .select("id")
-    .eq("ruta", ruta)
-    .limit(1);
-
-  if (errorConsulta) {
-    logError(`${contexto}:compensacion`, errorConsulta, { bucket, ruta });
-    return;
-  }
-  if (registros.length > 0) return;
-
-  const { error: errorBorrado } = await supabaseAdmin.storage.from(bucket).remove([ruta]);
-  if (errorBorrado) logError(`${contexto}:compensacion`, errorBorrado, { bucket, ruta });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -416,6 +385,69 @@ export async function eliminarCV(archivoId: string): Promise<Resultado<void>> {
 
   revalidatePath("/perfil");
   return okMsg("CV eliminado.");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Procedencia: localidad y comprobante de domicilio (migration_055)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Cambia la localidad del postulante. Si cambia, la base reinicia la
+ * verificación: el comprobante vuelve a revisión (sigue siendo Funes) o se
+ * elimina (deja de serlo), y recalcula el nivel de prioridad.
+ */
+export async function actualizarLocalidad(data: {
+  localidad: string;
+  otraLocalidad: string;
+}): Promise<Resultado<{ localidad: string }>> {
+  const auth = await requerirRol("postulante");
+  if (!auth.ok) return auth;
+  const user = auth.usuario;
+
+  if (typeof data !== "object" || data === null) return err("DATOS_INVALIDOS");
+  const resuelta = resolverLocalidad(data.localidad, data.otraLocalidad);
+  if (!resuelta.ok) return errCampo(resuelta.campo, resuelta.mensaje);
+
+  // RLS solo deja editar la fila propia y el permiso por columna (055),
+  // solo la localidad.
+  const supabase = await createSupabaseServerClient();
+  const { data: filas, error } = await supabase
+    .from("postulantes")
+    .update({ localidad: resuelta.localidad })
+    .eq("usuario_id", user.id)
+    .select("id");
+
+  if (error) {
+    if (error.code === "P0001" || error.code === "42501") return fromSupabaseError(error);
+    const ref = logError("actualizarLocalidad", error, { userId: user.id });
+    return errConRef("ERROR_INTERNO", "Error al guardar la localidad. Intentá de nuevo.", ref);
+  }
+  if (filas.length === 0) return err("NO_ENCONTRADO", "No se encontró el perfil del postulante.");
+
+  revalidatePath("/perfil");
+  return { ok: true, data: { localidad: resuelta.localidad }, mensaje: "Localidad actualizada." };
+}
+
+/** Sube o reemplaza el comprobante de domicilio (solo si la localidad es Funes). */
+export async function subirComprobanteDomicilio(
+  formData: FormData
+): Promise<Resultado<void>> {
+  const auth = await requerirRol("postulante");
+  if (!auth.ok) return auth;
+  const user = auth.usuario;
+
+  const validado = await validarComprobante(leerArchivo(formData, "comprobante"));
+  if (!validado.ok) return validado;
+
+  const resultado = await guardarComprobanteDomicilio(
+    user.id,
+    validado.archivo,
+    "subirComprobanteDomicilio",
+  );
+  if (!resultado.ok) return resultado;
+
+  revalidatePath("/perfil");
+  return okMsg("Comprobante subido. La Oficina de Empleo lo va a revisar.");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

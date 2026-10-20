@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, MapPin } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirRolPagina } from "@/lib/auth";
 import { PerfilForm } from "./perfil-form";
 import { AvisoCursoPendiente } from "@/components/cursos/aviso-curso-pendiente";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { consultaCvsDisponibles, conUrlsFirmadas } from "@/lib/cvs";
+import { obtenerComprobanteVigente } from "@/lib/comprobantes";
 
 export const metadata: Metadata = {
   title: "Mi perfil | Portal de Empleo Funes",
@@ -27,11 +28,12 @@ export default async function PerfilPage() {
     categoriasResult,
     cvsResult,
     avatarActivoResult,
+    comprobante,
   ] = await Promise.all([
     supabase
       .from("postulantes")
       .select(
-        "id, dni, domicilio, nivel_educativo, situacion_laboral, disponibilidad, experiencia_laboral, postulante_categorias(categoria_id)"
+        "id, dni, domicilio, localidad, nivel_educativo, situacion_laboral, disponibilidad, experiencia_laboral, postulante_categorias(categoria_id)"
       )
       .eq("usuario_id", user.id)
       .maybeSingle(),
@@ -44,6 +46,7 @@ export default async function PerfilPage() {
       .eq("tipo", "avatar")
       .eq("activo", true)
       .maybeSingle(),
+    obtenerComprobanteVigente(supabase, user.id, 300),
   ]);
 
   const postulante = postulanteResult.data;
@@ -98,6 +101,22 @@ export default async function PerfilPage() {
       <Suspense fallback={null}>
         <AvisoCursoPendiente className="-mt-4 mb-8" />
       </Suspense>
+      {/* Postulantes registrados antes de migration_055: no bloquea nada. */}
+      {!postulante.localidad && (
+        <div
+          role="status"
+          className="-mt-4 mb-8 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+        >
+          <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <p>
+            Contanos de dónde sos: completá tu localidad en{" "}
+            <a href="#procedencia" className="font-semibold underline underline-offset-2">
+              Procedencia
+            </a>
+            . La Oficina de Empleo la usa para organizar las postulaciones.
+          </p>
+        </div>
+      )}
       <PerfilForm
         usuario={{
           nombre: usuario.nombre ?? "",
@@ -115,6 +134,19 @@ export default async function PerfilPage() {
           disponibilidad: postulante.disponibilidad ?? "",
           experienciaLaboral: postulante.experiencia_laboral ?? "",
           cvs,
+        }}
+        procedencia={{
+          localidad: postulante.localidad,
+          comprobante: comprobante
+            ? {
+                nombreOriginal: comprobante.nombreOriginal,
+                subidoEn: comprobante.subidoEn,
+                tamano: comprobante.tamano,
+                estado: comprobante.estado,
+                motivo: comprobante.motivo,
+                url: comprobante.url,
+              }
+            : null,
         }}
         email={user.email ?? ""}
         categorias={categorias}
