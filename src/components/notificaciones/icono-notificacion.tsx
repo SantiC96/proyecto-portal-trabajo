@@ -12,6 +12,7 @@ import {
   FileText,
   GraduationCap,
   Send,
+  UserMinus,
   UserPlus,
   XCircle,
   type LucideIcon,
@@ -27,7 +28,7 @@ const ERROR = "bg-red-100 text-red-700";
 const NEUTRO = "bg-gray-100 text-gray-600";
 const MARCA = "bg-secondary text-primary";
 
-// Tipos del CHECK notificaciones_tipo_check (migration_041, 043, 044 y 051).
+// Tipos del CHECK notificaciones_tipo_check (migration_041, 043, 044, 051 y 053).
 const ESTILO_POR_TIPO: Record<string, EstiloTipo> = {
   // Oficina
   contratacion: { Icono: BadgeCheck, className: EXITO },
@@ -37,6 +38,7 @@ const ESTILO_POR_TIPO: Record<string, EstiloTipo> = {
   postulacion_nueva: { Icono: ClipboardList, className: MARCA },
   necesita_curso: { Icono: BookOpen, className: ADVERTENCIA },
   oferta_retirada: { Icono: Archive, className: NEUTRO },
+  postulacion_retirada: { Icono: UserMinus, className: NEUTRO },
   // Postulante
   postulacion_derivada: { Icono: Send, className: MARCA },
   entrevista: { Icono: CalendarClock, className: INFO },
@@ -55,6 +57,7 @@ const ESTILO_POR_TIPO: Record<string, EstiloTipo> = {
   candidato_derivado: { Icono: UserPlus, className: MARCA },
   oferta_por_vencer: { Icono: Clock, className: ADVERTENCIA },
   oferta_vencida: { Icono: AlertTriangle, className: ERROR },
+  candidato_retirado: { Icono: UserMinus, className: NEUTRO },
 };
 
 const ESTILO_POR_DEFECTO: EstiloTipo = { Icono: Bell, className: NEUTRO };
