@@ -14,7 +14,9 @@ export type EstadoVisiblePostulacion =
   | "derivada"
   | "contratado"
   | "no_seleccionado_empresa"
-  | "no_seleccionado_oficina";
+  | "no_seleccionado_oficina"
+  /** La empresa retiró la oferta (migration_051). No es un rechazo. */
+  | "oferta_retirada";
 
 export type BadgePostulacion = {
   label: string;
@@ -44,6 +46,11 @@ export const BADGE_ESTADO_VISIBLE: Record<EstadoVisiblePostulacion, BadgePostula
     label: "No seleccionado (por la oficina)",
     variant: "destructive",
   },
+  oferta_retirada: {
+    label: "Cerrada (la empresa retiró la oferta)",
+    variant: "outline",
+    className: "text-gray-600",
+  },
 };
 
 export function estadoVisiblePostulacion(
@@ -56,9 +63,12 @@ export function estadoVisiblePostulacion(
       return estado;
     case "rechazada_municipalidad":
       return "no_seleccionado_oficina";
+    case "oferta_retirada":
+      return "oferta_retirada";
     case "derivada":
       if (estadoEmpresa === "contratado") return "contratado";
       if (estadoEmpresa === "rechazado") return "no_seleccionado_empresa";
+      if (estadoEmpresa === "oferta_retirada") return "oferta_retirada";
       return "derivada";
   }
 }

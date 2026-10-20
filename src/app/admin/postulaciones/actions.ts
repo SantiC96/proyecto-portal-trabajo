@@ -306,7 +306,8 @@ export async function corregirEstadoDerivacion(
   if (!auth.ok) return auth;
 
   if (!esUuid(postulacionId) || !esUuid(derivacionId)) return err("DATOS_INVALIDOS");
-  if (!esValorEnum("estado_empresa", nuevoEstado))
+  // "oferta_retirada" solo lo pone retirar_oferta (migration_051).
+  if (!esValorEnum("estado_empresa", nuevoEstado) || nuevoEstado === "oferta_retirada")
     return errCampo("estado", "Elegí un estado de la lista.");
 
   const supabase = await createSupabaseServerClient();

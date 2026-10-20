@@ -258,6 +258,17 @@ export function AccionesDerivacion({
     );
   }
 
+  if (estado === "oferta_retirada") {
+    return (
+      <div className="rounded-[var(--radius-lg)] border border-border bg-surface-tinted p-4">
+        <p className="text-sm font-semibold text-foreground">Proceso cerrado</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Retiraste la oferta y el proceso con este candidato quedó cerrado.
+        </p>
+      </div>
+    );
+  }
+
   if (estado === "rechazado") {
     return (
       <div className="rounded-[var(--radius-lg)] border border-border bg-surface-tinted p-4">

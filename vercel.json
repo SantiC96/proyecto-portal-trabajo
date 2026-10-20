@@ -4,6 +4,10 @@
     {
       "path": "/api/emails/procesar",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/mantenimiento/purgar",
+      "schedule": "0 7 * * *"
     }
   ]
 }

@@ -49,8 +49,10 @@ export async function proxy(request: NextRequest) {
     pathname === "/" ||
     pathname.startsWith("/ofertas") ||
     pathname.startsWith("/auth") ||
-    // Cron de emails: sin sesión, lo protege CRON_SECRET en la ruta.
-    pathname === "/api/emails/procesar";
+    // Crons (emails y mantenimiento): sin sesión, los protege CRON_SECRET en
+    // la ruta (src/lib/cron.ts).
+    pathname === "/api/emails/procesar" ||
+    pathname === "/api/mantenimiento/purgar";
 
   // Routes only accessible to guests — logged-in users are bounced to home
   const AUTH_GUEST_ONLY = [

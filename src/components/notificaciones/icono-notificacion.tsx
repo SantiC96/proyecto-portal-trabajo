@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  Archive,
   BadgeCheck,
   Bell,
   BookOpen,
@@ -26,7 +27,7 @@ const ERROR = "bg-red-100 text-red-700";
 const NEUTRO = "bg-gray-100 text-gray-600";
 const MARCA = "bg-secondary text-primary";
 
-// Tipos del CHECK notificaciones_tipo_check (migration_041, 043 y 044).
+// Tipos del CHECK notificaciones_tipo_check (migration_041, 043, 044 y 051).
 const ESTILO_POR_TIPO: Record<string, EstiloTipo> = {
   // Oficina
   contratacion: { Icono: BadgeCheck, className: EXITO },
@@ -35,6 +36,7 @@ const ESTILO_POR_TIPO: Record<string, EstiloTipo> = {
   curso_completado: { Icono: GraduationCap, className: EXITO },
   postulacion_nueva: { Icono: ClipboardList, className: MARCA },
   necesita_curso: { Icono: BookOpen, className: ADVERTENCIA },
+  oferta_retirada: { Icono: Archive, className: NEUTRO },
   // Postulante
   postulacion_derivada: { Icono: Send, className: MARCA },
   entrevista: { Icono: CalendarClock, className: INFO },
@@ -44,6 +46,7 @@ const ESTILO_POR_TIPO: Record<string, EstiloTipo> = {
   curso_asignado: { Icono: BookOpen, className: INFO },
   pre_entrevista_coordinada: { Icono: CalendarClock, className: INFO },
   pre_entrevista_reprogramada: { Icono: CalendarClock, className: INFO },
+  postulacion_cerrada: { Icono: Archive, className: NEUTRO },
   // Empresa
   solicitud_aprobada: { Icono: BadgeCheck, className: EXITO },
   solicitud_rechazada: { Icono: XCircle, className: ERROR },

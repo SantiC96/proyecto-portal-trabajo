@@ -23,6 +23,7 @@ const ESTADO_LABEL: Record<Enum<"estado_postulacion">, string> = {
   en_revision: "En revisión",
   derivada: "Enviada a la empresa",
   rechazada_municipalidad: "No seleccionada",
+  oferta_retirada: "Cerrada",
 };
 
 export type Postulacion = Pick<Tabla<"postulaciones">, "id" | "estado" | "created_at">;

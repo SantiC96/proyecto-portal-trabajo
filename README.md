@@ -35,7 +35,9 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 - Registrarse con razón social y CUIT, y esperar la aprobación de la oficina.
 - Ver el motivo si la solicitud fue rechazada, corregir los datos y reenviarla.
 - Publicar ofertas con vacantes y duración (15 a 60 días); cada oferta pasa por revisión de la oficina.
-- Editar, cerrar, eliminar (si no se publicó) y renovar ofertas vencidas.
+- Guardar una oferta como borrador con lo que haya (al menos el título) y enviarla a revisión cuando esté completa.
+- Editar, renovar ofertas vencidas y retirar una oferta en revisión o publicada: los candidatos en proceso quedan cerrados y reciben un aviso.
+- Eliminar un borrador, una oferta rechazada o una pendiente sin postulaciones, y restaurarla durante 30 días desde la pestaña "Eliminadas".
 - Ver los candidatos que deriva la oficina, con su CV y foto.
 - Coordinar y reprogramar entrevistas, y seleccionar o descartar candidatos.
 - Guardar candidatos con una nota para tenerlos en cuenta más adelante.
