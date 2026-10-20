@@ -40,13 +40,21 @@ export const metadata: Metadata = {
 //   contratado → la empresa marcó al postulante como contratado.
 // "No seleccionado" junta las que rechazó la oficina y las que rechazó la
 // empresa (RPC postulaciones_no_seleccionadas, migration_038).
-type EstadoFiltro = "pendiente" | "derivada" | "contratado" | "rechazada_municipalidad";
+// "Retiradas": las que el postulante retiró ya revisadas o derivadas
+// (migration_053). No son rechazos.
+type EstadoFiltro =
+  | "pendiente"
+  | "derivada"
+  | "contratado"
+  | "rechazada_municipalidad"
+  | "retirada_postulante";
 
 const ESTADOS_FILTRO: EstadoFiltro[] = [
   "pendiente",
   "derivada",
   "contratado",
   "rechazada_municipalidad",
+  "retirada_postulante",
 ];
 
 const LABEL_FILTRO: Record<EstadoFiltro, string> = {
@@ -54,6 +62,7 @@ const LABEL_FILTRO: Record<EstadoFiltro, string> = {
   derivada: "Derivadas",
   contratado: "Contratado",
   rechazada_municipalidad: "No seleccionado",
+  retirada_postulante: "Retiradas",
 };
 
 const DERIVACION_ABIERTA: EstadoDerivacionEmpresa[] = ["pendiente", "en_proceso"];
@@ -111,6 +120,7 @@ export default async function PostulacionesPage({
     { count: cDerivadas },
     { count: cContratados },
     { count: cRechazadas },
+    { count: cRetiradas },
   ] = await Promise.all([
     supabase
       .from("postulaciones")
@@ -133,6 +143,10 @@ export default async function PostulacionesPage({
       count: "exact",
       head: true,
     }),
+    supabase
+      .from("postulaciones")
+      .select("*", { count: "exact", head: true })
+      .eq("estado", "retirada_postulante"),
   ]);
 
   // Ofertas que tienen al menos una postulación (para el selector de filtro)
@@ -158,6 +172,7 @@ export default async function PostulacionesPage({
     { label: "Derivadas", valor: cDerivadas ?? 0, color: "text-primary" },
     { label: "Contratado", valor: cContratados ?? 0, color: "text-emerald-700" },
     { label: "No seleccionado", valor: cRechazadas ?? 0, color: "text-red-600" },
+    { label: "Retiradas", valor: cRetiradas ?? 0, color: "text-muted-foreground" },
   ];
 
   return (
@@ -248,6 +263,7 @@ const TEXTO_VACIO: Record<EstadoFiltro, string> = {
   derivada: "No hay postulaciones derivadas esperando el resultado de la empresa.",
   contratado: "Todavía ninguna empresa marcó a un postulante como contratado.",
   rechazada_municipalidad: "No hay postulaciones no seleccionadas en este momento.",
+  retirada_postulante: "Ningún postulante retiró una postulación en revisión o derivada.",
 };
 
 async function ListadoPostulaciones({
@@ -424,6 +440,7 @@ async function ListadoPostulaciones({
           dni,
           usuarios!usuario_id(nombre, apellido)
         ),
+        retirada_en,
         ofertas!oferta_id(id, titulo, empresa_nombre),
         pre_entrevistas(estado, fecha_hora)
       `;
@@ -440,6 +457,8 @@ async function ListadoPostulaciones({
 
       if (estado === "pendiente") {
         query = query.in("estado", ["recibida", "en_revision"]);
+      } else if (estado === "retirada_postulante") {
+        query = query.eq("estado", "retirada_postulante");
       } else {
         query = query
           .eq("estado", "derivada")
@@ -448,6 +467,10 @@ async function ListadoPostulaciones({
 
       if (ofertaId) query = query.eq("oferta_id", ofertaId);
       if (idsBusqueda) query = query.in("postulante_id", idsBusqueda);
+
+      if (estado === "retirada_postulante") {
+        query = query.order("retirada_en", { ascending: false, nullsFirst: false });
+      }
 
       return query
         .order("created_at", { ascending: false })
@@ -464,7 +487,7 @@ async function ListadoPostulaciones({
       postulacionId: r.id,
       postulante: r.postulantes,
       oferta: r.ofertas,
-      fecha: r.created_at,
+      fecha: estado === "retirada_postulante" ? (r.retirada_en ?? r.created_at) : r.created_at,
       badge: badgePostulacion(r.estado, r.derivaciones?.estado_empresa),
       preEntrevista: estado === "pendiente" ? r.pre_entrevistas : undefined,
     }));
@@ -495,7 +518,9 @@ async function ListadoPostulaciones({
       ? "Contratado el"
       : estado === "rechazada_municipalidad"
         ? "Rechazado el"
-        : "Fecha";
+        : estado === "retirada_postulante"
+          ? "Retirada el"
+          : "Fecha";
 
   // Avatares en batch
   const usuarioIds = filas
@@ -565,7 +590,9 @@ async function ListadoPostulaciones({
                       ? "Fecha de contratación"
                       : estado === "rechazada_municipalidad"
                         ? "Fecha de rechazo"
-                        : "Fecha"}
+                        : estado === "retirada_postulante"
+                          ? "Fecha de retiro"
+                          : "Fecha"}
                   </th>
                   <th className="py-3 pr-4 font-medium text-muted-foreground">
                     Estado

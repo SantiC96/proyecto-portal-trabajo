@@ -45,6 +45,7 @@ export default async function PostulacionFichaPage({
       estado,
       created_at,
       updated_at,
+      retirada_en,
       nota_oficina,
       revisado_por,
       postulante_id,
@@ -63,10 +64,13 @@ export default async function PostulacionFichaPage({
 
   const puedeDerivarse =
     postulacion.estado === "recibida" || postulacion.estado === "en_revision";
+  // Una retirada que estaba derivada conserva su derivación (migration_053).
+  const tieneDerivacion =
+    postulacion.estado === "derivada" || postulacion.estado === "retirada_postulante";
 
   const [candidato, derivacionResult, revisorResult, estadoCursosResult, preEntrevistaResult] = await Promise.all([
     postulanteId ? obtenerCandidato(postulanteId) : Promise.resolve(null),
-    postulacion.estado === "derivada"
+    tieneDerivacion
       ? supabase
           .from("derivaciones")
           .select(
@@ -259,6 +263,14 @@ export default async function PostulacionFichaPage({
                     </dd>
                   </div>
                 )}
+              {postulacion.retirada_en && (
+                <div>
+                  <dt className="text-muted-foreground">Retirada por el postulante</dt>
+                  <dd className="mt-0.5 text-foreground">
+                    {formatFechaHora(postulacion.retirada_en)}
+                  </dd>
+                </div>
+              )}
               {postulacion.revisado_por && (
                 <div>
                   <dt className="text-muted-foreground">Revisada por</dt>

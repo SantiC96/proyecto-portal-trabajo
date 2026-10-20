@@ -4,9 +4,10 @@ import type { Tabla } from "@/types/db";
 
 // Pre-entrevista de la Oficina de Empleo con el postulante, opcional antes de
 // derivar (migration_044 y 045, docs/decisiones/017-pre-entrevista.md). Hay
-// una por postulación.
+// una por postulación. "cancelada": estaba coordinada y el postulante retiró
+// la postulación (migration_053); es final.
 
-export const ESTADOS_PRE_ENTREVISTA = ["coordinada", "realizada", "no_asistio"] as const;
+export const ESTADOS_PRE_ENTREVISTA = ["coordinada", "realizada", "no_asistio", "cancelada"] as const;
 export type EstadoPreEntrevista = (typeof ESTADOS_PRE_ENTREVISTA)[number];
 
 export function esEstadoPreEntrevista(valor: unknown): valor is EstadoPreEntrevista {
@@ -31,6 +32,7 @@ export const PRE_ENTREVISTA_LABEL: Record<EstadoPreEntrevista | "sin_coordinar",
   coordinada: "Coordinada",
   realizada: "Realizada",
   no_asistio: "No asistió",
+  cancelada: "Cancelada (postulación retirada)",
 };
 
 export const PRE_ENTREVISTA_STYLE: Record<EstadoPreEntrevista | "sin_coordinar", string> = {
@@ -38,6 +40,7 @@ export const PRE_ENTREVISTA_STYLE: Record<EstadoPreEntrevista | "sin_coordinar",
   coordinada: "bg-blue-100 text-blue-800",
   realizada: "bg-emerald-100 text-emerald-800",
   no_asistio: "bg-amber-100 text-amber-800",
+  cancelada: "bg-slate-100 text-slate-600",
 };
 
 /** Etiqueta y estilo del estado; la coordinada lleva la fecha. */

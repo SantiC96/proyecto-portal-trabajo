@@ -26,7 +26,8 @@ export function ContadoresEstado({
         "grid grid-cols-2 gap-3",
         contadores.length === 3 && "sm:grid-cols-3",
         contadores.length === 4 && "sm:grid-cols-4",
-        contadores.length >= 5 && "sm:grid-cols-3 lg:grid-cols-5",
+        contadores.length === 5 && "sm:grid-cols-3 lg:grid-cols-5",
+        contadores.length >= 6 && "sm:grid-cols-3 lg:grid-cols-6",
         className,
       )}
     >

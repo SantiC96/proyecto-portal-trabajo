@@ -58,10 +58,12 @@ export default async function AdminOfertaDetallePage({
           .eq("id", oferta.revisado_por)
           .single()
       : Promise.resolve({ data: null }),
+    // Sin las retiradas: quien se retiró y volvió a postularse cuenta una vez.
     supabase
       .from("postulaciones")
       .select("*", { count: "exact", head: true })
-      .eq("oferta_id", ofertaId),
+      .eq("oferta_id", ofertaId)
+      .is("retirada_en", null),
     supabase
       .from("oferta_vacantes")
       .select("cantidad")
