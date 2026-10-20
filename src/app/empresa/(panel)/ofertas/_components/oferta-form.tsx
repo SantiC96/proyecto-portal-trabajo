@@ -6,8 +6,13 @@ import { Plus, X, MapPin } from "lucide-react";
 import { MultiCombobox } from "@/components/ui/multi-combobox";
 import { LARGO_MAXIMO, validarOferta, type OfertaData } from "@/lib/validaciones";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
-import { crearOferta, editarOferta } from "@/app/empresa/(panel)/ofertas/actions";
-import { type ErrorAccion, toErrorAccion } from "@/lib/resultado";
+import {
+  crearOferta,
+  editarOferta,
+  enviarBorrador,
+  guardarBorrador,
+} from "@/app/empresa/(panel)/ofertas/actions";
+import { type ErrorAccion, type Resultado, toErrorAccion } from "@/lib/resultado";
 import { DURACIONES_OFERTA, DURACION_OFERTA_POR_DEFECTO } from "@/lib/ofertas-vencimiento";
 import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
@@ -27,6 +32,8 @@ interface OfertaFormProps {
   ofertaId?: string;
   valorInicial?: Partial<OfertaData>;
   estaPublicada?: boolean;
+  /** La oferta que se edita es un borrador (migration_051). */
+  esBorrador?: boolean;
   minimoVacantes?: number;
 }
 
@@ -45,9 +52,21 @@ const CAMPOS: readonly (keyof OfertaData)[] = [
   "beneficios",
 ];
 
-export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, minimoVacantes = 1 }: OfertaFormProps) {
+export function OfertaForm({
+  categorias,
+  ofertaId,
+  valorInicial,
+  estaPublicada,
+  esBorrador = false,
+  minimoVacantes = 1,
+}: OfertaFormProps) {
   const router = useRouter();
   const { pendiente: isPending, ejecutar } = useAccion();
+  // Qué botón disparó el envío en curso, para mostrar la carga en ese.
+  const [modoEnCurso, setModoEnCurso] = useState<"revision" | "borrador">("revision");
+  // Un borrador nuevo o existente admite "Guardar borrador"; una oferta ya
+  // enviada se edita como hasta ahora.
+  const admiteBorrador = !ofertaId || esBorrador;
   const [error, setError] = useState<ErrorAccion | null>(null);
   const campos = useErroresCampo<keyof OfertaData>();
   const errorRef = useRef<HTMLDivElement>(null);
@@ -101,12 +120,8 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
     }
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError(null);
-    const form = e.currentTarget;
-
-    // Auto-add any text written in the inputs but not yet added to the list.
+  /** Agrega a las listas lo que quedó escrito sin tocar "Agregar". */
+  function datosDelFormulario(): OfertaData {
     const reqFinal = [...requisitos];
     const reqPendiente = nuevoRequisito.trim();
     if (reqPendiente && !reqFinal.includes(reqPendiente) && reqFinal.length < 15) {
@@ -123,7 +138,7 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
       setNuevoBeneficio("");
     }
 
-    const data: OfertaData = {
+    return {
       titulo,
       descripcion,
       categorias: categoriasSeleccionadas,
@@ -134,9 +149,30 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
       cantidadVacantes,
       duracionDias,
     };
+  }
+
+  function mostrarError(result: Resultado<unknown>) {
+    if (result.ok) return;
+    if (campos.tomarDelServidor(result, CAMPOS)) return;
+    setError(toErrorAccion(result));
+    setTimeout(() => errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    const form = e.currentTarget;
+    const data = datosDelFormulario();
 
     const completos = campos.validar(
-      { titulo, descripcion, categorias: categoriasSeleccionadas, modalidad, jornada, requisitos: reqFinal },
+      {
+        titulo,
+        descripcion,
+        categorias: categoriasSeleccionadas,
+        modalidad,
+        jornada,
+        requisitos: data.requisitos,
+      },
       form
     );
     if (!completos) return;
@@ -147,18 +183,31 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
       return;
     }
 
+    setModoEnCurso("revision");
     ejecutar(async () => {
-      const result = ofertaId
-        ? await editarOferta(ofertaId, data)
-        : await crearOferta(data, claveEnvio);
+      const result = !ofertaId
+        ? await crearOferta(data, claveEnvio)
+        : esBorrador
+          ? await enviarBorrador(ofertaId, data, claveEnvio)
+          : await editarOferta(ofertaId, data);
 
-      if (!result.ok) {
-        if (campos.tomarDelServidor(result, CAMPOS)) return;
-        setError(toErrorAccion(result));
-        setTimeout(() => errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
-        return;
-      }
+      if (!result.ok) return mostrarError(result);
       router.push("/empresa/ofertas?aviso=enviada");
+    });
+  }
+
+  /** El borrador solo exige el título; el resto se completa después. */
+  function guardarComoBorrador(e: React.MouseEvent<HTMLButtonElement>) {
+    setError(null);
+    const form = e.currentTarget.form;
+    const data = datosDelFormulario();
+    if (!campos.validar({ titulo }, form)) return;
+
+    setModoEnCurso("borrador");
+    ejecutar(async () => {
+      const result = await guardarBorrador(data, claveEnvio, ofertaId);
+      if (!result.ok) return mostrarError(result);
+      router.push("/empresa/ofertas?aviso=borrador");
     });
   }
 
@@ -491,14 +540,30 @@ export function OfertaForm({ categorias, ofertaId, valorInicial, estaPublicada, 
         >
           Cancelar
         </button>
+        {admiteBorrador && (
+          <button
+            type="button"
+            onClick={guardarComoBorrador}
+            disabled={isPending}
+            aria-busy={isPending && modoEnCurso === "borrador"}
+            className="btn-secundario inline-flex min-h-11 items-center justify-center gap-2 px-5 text-sm font-medium"
+          >
+            {isPending && modoEnCurso === "borrador" && <Spinner />}
+            {isPending && modoEnCurso === "borrador" ? "Guardando…" : "Guardar borrador"}
+          </button>
+        )}
         <button
           type="submit"
           disabled={isPending}
-          aria-busy={isPending}
+          aria-busy={isPending && modoEnCurso === "revision"}
           className="btn-primario min-h-11 justify-center px-5"
         >
-          {isPending && <Spinner />}
-          {isPending ? "Guardando…" : ofertaId ? "Guardar cambios" : "Enviar a revisión"}
+          {isPending && modoEnCurso === "revision" && <Spinner />}
+          {isPending && modoEnCurso === "revision"
+            ? "Enviando…"
+            : ofertaId && !esBorrador
+              ? "Guardar cambios"
+              : "Enviar a revisión"}
         </button>
       </div>
     </form>

@@ -30,7 +30,8 @@ export default async function EmpresaDashboardPage() {
     supabase
       .from("ofertas")
       .select("*", { count: "exact", head: true })
-      .eq("empresa_id", empresa.id);
+      .eq("empresa_id", empresa.id)
+      .is("eliminada_en", null);
   const [pendientes, publicadas, vencidas, rechazadas, cerradas, porVencer] = await Promise.all([
     contar().eq("estado", "pendiente_aprobacion"),
     contar().eq("estado", "activa").gt("vence_en", ahora),

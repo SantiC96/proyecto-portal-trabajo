@@ -20,7 +20,8 @@ export const ESTADO_OFERTA_EMPRESA_STYLE: Record<EstadoOfertaEmpresa, string> = 
   activa: "bg-emerald-100 text-emerald-800",
   rechazada: "bg-red-100 text-red-700",
   cerrada: "bg-gray-100 text-gray-600",
-  borrador: "bg-gray-100 text-gray-500",
+  // Azul "info": distinto del gris de Cerrada y de los demás estados (contraste AA).
+  borrador: "bg-blue-100 text-blue-800",
   vencida: "bg-red-100 text-red-700",
 };
 
@@ -61,25 +62,68 @@ export function getOfertaEstadoBadge(estado: string | undefined): OfertaEstadoBa
   }
 }
 
-// Determines which action button(s) to show per offer state.
-// Single source of truth for both the list and any detail view.
+/**
+ * Acciones de la empresa sobre una oferta de Mis ofertas, según el estado
+ * (migration_051 y 052). Única fuente para el listado y el detalle.
+ * Cada oferta muestra un solo botón de baja, para no confundir Eliminar con
+ * Retirar, y nunca uno que la base vaya a rechazar:
+ *   Eliminar  borrador, o rechazada o pendiente sin postulaciones (borrado
+ *             lógico: se puede restaurar durante DIAS_RESTAURACION_OFERTA).
+ *   Retirar   pendiente o rechazada con postulaciones, o activa (también
+ *             vencida). La oferta queda cerrada y se cierran los procesos
+ *             abiertos.
+ *   Continuar borrador: lleva al formulario, que guarda o envía a revisión.
+ *   Editar    activa o rechazada.
+ */
 export function accionesDisponibles(
   estado: string,
   cantidadPostulaciones: number
-): { mostrarEliminar: boolean; mostrarCerrar: boolean; mostrarCandidatosPorContactar: boolean } {
+): {
+  mostrarEliminar: boolean;
+  mostrarRetirar: boolean;
+  mostrarContinuar: boolean;
+  mostrarEditar: boolean;
+  mostrarCandidatosPorContactar: boolean;
+} {
+  const ninguna = {
+    mostrarEliminar: false,
+    mostrarRetirar: false,
+    mostrarContinuar: false,
+    mostrarEditar: false,
+    mostrarCandidatosPorContactar: false,
+  };
   switch (estado) {
+    case "borrador":
+      return { ...ninguna, mostrarEliminar: true, mostrarContinuar: true };
     case "pendiente_aprobacion":
-      return cantidadPostulaciones === 0
-        ? { mostrarEliminar: true, mostrarCerrar: false, mostrarCandidatosPorContactar: false }
-        : { mostrarEliminar: false, mostrarCerrar: true, mostrarCandidatosPorContactar: false };
+      return {
+        ...ninguna,
+        mostrarEliminar: cantidadPostulaciones === 0,
+        mostrarRetirar: cantidadPostulaciones > 0,
+      };
     case "activa":
-      return { mostrarEliminar: false, mostrarCerrar: true, mostrarCandidatosPorContactar: true };
+      return { ...ninguna, mostrarRetirar: true, mostrarEditar: true, mostrarCandidatosPorContactar: true };
     case "rechazada":
-      // Rejected offers were never published and never received applications.
-      return { mostrarEliminar: true, mostrarCerrar: false, mostrarCandidatosPorContactar: false };
-    default: // cerrada y cualquier otro
-      return { mostrarEliminar: false, mostrarCerrar: false, mostrarCandidatosPorContactar: false };
+      // Tiene postulaciones si estuvo publicada, la empresa la editó y la
+      // oficina rechazó la nueva versión: se retira para cerrar esos procesos.
+      return {
+        ...ninguna,
+        mostrarEditar: true,
+        mostrarEliminar: cantidadPostulaciones === 0,
+        mostrarRetirar: cantidadPostulaciones > 0,
+      };
+    default: // cerrada
+      return ninguna;
   }
+}
+
+/** Días para restaurar una oferta eliminada (ofertas_dias_restauracion(), migration_051). */
+export const DIAS_RESTAURACION_OFERTA = 30;
+
+/** Días que le quedan a una oferta eliminada antes de la purga (0 si ya no se puede restaurar). */
+export function diasParaRestaurar(eliminadaEn: string, ahora: Date = new Date()): number {
+  const limite = new Date(eliminadaEn).getTime() + DIAS_RESTAURACION_OFERTA * 86_400_000;
+  return Math.max(0, Math.ceil((limite - ahora.getTime()) / 86_400_000));
 }
 
 // Short label for admin or status fields.
@@ -93,6 +137,8 @@ export function getOfertaEstadoLabel(estado: string): string {
       return "Rechazada";
     case "cerrada":
       return "Cerrada";
+    case "borrador":
+      return "Borrador";
     default:
       return estado;
   }

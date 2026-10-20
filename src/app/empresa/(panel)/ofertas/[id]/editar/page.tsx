@@ -28,6 +28,7 @@ export default async function EditarOfertaPage({ params }: Props) {
     )
     .eq("id", id)
     .eq("empresa_id", empresa.id)
+    .is("eliminada_en", null)
     .maybeSingle();
 
   if (!oferta) notFound();
@@ -44,6 +45,7 @@ export default async function EditarOfertaPage({ params }: Props) {
   const contratados = contratadosResult.data ?? 0;
   const minimoVacantes = Math.max(1, contratados);
 
+  const esBorrador = oferta.estado === "borrador";
   const categoriasSeleccionadas = oferta.oferta_categorias.map((oc) => oc.categoria_id);
 
   const valorInicial: OfertaData = {
@@ -60,12 +62,20 @@ export default async function EditarOfertaPage({ params }: Props) {
 
   return (
     <section className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
-      <BotonVolver href={`/empresa/ofertas/${id}`}>Volver a la oferta</BotonVolver>
+      {esBorrador ? (
+        <BotonVolver href="/empresa/ofertas">Volver a mis ofertas</BotonVolver>
+      ) : (
+        <BotonVolver href={`/empresa/ofertas/${id}`}>Volver a la oferta</BotonVolver>
+      )}
 
       <div className="mt-6">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Editar oferta</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          {esBorrador ? "Completar borrador" : "Editar oferta"}
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Modificá los datos del puesto. Al guardar, la oferta vuelve a revisión.
+          {esBorrador
+            ? "Podés guardarlo como borrador las veces que quieras. Para enviarlo a revisión tienen que estar todos los datos obligatorios."
+            : "Modificá los datos del puesto. Al guardar, la oferta vuelve a revisión."}
         </p>
       </div>
 
@@ -75,6 +85,7 @@ export default async function EditarOfertaPage({ params }: Props) {
           ofertaId={id}
           valorInicial={valorInicial}
           estaPublicada={oferta.estado === "activa"}
+          esBorrador={esBorrador}
           minimoVacantes={minimoVacantes}
         />
       </div>
