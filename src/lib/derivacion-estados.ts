@@ -7,6 +7,7 @@ export const DERIVACION_ESTADO_LABEL: Record<EstadoDerivacionEmpresa, string> = 
   en_proceso: "Entrevista coordinada",
   contratado: "Seleccionado",
   rechazado: "No seleccionado",
+  oferta_retirada: "Cerrada (oferta retirada)",
 };
 
 export const DERIVACION_ESTADO_STYLE: Record<
@@ -17,10 +18,12 @@ export const DERIVACION_ESTADO_STYLE: Record<
   en_proceso: "bg-blue-100 text-blue-800",
   contratado: "bg-emerald-100 text-emerald-800",
   rechazado: "bg-gray-100 text-gray-600",
+  oferta_retirada: "bg-gray-100 text-gray-500",
 };
 
+/** "oferta_retirada" también es final: la empresa retiró la oferta (migration_051). */
 export function esFinalEmpresa(estado: EstadoDerivacionEmpresa): boolean {
-  return estado === "contratado" || estado === "rechazado";
+  return estado === "contratado" || estado === "rechazado" || estado === "oferta_retirada";
 }
 
 /**

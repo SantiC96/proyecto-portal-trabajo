@@ -31,8 +31,13 @@ function getBadgeEstado(estado: EstadoPostulacion) {
       return { label: "Enviada a la empresa", className: "bg-blue-100 text-blue-800" };
     case "rechazada_municipalidad":
       return { label: "No seleccionada", className: "bg-red-100 text-red-700" };
+    case "oferta_retirada":
+      return { label: "Cerrada", className: "bg-gray-100 text-gray-600" };
   }
 }
+
+const AVISO_OFERTA_RETIRADA =
+  "La empresa retiró la oferta. Tu postulación quedó cerrada; podés seguir postulándote a otras ofertas.";
 
 function RetirarBoton({ postulacionId }: { postulacionId: string }) {
   return (
@@ -137,8 +142,21 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
               )}
 
             {/* Derivacion: estado de la empresa (nunca notas) */}
+            {p.estado === "oferta_retirada" && (
+              <p className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-600">
+                {AVISO_OFERTA_RETIRADA}
+              </p>
+            )}
+
             {p.estado === "derivada" && p.derivacion && (() => {
               const d = p.derivacion;
+              if (d.estado_empresa === "oferta_retirada") {
+                return (
+                  <p className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-600">
+                    {AVISO_OFERTA_RETIRADA}
+                  </p>
+                );
+              }
               if (d.estado_empresa === "contratado") {
                 return (
                   <div className="mt-3 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">

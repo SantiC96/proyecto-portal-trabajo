@@ -167,7 +167,13 @@ export function FichaAcciones({
           )}
         </div>
 
-        {derivacion && (
+        {derivacion?.estado_empresa === "oferta_retirada" && (
+          <p className="text-sm text-muted-foreground">
+            El proceso quedó cerrado porque la empresa retiró la oferta.
+          </p>
+        )}
+
+        {derivacion && derivacion.estado_empresa !== "oferta_retirada" && (
           <button
             type="button"
             onClick={() => {

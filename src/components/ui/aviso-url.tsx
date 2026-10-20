@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 const MENSAJES: Record<string, { tipo: "exito" | "info"; texto: string }> = {
   enviada: { tipo: "exito", texto: "Tu oferta se envió a revisión. La Oficina de Empleo la revisará pronto." },
+  borrador: { tipo: "exito", texto: "Borrador guardado. Lo encontrás en Mis ofertas para completarlo y enviarlo." },
   editada: { tipo: "exito", texto: "Oferta guardada. Volvió a revisión de la Oficina de Empleo." },
   eliminada: { tipo: "exito", texto: "El envío fue eliminado exitosamente." },
   pendiente: { tipo: "info", texto: "La oferta está en revisión. Vas a poder editarla cuando la oficina responda." },
