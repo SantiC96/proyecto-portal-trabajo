@@ -554,6 +554,7 @@ export type Database = {
           created_at: string
           descripcion: string
           duracion_dias: number
+          eliminada_en: string | null
           empresa_id: string | null
           empresa_nombre: string
           estado: Database["public"]["Enums"]["estado_oferta"]
@@ -577,6 +578,7 @@ export type Database = {
           created_at?: string
           descripcion: string
           duracion_dias?: number
+          eliminada_en?: string | null
           empresa_id?: string | null
           empresa_nombre: string
           estado?: Database["public"]["Enums"]["estado_oferta"]
@@ -600,6 +602,7 @@ export type Database = {
           created_at?: string
           descripcion?: string
           duracion_dias?: number
+          eliminada_en?: string | null
           empresa_id?: string | null
           empresa_nombre?: string
           estado?: Database["public"]["Enums"]["estado_oferta"]
@@ -1031,6 +1034,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      eliminar_oferta: { Args: { p_oferta_id: string }; Returns: undefined }
       email_registrado: { Args: { p_email: string }; Returns: boolean }
       email_tipo_con_envio: { Args: { p_tipo: string }; Returns: boolean }
       emails_de_usuarios: {
@@ -1065,6 +1069,10 @@ export type Database = {
           p_tipo: string
           p_usuario_id: string
         }
+        Returns: undefined
+      }
+      enviar_borrador_oferta: {
+        Args: { p_oferta_id: string }
         Returns: undefined
       }
       estado_cursos_calculo: {
@@ -1108,6 +1116,24 @@ export type Database = {
       generar_avisos_vencimiento_empresa: {
         Args: { p_dias_aviso: number }
         Returns: number
+      }
+      guardar_borrador_oferta: {
+        Args: {
+          p_beneficios: string[]
+          p_cantidad_vacantes: number
+          p_categoria_ids: string[]
+          p_clave_envio: string
+          p_descripcion: string
+          p_duracion_dias: number
+          p_enviar?: boolean
+          p_jornada: Database["public"]["Enums"]["jornada_oferta"]
+          p_modalidad: Database["public"]["Enums"]["modalidad_oferta"]
+          p_oferta_id: string
+          p_requisitos: string[]
+          p_titulo: string
+          p_ubicacion: string
+        }
+        Returns: string
       }
       indicadores_empresa: {
         Args: { p_desde?: string }
@@ -1243,8 +1269,24 @@ export type Database = {
         Args: { p_oferta_id: string }
         Returns: boolean
       }
+      oferta_campos_faltantes: {
+        Args: {
+          p_descripcion: string
+          p_duracion_dias: number
+          p_jornada: Database["public"]["Enums"]["jornada_oferta"]
+          p_modalidad: Database["public"]["Enums"]["modalidad_oferta"]
+          p_oferta_id: string
+          p_requisitos: string[]
+          p_titulo: string
+        }
+        Returns: string[]
+      }
       oferta_sin_postulaciones: {
         Args: { p_oferta_id: string }
+        Returns: boolean
+      }
+      oferta_tiene_requisito: {
+        Args: { p_requisitos: string[] }
         Returns: boolean
       }
       ofertas_con_candidatos_pendientes: {
@@ -1253,6 +1295,7 @@ export type Database = {
           oferta_id: string
         }[]
       }
+      ofertas_dias_restauracion: { Args: never; Returns: number }
       parametros_cursos: {
         Args: never
         Returns: {
@@ -1301,6 +1344,22 @@ export type Database = {
           postulante_id: string
         }[]
       }
+      procesos_abiertos_de_oferta: {
+        Args: { p_oferta_id: string }
+        Returns: {
+          derivacion_id: string
+          postulacion_id: string
+        }[]
+      }
+      procesos_abiertos_ofertas_empresa: {
+        Args: { p_oferta_ids: string[] }
+        Returns: {
+          candidatos_derivados: number
+          oferta_id: string
+          postulaciones_oficina: number
+        }[]
+      }
+      purgar_ofertas_eliminadas: { Args: never; Returns: number }
       reactivar_cuenta_oficina: {
         Args: { p_usuario_id: string }
         Returns: boolean
@@ -1362,6 +1421,11 @@ export type Database = {
         }
         Returns: undefined
       }
+      restaurar_oferta: {
+        Args: { p_oferta_id: string }
+        Returns: Database["public"]["Enums"]["estado_oferta"]
+      }
+      retirar_oferta: { Args: { p_oferta_id: string }; Returns: number }
       rol_actual: {
         Args: never
         Returns: Database["public"]["Enums"]["rol_usuario"]
@@ -1372,7 +1436,12 @@ export type Database = {
       }
     }
     Enums: {
-      estado_empresa: "pendiente" | "en_proceso" | "contratado" | "rechazado"
+      estado_empresa:
+        | "pendiente"
+        | "en_proceso"
+        | "contratado"
+        | "rechazado"
+        | "oferta_retirada"
       estado_oferta:
         | "borrador"
         | "activa"
@@ -1384,6 +1453,7 @@ export type Database = {
         | "en_revision"
         | "derivada"
         | "rechazada_municipalidad"
+        | "oferta_retirada"
       jornada_oferta:
         | "Tiempo completo"
         | "Part-time"
@@ -1518,7 +1588,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      estado_empresa: ["pendiente", "en_proceso", "contratado", "rechazado"],
+      estado_empresa: [
+        "pendiente",
+        "en_proceso",
+        "contratado",
+        "rechazado",
+        "oferta_retirada",
+      ],
       estado_oferta: [
         "borrador",
         "activa",
@@ -1531,6 +1607,7 @@ export const Constants = {
         "en_revision",
         "derivada",
         "rechazada_municipalidad",
+        "oferta_retirada",
       ],
       jornada_oferta: [
         "Tiempo completo",
