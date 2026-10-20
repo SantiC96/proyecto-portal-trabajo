@@ -24,9 +24,10 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 ### Postulante
 
 - Buscar ofertas por texto, rubro y modalidad, sin necesidad de registrarse.
-- Postularse a una oferta y retirarla en cualquier momento salvo si ya fue seleccionado; la retirada queda en el historial y se puede volver a postular mientras la oferta siga abierta.
-- Ver el estado de cada postulación, la pre-entrevista y la entrevista con la empresa.
-- Completar el perfil: datos personales, rubros de interés, información laboral, foto y CV en PDF.
+- Postularse a una oferta eligiendo con cuál de sus CVs (el más reciente viene elegido) y retirarla en cualquier momento salvo si ya fue seleccionado; la retirada queda en el historial y se puede volver a postular mientras la oferta siga abierta.
+- Ver el estado de cada postulación, con qué CV se postuló, la pre-entrevista y la entrevista con la empresa.
+- Completar el perfil: datos personales, rubros de interés, información laboral y foto.
+- Tener hasta 5 CVs en PDF, verlos y eliminarlos; eliminar un CV no cambia las postulaciones ya hechas con él. Los CVs y fotos eliminados se borran definitivamente a los 30 días, salvo un CV de una postulación en curso.
 - Ver los cursos asignados por la oficina, empezarlos y marcarlos como completados.
 - Cambiar la contraseña.
 
@@ -38,7 +39,7 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 - Guardar una oferta como borrador con lo que haya (al menos el título) y enviarla a revisión cuando esté completa.
 - Editar, renovar ofertas vencidas y retirar una oferta en revisión o publicada: los candidatos en proceso quedan cerrados y reciben un aviso.
 - Eliminar un borrador, una oferta rechazada o una pendiente sin postulaciones, y restaurarla durante 30 días desde la pestaña "Eliminadas".
-- Ver los candidatos que deriva la oficina, con su CV y foto.
+- Ver los candidatos que deriva la oficina, con su foto y el CV que eligieron al postularse.
 - Coordinar y reprogramar entrevistas, y seleccionar o descartar candidatos.
 - Guardar candidatos con una nota para tenerlos en cuenta más adelante.
 - Dashboard de indicadores: ofertas por estado, vacantes cubiertas, candidatos derivados, entrevistas y seleccionados del período, con el detalle de cada oferta.
@@ -50,7 +51,7 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 - Aprobar o rechazar ofertas antes de que se publiquen.
 - Revisar postulaciones, coordinar una pre-entrevista opcional y derivar a la empresa o descartar.
 - Corregir el resultado de una derivación cuando hace falta.
-- Consultar la base de postulantes con filtros (rubro, con CV, esperando curso) y ver la ficha de cada uno.
+- Consultar la base de postulantes con filtros (rubro, con CV, esperando curso) y ver la ficha de cada uno, con sus CVs y el CV de cada postulación.
 - Crear cursos de inserción laboral y asignarlos a quien acumula rechazos.
 - Gestionar las cuentas de la oficina: invitar por email, desactivar y reactivar (siempre queda al menos una activa; nadie se desactiva a sí mismo).
 - Mi perfil: foto, datos de contacto y cambio de contraseña.
