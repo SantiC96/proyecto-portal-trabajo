@@ -137,7 +137,7 @@ async function ListadoPostulantes({
           .from("archivos_usuario")
           .select("usuario_id")
           .eq("tipo", "cv")
-          .eq("activo", true)
+          .is("eliminado_en", null)
       : Promise.resolve({ data: null }),
     esperandoCurso
       ? supabase.rpc("postulantes_esperando_curso_ids")
@@ -159,8 +159,9 @@ async function ListadoPostulantes({
         ]
       : undefined;
 
+  // Con CV: al menos un CV disponible (puede tener varios, migration_054).
   const cvUsuarioIds: string[] | undefined = conCv
-    ? (cvPreResult.data ?? []).map((r) => r.usuario_id)
+    ? [...new Set((cvPreResult.data ?? []).map((r) => r.usuario_id))]
     : undefined;
 
   if (esperandoCurso && "error" in esperandoPreResult && esperandoPreResult.error)
@@ -295,7 +296,7 @@ async function ListadoPostulantes({
       .select("usuario_id")
       .in("usuario_id", usuarioIds)
       .eq("tipo", "cv")
-      .eq("activo", true),
+      .is("eliminado_en", null),
     supabase
       .from("postulaciones")
       .select("postulante_id")

@@ -9,8 +9,14 @@ import { esUuid } from "@/lib/validaciones";
 import type { Enum } from "@/types/db";
 import { programarEnvioEmails } from "@/lib/emails/cola";
 
+/**
+ * Crea la postulación con el CV elegido (migration_054). El CV va en el mismo
+ * INSERT: el trigger postulaciones_cv_elegido vuelve a validar que sea del
+ * postulante y siga disponible, así que no queda una postulación sin CV.
+ */
 export async function postularme(
   ofertaId: string,
+  cvArchivoId: string,
 ): Promise<Resultado<void>> {
   const auth = await requerirPostulante({
     mensajeSinPermiso: "Solo los postulantes pueden postularse.",
@@ -46,25 +52,34 @@ export async function postularme(
     return err("ESTADO_INVALIDO", "Esta oferta ya venció y no acepta postulaciones nuevas.");
   }
 
-  const { data: cv } = await supabase
+  // RLS: solo sus CVs no eliminados.
+  const { data: cvs, error: errorCvs } = await supabase
     .from("archivos_usuario")
     .select("id")
     .eq("usuario_id", usuario.id)
     .eq("tipo", "cv")
-    .eq("activo", true)
-    .maybeSingle();
+    .is("eliminado_en", null);
 
-  if (!cv) return err("SIN_CV");
+  if (errorCvs) {
+    const ref = logError("postularme:cvs", errorCvs, { ofertaId });
+    return errConRef("ERROR_INTERNO", "Error al procesar la postulación. Intentá de nuevo.", ref);
+  }
+  if (cvs.length === 0) return err("SIN_CV");
+  if (!esUuid(cvArchivoId) || !cvs.some((cv) => cv.id === cvArchivoId)) {
+    return err("DATOS_INVALIDOS", "El CV que elegiste ya no está en tu perfil. Elegí otro.");
+  }
 
   // estado omitido: el DEFAULT de la columna lo fija en 'recibida' (migration_018)
   const { error } = await supabase.from("postulaciones").insert({
     oferta_id: ofertaId,
     postulante_id: postulante.id,
+    cv_archivo_id: cvArchivoId,
   });
 
   if (error) {
     if (error.code === "23505") return err("CONFLICTO", "Ya te postulaste a esta oferta.");
-    // P0001: la oferta venció entre la carga de la página y el envío (migration_036).
+    // P0001: la oferta venció entre la carga de la página y el envío (migration_036)
+    // o el CV se eliminó mientras tanto (migration_054).
     if (error.code === "P0001") return fromSupabaseError(error);
     const ref = logError("postularme", error, { ofertaId });
     return errConRef("ERROR_INTERNO", "Error al procesar la postulación. Intentá de nuevo.", ref);

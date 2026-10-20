@@ -6,6 +6,7 @@ import { requerirRolPagina } from "@/lib/auth";
 import { PerfilForm } from "./perfil-form";
 import { AvisoCursoPendiente } from "@/components/cursos/aviso-curso-pendiente";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { consultaCvsDisponibles, conUrlsFirmadas } from "@/lib/cvs";
 
 export const metadata: Metadata = {
   title: "Mi perfil | Portal de Empleo Funes",
@@ -24,7 +25,7 @@ export default async function PerfilPage() {
   const [
     postulanteResult,
     categoriasResult,
-    cvActivoResult,
+    cvsResult,
     avatarActivoResult,
   ] = await Promise.all([
     supabase
@@ -35,13 +36,7 @@ export default async function PerfilPage() {
       .eq("usuario_id", user.id)
       .maybeSingle(),
     supabase.from("categorias").select("id, nombre").order("nombre"),
-    supabase
-      .from("archivos_usuario")
-      .select("ruta, nombre_original, creado_en, tamano")
-      .eq("usuario_id", user.id)
-      .eq("tipo", "cv")
-      .eq("activo", true)
-      .maybeSingle(),
+    consultaCvsDisponibles(supabase, user.id),
     supabase
       .from("archivos_usuario")
       .select("ruta, nombre_original, ajuste_x, ajuste_y, ajuste_zoom")
@@ -80,23 +75,7 @@ export default async function PerfilPage() {
     avatarUrl = signed?.signedUrl ?? null;
   }
 
-  let cvUrl: string | null = null;
-  if (cvActivoResult.data?.ruta) {
-    const { data: signed } = await supabase.storage
-      .from("cvs")
-      .createSignedUrl(cvActivoResult.data.ruta, 300);
-    cvUrl = signed?.signedUrl ?? null;
-  }
-
-  const cvActivo = cvActivoResult.data
-    ? {
-        ruta: cvActivoResult.data.ruta,
-        nombreOriginal: cvActivoResult.data.nombre_original,
-        creadoEn: cvActivoResult.data.creado_en,
-        tamano: cvActivoResult.data.tamano,
-        url: cvUrl,
-      }
-    : null;
+  const cvs = await conUrlsFirmadas(supabase, cvsResult.data ?? [], 300);
 
   const avatarActivo = avatarActivoResult.data
     ? {
@@ -135,7 +114,7 @@ export default async function PerfilPage() {
           situacionLaboral: postulante.situacion_laboral ?? "",
           disponibilidad: postulante.disponibilidad ?? "",
           experienciaLaboral: postulante.experiencia_laboral ?? "",
-          cvActivo,
+          cvs,
         }}
         email={user.email ?? ""}
         categorias={categorias}

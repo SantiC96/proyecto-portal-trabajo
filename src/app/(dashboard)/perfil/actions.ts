@@ -10,6 +10,7 @@ import { logError } from "@/lib/logger";
 import { err, errCampo, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
 import {
   LARGO_MAXIMO,
+  esUuid,
   leerArchivo,
   leerTexto,
   sonUuids,
@@ -21,6 +22,7 @@ import {
 } from "@/lib/validaciones";
 import {
   AVATAR_MAX_SIZE,
+  CV_MAXIMOS,
   CV_MAX_SIZE,
   ERRORES_ARCHIVO,
   validarTipoAvatar,
@@ -221,7 +223,7 @@ export async function subirAvatar(
     return errConRef("ERROR_INTERNO", "Error al subir la imagen. Intentá de nuevo.", ref);
   }
 
-  // Activar nuevo y desactivar anterior en una sola transacción
+  // Activar la nueva y marcar eliminada la anterior en una sola transacción
   const { error: rpcError } = await supabaseAdmin.rpc("activar_archivo_usuario", {
     p_usuario_id: user.id,
     p_tipo: "avatar",
@@ -286,13 +288,13 @@ export async function quitarAvatar(): Promise<Resultado<void>> {
   if (!auth.ok) return auth;
   const user = auth.usuario;
 
-  // Eliminación lógica: marcar el activo como inactivo, no borrar del bucket
+  // Borrado lógico: el archivo lo borra de Storage la purga diaria (migration_054).
   const { error } = await supabaseAdmin
     .from("archivos_usuario")
-    .update({ activo: false, desactivado_en: new Date().toISOString() })
+    .update({ eliminado_en: new Date().toISOString() })
     .eq("usuario_id", user.id)
     .eq("tipo", "avatar")
-    .eq("activo", true);
+    .is("eliminado_en", null);
 
   if (error) {
     const ref = logError("quitarAvatar", error, { userId: user.id });
@@ -335,6 +337,21 @@ export async function subirCV(
     return err("ARCHIVO_INVALIDO", ERRORES_ARCHIVO.cvFirma);
   }
 
+  // Para no subir el archivo en vano. El límite lo garantiza la base al
+  // registrarlo (trigger de archivos_usuario, migration_054).
+  const { count, error: errorConteo } = await supabaseAdmin
+    .from("archivos_usuario")
+    .select("id", { count: "exact", head: true })
+    .eq("usuario_id", user.id)
+    .eq("tipo", "cv")
+    .is("eliminado_en", null);
+
+  if (errorConteo) {
+    const ref = logError("subirCV:conteo", errorConteo, { userId: user.id });
+    return errConRef("ERROR_INTERNO", "Error al subir el CV. Intentá de nuevo.", ref);
+  }
+  if ((count ?? 0) >= CV_MAXIMOS) return err("REGLA_DE_NEGOCIO", ERRORES_ARCHIVO.cvLimite);
+
   // Nombre único por timestamp para no sobrescribir archivos anteriores
   const nuevaRuta = `${user.id}/cv-${Date.now()}.pdf`;
 
@@ -347,7 +364,7 @@ export async function subirCV(
     return errConRef("ERROR_INTERNO", "Error al subir el CV. Intentá de nuevo.", ref);
   }
 
-  // Activar nuevo y desactivar anterior en una sola transacción
+  // Se agrega a los que ya tiene; los anteriores siguen disponibles.
   const { error: rpcError } = await supabaseAdmin.rpc("activar_archivo_usuario", {
     p_usuario_id: user.id,
     p_tipo: "cv",
@@ -358,8 +375,10 @@ export async function subirCV(
   });
 
   if (rpcError) {
-    const ref = logError("subirCV:rpc", rpcError, { userId: user.id });
     await descartarArchivoSubido("cvs", nuevaRuta, "subirCV");
+    // P0001: ya tiene el máximo de CVs (otra subida terminó antes que esta).
+    if (rpcError.code === "P0001") return fromSupabaseError(rpcError);
+    const ref = logError("subirCV:rpc", rpcError, { userId: user.id });
     return errConRef("ERROR_INTERNO", "Error al guardar la ruta del CV. Intentá de nuevo.", ref);
   }
 
@@ -367,23 +386,33 @@ export async function subirCV(
   return okMsg("CV subido correctamente.");
 }
 
-export async function eliminarCV(): Promise<Resultado<void>> {
+/**
+ * Borrado lógico de un CV propio (migration_054): deja de verse en el perfil
+ * y no se puede elegir al postularse. Las postulaciones hechas con ese CV lo
+ * siguen mostrando a la oficina y a la empresa mientras estén en curso; el
+ * archivo lo borra de Storage la purga diaria.
+ */
+export async function eliminarCV(archivoId: string): Promise<Resultado<void>> {
   const auth = await requerirRol("postulante");
   if (!auth.ok) return auth;
   const user = auth.usuario;
 
-  // Eliminación lógica: marcar el activo como inactivo, no borrar del bucket
-  const { error } = await supabaseAdmin
+  if (!esUuid(archivoId)) return err("NO_ENCONTRADO", "Ese CV ya no está en tu perfil.");
+
+  const { data, error } = await supabaseAdmin
     .from("archivos_usuario")
-    .update({ activo: false, desactivado_en: new Date().toISOString() })
+    .update({ eliminado_en: new Date().toISOString() })
+    .eq("id", archivoId)
     .eq("usuario_id", user.id)
     .eq("tipo", "cv")
-    .eq("activo", true);
+    .is("eliminado_en", null)
+    .select("id");
 
   if (error) {
     const ref = logError("eliminarCV", error, { userId: user.id });
     return errConRef("ERROR_INTERNO", "Error al eliminar el CV. Intentá de nuevo.", ref);
   }
+  if (data.length === 0) return err("NO_ENCONTRADO", "Ese CV ya no está en tu perfil.");
 
   revalidatePath("/perfil");
   return okMsg("CV eliminado.");

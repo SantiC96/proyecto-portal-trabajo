@@ -21,6 +21,9 @@ export const CV_ACCEPT = "application/pdf";
 export const AVATAR_HELP_TEXT = "JPG, PNG o WEBP, hasta 2 MB";
 export const CV_HELP_TEXT = "PDF, hasta 5 MB";
 
+/** CVs disponibles por postulante. El límite lo hace cumplir la base (cvs_maximo(), migration_054). */
+export const CV_MAXIMOS = 5;
+
 export const ERRORES_ARCHIVO = {
   vacio:        "No se recibió ningún archivo.",
   nombreLargo:  "El nombre del archivo es demasiado largo.",
@@ -30,7 +33,13 @@ export const ERRORES_ARCHIVO = {
   cvTipo:       "El CV debe ser un archivo PDF.",
   cvTamano:     "El CV no puede superar los 5 MB.",
   cvFirma:      "El archivo no es válido. Subí un PDF.",
+  cvLimite:     `Podés tener hasta ${CV_MAXIMOS} CVs. Para subir otro, eliminá alguno de los que tenés.`,
 } as const;
+
+/** "120 KB"; vacío si el tamaño no se conoce (filas viejas con 0). */
+export function textoTamanoArchivo(bytes: number): string {
+  return bytes > 0 ? `${(bytes / 1024).toFixed(0)} KB` : "";
+}
 
 export function validarTipoAvatar(mimeType: string): mimeType is AvatarMimeType {
   return AVATAR_MIME_TYPES.some((tipo) => tipo === mimeType);

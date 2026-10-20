@@ -121,6 +121,7 @@ erDiagram
     postulantes ||--o{ postulaciones : "se postula"
     postulaciones ||--o| derivaciones : "se deriva"
     postulaciones ||--o| pre_entrevistas : "pre-entrevista"
+    archivos_usuario |o--o{ postulaciones : "CV elegido"
     usuarios |o--o{ derivaciones : "deriva (oficina)"
 
     postulantes ||--o{ candidatos_guardados : "guardado"
@@ -212,13 +213,13 @@ erDiagram
 | `ofertas` | Ofertas laborales, su estado de revisión, duración y vencimiento. |
 | `oferta_categorias` | Rubros de cada oferta (muchos a muchos). |
 | `oferta_vacantes` | Cantidad de vacantes de la oferta (una fila por oferta). |
-| `postulaciones` | Postulación de un postulante a una oferta y su estado en la oficina. |
+| `postulaciones` | Postulación de un postulante a una oferta, el CV elegido (`cv_archivo_id`) y su estado en la oficina. |
 | `pre_entrevistas` | Pre-entrevista opcional de la oficina, una por postulación. |
 | `derivaciones` | Postulación derivada a la empresa y su resultado (entrevista, seleccionado, descartado). |
 | `candidatos_guardados` | Candidatos que una empresa guarda con una nota. |
 | `cursos` | Cursos de inserción laboral que carga la oficina. |
 | `asignaciones_curso` | Curso asignado a un postulante y su estado (`asignado`, `en_curso`, `completado`). |
-| `archivos_usuario` | Registro de CV y fotos subidos (ruta, tipo, tamaño, activo). |
+| `archivos_usuario` | Registro de CVs y fotos subidos (ruta, tipo, tamaño) con borrado lógico (`eliminado_en`). |
 | `notificaciones` | Avisos de la campanita de cada usuario. |
 | `emails_pendientes` | Cola de salida de emails (solo la lee la service role). |
 
@@ -249,6 +250,7 @@ Están en [`src/migrations/`](../src/migrations/) y se ejecutan **a mano, en ord
 | 051 | Borradores de ofertas, retiro de la oferta con cierre de procesos, requisito mínimo y borrado lógico |
 | 052 | Retirar una oferta rechazada que tiene postulaciones |
 | 053 | Retiro de la postulación por el postulante y volver a postularse (una postulación vigente por oferta) |
+| 054 | Hasta 5 CVs por postulante, CV elegido al postularse y borrado lógico de CVs y fotos con purga diaria |
 
 El número 014 no se usó.
 
@@ -341,10 +343,11 @@ Cada función controla el rol con `rol_actual()`, toma la propiedad de `auth.uid
 
 ### Restricciones
 
-- **Únicos:** DNI, CUIT, una postulación vigente (no retirada) por oferta y postulante (índice parcial, migración 053), una derivación y una pre-entrevista por postulación, un candidato guardado por empresa, un CV y una foto activos por usuario, un mismo curso pendiente por postulante, nombre de curso.
+- **Únicos:** DNI, CUIT, una postulación vigente (no retirada) por oferta y postulante (índice parcial, migración 053), una derivación y una pre-entrevista por postulación, un candidato guardado por empresa, una foto activa por usuario, un mismo curso pendiente por postulante, nombre de curso.
 - **`CHECK`:** `duracion_dias` en 15, 30, 45 o 60; `oferta_vacantes.cantidad >= 1`; estados de texto; lugar de pre-entrevista no vacío; tipos y links de `notificaciones`; tipo MIME y tamaño en `archivos_usuario`.
 - **Requisito mínimo:** toda oferta que no es borrador tiene al menos un requisito (`CHECK ofertas_requisito_minimo_check`, migración 051; el trigger de 032 da el mensaje).
 - **Borrado lógico de ofertas:** "Eliminar" marca `ofertas.eliminada_en`; un `CHECK` exige que la oferta nunca se haya publicado (borrador, rechazada o pendiente). Las políticas RLS la sacan del público, la oficina y el postulante; la empresa la ve solo en "Eliminadas" y la restaura durante 30 días. Después la purga diaria la borra con sus filas dependientes (ver [Deploy](#11-deploy-en-vercel)).
+- **Borrado lógico de archivos y máximo de CVs:** `archivos_usuario.eliminado_en` marca un CV o una foto eliminados; `activo` siempre vale `eliminado_en IS NULL` (`CHECK` y trigger `archivos_usuario_estado`). El mismo trigger bloquea al usuario y no deja tener más de 5 CVs disponibles, aunque dos subidas lleguen a la vez. `postulaciones_cv_elegido` valida que el CV elegido sea del postulante y no esté eliminado (migración 054, decisión [026](decisiones/026-cvs-y-borrado-logico-de-archivos.md)).
 - **Límite de vacantes:** el trigger `derivaciones_limite_vacantes` bloquea la oferta y no deja seleccionar más candidatos que vacantes, aunque dos selecciones lleguen a la vez. Al cubrirse las vacantes la oferta se cierra sola (`derivaciones_auto_cerrar_oferta`).
 - **Borrado en cascada:** borrar una cuenta en `auth.users` borra en cascada su perfil y sus datos (decisión [006](decisiones/006-borrado-en-cascada.md)).
 
@@ -365,14 +368,19 @@ Los triggers de avisos son `AFTER` y envuelven su trabajo en `BEGIN … EXCEPTIO
 
 | Bucket | Contenido | Tipos | Tamaño máximo |
 |---|---|---|---|
-| `cvs` | CV del postulante | PDF | 5 MB |
+| `cvs` | CVs del postulante (hasta 5 disponibles) | PDF | 5 MB |
 | `avatares` | Foto de perfil (postulante y oficina) y logo de la empresa | JPG, PNG, WEBP | 2 MB |
 
 - **Privados:** no hay URLs públicas. Para mostrar un archivo se genera una URL firmada de corta duración (entre 5 y 60 minutos).
 - **Ruta:** `<id del usuario>/cv-<timestamp>.pdf` y `<id del usuario>/avatar-<timestamp>.<ext>`. La ruta se registra en `archivos_usuario`.
-- **Quién sube:** el CV solo el postulante (`subirCV`); la foto, los tres roles desde "Mi perfil" con `subirAvatar` (`src/app/(dashboard)/perfil/actions.ts`, la misma acción y las mismas validaciones). Las URLs firmadas de varias fotos se generan juntas con `fotosDePerfil()` (`src/lib/fotos-perfil.ts`). Primero se sube el archivo y después se registra con `activar_archivo_usuario`, que desactiva el anterior; si el registro falla, se borra el archivo recién subido.
-- **Quién lee:** el propio usuario (su carpeta), la oficina (todos) y la empresa solo los de candidatos derivados a sus ofertas o guardados (`empresa_puede_ver_cv`, `empresa_puede_ver_avatar`, migraciones 028 y 029).
-- **Quitar o reemplazar** desactiva el registro (`activo = false`); la aplicación no borra archivos del bucket.
+- **Quién sube:** el CV solo el postulante (`subirCV`); la foto, los tres roles desde "Mi perfil" con `subirAvatar` (`src/app/(dashboard)/perfil/actions.ts`, la misma acción y las mismas validaciones). Las URLs firmadas de varias fotos se generan juntas con `fotosDePerfil()` (`src/lib/fotos-perfil.ts`) y las de varios CVs con `conUrlsFirmadas()` (`src/lib/cvs.ts`). Primero se sube el archivo y después se registra con `activar_archivo_usuario`: una foto nueva marca eliminada la anterior; un CV se agrega a los que ya tiene (hasta 5; si no hay lugar, la base lo rechaza y no se elimina ninguno). Si el registro falla, se borra el archivo recién subido.
+- **Quién lee:**
+  - El postulante: sus CVs disponibles y su foto. Un CV eliminado ya no se abre aunque el archivo siga en el bucket ("postulante puede leer su cv", `postulante_puede_ver_cv`, migración 054).
+  - La oficina: todos los archivos, también los CVs eliminados hasta que se purgan (migración 018).
+  - La empresa: la foto de los candidatos derivados o guardados (`empresa_puede_ver_avatar`, 029) y solo el CV de cada postulación derivada a una oferta suya: el elegido al postularse, o el más reciente si la postulación es anterior a la 054. Si el postulante eliminó ese CV, lo ve mientras la postulación siga en curso (`empresa_puede_ver_cv`, `cv_de_derivacion_empresa`, `cv_de_candidato_empresa`, migración 054).
+- **Quién escribe:** solo el servidor con `supabaseAdmin` (subidas en `subirAvatar` / `subirCV`, borrados en su compensación y en la purga). Desde la migración 054 los buckets no tienen políticas de `INSERT`, `UPDATE` ni `DELETE` para usuarios: nadie puede subir, sobrescribir ni borrar un archivo con la API de Storage salteando la validación del servidor y la protección de los CVs elegidos.
+- **Borrado lógico:** eliminar un CV, quitar la foto o reemplazarla marca `eliminado_en`; las acciones no borran archivos del bucket.
+- **Purga:** la tarea diaria `archivos_eliminados` (`src/lib/mantenimiento.ts`) pide a `archivos_a_purgar()` los archivos eliminados hace más de 30 días, salvo los CVs elegidos en una postulación en curso (recibida, en revisión o derivada con la derivación pendiente o en proceso); los borra de los buckets `cvs` y `avatares` y después borra sus filas con `confirmar_archivos_purgados()`. Si Storage falla, la fila queda para el día siguiente. Las postulaciones cuyo CV se purgó quedan con `cv_archivo_id` NULL y muestran el CV más reciente del postulante.
 
 ### Validación de tipo y tamaño en tres capas (migración 033)
 
@@ -505,7 +513,7 @@ Si falta alguna variable `SMTP_*` o `EMAIL_FROM`, la app funciona igual y los em
 ### Base de datos
 
 1. En **Storage**, crear los buckets privados `cvs` y `avatares` (la migración 033 falla si no existen).
-2. En el **SQL Editor**, ejecutar en orden numérico todos los archivos `src/migrations/migration_0XX_*.sql`, de `migration_001_schema.sql` a `migration_053_retiro_postulacion.sql`. Leer los `NOTICE` que dejan algunas migraciones.
+2. En el **SQL Editor**, ejecutar en orden numérico todos los archivos `src/migrations/migration_0XX_*.sql`, de `migration_001_schema.sql` a `migration_054_cvs_y_borrado_logico_archivos.sql`. Leer los `NOTICE` que dejan algunas migraciones.
 3. Los datos demo (usuarios para probar cada rol) se documentan en la sección [Usuarios demo del README](../README.md#usuarios-demo).
 4. Crear el primer usuario de la oficina siguiendo la [guía de usuarios de la oficina](guias/guia-usuarios-oficina.md); los demás se invitan desde `/admin/cuentas`.
 5. Si se cambia el esquema: `npx supabase login` y `npm run db:tipos`.
@@ -538,7 +546,7 @@ No hay tests automáticos configurados.
 - El proyecto se importa desde GitHub; Vercel detecta Next.js y usa `npm run build`.
 - **Variables:** cargar en *Settings → Environment Variables* las mismas de `.env.local` salvo `SUPABASE_PROJECT_ID`. Son secretas `SUPABASE_SERVICE_ROLE_KEY`, `SMTP_PASS` y `CRON_SECRET`. `NEXT_PUBLIC_SITE_URL` tiene que ser la URL del sitio, no `localhost`.
 - **Los cambios de variables aplican en el próximo deploy:** después de cambiar una, hay que volver a desplegar. Las `NEXT_PUBLIC_*` además quedan fijas en el código del navegador al momento del build.
-- **Cron:** `vercel.json` programa `GET /api/emails/procesar` todos los días a las 12:00 UTC (9:00 en Argentina) y `GET /api/mantenimiento/purgar` a las 7:00 UTC (purga las ofertas eliminadas hace más de 30 días con `purgar_ofertas_eliminadas()`, solo service role; `src/lib/mantenimiento.ts` deja lugar para sumar la limpieza de Storage). Vercel manda `Authorization: Bearer <CRON_SECRET>` si la variable está definida; las dos rutas lo validan con `cronAutorizado()` (`src/lib/cron.ts`, comparación en tiempo constante) y son públicas en `proxy.ts`. El plan Hobby solo permite crons diarios, por eso el envío normal de emails va con `after()`.
+- **Cron:** `vercel.json` programa `GET /api/emails/procesar` todos los días a las 12:00 UTC (9:00 en Argentina) y `GET /api/mantenimiento/purgar` a las 7:00 UTC (`src/lib/mantenimiento.ts`: purga las ofertas eliminadas hace más de 30 días con `purgar_ofertas_eliminadas()` y los CVs y fotos eliminados hace más de 30 días con `archivos_a_purgar()` / `confirmar_archivos_purgados()`, todas solo service role; cada tarea corre aunque otra falle). Vercel manda `Authorization: Bearer <CRON_SECRET>` si la variable está definida; las dos rutas lo validan con `cronAutorizado()` (`src/lib/cron.ts`, comparación en tiempo constante) y son públicas en `proxy.ts`. El plan Hobby solo permite crons diarios, por eso el envío normal de emails va con `after()`.
 - En Supabase, agregar la URL del sitio en *Site URL* y en *Redirect URLs*.
 
 ---
@@ -572,6 +580,7 @@ No hay tests automáticos configurados.
 | 023 | [Cuentas de la Oficina de Empleo](decisiones/023-cuentas-de-la-oficina.md) |
 | 024 | [Borradores, retiro y eliminación de ofertas](decisiones/024-borradores-retiro-y-eliminacion-de-ofertas.md) |
 | 025 | [Retiro de la postulación y volver a postularse](decisiones/025-retiro-de-postulacion.md) |
+| 026 | [Varios CVs, CV elegido al postularse y borrado lógico de archivos](decisiones/026-cvs-y-borrado-logico-de-archivos.md) |
 
 ---
 

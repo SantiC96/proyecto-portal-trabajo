@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   User,
@@ -8,34 +8,18 @@ import {
   MapPin,
   CreditCard,
   Mail,
-  FileText,
-  Upload,
-  X,
   CheckCircle2,
-  ExternalLink,
   Pencil,
 } from "lucide-react";
 import { MultiCombobox } from "@/components/ui/multi-combobox";
-import {
-  actualizarPerfil,
-  actualizarRubros,
-  subirCV,
-  eliminarCV,
-} from "./actions";
+import { actualizarPerfil, actualizarRubros } from "./actions";
+import { SeccionCvs } from "./seccion-cvs";
+import type { CvVista } from "@/lib/cvs";
 import { LARGO_MAXIMO, validarNombre, validarDNI, validarTelefono } from "@/lib/validaciones";
 import type { Rol, Tabla } from "@/types/db";
-import type { ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
-import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
-import {
-  CV_ACCEPT,
-  CV_HELP_TEXT,
-  CV_MAX_SIZE,
-  ERRORES_ARCHIVO,
-  validarTipoCV,
-} from "@/lib/archivos";
 import {
   CLASE_CONTROL_INVALIDO,
   ErrorCampo,
@@ -46,7 +30,6 @@ import {
   CampoLectura,
   FieldIcon,
   InputWrapper,
-  MensajeError,
   SectionTitle,
   inputClass,
   inputReadonlyClass,
@@ -70,7 +53,6 @@ import {
   etiquetaNivelEducativo,
   etiquetaSituacionLaboral,
 } from "@/lib/informacion-laboral";
-import { formatFecha } from "@/lib/fechas";
 
 type CampoDatos =
   | "nombre"
@@ -123,13 +105,7 @@ interface PerfilFormProps {
     situacionLaboral: string;
     disponibilidad: string;
     experienciaLaboral: string;
-    cvActivo: {
-      ruta: string;
-      nombreOriginal: string;
-      creadoEn: string;
-      tamano: number;
-      url: string | null;
-    } | null;
+    cvs: CvVista[];
   };
   email: string;
   categorias: Pick<Tabla<"categorias">, "id" | "nombre">[];
@@ -170,13 +146,6 @@ export function PerfilForm({
   const { pendiente: guardandoRubros, ejecutar: ejecutarRubros } = useAccion();
 
   const [categoriaIds, setCategoriaIds] = useState<string[]>(categoriasIniciales);
-
-  // CV
-  const cvInputRef = useRef<HTMLInputElement>(null);
-  const [cvFile, setCvFile] = useState<File | null>(null);
-  const { pendiente: subiendoCV, ejecutar: ejecutarCV } = useAccion();
-  // Solo errores de la validación del archivo en el navegador: los del servidor van en el toast.
-  const [errorCV, setErrorCV] = useState<ErrorAccion | null>(null);
 
   // ── handlers datos personales ────────────────────────────────────────────────
 
@@ -252,32 +221,6 @@ export function PerfilForm({
       if (!result.ok) return;
       setModoEdicionRubros(false);
       router.refresh();
-    });
-  };
-
-  // ── cv handlers ─────────────────────────────────────────────────────────────
-
-  const handleSeleccionarCV = (file: File) => {
-    setErrorCV(null);
-    if (!validarTipoCV(file.type)) {
-      setErrorCV({ mensaje: ERRORES_ARCHIVO.cvTipo });
-      return;
-    }
-    if (file.size > CV_MAX_SIZE) {
-      setErrorCV({ mensaje: ERRORES_ARCHIVO.cvTamano });
-      return;
-    }
-    setCvFile(file);
-    const fd = new FormData();
-    fd.append("cv", file);
-    ejecutarCV(async () => {
-      try {
-        const result = await subirCV(fd);
-        mostrarAviso(result);
-        if (result.ok) router.refresh();
-      } finally {
-        setCvFile(null);
-      }
     });
   };
 
@@ -703,136 +646,7 @@ export function PerfilForm({
       </form>
 
       {/* ── 4. CV ──────────────────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6">
-        <SectionTitle>Curriculum Vitae</SectionTitle>
-
-        {!postulante.cvActivo ? (
-          <div className="mt-4 flex flex-col gap-4">
-            <div className="rounded-lg border border-border bg-secondary px-4 py-4">
-              <p className="text-sm font-semibold text-foreground">
-                Todavía no subiste tu CV
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Subí tu currículum en PDF para que las empresas y la oficina de empleo puedan conocer tu experiencia. Es un paso clave para postularte a las ofertas disponibles.
-              </p>
-            </div>
-
-            {subiendoCV ? (
-              <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-surface-tinted px-4 py-3">
-                <Spinner className="text-primary" />
-                <div className="min-w-0 flex-1">
-                  <p className="break-all text-sm font-medium text-foreground">{cvFile?.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {cvFile ? `${(cvFile.size / 1024).toFixed(0)} KB · PDF` : ""}
-                  </p>
-                </div>
-                <span className="shrink-0 text-sm text-primary">Subiendo CV…</span>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => cvInputRef.current?.click()}
-                className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-background px-6 py-8 text-center transition hover:border-primary/50 hover:bg-surface-tinted"
-              >
-                <Upload className="h-8 w-8 text-muted-icon" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    Hacé clic para seleccionar tu CV. Se sube automáticamente.
-                  </p>
-                  <p className="mt-1 text-xs text-muted-icon">{CV_HELP_TEXT}</p>
-                </div>
-              </button>
-            )}
-
-            <div aria-live="polite">
-              {errorCV && <MensajeError error={errorCV} />}
-            </div>
-          </div>
-        ) : (
-          <div className="mt-4 flex flex-col gap-4">
-            <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-tinted px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex min-w-0 items-center gap-3">
-                <FileText className="h-8 w-8 shrink-0 text-primary" />
-                <div className="min-w-0">
-                  <p className="break-all text-sm font-medium text-foreground">
-                    {postulante.cvActivo.nombreOriginal}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {postulante.cvActivo.tamano > 0
-                      ? `${(postulante.cvActivo.tamano / 1024).toFixed(0)} KB · `
-                      : ""}
-                    PDF · Subido el{" "}
-                    {formatFecha(postulante.cvActivo.creadoEn)}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {postulante.cvActivo.url && (
-                  <a
-                    href={subiendoCV ? undefined : postulante.cvActivo.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-disabled={subiendoCV}
-                    tabIndex={subiendoCV ? -1 : undefined}
-                    className={`btn-secundario inline-flex min-h-11 items-center gap-1.5 px-3 text-sm font-medium sm:min-h-9${subiendoCV ? " pointer-events-none opacity-60" : ""}`}
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    Ver CV
-                  </a>
-                )}
-                <DialogoConfirmacion
-                  textoBoton={
-                    <>
-                      <X className="h-4 w-4" />
-                      Eliminar
-                    </>
-                  }
-                  estiloBoton="peligro"
-                  claseBoton="px-3 sm:min-h-9"
-                  deshabilitado={subiendoCV}
-                  titulo="¿Eliminar tu CV?"
-                  descripcion="Sin CV no vas a poder postularte a nuevas ofertas hasta que subas otro."
-                  textoConfirmar="Sí, eliminar"
-                  textoPendiente="Eliminando…"
-                  destructivo
-                  accion={eliminarCV}
-                  onExito={() => router.refresh()}
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <button
-                type="button"
-                onClick={() => cvInputRef.current?.click()}
-                disabled={subiendoCV}
-                aria-busy={subiendoCV}
-                className="btn-secundario inline-flex min-h-11 w-fit items-center gap-1.5 px-4 text-sm font-medium sm:min-h-9"
-              >
-                {subiendoCV ? <Spinner /> : <Upload className="h-4 w-4" />}
-                {subiendoCV ? "Subiendo…" : "Reemplazar CV"}
-              </button>
-              <p className="text-xs text-muted-icon">{CV_HELP_TEXT}</p>
-            </div>
-
-            <div aria-live="polite">
-              {errorCV && <MensajeError error={errorCV} />}
-            </div>
-          </div>
-        )}
-
-        <input
-          ref={cvInputRef}
-          type="file"
-          accept={CV_ACCEPT}
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleSeleccionarCV(file);
-            e.target.value = "";
-          }}
-        />
-      </div>
+      <SeccionCvs cvs={postulante.cvs} />
 
       {/* ── 5. Contraseña ──────────────────────────────────────────────────── */}
       <SeccionContrasena />

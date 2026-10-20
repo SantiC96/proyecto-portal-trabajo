@@ -5,9 +5,13 @@ import { Mail, Phone, FileText, ExternalLink, User } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirEmpresaPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { formatFechaHora } from "@/lib/fechas";
+import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_STYLE } from "@/lib/derivacion-estados";
-import type { FilaCandidatoParaEmpresa, FilaDerivacionDeOfertaEmpresa } from "@/types/db";
+import type {
+  FilaCandidatoParaEmpresa,
+  FilaCvParaEmpresa,
+  FilaDerivacionDeOfertaEmpresa,
+} from "@/types/db";
 import { InformacionLaboralResumen } from "@/components/postulantes/informacion-laboral-resumen";
 import { AccionesDerivacion } from "./_components/acciones-derivacion";
 import { BotonVolver } from "@/components/ui/boton-volver";
@@ -47,10 +51,13 @@ export default async function CandidatoFichaPage({
   if (!derivacion) notFound();
 
   // Get candidate data and saved status in parallel
-  const [candidatoResult, guardadoResult, vacantesResult, contratadosResult] = await Promise.all([
+  const [candidatoResult, cvResult, guardadoResult, vacantesResult, contratadosResult] = await Promise.all([
     supabase.rpc("candidato_para_empresa", {
       p_postulante_id: derivacion.postulante_id,
     }),
+    // El CV elegido en esta postulación, o el más reciente si es anterior a
+    // poder elegirlo (migration_054).
+    supabase.rpc("cv_de_derivacion_empresa", { p_derivacion_id: derivacionId }),
     supabase
       .from("candidatos_guardados")
       .select("id, nota, oferta_origen_id")
@@ -62,6 +69,8 @@ export default async function CandidatoFichaPage({
 
   const candidato: FilaCandidatoParaEmpresa | null = candidatoResult.data?.[0] ?? null;
   const guardado = guardadoResult.data;
+  if (cvResult.error) logError("empresa_candidato_cv", cvResult.error, { derivacionId });
+  const cv: FilaCvParaEmpresa | null = cvResult.data?.[0] ?? null;
 
   // Solo informativo: el límite lo hace cumplir derivaciones_limite_vacantes (040).
   if (contratadosResult.error) logError("empresa_candidato_contratados", contratadosResult.error);
@@ -69,12 +78,13 @@ export default async function CandidatoFichaPage({
   const vacantesCubiertas =
     vacantes !== null && contratadosResult.data != null && contratadosResult.data >= vacantes;
 
-  // Generate signed CV URL if available (10 min lifetime)
+  // URL firmada del CV (10 min). La política del bucket solo deja abrir el
+  // CV de esta postulación (empresa_puede_ver_cv, migration_054).
   let cvUrl: string | null = null;
-  if (candidato?.cv_ruta) {
+  if (cv) {
     const { data: signed } = await supabase.storage
       .from("cvs")
-      .createSignedUrl(candidato.cv_ruta, 600);
+      .createSignedUrl(cv.ruta, 600);
     cvUrl = signed?.signedUrl ?? null;
   }
 
@@ -134,12 +144,16 @@ export default async function CandidatoFichaPage({
                     </div>
                   </div>
                 )}
-                {cvUrl ? (
+                {cv && cvUrl ? (
                   <div className="flex items-start gap-3">
                     <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                    <div>
+                    <div className="min-w-0">
                       <dt className="text-xs text-muted-foreground">Currículum</dt>
-                      <dd>
+                      <dd className="break-all font-medium text-foreground">{cv.nombre_original}</dd>
+                      <dd className="text-xs text-muted-foreground">
+                        Subido el {formatFecha(cv.subido_en)}
+                      </dd>
+                      <dd className="mt-1">
                         <a
                           href={cvUrl}
                           target="_blank"
@@ -157,7 +171,7 @@ export default async function CandidatoFichaPage({
                     <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                     <div>
                       <dt className="text-xs text-muted-foreground">Currículum</dt>
-                      <dd className="text-muted-foreground">Sin CV cargado</dd>
+                      <dd className="text-muted-foreground">Sin CV disponible</dd>
                     </div>
                   </div>
                 )}
