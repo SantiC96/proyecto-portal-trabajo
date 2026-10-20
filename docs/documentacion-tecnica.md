@@ -248,6 +248,7 @@ Están en [`src/migrations/`](../src/migrations/) y se ejecutan **a mano, en ord
 | 050 | Cuentas de la oficina: activar, desactivar y mínimo de una activa |
 | 051 | Borradores de ofertas, retiro de la oferta con cierre de procesos, requisito mínimo y borrado lógico |
 | 052 | Retirar una oferta rechazada que tiene postulaciones |
+| 053 | Retiro de la postulación por el postulante y volver a postularse (una postulación vigente por oferta) |
 
 El número 014 no se usó.
 
@@ -323,6 +324,7 @@ Las acciones que escriben en más de una tabla son una sola función `SECURITY D
 | `guardarBorrador` / `enviarBorrador` | `guardar_borrador_oferta` (con `p_enviar` también manda a revisión) |
 | `retirarOferta` | `retirar_oferta` (cierra la oferta y sus procesos abiertos; también una rechazada con postulaciones, migración 052) |
 | `eliminarOferta` / `restaurarOferta` | `eliminar_oferta` / `restaurar_oferta` (borrado lógico) |
+| `retirarPostulacion` | `retirar_postulacion` (borra una `recibida`; si no, la deja `retirada_postulante`, cierra la derivación abierta y cancela la pre-entrevista coordinada, migración 053) |
 
 Cada función controla el rol con `rol_actual()`, toma la propiedad de `auth.uid()`, bloquea la fila con `FOR UPDATE` y falla con un mensaje para el usuario (`P0001`). La server action traduce el error a un `Resultado`. Cuando alcanza con un solo `UPDATE`, se agrega el estado esperado al `WHERE` y se verifica que afectó una fila (por ejemplo, `aprobarOferta` exige `estado = 'pendiente_aprobacion'`).
 
@@ -331,15 +333,15 @@ Cada función controla el rol con `rol_actual()`, toma la propiedad de `auth.uid
 | Entidad | Regla (trigger) |
 |---|---|
 | Ofertas | Una oferta en revisión no se edita; editar una oferta publicada la vuelve a `pendiente_aprobacion`; `vence_en` se fija al pasar a `activa` (`vencimiento_ofertas`). Un borrador solo pasa a `pendiente_aprobacion` y solo con todos los obligatorios; una oferta enviada no vuelve a borrador; una eliminada no se modifica (`ofertas_reglas_borrador_y_eliminacion`). |
-| Derivaciones | `pendiente → en_proceso → contratado / rechazado`; los estados finales no vuelven atrás para la empresa (`derivaciones_empresa_update`). `oferta_retirada` solo lo pone `retirar_oferta` y es final. |
+| Derivaciones | `pendiente → en_proceso → contratado / rechazado`; los estados finales no vuelven atrás para la empresa (`derivaciones_empresa_update`). `oferta_retirada` solo lo pone `retirar_oferta` y `retirada_postulante` solo `retirar_postulacion`; los dos son finales. |
 | Cursos | El postulante pasa `asignado → en_curso → completado`; la oficina no cambia el estado (`asignaciones_curso_transicion`). |
-| Pre-entrevistas | `coordinada → realizada / no_asistio`, con fecha pasada; `no_asistio → coordinada` al reprogramar. |
+| Pre-entrevistas | `coordinada → realizada / no_asistio`, con fecha pasada; `no_asistio → coordinada` al reprogramar; `coordinada → cancelada` solo al retirar la postulación (final). |
 | Empresas | Al editar los datos de una empresa rechazada vuelve a `pendiente` y se registra en el historial. |
-| Postulaciones | No se aceptan postulaciones a ofertas vencidas (`postulaciones_oferta_vigente`). `oferta_retirada` solo lo pone `retirar_oferta` y no cambia después (`postulaciones_proteger_oferta_retirada`). |
+| Postulaciones | No se aceptan postulaciones a ofertas vencidas (`postulaciones_oferta_vigente`). `oferta_retirada` solo lo pone `retirar_oferta` y no cambia después (`postulaciones_proteger_oferta_retirada`); lo mismo `retirada_postulante` con `retirar_postulacion` (`postulaciones_proteger_retiro_postulante`). |
 
 ### Restricciones
 
-- **Únicos:** DNI, CUIT, una postulación por oferta y postulante, una derivación y una pre-entrevista por postulación, un candidato guardado por empresa, un CV y una foto activos por usuario, un mismo curso pendiente por postulante, nombre de curso.
+- **Únicos:** DNI, CUIT, una postulación vigente (no retirada) por oferta y postulante (índice parcial, migración 053), una derivación y una pre-entrevista por postulación, un candidato guardado por empresa, un CV y una foto activos por usuario, un mismo curso pendiente por postulante, nombre de curso.
 - **`CHECK`:** `duracion_dias` en 15, 30, 45 o 60; `oferta_vacantes.cantidad >= 1`; estados de texto; lugar de pre-entrevista no vacío; tipos y links de `notificaciones`; tipo MIME y tamaño en `archivos_usuario`.
 - **Requisito mínimo:** toda oferta que no es borrador tiene al menos un requisito (`CHECK ofertas_requisito_minimo_check`, migración 051; el trigger de 032 da el mensaje).
 - **Borrado lógico de ofertas:** "Eliminar" marca `ofertas.eliminada_en`; un `CHECK` exige que la oferta nunca se haya publicado (borrador, rechazada o pendiente). Las políticas RLS la sacan del público, la oficina y el postulante; la empresa la ve solo en "Eliminadas" y la restaura durante 30 días. Después la purga diaria la borra con sus filas dependientes (ver [Deploy](#11-deploy-en-vercel)).
@@ -503,7 +505,7 @@ Si falta alguna variable `SMTP_*` o `EMAIL_FROM`, la app funciona igual y los em
 ### Base de datos
 
 1. En **Storage**, crear los buckets privados `cvs` y `avatares` (la migración 033 falla si no existen).
-2. En el **SQL Editor**, ejecutar en orden numérico todos los archivos `src/migrations/migration_0XX_*.sql`, de `migration_001_schema.sql` a `migration_052_retirar_oferta_rechazada.sql`. Leer los `NOTICE` que dejan algunas migraciones.
+2. En el **SQL Editor**, ejecutar en orden numérico todos los archivos `src/migrations/migration_0XX_*.sql`, de `migration_001_schema.sql` a `migration_053_retiro_postulacion.sql`. Leer los `NOTICE` que dejan algunas migraciones.
 3. Los datos demo (usuarios para probar cada rol) se documentan en la sección [Usuarios demo del README](../README.md#usuarios-demo).
 4. Crear el primer usuario de la oficina siguiendo la [guía de usuarios de la oficina](guias/guia-usuarios-oficina.md); los demás se invitan desde `/admin/cuentas`.
 5. Si se cambia el esquema: `npx supabase login` y `npm run db:tipos`.
@@ -569,6 +571,7 @@ No hay tests automáticos configurados.
 | 022 | [Sesión: cierre del navegador e inactividad](decisiones/022-sesion-y-cierre-del-navegador.md) |
 | 023 | [Cuentas de la Oficina de Empleo](decisiones/023-cuentas-de-la-oficina.md) |
 | 024 | [Borradores, retiro y eliminación de ofertas](decisiones/024-borradores-retiro-y-eliminacion-de-ofertas.md) |
+| 025 | [Retiro de la postulación y volver a postularse](decisiones/025-retiro-de-postulacion.md) |
 
 ---
 

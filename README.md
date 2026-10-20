@@ -24,7 +24,7 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 ### Postulante
 
 - Buscar ofertas por texto, rubro y modalidad, sin necesidad de registrarse.
-- Postularse a una oferta y retirar la postulación mientras no fue revisada.
+- Postularse a una oferta y retirarla en cualquier momento salvo si ya fue seleccionado; la retirada queda en el historial y se puede volver a postular mientras la oferta siga abierta.
 - Ver el estado de cada postulación, la pre-entrevista y la entrevista con la empresa.
 - Completar el perfil: datos personales, rubros de interés, información laboral, foto y CV en PDF.
 - Ver los cursos asignados por la oficina, empezarlos y marcarlos como completados.
