@@ -672,3 +672,10 @@ button,input { font:inherit; }
     transform: none;
   }
 }
+
+css
+.login-input-wrap input[aria-invalid="true"] {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+

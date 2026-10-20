@@ -40,26 +40,14 @@ export function Navbar({ session = null }: NavbarProps) {
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-<<<<<<< HEAD
-  const menuRef = useRef<HTMLDivElement>(null);
-  const menuItemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
 
-  const menuOpen = menuOpenForPath === pathname;
-
+  // El botón "Crear una cuenta" del login abre este mismo modal.
   useEffect(() => {
     const openRegisterModal = () => setRegisterModalOpen(true);
     window.addEventListener("portal:open-register-modal", openRegisterModal);
     return () => window.removeEventListener("portal:open-register-modal", openRegisterModal);
   }, []);
 
-  function openMenu() {
-    setMenuOpenForPath(pathname);
-  }
-  function closeMenu() {
-    setMenuOpenForPath(null);
-  }
-=======
->>>>>>> origin/develop
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
