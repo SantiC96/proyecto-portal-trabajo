@@ -269,6 +269,17 @@ export function AccionesDerivacion({
     );
   }
 
+  if (estado === "retirada_postulante") {
+    return (
+      <div className="rounded-[var(--radius-lg)] border border-border bg-surface-tinted p-4">
+        <p className="text-sm font-semibold text-foreground">Se retiró</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          El candidato retiró su postulación y el proceso quedó cerrado.
+        </p>
+      </div>
+    );
+  }
+
   if (estado === "rechazado") {
     return (
       <div className="rounded-[var(--radius-lg)] border border-border bg-surface-tinted p-4">

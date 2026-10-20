@@ -14,6 +14,7 @@ import { MisPostulacionesLista, type Postulacion } from "./mis-postulaciones-lis
 import type { FilaEstadoDerivacionPostulante, FilaMiPreEntrevista } from "@/types/db";
 import { AvisoCursoPendiente } from "@/components/cursos/aviso-curso-pendiente";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 
 export const metadata: Metadata = {
   title: "Mis postulaciones | Portal de Empleo Funes",
@@ -84,7 +85,7 @@ async function ListadoMisPostulaciones({
     supabase
       .from("postulaciones")
       .select(
-        "id, estado, created_at, ofertas(id, titulo, empresa_nombre, estado, contenido_editado_en)",
+        "id, estado, created_at, retirada_en, ofertas(id, titulo, empresa_nombre, estado, vence_en, contenido_editado_en)",
         { count: "exact" }
       )
       .eq("postulante_id", postulanteId)
@@ -159,13 +160,44 @@ async function ListadoMisPostulaciones({
     for (const fila of data ?? []) preEntrevistas[fila.postulacion_id] = fila;
   }
 
+  // Postulaciones retiradas (migration_053): se puede volver a postular si la
+  // oferta sigue abierta y no hay ya otra postulación vigente a esa oferta
+  // (puede estar en otra página del listado).
+  const ofertaAbierta = (o: (typeof rawList)[number]["ofertas"]) =>
+    o?.estado === "activa" && o.vence_en != null && !estadoVencimiento(o.estado, o.vence_en).vencida;
+
+  const ofertasRetiradasAbiertas = [
+    ...new Set(
+      rawList
+        .filter((r) => r.retirada_en != null && ofertaAbierta(r.ofertas))
+        .map((r) => r.ofertas!.id)
+    ),
+  ];
+
+  const ofertasConVigente = new Set<string>();
+  if (ofertasRetiradasAbiertas.length > 0) {
+    const { data, error } = await supabase
+      .from("postulaciones")
+      .select("oferta_id")
+      .eq("postulante_id", postulanteId)
+      .is("retirada_en", null)
+      .in("oferta_id", ofertasRetiradasAbiertas);
+    if (error) logError("mis_postulaciones_vigentes", error);
+    for (const fila of data ?? []) ofertasConVigente.add(fila.oferta_id);
+  }
+
   const postulaciones: Postulacion[] = rawList.map((r) => ({
     id: r.id,
     estado: r.estado,
     created_at: r.created_at,
+    retirada_en: r.retirada_en,
     oferta: r.ofertas,
     derivacion: derivacionEstados[r.id] ?? null,
     preEntrevista: preEntrevistas[r.id] ?? null,
+    puedeVolverAPostularse:
+      r.retirada_en != null &&
+      ofertaAbierta(r.ofertas) &&
+      !ofertasConVigente.has(r.ofertas!.id),
   }));
 
   return (

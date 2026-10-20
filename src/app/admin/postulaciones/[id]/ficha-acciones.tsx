@@ -131,6 +131,26 @@ export function FichaAcciones({
     });
   }
 
+  // Retirada por el postulante (migration_053): estado final, sin acciones.
+  if (estado === "retirada_postulante") {
+    const empresa = empresaNombre?.trim() || "la empresa";
+    return (
+      <div className="rounded-[var(--radius-lg)] border border-border bg-surface-tinted p-4">
+        <p className="text-sm font-medium text-foreground">Retirada por el postulante</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {derivacion
+            ? `Ya estaba derivada a ${empresa}: el proceso con la empresa quedó cerrado.`
+            : "El postulante retiró la postulación y ya no se puede derivar ni descartar."}
+        </p>
+        {derivacion?.created_at && (
+          <p className="mt-1 text-sm text-muted-foreground">
+            Derivada el {formatFechaHora(derivacion.created_at)}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   // Estado derivada: info + acción de corrección. Con resultado final de la
   // empresa (contratado o no seleccionado) no se ofrece derivar, rechazar ni
   // reconsiderar; solo corregir el estado si la empresa lo cargó mal.

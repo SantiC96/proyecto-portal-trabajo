@@ -231,7 +231,7 @@ async function ListadoDerivados({
                     <p className="text-xs text-muted-foreground">
                       Derivado el {formatFecha(d.derivacion_created_at)}
                     </p>
-                    {d.fecha_entrevista && (
+                    {d.fecha_entrevista && d.estado_empresa !== "retirada_postulante" && (
                       <p className="text-xs text-muted-foreground">
                         Entrevista: {formatFechaHora(d.fecha_entrevista)}
                         {d.lugar_entrevista ? ` · ${d.lugar_entrevista}` : ""}
