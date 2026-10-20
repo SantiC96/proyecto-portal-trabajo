@@ -10,15 +10,23 @@ import type { Enum, FilaEstadoDerivacionPostulante, FilaMiPreEntrevista, Tabla }
 
 type EstadoPostulacion = Enum<"estado_postulacion">;
 
-export type Postulacion = Pick<Tabla<"postulaciones">, "id" | "estado" | "created_at"> & {
+export type Postulacion = Pick<
+  Tabla<"postulaciones">,
+  "id" | "estado" | "created_at" | "retirada_en"
+> & {
   /** null cuando RLS no deja ver la oferta (por ejemplo, si está cerrada). */
   oferta: Pick<
     Tabla<"ofertas">,
-    "id" | "titulo" | "empresa_nombre" | "estado" | "contenido_editado_en"
+    "id" | "titulo" | "empresa_nombre" | "estado" | "vence_en" | "contenido_editado_en"
   > | null;
   derivacion: FilaEstadoDerivacionPostulante | null;
   /** Pre-entrevista con la oficina (sin la nota interna). */
   preEntrevista: FilaMiPreEntrevista | null;
+  /**
+   * Retirada, con la oferta todavía abierta y sin otra postulación vigente a
+   * esa oferta: se muestra el link para volver a postularse.
+   */
+  puedeVolverAPostularse: boolean;
 };
 
 function getBadgeEstado(estado: EstadoPostulacion) {
@@ -33,24 +41,50 @@ function getBadgeEstado(estado: EstadoPostulacion) {
       return { label: "No seleccionada", className: "bg-red-100 text-red-700" };
     case "oferta_retirada":
       return { label: "Cerrada", className: "bg-gray-100 text-gray-600" };
+    case "retirada_postulante":
+      return { label: "Retirada", className: "bg-slate-100 text-slate-600" };
   }
+}
+
+/**
+ * Se puede retirar mientras el proceso siga abierto: recibida, en revisión o
+ * derivada con la empresa todavía sin resultado. Un seleccionado o un proceso
+ * cerrado no se retiran (retirar_postulacion, migration_053).
+ */
+function sePuedeRetirar(p: Postulacion): boolean {
+  if (p.estado === "recibida" || p.estado === "en_revision") return true;
+  return (
+    p.estado === "derivada" &&
+    (p.derivacion?.estado_empresa === "pendiente" || p.derivacion?.estado_empresa === "en_proceso")
+  );
 }
 
 const AVISO_OFERTA_RETIRADA =
   "La empresa retiró la oferta. Tu postulación quedó cerrada; podés seguir postulándote a otras ofertas.";
 
-function RetirarBoton({ postulacionId }: { postulacionId: string }) {
+function RetirarBoton({ postulacion }: { postulacion: Postulacion }) {
+  const titulo = postulacion.oferta
+    ? `¿Retirar tu postulación a «${postulacion.oferta.titulo}»?`
+    : "¿Retirar tu postulación?";
+  const derivada = postulacion.estado === "derivada";
+  const conPreEntrevista = postulacion.preEntrevista?.estado === "coordinada";
+  const descripcion = derivada
+    ? "La empresa va a recibir un aviso."
+    : conPreEntrevista
+      ? "Se cancela la pre-entrevista coordinada con la Oficina de Empleo."
+      : undefined;
+
   return (
     <DialogoConfirmacion
       textoBoton="Retirar postulación"
       estiloBoton="peligro"
       claseBoton="mt-3"
-      titulo="¿Retirar postulación?"
-      descripcion="Tu postulación se va a eliminar y la Oficina de Empleo ya no la va a ver. Si cambiás de opinión, podés volver a postularte mientras la oferta siga publicada."
+      titulo={titulo}
+      descripcion={descripcion}
       textoConfirmar="Sí, retirar"
       textoPendiente="Retirando…"
       destructivo
-      accion={() => retirarPostulacion(postulacionId)}
+      accion={() => retirarPostulacion(postulacion.id)}
     />
   );
 }
@@ -217,11 +251,24 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
               </div>
             )}
 
-            {p.estado === "recibida" && (
-              <RetirarBoton
-                postulacionId={p.id}
-              />
+            {p.estado === "retirada_postulante" && (
+              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
+                <p>
+                  Retiraste esta postulación
+                  {p.retirada_en ? ` el ${formatFecha(p.retirada_en)}` : ""}.
+                </p>
+                {p.puedeVolverAPostularse && oferta && (
+                  <Link
+                    href={`/ofertas/${oferta.id}`}
+                    className="mt-1 inline-flex min-h-11 items-center font-medium text-primary underline-offset-2 hover:underline"
+                  >
+                    Volver a postularme
+                  </Link>
+                )}
+              </div>
             )}
+
+            {sePuedeRetirar(p) && <RetirarBoton postulacion={p} />}
           </article>
         );
       })}
@@ -247,6 +294,10 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
           <li>
             <span className="font-medium text-red-700">No seleccionada</span>
             {" — "}La Oficina de Empleo no seleccionó tu perfil para esta búsqueda.
+          </li>
+          <li>
+            <span className="font-medium text-slate-600">Retirada</span>
+            {" — "}Retiraste tu postulación. Si la oferta sigue abierta, podés volver a postularte.
           </li>
         </ul>
       </section>

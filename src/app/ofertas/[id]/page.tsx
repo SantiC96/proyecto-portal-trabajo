@@ -47,13 +47,16 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
 
       if (postulante) {
         const supabase = await createSupabaseServerClient();
-        // Parallel: check existing application, check CV
+        // Parallel: check existing application, check CV.
+        // Solo la postulación vigente: una retirada queda en el historial y
+        // no impide volver a postularse (migration_053, una vigente por oferta).
         const [postulacionResult, cvResult] = await Promise.all([
           supabase
             .from("postulaciones")
             .select("id, estado, created_at")
             .eq("oferta_id", oferta.id)
             .eq("postulante_id", postulante.id)
+            .is("retirada_en", null)
             .maybeSingle(),
           supabase
             .from("archivos_usuario")

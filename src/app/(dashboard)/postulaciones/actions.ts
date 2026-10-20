@@ -76,6 +76,13 @@ export async function postularme(
   return okMsg("¡Te postulaste! Podés ver el estado en Mis postulaciones.");
 }
 
+/**
+ * Retira una postulación propia (migration_053, retirar_postulacion): si
+ * todavía estaba "Recibida" se borra; si ya la estaba revisando la oficina o
+ * estaba derivada, queda "Retirada" en el historial, se cierra la derivación
+ * abierta y se cancela la pre-entrevista coordinada. La base controla el
+ * dueño y el estado (un seleccionado o un proceso cerrado no se retiran).
+ */
 export async function retirarPostulacion(
   postulacionId: string,
 ): Promise<Resultado<void>> {
@@ -89,40 +96,25 @@ export async function retirarPostulacion(
 
   const { data: postulacion } = await supabase
     .from("postulaciones")
-    .select("id, estado, postulante_id, oferta_id")
+    .select("oferta_id")
     .eq("id", postulacionId)
+    .eq("postulante_id", postulante.id)
     .maybeSingle();
 
   if (!postulacion) return err("NO_ENCONTRADO", "Postulación no encontrada.");
-  if (postulacion.postulante_id !== postulante.id) return err("SIN_PERMISO");
-  if (postulacion.estado !== "recibida") {
-    return err(
-      "ESTADO_INVALIDO",
-      "Ya no podés retirar esta postulación porque está siendo revisada.",
-    );
-  }
 
-  // La política de DELETE solo permite 'recibida' (migration_018). Si la
-  // oficina la abrió o otra pestaña ya la retiró, no se borra ninguna fila.
-  const { data: deleted, error } = await supabase
-    .from("postulaciones")
-    .delete()
-    .eq("id", postulacionId)
-    .eq("estado", "recibida")
-    .select("id");
+  const { error } = await supabase.rpc("retirar_postulacion", {
+    p_postulacion_id: postulacionId,
+  });
 
   if (error) {
+    if (error.code === "P0001" || error.code === "42501") return fromSupabaseError(error);
     const ref = logError("retirarPostulacion", error, { postulacionId });
     return errConRef("ERROR_INTERNO", "Error al retirar la postulación. Intentá de nuevo.", ref);
   }
-  if (!deleted || deleted.length === 0) {
-    return err(
-      "ESTADO_INVALIDO",
-      "Esta postulación ya fue retirada o la Oficina de Empleo empezó a revisarla.",
-    );
-  }
 
+  programarEnvioEmails();
   revalidatePath(`/ofertas/${postulacion.oferta_id}`);
   revalidatePath("/mis-postulaciones");
-  return okMsg("Postulación retirada.");
+  return okMsg("Retiraste tu postulación.");
 }
