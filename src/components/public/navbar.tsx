@@ -18,7 +18,6 @@ type NavbarSession = {
   avatarUrl?: string | null;
   ajuste?: { x: number; y: number; zoom: number } | null;
   profileHref: string;
-  cursosPendientes?: number;
   notificacionesHref?: string | null;
 };
 
