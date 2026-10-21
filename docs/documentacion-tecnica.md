@@ -73,7 +73,7 @@ flowchart LR
 src/
 ├── app/
 │   ├── (dashboard)/        # Postulante: panel, perfil, mis-postulaciones, invitaciones, mis-cursos, notificaciones
-│   ├── admin/              # Oficina de Empleo: empresas, ofertas, postulaciones, postulantes, cursos, indicadores
+│   ├── admin/              # Oficina de Empleo: empresas, ofertas, postulaciones, postulantes, comprobantes, cursos, indicadores
 │   ├── empresa/            # Empresa: (panel)/ofertas, candidatos, candidatos-guardados, indicadores, solicitud
 │   ├── auth/               # Login, registro, verificación, recuperación de contraseña, callback
 │   ├── ofertas/            # Listado y detalle públicos
