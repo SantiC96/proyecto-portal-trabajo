@@ -14,8 +14,6 @@ export type SesionData = {
   avatarUrl: string | null;
   ajuste: { x: number; y: number; zoom: number } | null;
   profileHref: string;
-  /** Solo postulantes: cursos asignados o en curso (indicador de la navbar). */
-  cursosPendientes: number;
   /**
    * Listado de notificaciones del rol (campanita de la navbar). El contador
    * no se carga acá: lo pide la campanita al navegar.
@@ -55,14 +53,6 @@ export async function obtenerSesionActual(): Promise<SesionData | null> {
 
   const profileHref = rol ? panelDeRol(rol) : "/perfil";
 
-  let cursosPendientes = 0;
-  if (rol === "postulante") {
-    const { count } = await supabase
-      .rpc("mis_cursos_con_estado", undefined, { count: "exact", head: true })
-      .in("estado", ["asignado", "en_curso"]);
-    cursosPendientes = count ?? 0;
-  }
-
   const notificacionesHref = rol ? rutaNotificaciones(rol) : null;
 
   let avatarUrl: string | null = null;
@@ -88,7 +78,6 @@ export async function obtenerSesionActual(): Promise<SesionData | null> {
     avatarUrl,
     ajuste,
     profileHref,
-    cursosPendientes,
     notificacionesHref,
   };
 }

@@ -21,6 +21,9 @@ export const CLASE_ACCION_DIALOGO = {
   primario: "btn-primario min-h-11 justify-center sm:min-h-9",
   secundario:
     "btn-secundario inline-flex min-h-11 items-center justify-center whitespace-nowrap px-4 text-sm font-medium sm:min-h-9",
+  /** Mismo rojo que Button variant="destructive" (por ejemplo, cerrar sesión). */
+  peligro:
+    "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 focus-visible:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:opacity-60 sm:min-h-9",
 } as const;
 
 /** Estilos de los botones que abren un diálogo, según la jerarquía de la acción. */

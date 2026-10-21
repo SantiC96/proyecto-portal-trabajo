@@ -8,6 +8,7 @@ import {
   ClipboardList,
   FilePlus2,
   LayoutDashboard,
+  Mail,
   User,
   UserCog,
   Users,
@@ -54,6 +55,7 @@ export function seccionesDeRol(rol: Rol | null | undefined): SeccionRol[] {
   return [
     { label: "Mi perfil", href: "/perfil", Icono: User },
     { label: "Mis postulaciones", href: "/mis-postulaciones", Icono: Briefcase },
+    { label: "Invitaciones", href: "/invitaciones", Icono: Mail },
     { label: "Mis cursos", href: "/mis-cursos", Icono: BookOpen },
     { label: "Notificaciones", href: "/notificaciones", Icono: Bell },
   ];

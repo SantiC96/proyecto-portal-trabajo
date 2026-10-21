@@ -9,9 +9,12 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock,
+  House,
   FileText,
   GraduationCap,
+  Mail,
   Send,
+  ThumbsDown,
   UserMinus,
   UserPlus,
   XCircle,
@@ -28,7 +31,7 @@ const ERROR = "bg-red-100 text-red-700";
 const NEUTRO = "bg-gray-100 text-gray-600";
 const MARCA = "bg-secondary text-primary";
 
-// Tipos del CHECK notificaciones_tipo_check (migration_041, 043, 044, 051 y 053).
+// Tipos del CHECK notificaciones_tipo_check (migration_041, 043, 044, 051, 053, 055 y 056).
 const ESTILO_POR_TIPO: Record<string, EstiloTipo> = {
   // Oficina
   contratacion: { Icono: BadgeCheck, className: EXITO },
@@ -39,6 +42,9 @@ const ESTILO_POR_TIPO: Record<string, EstiloTipo> = {
   necesita_curso: { Icono: BookOpen, className: ADVERTENCIA },
   oferta_retirada: { Icono: Archive, className: NEUTRO },
   postulacion_retirada: { Icono: UserMinus, className: NEUTRO },
+  comprobante_pendiente: { Icono: House, className: ADVERTENCIA },
+  invitacion_aceptada: { Icono: UserPlus, className: EXITO },
+  invitacion_rechazada: { Icono: ThumbsDown, className: NEUTRO },
   // Postulante
   postulacion_derivada: { Icono: Send, className: MARCA },
   entrevista: { Icono: CalendarClock, className: INFO },
@@ -49,6 +55,9 @@ const ESTILO_POR_TIPO: Record<string, EstiloTipo> = {
   pre_entrevista_coordinada: { Icono: CalendarClock, className: INFO },
   pre_entrevista_reprogramada: { Icono: CalendarClock, className: INFO },
   postulacion_cerrada: { Icono: Archive, className: NEUTRO },
+  comprobante_aprobado: { Icono: BadgeCheck, className: EXITO },
+  comprobante_rechazado: { Icono: XCircle, className: ERROR },
+  invitacion_oferta: { Icono: Mail, className: MARCA },
   // Empresa
   solicitud_aprobada: { Icono: BadgeCheck, className: EXITO },
   solicitud_rechazada: { Icono: XCircle, className: ERROR },

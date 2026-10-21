@@ -3,17 +3,15 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, CheckCheck } from "lucide-react";
+import { Bell } from "lucide-react";
 import {
+  abrirCampanaNotificaciones,
   abrirNotificacion,
-  marcarNotificacionLeida,
-  marcarTodasLeidas,
   obtenerNotificacionesRecientes,
 } from "@/app/(dashboard)/notificaciones/actions";
 import type { Notificacion, ResumenNotificaciones } from "@/lib/notificaciones";
 import { BotonFormulario } from "@/components/ui/boton-formulario";
 import { Spinner } from "@/components/ui/spinner";
-import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
 import { formatFechaHora, formatFechaRelativa } from "@/lib/fechas";
 import { cn } from "@/lib/utils";
@@ -22,36 +20,45 @@ import { EVENTO_NOTIFICACIONES_CAMBIARON } from "./eventos";
 
 const RESUMEN_VACIO: ResumenNotificaciones = { noLeidas: 0, ultimas: [] };
 
-function marcarLeidaLocal(r: ResumenNotificaciones, id: string): ResumenNotificaciones {
+function todasLeidas(r: ResumenNotificaciones): ResumenNotificaciones {
   const ahora = new Date().toISOString();
-  const eraNoLeida = r.ultimas.some((n) => n.id === id && !n.leida_en);
   return {
-    noLeidas: eraNoLeida ? Math.max(0, r.noLeidas - 1) : r.noLeidas,
-    ultimas: r.ultimas.map((n) => (n.id === id && !n.leida_en ? { ...n, leida_en: ahora } : n)),
+    noLeidas: 0,
+    ultimas: r.ultimas.map((n) => (n.leida_en ? n : { ...n, leida_en: ahora })),
   };
 }
 
 /**
  * Campanita de la navbar para los tres roles. Los layouts no se vuelven a
  * ejecutar al navegar, así que el contador no viene del layout: se pide con
- * una server action al montar, en cada cambio de ruta, al abrir el panel y
- * cuando el listado avisa que marcó notificaciones como leídas.
+ * una server action al montar, en cada cambio de ruta y cuando el listado
+ * avisa que marcó notificaciones como leídas.
+ *
+ * Al abrirla, el contador pasa a cero y una sola acción trae las últimas y
+ * marca todas como leídas. Mientras el panel sigue abierto, las que eran
+ * nuevas se ven resaltadas; al cerrarlo quedan como leídas.
  */
 export function CampanaNotificaciones({ rutaListado }: { rutaListado: string }) {
   const pathname = usePathname();
   // Ruta en la que se abrió: al navegar, el panel se cierra solo.
   const [abiertaEn, setAbiertaEn] = useState<string | null>(null);
   const abierta = abiertaEn === pathname;
+  const abiertaRef = useRef(false);
 
   const [resumen, setResumen] = useState<ResumenNotificaciones | null>(null);
   const [cargando, startCarga] = useTransition();
   const { pendiente, ejecutar } = useAccion();
   const contenedorRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    abiertaRef.current = abierta;
+  }, [abierta]);
+
   const refrescar = useCallback(() => {
     startCarga(async () => {
       const res = await obtenerNotificacionesRecientes();
-      if (res.ok && res.data) setResumen(res.data);
+      // Con el panel abierto no se pisa lo que se está mostrando.
+      if (res.ok && res.data && !abiertaRef.current) setResumen(res.data);
     });
   }, []);
 
@@ -64,14 +71,20 @@ export function CampanaNotificaciones({ rutaListado }: { rutaListado: string }) 
     return () => window.removeEventListener(EVENTO_NOTIFICACIONES_CAMBIARON, refrescar);
   }, [refrescar]);
 
+  const cerrar = useCallback(() => {
+    abiertaRef.current = false;
+    setAbiertaEn(null);
+    setResumen((r) => r && todasLeidas(r));
+  }, []);
+
   useEffect(() => {
     if (!abierta) return;
     function alTeclear(e: KeyboardEvent) {
-      if (e.key === "Escape") setAbiertaEn(null);
+      if (e.key === "Escape") cerrar();
     }
     function alClic(e: MouseEvent) {
       if (contenedorRef.current && !contenedorRef.current.contains(e.target as Node)) {
-        setAbiertaEn(null);
+        cerrar();
       }
     }
     document.addEventListener("keydown", alTeclear);
@@ -80,40 +93,26 @@ export function CampanaNotificaciones({ rutaListado }: { rutaListado: string }) 
       document.removeEventListener("keydown", alTeclear);
       document.removeEventListener("mousedown", alClic);
     };
-  }, [abierta]);
+  }, [abierta, cerrar]);
 
   function alternar() {
     if (abierta) {
-      setAbiertaEn(null);
+      cerrar();
       return;
     }
+    abiertaRef.current = true;
     setAbiertaEn(pathname);
-    refrescar();
-  }
-
-  function marcarUna(id: string) {
+    setResumen((r) => r && { ...r, noLeidas: 0 });
     ejecutar(async () => {
-      const res = await marcarNotificacionLeida(id);
-      if (!res.ok) {
-        mostrarAviso(res);
-        return;
+      try {
+        const res = await abrirCampanaNotificaciones();
+        if (!res.ok || !res.data) return;
+        const datos = res.data;
+        // Si ya se cerró, lo que llega se guarda como leído.
+        setResumen(abiertaRef.current ? { ...datos, noLeidas: 0 } : todasLeidas(datos));
+      } catch {
+        // Sin aviso: el marcado se reintenta la próxima vez que se abra.
       }
-      setResumen((r) => marcarLeidaLocal(r ?? RESUMEN_VACIO, id));
-    });
-  }
-
-  function marcarTodas() {
-    ejecutar(async () => {
-      const res = await marcarTodasLeidas();
-      if (!res.ok) {
-        mostrarAviso(res);
-        return;
-      }
-      const ahora = new Date().toISOString();
-      setResumen((r) => ({
-        noLeidas: 0,
-        ultimas: (r ?? RESUMEN_VACIO).ultimas.map((n) => (n.leida_en ? n : { ...n, leida_en: ahora })),
-      }));
     });
   }
 
@@ -151,21 +150,12 @@ export function CampanaNotificaciones({ rutaListado }: { rutaListado: string }) 
           className="fixed inset-x-4 top-16 z-50 mt-1 rounded-xl border border-border bg-white shadow-md sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:w-96"
         >
           <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
-            <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <p className="flex min-h-11 items-center gap-2 text-sm font-semibold text-foreground">
               Notificaciones
-              {cargando && <Spinner className="h-3.5 w-3.5 text-muted-foreground" />}
+              {(cargando || pendiente) && (
+                <Spinner className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
             </p>
-            {noLeidas > 0 && (
-              <button
-                type="button"
-                onClick={marcarTodas}
-                disabled={pendiente}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-primary transition hover:bg-surface-tinted disabled:opacity-60"
-              >
-                {pendiente ? <Spinner className="h-3.5 w-3.5" /> : <CheckCheck className="h-4 w-4" />}
-                Marcar todas como leídas
-              </button>
-            )}
           </div>
 
           {resumen === null ? (
@@ -179,13 +169,7 @@ export function CampanaNotificaciones({ rutaListado }: { rutaListado: string }) 
           ) : (
             <ul className="max-h-[60vh] divide-y divide-border overflow-y-auto">
               {ultimas.map((n) => (
-                <ItemNotificacion
-                  key={n.id}
-                  notificacion={n}
-                  deshabilitado={pendiente}
-                  onAbrir={() => setResumen((r) => r && marcarLeidaLocal(r, n.id))}
-                  onMarcarLeida={() => marcarUna(n.id)}
-                />
+                <ItemNotificacion key={n.id} notificacion={n} />
               ))}
             </ul>
           )}
@@ -204,30 +188,21 @@ export function CampanaNotificaciones({ rutaListado }: { rutaListado: string }) 
   );
 }
 
-function ItemNotificacion({
-  notificacion: n,
-  deshabilitado,
-  onAbrir,
-  onMarcarLeida,
-}: {
-  notificacion: Notificacion;
-  deshabilitado: boolean;
-  onAbrir: () => void;
-  onMarcarLeida: () => void;
-}) {
-  const noLeida = !n.leida_en;
+/** Las que estaban sin leer al abrir el panel se resaltan como nuevas. */
+function ItemNotificacion({ notificacion: n }: { notificacion: Notificacion }) {
+  const nueva = !n.leida_en;
   return (
-    <li className={cn("px-2 py-1", noLeida && "bg-secondary/40")}>
-      <form action={abrirNotificacion.bind(null, n.id)} onSubmit={onAbrir}>
+    <li className={cn("px-2 py-1", nueva && "bg-secondary/40")}>
+      <form action={abrirNotificacion.bind(null, n.id)}>
         <BotonFormulario className="flex w-full items-start gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-surface-tinted disabled:opacity-60">
           <IconoNotificacion tipo={n.tipo} />
           <span className="min-w-0 flex-1">
             <span className="flex items-start gap-2">
               <span className="block flex-1 text-sm font-medium text-foreground">
                 {n.titulo}
-                {noLeida && <span className="sr-only"> (sin leer)</span>}
+                {nueva && <span className="sr-only"> (nueva)</span>}
               </span>
-              {noLeida && (
+              {nueva && (
                 <span aria-hidden="true" className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-500" />
               )}
             </span>
@@ -244,18 +219,6 @@ function ItemNotificacion({
           </span>
         </BotonFormulario>
       </form>
-      {noLeida && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={onMarcarLeida}
-            disabled={deshabilitado}
-            className="inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-medium text-muted-foreground-strong transition hover:bg-surface-tinted hover:text-primary disabled:opacity-60"
-          >
-            Marcar como leída
-          </button>
-        </div>
-      )}
     </li>
   );
 }

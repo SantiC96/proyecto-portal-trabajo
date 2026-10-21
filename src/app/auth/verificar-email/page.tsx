@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Mail } from "lucide-react";
+import { Info, Mail } from "lucide-react";
 import { PublicFooter } from "@/components/public/public-footer";
 
 export const metadata: Metadata = {
@@ -8,7 +8,15 @@ export const metadata: Metadata = {
   description: "Revisá tu correo electrónico para confirmar tu cuenta.",
 };
 
-export default function VerificarEmailPage() {
+export default async function VerificarEmailPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ comprobante?: string }>;
+}) {
+  // registrarPostulante: la cuenta se creó pero no se pudo subir el comprobante.
+  const { comprobante } = await searchParams;
+  const comprobanteSinSubir = comprobante === "pendiente";
+
   return (
     <>
       <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
@@ -23,6 +31,18 @@ export default function VerificarEmailPage() {
             Te enviamos un correo de confirmación. Hacé clic en el enlace para
             activar tu cuenta y empezar a buscar empleo.
           </p>
+          {comprobanteSinSubir && (
+            <div
+              role="status"
+              className="mt-4 flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm text-amber-900"
+            >
+              <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <p>
+                Tu cuenta se creó, pero no pudimos subir tu comprobante de domicilio. Podés
+                subirlo desde tu perfil, en la sección «Procedencia».
+              </p>
+            </div>
+          )}
           <div className="mt-4 rounded-lg border border-border bg-secondary px-4 py-3 text-left text-sm text-muted-foreground-strong">
             <p className="font-semibold text-foreground">¿Qué sigue después de confirmar?</p>
             <p className="mt-1">

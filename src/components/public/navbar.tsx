@@ -18,7 +18,6 @@ type NavbarSession = {
   avatarUrl?: string | null;
   ajuste?: { x: number; y: number; zoom: number } | null;
   profileHref: string;
-  cursosPendientes?: number;
   notificacionesHref?: string | null;
 };
 
@@ -40,6 +39,14 @@ export function Navbar({ session = null }: NavbarProps) {
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  // El botón "Crear una cuenta" del login abre este mismo modal.
+  useEffect(() => {
+    const openRegisterModal = () => setRegisterModalOpen(true);
+    window.addEventListener("portal:open-register-modal", openRegisterModal);
+    return () => window.removeEventListener("portal:open-register-modal", openRegisterModal);
+  }, []);
+
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();

@@ -17,7 +17,6 @@ export type SesionMenu = {
   rol?: Rol | null;
   avatarUrl?: string | null;
   ajuste?: { x: number; y: number; zoom: number } | null;
-  cursosPendientes?: number;
 };
 
 export function etiquetaRol(rol?: Rol | null): string {
@@ -50,7 +49,6 @@ export function MenuUsuario({ sesion }: { sesion: SesionMenu }) {
 
   const secciones = seccionesDeRol(sesion.rol);
   const actual = seccionActual(secciones, pathname);
-  const cursosPendientes = sesion.rol === "postulante" ? sesion.cursosPendientes ?? 0 : 0;
   const nombreCompleto = `${sesion.nombre} ${sesion.apellido}`.trim();
   const rol = etiquetaRol(sesion.rol);
 
@@ -136,9 +134,6 @@ export function MenuUsuario({ sesion }: { sesion: SesionMenu }) {
           </span>
           <span className="block text-xs text-muted-foreground">{rol}</span>
         </span>
-        {cursosPendientes > 0 && (
-          <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
-        )}
         <ChevronDown
           aria-hidden="true"
           className={cn(
@@ -165,7 +160,6 @@ export function MenuUsuario({ sesion }: { sesion: SesionMenu }) {
           <div className="py-1" role="none">
             {secciones.map(({ label, href, Icono }) => {
               const esActual = href === actual;
-              const pendientes = href === "/mis-cursos" ? cursosPendientes : 0;
               return (
                 <Link
                   key={href}
@@ -180,14 +174,6 @@ export function MenuUsuario({ sesion }: { sesion: SesionMenu }) {
                 >
                   <Icono className="h-4 w-4 shrink-0" aria-hidden="true" />
                   {label}
-                  {pendientes > 0 && (
-                    <span
-                      className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-xs font-semibold text-white"
-                      aria-label={`${pendientes} curso${pendientes === 1 ? "" : "s"} pendiente${pendientes === 1 ? "" : "s"}`}
-                    >
-                      {pendientes}
-                    </span>
-                  )}
                 </Link>
               );
             })}
@@ -199,7 +185,10 @@ export function MenuUsuario({ sesion }: { sesion: SesionMenu }) {
                 rol="menuitem"
                 icono={<LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />}
                 textoPendiente="Cerrando sesión…"
-                className={cn(CLASE_ITEM, "w-[calc(100%-0.5rem)] text-foreground disabled:opacity-60")}
+                className={cn(
+                  CLASE_ITEM,
+                  "w-[calc(100%-0.5rem)] text-red-600 hover:bg-red-50 hover:text-red-700 focus-visible:bg-red-50 focus-visible:text-red-700 focus-visible:ring-red-600 disabled:opacity-60",
+                )}
               >
                 Cerrar sesión
               </BotonFormulario>

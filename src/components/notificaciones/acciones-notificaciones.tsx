@@ -1,61 +1,29 @@
 "use client";
 
-import { CheckCheck } from "lucide-react";
-import {
-  marcarNotificacionLeida,
-  marcarTodasLeidas,
-} from "@/app/(dashboard)/notificaciones/actions";
-import { Spinner } from "@/components/ui/spinner";
-import { mostrarAviso } from "@/lib/avisos";
+import { useEffect } from "react";
+import { marcarNotificacionesVistas } from "@/app/(dashboard)/notificaciones/actions";
 import { useAccion } from "@/lib/use-accion";
 import { avisarCambioNotificaciones } from "./eventos";
 
-export function MarcarTodasLeidasBtn() {
-  const { pendiente, ejecutar } = useAccion();
-  return (
-    <button
-      type="button"
-      onClick={() =>
-        ejecutar(async () => {
-          const res = await marcarTodasLeidas();
-          if (!res.ok) {
-            mostrarAviso(res);
-            return;
-          }
-          avisarCambioNotificaciones();
-        })
-      }
-      disabled={pendiente}
-      aria-busy={pendiente}
-      className="btn-secundario inline-flex min-h-11 items-center gap-2 px-4 text-sm font-medium"
-    >
-      {pendiente ? <Spinner /> : <CheckCheck className="h-4 w-4" />}
-      Marcar todas como leídas
-    </button>
-  );
-}
+/**
+ * Al entrar al listado marca como leídas las notificaciones que había hasta
+ * `hasta`. No refresca la página: las que eran nuevas siguen resaltadas
+ * hasta la próxima visita. Un fallo no se muestra (la acción lo registra) y
+ * se reintenta la próxima vez.
+ */
+export function MarcarLeidasAlEntrar({ hasta }: { hasta: string }) {
+  const { ejecutar } = useAccion();
 
-export function MarcarLeidaBtn({ id }: { id: string }) {
-  const { pendiente, ejecutar } = useAccion();
-  return (
-    <button
-      type="button"
-      onClick={() =>
-        ejecutar(async () => {
-          const res = await marcarNotificacionLeida(id);
-          if (!res.ok) {
-            mostrarAviso(res);
-            return;
-          }
-          avisarCambioNotificaciones();
-        })
+  useEffect(() => {
+    ejecutar(async () => {
+      try {
+        const res = await marcarNotificacionesVistas(hasta);
+        if (res.ok) avisarCambioNotificaciones();
+      } catch {
+        // Sin aviso: se reintenta en la próxima visita.
       }
-      disabled={pendiente}
-      aria-busy={pendiente}
-      className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-muted-foreground-strong transition hover:bg-surface-tinted hover:text-primary disabled:opacity-60"
-    >
-      {pendiente && <Spinner />}
-      Marcar como leída
-    </button>
-  );
+    });
+  }, [ejecutar, hasta]);
+
+  return null;
 }

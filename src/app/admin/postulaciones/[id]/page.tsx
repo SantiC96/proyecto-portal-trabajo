@@ -8,6 +8,8 @@ import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { DatosCandidato } from "@/components/admin/datos-candidato";
 import { obtenerCandidato, obtenerCvDePostulacion } from "@/lib/admin/candidato";
 import { CvDePostulacionCard } from "@/components/admin/cv-candidato";
+import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
+import { BadgePorInvitacion } from "@/components/admin/badge-por-invitacion";
 import {
   BADGE_ESTADO_VISIBLE,
   estadoVisiblePostulacion,
@@ -52,6 +54,7 @@ export default async function PostulacionFichaPage({
       postulante_id,
       oferta_id,
       cv_archivo_id,
+      origen,
       postulantes!postulante_id(id, usuario_id),
       ofertas!oferta_id(id, titulo, empresa_nombre, modalidad, jornada, estado, contenido_editado_en)
     `
@@ -153,10 +156,18 @@ export default async function PostulacionFichaPage({
               ? `${candidato.usuario.nombre} ${candidato.usuario.apellido}`
               : "Candidato desconocido"}
           </h1>
-          <div className="mt-1">
+          <div className="mt-1 flex flex-wrap items-center gap-2">
             <Badge variant={badge.variant} className={badge.className}>
               {badge.label}
             </Badge>
+            {postulacion.origen === "invitacion" && <BadgePorInvitacion />}
+            {candidato && (
+              <BadgeProcedencia
+                nivel={candidato.nivel}
+                localidad={candidato.postulante.localidad}
+                comprobante={candidato.comprobante?.estado ?? null}
+              />
+            )}
           </div>
           {fechaContratacion && (
             <p className="mt-1 text-sm text-muted-foreground">

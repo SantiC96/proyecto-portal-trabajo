@@ -7,11 +7,12 @@ import { requerirRol, requerirRolPagina, type Rol } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import {
   esLinkInterno,
+  marcarLeidasHasta,
   obtenerResumenNotificaciones,
   rutaNotificaciones,
   type ResumenNotificaciones,
 } from "@/lib/notificaciones";
-import { err, errConRef, ok, okMsg, type Resultado } from "@/lib/resultado";
+import { err, ok, type Resultado } from "@/lib/resultado";
 import { esUuid } from "@/lib/validaciones";
 
 // Acciones compartidas por la campanita y los listados de los tres roles. Cada
@@ -28,48 +29,34 @@ export async function obtenerNotificacionesRecientes(): Promise<
   return ok(await obtenerResumenNotificaciones(auth.usuario.id));
 }
 
-export async function marcarNotificacionLeida(id: string): Promise<Resultado<void>> {
+/**
+ * Al abrir la campanita: devuelve las notificaciones tal como estaban (las
+ * nuevas siguen sin leer, para resaltarlas mientras el panel está abierto) y
+ * marca como leídas todas hasta la más nueva. Un fallo del marcado no se
+ * informa: se registra y se reintenta al volver a abrir.
+ */
+export async function abrirCampanaNotificaciones(): Promise<Resultado<ResumenNotificaciones>> {
   const auth = await requerirRol(ROLES);
   if (!auth.ok) return auth;
-  const { id: usuarioId, perfil } = auth.usuario;
-  if (!esUuid(id)) return err("DATOS_INVALIDOS");
 
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase
-    .from("notificaciones")
-    .update({ leida_en: new Date().toISOString() })
-    .eq("id", id)
-    .eq("usuario_id", usuarioId)
-    .is("leida_en", null);
-
-  if (error) {
-    const ref = logError("marcarNotificacionLeida", error, { id });
-    return errConRef("ERROR_INTERNO", "No se pudo marcar la notificación como leída.", ref);
-  }
-
-  revalidatePath(rutaNotificaciones(perfil.rol));
-  return okMsg("Notificación marcada como leída.");
+  const resumen = await obtenerResumenNotificaciones(auth.usuario.id);
+  const masNueva = resumen.ultimas[0]?.created_at;
+  if (resumen.noLeidas > 0 && masNueva) await marcarLeidasHasta(auth.usuario.id, masNueva);
+  return ok(resumen);
 }
 
-export async function marcarTodasLeidas(): Promise<Resultado<void>> {
+/**
+ * Al entrar al listado de notificaciones: marca como leídas las creadas hasta
+ * `hasta` (la más nueva sin leer cuando se cargó la página). Sin
+ * revalidatePath: la página sigue resaltando las que eran nuevas.
+ */
+export async function marcarNotificacionesVistas(hasta: string): Promise<Resultado<void>> {
   const auth = await requerirRol(ROLES);
   if (!auth.ok) return auth;
-  const { id: usuarioId, perfil } = auth.usuario;
+  if (typeof hasta !== "string" || Number.isNaN(Date.parse(hasta))) return err("DATOS_INVALIDOS");
 
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase
-    .from("notificaciones")
-    .update({ leida_en: new Date().toISOString() })
-    .eq("usuario_id", usuarioId)
-    .is("leida_en", null);
-
-  if (error) {
-    const ref = logError("marcarTodasLeidas", error);
-    return errConRef("ERROR_INTERNO", "No se pudieron marcar las notificaciones como leídas.", ref);
-  }
-
-  revalidatePath(rutaNotificaciones(perfil.rol));
-  return okMsg("Marcaste todas las notificaciones como leídas.");
+  const marcadas = await marcarLeidasHasta(auth.usuario.id, hasta);
+  return marcadas ? ok() : err("ERROR_INTERNO");
 }
 
 /** Abre el link de una notificación y la marca como leída. */

@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { DatosCandidato } from "@/components/admin/datos-candidato";
 import { CvsDelPostulante } from "@/components/admin/cv-candidato";
+import { ProcedenciaCandidato } from "@/components/admin/procedencia-candidato";
+import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
 import { obtenerCandidato } from "@/lib/admin/candidato";
 import { badgePostulacion } from "@/lib/admin/postulacion-estados";
 import { AsignarCursoDialog } from "../asignar-curso-dialog";
@@ -27,7 +29,7 @@ import {
 } from "@/lib/paginacion";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { BookOpen, Briefcase, ThumbsDown } from "lucide-react";
+import { BookOpen, Briefcase, Mail, ThumbsDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   UMBRAL_RECHAZOS_CURSO,
@@ -42,6 +44,15 @@ import {
 import type { ClienteSupabase } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import {
+  ESTILO_INVITACION,
+  esEstadoInvitacion,
+  ofertaAceptaInvitaciones,
+  volverALaBusqueda,
+} from "@/lib/invitaciones";
+import { esUuid } from "@/lib/validaciones";
+import { InvitarBoton } from "@/components/admin/invitar-boton";
+import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 
 export const metadata: Metadata = {
   title: "Ficha postulante | Panel municipal | Portal de Empleo Funes",
@@ -82,7 +93,19 @@ function consultaRechazos(supabase: ClienteSupabase, postulanteId: string) {
     .eq("postulaciones.postulante_id", postulanteId);
 }
 
+// Invitaciones de la oficina a todas las ofertas (migration_056).
+function consultaInvitaciones(supabase: ClienteSupabase, postulanteId: string) {
+  return supabase
+    .from("invitaciones_oferta")
+    .select(
+      "id, estado, creada_en, respondida_en, vencida_en, motivo_rechazo, postulacion_id, ofertas!oferta_id(id, titulo, empresa_nombre, estado, vence_en), invitador:usuarios!invitado_por(nombre, apellido)",
+      { count: "exact" }
+    )
+    .eq("postulante_id", postulanteId);
+}
+
 type PostulacionHistorial = QueryData<ReturnType<typeof consultaPostulaciones>>[number];
+type InvitacionHistorial = QueryData<ReturnType<typeof consultaInvitaciones>>[number];
 type AsignacionRow = Omit<QueryData<ReturnType<typeof consultaAsignaciones>>[number], "estado"> & {
   estado: EstadoAsignacionCurso;
 };
@@ -98,6 +121,9 @@ export default async function PostulanteFichaPage({
     pagina_cursos?: string;
     pagina_postulaciones?: string;
     pagina_rechazos?: string;
+    pagina_invitaciones?: string;
+    /** Oferta desde cuya búsqueda se entró ("Ver ficha"): habilita invitar. */
+    oferta?: string;
   }>;
 }) {
   await requerirRolPagina("municipalidad");
@@ -106,14 +132,18 @@ export default async function PostulanteFichaPage({
   const paginaCursos = leerPagina(sp.pagina_cursos);
   const paginaPostulaciones = leerPagina(sp.pagina_postulaciones);
   const paginaRechazos = leerPagina(sp.pagina_rechazos);
+  const paginaInvitaciones = leerPagina(sp.pagina_invitaciones);
   const rutaFicha = `/admin/postulantes/${postulanteId}`;
 
-  // Validar que volver solo apunte a /admin/postulantes
+  // volver solo puede apuntar a /admin/postulantes o a la búsqueda de
+  // postulantes de una oferta (/admin/ofertas/<id>/candidatos, migration_056).
+  // La búsqueda trae su propio volver: se valida igual que en la búsqueda.
+  const volverACandidatos = volverALaBusqueda(rawVolver);
   const volverHref =
-    typeof rawVolver === "string" &&
-    rawVolver.startsWith("/admin/postulantes")
+    volverACandidatos ??
+    (typeof rawVolver === "string" && rawVolver.startsWith("/admin/postulantes")
       ? rawVolver
-      : "/admin/postulantes";
+      : "/admin/postulantes");
 
   const supabase = await createSupabaseServerClient();
   const [
@@ -124,6 +154,8 @@ export default async function PostulanteFichaPage({
     cursosResult,
     rechazosResult,
     cursosPendientesResult,
+    invitacionesResult,
+    invitacionAOferta,
   ] = await Promise.all([
     obtenerCandidato(postulanteId),
     consultarPagina(
@@ -167,6 +199,16 @@ export default async function PostulanteFichaPage({
       .select("curso_id")
       .eq("postulante_id", postulanteId)
       .in("estado", ["asignado", "en_curso"]),
+    consultarPagina(
+      paginaInvitaciones,
+      (desde, hasta) =>
+        consultaInvitaciones(supabase, postulanteId)
+          .order("creada_en", { ascending: false })
+          .order("id", { ascending: false })
+          .range(desde, hasta),
+      TAMANO_HISTORIAL
+    ),
+    invitacionDesdeOferta(supabase, sp.oferta, postulanteId),
   ]);
 
   if (!candidato) notFound();
@@ -180,6 +222,8 @@ export default async function PostulanteFichaPage({
   if (!rechazosResult.ok) logError("admin_postulante_rechazos", rechazosResult.error);
   if (cursosPendientesResult.error)
     logError("admin_postulante_cursos_pendientes", cursosPendientesResult.error);
+  if (!invitacionesResult.ok)
+    logError("admin_postulante_invitaciones", invitacionesResult.error);
   const filaEstadoCursos = estadoCursosResult.data?.[0];
   const estadoCursos = filaEstadoCursos ? aEstadoCursos(filaEstadoCursos) : null;
   const rechazosVentana = Number(estadoCursos?.rechazos_ventana ?? 0);
@@ -197,7 +241,9 @@ export default async function PostulanteFichaPage({
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
-      <BotonVolver href={volverHref}>Volver a postulantes</BotonVolver>
+      <BotonVolver href={volverHref}>
+        {volverACandidatos ? "Volver a la búsqueda de la oferta" : "Volver a postulantes"}
+      </BotonVolver>
 
       {/* Cabecera */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -212,6 +258,12 @@ export default async function PostulanteFichaPage({
             <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
               {nombreCompleto}
             </h1>
+            <BadgeProcedencia
+              nivel={candidato.nivel}
+              localidad={candidato.postulante.localidad}
+              comprobante={candidato.comprobante?.estado ?? null}
+              className="mt-1"
+            />
             {necesitaCurso ? (
               <span className="mt-1 inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
                 Necesita curso · {textoRechazos(rechazosVentana)} en {VENTANA_RECHAZOS_DIAS} días
@@ -223,8 +275,17 @@ export default async function PostulanteFichaPage({
             )}
           </div>
         </div>
-        {(cantidadCursosPendientes > 0 || puedeRecibirCurso) && (
+        {(cantidadCursosPendientes > 0 || puedeRecibirCurso || invitacionAOferta) && (
           <div className="flex flex-wrap items-center gap-3">
+            {invitacionAOferta && (
+              <InvitarBoton
+                ofertaId={invitacionAOferta.ofertaId}
+                ofertaTitulo={invitacionAOferta.ofertaTitulo}
+                postulanteId={postulanteId}
+                nombre={nombreCompleto}
+                rechazoAnterior={invitacionAOferta.rechazoAnterior}
+              />
+            )}
             {cantidadCursosPendientes > 0 && (
               <a
                 href="#rechazos-y-cursos"
@@ -253,6 +314,12 @@ export default async function PostulanteFichaPage({
           domicilio={candidato.postulante.domicilio}
           telefono={candidato.usuario.telefono}
           categorias={candidato.categorias}
+        />
+
+        <ProcedenciaCandidato
+          localidad={candidato.postulante.localidad}
+          nivel={candidato.nivel}
+          comprobante={candidato.comprobante}
         />
 
         <CvsDelPostulante cvs={candidato.cvs} />
@@ -329,9 +396,93 @@ export default async function PostulanteFichaPage({
           ruta={rutaFicha}
           searchParams={sp}
         />
+
+        {/* Historial de invitaciones */}
+        <HistorialInvitaciones
+          resultado={invitacionesResult}
+          ruta={rutaFicha}
+          searchParams={sp}
+        />
       </div>
     </section>
   );
+}
+
+type InvitacionAOferta = {
+  ofertaId: string;
+  ofertaTitulo: string;
+  rechazoAnterior: { fecha: string | null; motivo: string | null } | null;
+};
+
+/**
+ * "Invitar a esta oferta" en la ficha cuando se entra desde la búsqueda de
+ * una oferta (?oferta=<id>). El parámetro no se cree: se vuelven a comprobar
+ * las mismas condiciones que en la lista (oferta activa y vigente, cuenta
+ * activa, sin postulación vigente ni invitación pendiente). Ante cualquier
+ * duda no hay botón; invitar_a_oferta igual vuelve a validar todo.
+ */
+async function invitacionDesdeOferta(
+  supabase: ClienteSupabase,
+  ofertaParam: string | undefined,
+  postulanteId: string,
+): Promise<InvitacionAOferta | null> {
+  if (!esUuid(ofertaParam) || !esUuid(postulanteId)) return null;
+  const ofertaId = ofertaParam;
+
+  const [ofertaRes, ultimaRes, postulacionRes, cuentaRes] = await Promise.all([
+    supabase
+      .from("ofertas")
+      .select("id, titulo, estado, vence_en, eliminada_en")
+      .eq("id", ofertaId)
+      .maybeSingle(),
+    supabase
+      .from("invitaciones_oferta")
+      .select("estado, respondida_en, motivo_rechazo")
+      .eq("oferta_id", ofertaId)
+      .eq("postulante_id", postulanteId)
+      .order("creada_en", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("postulaciones")
+      .select("id")
+      .eq("oferta_id", ofertaId)
+      .eq("postulante_id", postulanteId)
+      .is("retirada_en", null)
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("postulantes")
+      .select("usuarios!usuario_id(activo)")
+      .eq("id", postulanteId)
+      .maybeSingle(),
+  ]);
+
+  const error = ofertaRes.error ?? ultimaRes.error ?? postulacionRes.error ?? cuentaRes.error;
+  if (error) {
+    logError("admin_postulante_invitar_desde_oferta", error, { ofertaId, postulanteId });
+    return null;
+  }
+
+  const oferta = ofertaRes.data;
+  if (!oferta || oferta.eliminada_en || !ofertaAceptaInvitaciones(oferta.estado, oferta.vence_en)) {
+    return null;
+  }
+  if (cuentaRes.data?.usuarios?.activo !== true) return null;
+  if (postulacionRes.data) return null;
+
+  const ultima = ultimaRes.data;
+  if (ultima?.estado === "pendiente") return null;
+
+  return {
+    ofertaId: oferta.id,
+    ofertaTitulo: oferta.titulo,
+    rechazoAnterior:
+      ultima?.estado === "rechazada"
+        ? { fecha: ultima.respondida_en, motivo: ultima.motivo_rechazo }
+        : null,
+  };
 }
 
 type PropsHistorial<T> = {
@@ -663,6 +814,127 @@ function PreEntrevistaHistorial({ pre }: { pre: PostulacionHistorial["pre_entrev
         <p className="whitespace-pre-line break-words text-muted-foreground">
           Nota interna: {pre.nota_oficina}
         </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Invitaciones de la oficina a postularse, a todas las ofertas
+ * (migration_056). Una pendiente de una oferta que ya no acepta
+ * postulaciones se muestra vencida, igual que la ve el postulante.
+ */
+function HistorialInvitaciones({
+  resultado,
+  ruta,
+  searchParams,
+}: PropsHistorial<InvitacionHistorial>) {
+  const ancla = "historial-invitaciones";
+  return (
+    <div
+      id={ancla}
+      className="scroll-mt-20 rounded-[var(--radius-lg)] border border-border bg-surface p-5"
+    >
+      <h2 className="font-semibold text-foreground">
+        Invitaciones a ofertas{resultado.ok && ` (${resultado.total})`}
+      </h2>
+
+      {!resultado.ok ? (
+        <ErrorListado className="mt-3" mensaje="No pudimos cargar las invitaciones." />
+      ) : resultado.filas.length === 0 ? (
+        <EstadoVacio
+          tipo="sin-registros"
+          className="mt-3"
+          icono={Mail}
+          titulo="La oficina todavía no lo invitó a ninguna oferta."
+        />
+      ) : (
+        <>
+          <ul className="mt-4 space-y-3">
+            {resultado.filas.map((inv) => {
+              const ofertaAbierta =
+                inv.ofertas?.estado === "activa" &&
+                !estadoVencimiento(inv.ofertas.estado, inv.ofertas.vence_en).vencida;
+              const guardado = esEstadoInvitacion(inv.estado) ? inv.estado : "vencida";
+              const estado = guardado === "pendiente" && !ofertaAbierta ? "vencida" : guardado;
+              const fecha =
+                estado === "pendiente"
+                  ? inv.creada_en
+                  : estado === "vencida"
+                    ? (inv.vencida_en ?? inv.ofertas?.vence_en ?? null)
+                    : inv.respondida_en;
+              const texto =
+                estado === "pendiente"
+                  ? `Invitado el ${formatFecha(fecha)}, sin respuesta`
+                  : estado === "aceptada"
+                    ? `Aceptó el ${formatFecha(fecha)}`
+                    : estado === "rechazada"
+                      ? `Dijo que no el ${formatFecha(fecha)}`
+                      : `Invitación vencida el ${formatFecha(fecha)}`;
+              return (
+                <li
+                  key={inv.id}
+                  className="rounded-[var(--radius-md)] border border-border p-3 text-sm"
+                >
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground">
+                        {inv.ofertas ? (
+                          <Link
+                            href={`/admin/ofertas/${inv.ofertas.id}`}
+                            className="underline-offset-2 hover:text-primary hover:underline"
+                          >
+                            {inv.ofertas.titulo}
+                          </Link>
+                        ) : (
+                          "Oferta no disponible"
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {inv.ofertas?.empresa_nombre ?? "—"} · Invitado el{" "}
+                        {formatFechaCorta(inv.creada_en)}
+                        {inv.invitador &&
+                          ` por ${inv.invitador.nombre} ${inv.invitador.apellido}`}
+                      </p>
+                    </div>
+                    <span
+                      className={cn(
+                        "inline-flex w-fit shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                        ESTILO_INVITACION[estado],
+                      )}
+                    >
+                      {texto}
+                    </span>
+                  </div>
+                  {estado === "rechazada" && inv.motivo_rechazo && (
+                    <p className="mt-2 text-xs text-muted-foreground-strong">
+                      Motivo: {inv.motivo_rechazo}
+                    </p>
+                  )}
+                  {estado === "aceptada" && inv.postulacion_id && (
+                    <Link
+                      href={`/admin/postulaciones/${inv.postulacion_id}`}
+                      className="mt-2 inline-flex min-h-11 items-center text-xs font-medium text-primary underline-offset-2 hover:underline sm:min-h-0"
+                    >
+                      Ver la postulación
+                    </Link>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          <Paginacion
+            className="mt-4"
+            ruta={ruta}
+            searchParams={searchParams}
+            pagina={resultado.pagina}
+            total={resultado.total}
+            tamano={TAMANO_HISTORIAL}
+            parametro="pagina_invitaciones"
+            ancla={ancla}
+          />
+        </>
       )}
     </div>
   );

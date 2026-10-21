@@ -2,7 +2,7 @@
 
 Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las personas que buscan trabajo con las empresas de la ciudad, y le da a la oficina un lugar único para revisar empresas y ofertas, acompañar a cada postulante y derivarlo a las empresas.
 
-- **Sitio publicado:** URL_DEL_SITIO
+- **Sitio publicado:** https://proyecto-portal-trabajo.vercel.app/
 - **Repositorio:** https://github.com/SantiC96/proyecto-portal-trabajo
 - **Documentación técnica:** [docs/documentacion-tecnica.md](docs/documentacion-tecnica.md)
 
@@ -26,7 +26,9 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 - Buscar ofertas por texto, rubro y modalidad, sin necesidad de registrarse.
 - Postularse a una oferta eligiendo con cuál de sus CVs (el más reciente viene elegido) y retirarla en cualquier momento salvo si ya fue seleccionado; la retirada queda en el historial y se puede volver a postular mientras la oferta siga abierta.
 - Ver el estado de cada postulación, con qué CV se postuló, la pre-entrevista y la entrevista con la empresa.
+- Recibir invitaciones de la Oficina de Empleo a ofertas que coinciden con su perfil (aviso y email). En su pantalla de Invitaciones responder "Me interesa" (eligiendo el CV: queda una postulación normal pendiente de revisión) o "No me interesa" (con un motivo opcional); las anteriores quedan en un historial.
 - Completar el perfil: datos personales, rubros de interés, información laboral y foto.
+- Indicar de dónde es (Funes, una localidad de la zona u otra escrita a mano) al registrarse o desde el perfil. Quien vive en Funes puede subir un comprobante de domicilio (PDF o imagen) para que la oficina lo verifique, y ve su estado: en revisión, verificado o rechazado con el motivo. Cambiar de localidad reinicia la verificación.
 - Tener hasta 5 CVs en PDF, verlos y eliminarlos; eliminar un CV no cambia las postulaciones ya hechas con él. Los CVs y fotos eliminados se borran definitivamente a los 30 días, salvo un CV de una postulación en curso.
 - Ver los cursos asignados por la oficina, empezarlos y marcarlos como completados.
 - Cambiar la contraseña.
@@ -51,7 +53,9 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 - Aprobar o rechazar ofertas antes de que se publiquen.
 - Revisar postulaciones, coordinar una pre-entrevista opcional y derivar a la empresa o descartar.
 - Corregir el resultado de una derivación cuando hace falta.
-- Consultar la base de postulantes con filtros (rubro, con CV, esperando curso) y ver la ficha de cada uno, con sus CVs y el CV de cada postulación.
+- Consultar la base de postulantes con filtros (rubro, con CV, esperando curso, procedencia, comprobante por revisar) y ver la ficha de cada uno, con sus CVs y el CV de cada postulación.
+- Ver la procedencia de cada postulante con un badge ("Funes · Verificado", "Funes · Sin verificar", "Otra localidad: …") en listas y fichas, revisar el comprobante de domicilio (aprobar, o rechazar con motivo) y ordenar las postulaciones con "Primero verificados de Funes". Las empresas no ven nada de esto.
+- Desde una oferta publicada (en su panel o en el listado público de ofertas), buscar postulantes que coinciden con ella aunque no se hayan postulado (rubro, requisitos y título contra su experiencia, disponibilidad y CV), con un nivel de coincidencia y las razones, e invitarlos a postularse. Los ya invitados aparecen al final con su última respuesta ("No interesado" muestra el motivo al pasar el mouse o tocarlo); se puede volver a invitar a quien dijo que no, también desde la ficha del postulante. Si aceptan, la postulación ("Por invitación") se revisa y deriva como cualquier otra. La empresa no ve nada de esto.
 - Crear cursos de inserción laboral y asignarlos a quien acumula rechazos.
 - Gestionar las cuentas de la oficina: invitar por email, desactivar y reactivar (siempre queda al menos una activa; nadie se desactiva a sí mismo).
 - Mi perfil: foto, datos de contacto y cambio de contraseña.
@@ -65,9 +69,9 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 
 ### Avisos y emails
 
-- Campanita con avisos para los tres roles (derivaciones, entrevistas, aprobaciones, vencimientos, cursos).
+- Campanita con avisos para los tres roles (derivaciones, entrevistas, aprobaciones, vencimientos, cursos, invitaciones a ofertas).
 - Los avisos importantes también llegan por email.
-- Página de avisos con marcar como leído y marcar todos.
+- Página de avisos de cada rol. Al abrir la campanita o la página, los avisos se marcan como leídos solos; no hay indicadores sobre la foto ni el nombre.
 
 ### Dashboard de indicadores de la oficina
 

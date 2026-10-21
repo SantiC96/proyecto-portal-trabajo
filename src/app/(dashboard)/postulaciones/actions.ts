@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirPostulante } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
-import { esUuid } from "@/lib/validaciones";
+import { err, errCampo, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
+import { esUuid, validarTextoOpcional } from "@/lib/validaciones";
+import { MOTIVO_INVITACION_MAXIMO } from "@/lib/invitaciones";
 import type { Enum } from "@/types/db";
 import { programarEnvioEmails } from "@/lib/emails/cola";
 
@@ -132,4 +133,76 @@ export async function retirarPostulacion(
   revalidatePath(`/ofertas/${postulacion.oferta_id}`);
   revalidatePath("/mis-postulaciones");
   return okMsg("Retiraste tu postulación.");
+}
+
+/**
+ * Responde una invitación de la oficina (migration_056, responder_invitacion).
+ * "Me interesa" crea una postulación normal con el CV elegido, que la oficina
+ * revisa como cualquier otra; "No me interesa" la rechaza con un motivo
+ * opcional. La base controla el dueño, que siga pendiente, el CV y que la
+ * oferta siga abierta: si se cerró, la invitación queda vencida.
+ */
+export async function responderInvitacion(
+  invitacionId: string,
+  acepta: boolean,
+  datos: { cvArchivoId?: string; motivo?: string } = {},
+): Promise<Resultado<void>> {
+  const auth = await requerirPostulante({
+    mensajeSinPermiso: "Solo los postulantes pueden responder invitaciones.",
+  });
+  if (!auth.ok) return auth;
+  const { usuario } = auth;
+
+  if (!esUuid(invitacionId)) return err("NO_ENCONTRADO", "No se encontró la invitación.");
+  if (typeof acepta !== "boolean") return err("DATOS_INVALIDOS");
+
+  const motivo = typeof datos.motivo === "string" ? datos.motivo.trim() : "";
+  if (!acepta) {
+    const errMotivo = validarTextoOpcional(motivo, MOTIVO_INVITACION_MAXIMO);
+    if (errMotivo) return errCampo("motivo", errMotivo);
+  }
+
+  const supabase = await createSupabaseServerClient();
+
+  if (acepta) {
+    // RLS: solo sus CVs no eliminados. El trigger de la base vuelve a validarlo.
+    const { data: cvs, error: errorCvs } = await supabase
+      .from("archivos_usuario")
+      .select("id")
+      .eq("usuario_id", usuario.id)
+      .eq("tipo", "cv")
+      .is("eliminado_en", null);
+
+    if (errorCvs) {
+      const ref = logError("responderInvitacion:cvs", errorCvs, { invitacionId });
+      return errConRef("ERROR_INTERNO", "No pudimos registrar tu respuesta. Intentá de nuevo.", ref);
+    }
+    if (cvs.length === 0) return err("SIN_CV");
+    if (!esUuid(datos.cvArchivoId) || !cvs.some((cv) => cv.id === datos.cvArchivoId)) {
+      return err("DATOS_INVALIDOS", "El CV que elegiste ya no está en tu perfil. Elegí otro.");
+    }
+  }
+
+  const { data: resultado, error } = await supabase.rpc("responder_invitacion", {
+    p_invitacion_id: invitacionId,
+    p_acepta: acepta,
+    p_cv_archivo_id: acepta ? datos.cvArchivoId : undefined,
+    p_motivo: !acepta && motivo ? motivo : undefined,
+  });
+
+  if (error) {
+    if (error.code === "P0001" || error.code === "42501") return fromSupabaseError(error);
+    const ref = logError("responderInvitacion", error, { invitacionId, acepta });
+    return errConRef("ERROR_INTERNO", "No pudimos registrar tu respuesta. Intentá de nuevo.", ref);
+  }
+
+  revalidatePath("/invitaciones");
+  // Al aceptar se crea una postulación.
+  if (acepta) revalidatePath("/mis-postulaciones");
+
+  // La invitación quedó vencida (la oferta dejó de aceptar postulaciones).
+  if (resultado === "vencida") return err("ESTADO_INVALIDO", "La oferta ya se cerró.");
+
+  programarEnvioEmails();
+  return okMsg(acepta ? "¡Listo! Tu postulación quedó registrada." : "Le avisamos a la Oficina de Empleo.");
 }

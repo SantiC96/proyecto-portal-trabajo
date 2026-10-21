@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { X, UserPlus, User, Building2 } from "lucide-react";
 import { AuthLink } from "@/components/auth/auth-link";
 
@@ -8,12 +9,49 @@ interface RegisterModalProps {
 }
 
 export function RegisterModal({ onClose }: RegisterModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement;
+    dialogRef.current?.querySelector<HTMLElement>("button")?.focus();
+
+    return () => {
+      if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus();
+    };
+  }, []);
+
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
       role="dialog"
       aria-modal="true"
       aria-labelledby="register-dialog-title"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          onClose();
+          return;
+        }
+
+        if (event.key !== "Tab") return;
+
+        const focusableElements = dialogRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        );
+        if (!focusableElements?.length) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (event.shiftKey && document.activeElement === firstElement) {
+          event.preventDefault();
+          lastElement.focus();
+        } else if (!event.shiftKey && document.activeElement === lastElement) {
+          event.preventDefault();
+          firstElement.focus();
+        }
+      }}
       onClick={(e) => {
         // Cierra al hacer clic en el fondo oscuro
         if (e.target === e.currentTarget) onClose();
