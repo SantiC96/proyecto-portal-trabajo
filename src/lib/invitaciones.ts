@@ -115,6 +115,29 @@ export const COINCIDENCIA: Record<NivelCoincidencia, { label: string; className:
   baja: { label: "Baja coincidencia", className: "border-gray-200 bg-gray-100 text-gray-700" },
 };
 
+/** Lo que suma puntaje en puntaje_coincidencia (migration_058). */
+export type DatosCoincidencia = {
+  rubros_coincidentes: string[];
+  requisitos_coincidentes: string[];
+  coincide_titulo: boolean;
+  disponibilidad_ok: boolean;
+  tiene_cv: boolean;
+};
+
+/**
+ * Por qué coinciden una oferta y un postulante. Los mismos motivos en la
+ * búsqueda de la oficina y en las ofertas recomendadas del postulante.
+ */
+export function motivosCoincidencia(c: DatosCoincidencia): string[] {
+  return [
+    ...c.rubros_coincidentes.map((r) => `Rubro: ${r}`),
+    ...c.requisitos_coincidentes.map((r) => `Requisito: ${r}`),
+    ...(c.coincide_titulo ? ["Experiencia en el puesto"] : []),
+    ...(c.disponibilidad_ok ? ["Disponibilidad compatible"] : []),
+    ...(c.tiene_cv ? ["Tiene CV"] : []),
+  ];
+}
+
 /**
  * Estilo de la última invitación a una oferta (oficina). El texto dice lo
  * mismo que el color: azul pendiente, rojo dijo que no, gris vencida, verde
