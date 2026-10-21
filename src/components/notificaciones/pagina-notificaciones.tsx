@@ -11,13 +11,14 @@ import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { BotonFormulario } from "@/components/ui/boton-formulario";
 import { abrirNotificacion } from "@/app/(dashboard)/notificaciones/actions";
-import { MarcarLeidaBtn, MarcarTodasLeidasBtn } from "./acciones-notificaciones";
+import { MarcarLeidasAlEntrar } from "./acciones-notificaciones";
 import { IconoNotificacion } from "./icono-notificacion";
 import { BotonVolver } from "@/components/ui/boton-volver";
 
 /**
  * Listado paginado de las notificaciones del usuario. Lo usan las páginas de
- * los tres roles; cada una verifica el rol antes de renderizarlo.
+ * los tres roles; cada una verifica el rol antes de renderizarlo. Al entrar,
+ * las nuevas se marcan como leídas (siguen resaltadas en esta visita).
  */
 export async function PaginaNotificaciones({
   usuarioId,
@@ -37,11 +38,15 @@ export async function PaginaNotificaciones({
   const pagina = leerPagina(searchParams.pagina);
   const supabase = await createSupabaseServerClient();
 
-  const { count: noLeidas } = await supabase
+  // La más nueva sin leer: hasta ahí se marcan como leídas al entrar.
+  const { data: nuevas, count: noLeidas } = await supabase
     .from("notificaciones")
-    .select("id", { count: "exact", head: true })
+    .select("created_at", { count: "exact" })
     .eq("usuario_id", usuarioId)
-    .is("leida_en", null);
+    .is("leida_en", null)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const masNueva = nuevas?.[0]?.created_at ?? null;
 
   return (
     <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
@@ -54,11 +59,10 @@ export async function PaginaNotificaciones({
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {(noLeidas ?? 0) > 0
-              ? `${noLeidas} sin leer`
+              ? `${noLeidas} ${noLeidas === 1 ? "nueva" : "nuevas"}`
               : "Estás al día."}
           </p>
         </div>
-        {(noLeidas ?? 0) > 0 && <MarcarTodasLeidasBtn />}
       </div>
 
       <Suspense key={pagina} fallback={<EsqueletoLista filas={5} className="mt-6" />}>
@@ -68,6 +72,7 @@ export async function PaginaNotificaciones({
           ruta={ruta}
           textoVacio={textoVacio}
           searchParams={searchParams}
+          masNueva={masNueva}
         />
       </Suspense>
     </section>
@@ -80,12 +85,15 @@ async function ListadoNotificaciones({
   ruta,
   textoVacio,
   searchParams,
+  masNueva,
 }: {
   usuarioId: string;
   pagina: number;
   ruta: string;
   textoVacio: string;
   searchParams: ParamsUrl;
+  /** La más nueva sin leer al cargar la página; null si no había. */
+  masNueva: string | null;
 }) {
   const supabase = await createSupabaseServerClient();
   const resultado = await consultarPagina(pagina, (desde, hasta) =>
@@ -117,26 +125,28 @@ async function ListadoNotificaciones({
 
   return (
     <>
+      {/* Se marca después de leer el listado, así las nuevas se ven resaltadas. */}
+      {masNueva && <MarcarLeidasAlEntrar hasta={masNueva} />}
       <ul className="mt-6 space-y-3">
         {resultado.filas.map((n) => {
-          const noLeida = !n.leida_en;
+          const nueva = !n.leida_en;
           return (
             <li
               key={n.id}
               className={cn(
                 "flex flex-col gap-3 rounded-[var(--radius-lg)] border bg-surface p-4 sm:flex-row sm:items-start sm:justify-between",
-                noLeida ? "border-primary/30 bg-secondary/40" : "border-border",
+                nueva ? "border-primary/30 bg-secondary/40" : "border-border",
               )}
             >
               <div className="flex min-w-0 items-start gap-3">
                 <IconoNotificacion tipo={n.tipo} />
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 font-medium text-foreground">
-                    {noLeida && (
+                    {nueva && (
                       <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
                     )}
                     {n.titulo}
-                    {noLeida && <span className="sr-only"> (sin leer)</span>}
+                    {nueva && <span className="sr-only"> (nueva)</span>}
                   </p>
                   <p className="break-words text-sm text-muted-foreground-strong">{n.mensaje}</p>
                   <time
@@ -149,7 +159,6 @@ async function ListadoNotificaciones({
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 sm:flex-none sm:justify-end">
-                {noLeida && <MarcarLeidaBtn id={n.id} />}
                 {n.link && (
                   <form action={abrirNotificacion.bind(null, n.id)}>
                     <BotonFormulario

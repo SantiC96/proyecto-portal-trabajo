@@ -87,10 +87,23 @@ async function purgarArchivosEliminados(): Promise<number> {
   return confirmadas;
 }
 
+/**
+ * Marca vencidas las invitaciones pendientes de ofertas que ya no aceptan
+ * postulaciones (vencer_invitaciones_de_ofertas_vencidas, migration_056;
+ * solo service role). En la práctica, las de ofertas vencidas por fecha: las
+ * cerradas, retiradas o vueltas a revisión ya las vence un trigger.
+ */
+async function vencerInvitaciones(): Promise<number> {
+  const { data, error } = await supabaseAdmin.rpc("vencer_invitaciones_de_ofertas_vencidas");
+  if (error) throw error;
+  return data ?? 0;
+}
+
 // Cada tarea corre aunque la anterior falle.
 const TAREAS: Tarea[] = [
   { nombre: "ofertas_eliminadas", ejecutar: purgarOfertasEliminadas },
   { nombre: "archivos_eliminados", ejecutar: purgarArchivosEliminados },
+  { nombre: "invitaciones_vencidas", ejecutar: vencerInvitaciones },
 ];
 
 export async function ejecutarMantenimiento(): Promise<ResultadoTarea[]> {

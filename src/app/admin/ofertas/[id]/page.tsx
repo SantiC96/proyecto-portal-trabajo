@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Building, MapPin, Clock, Briefcase } from "lucide-react";
+import { Building, MapPin, Clock, Briefcase, UserSearch } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { getOfertaEstadoLabel } from "@/lib/oferta-estados";
@@ -78,6 +79,9 @@ export default async function AdminOfertaDetallePage({
   const totalPostulaciones = postulacionesResult.count ?? 0;
   const vacantes = vacantesResult.data?.cantidad ?? null;
   const contratados = contratadosResult.data ?? 0;
+  // Buscar e invitar postulantes: solo ofertas activas y no vencidas (migration_056).
+  const puedeBuscarPostulantes =
+    oferta.estado === "activa" && !estadoVencimiento(oferta.estado, oferta.vence_en).vencida;
 
   const categorias = oferta.oferta_categorias
     .map((oc) => oc.categorias?.nombre)
@@ -277,6 +281,15 @@ export default async function AdminOfertaDetallePage({
             <div className="mt-4">
               <OfertaAcciones ofertaId={ofertaId} estado={oferta.estado} />
             </div>
+            {puedeBuscarPostulantes && (
+              <Link
+                href={`/admin/ofertas/${ofertaId}/candidatos`}
+                className="btn-primario mt-4 min-h-11 w-full justify-center text-center"
+              >
+                <UserSearch className="h-4 w-4 shrink-0" aria-hidden="true" />
+                Buscar postulantes para esta oferta
+              </Link>
+            )}
           </div>
         </div>
       </div>

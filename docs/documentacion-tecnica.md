@@ -72,7 +72,7 @@ flowchart LR
 ```text
 src/
 ├── app/
-│   ├── (dashboard)/        # Postulante: perfil, mis-postulaciones, mis-cursos, notificaciones
+│   ├── (dashboard)/        # Postulante: perfil, mis-postulaciones, invitaciones, mis-cursos, notificaciones
 │   ├── admin/              # Oficina de Empleo: empresas, ofertas, postulaciones, postulantes, cursos, indicadores
 │   ├── empresa/            # Empresa: (panel)/ofertas, candidatos, candidatos-guardados, indicadores, solicitud
 │   ├── auth/               # Login, registro, verificación, recuperación de contraseña, callback
@@ -216,7 +216,8 @@ erDiagram
 | `ofertas` | Ofertas laborales, su estado de revisión, duración y vencimiento. |
 | `oferta_categorias` | Rubros de cada oferta (muchos a muchos). |
 | `oferta_vacantes` | Cantidad de vacantes de la oferta (una fila por oferta). |
-| `postulaciones` | Postulación de un postulante a una oferta, el CV elegido (`cv_archivo_id`) y su estado en la oficina. |
+| `postulaciones` | Postulación de un postulante a una oferta, el CV elegido (`cv_archivo_id`), su estado en la oficina y su `origen` (`postulante` o `invitacion`, migración 056; solo lo ve la oficina). |
+| `invitaciones_oferta` | Invitaciones de la oficina a un postulante para que se postule a una oferta: `estado` (pendiente, aceptada, rechazada, vencida), quién invitó, fechas, motivo si dijo que no y la postulación creada al aceptar. Historial: varias por oferta y postulante, una sola pendiente (índice único parcial). RLS: la oficina ve todas, el postulante las suyas, la empresa ninguna (migración 056, decisión [028](decisiones/028-buscar-e-invitar-postulantes.md)). |
 | `pre_entrevistas` | Pre-entrevista opcional de la oficina, una por postulación. |
 | `derivaciones` | Postulación derivada a la empresa y su resultado (entrevista, seleccionado, descartado). |
 | `candidatos_guardados` | Candidatos que una empresa guarda con una nota. |
@@ -255,6 +256,8 @@ Están en [`src/migrations/`](../src/migrations/) y se ejecutan **a mano, en ord
 | 053 | Retiro de la postulación por el postulante y volver a postularse (una postulación vigente por oferta) |
 | 054 | Hasta 5 CVs por postulante, CV elegido al postularse y borrado lógico de CVs y fotos con purga diaria |
 | 055 | Procedencia del postulante, comprobante de domicilio verificado por la oficina y nivel de prioridad |
+| 056 | Búsqueda de postulantes que coinciden con una oferta (texto completo en español) e invitaciones a postularse |
+| 057 | El aviso de invitación apunta a la pantalla `/invitaciones` (avisos y emails pendientes ya creados incluidos) |
 
 El número 014 no se usó.
 
@@ -402,7 +405,7 @@ En el formulario, el `accept` del input y el texto de ayuda salen de las mismas 
 
 ### Notificaciones
 
-La tabla `notificaciones` guarda los avisos de cada usuario: `tipo`, `titulo`, `mensaje`, `link`, `clave` (idempotencia) y `leida_en`. Los crean triggers y funciones de la base (`notificar_usuario`, `notificar_oficina`) ante eventos como derivaciones, entrevistas, aprobaciones, cursos y pre-entrevistas. Los avisos de oferta por vencer o vencida los genera `generar_avisos_vencimiento_empresa` al abrir el panel de la empresa. El usuario los ve en la campanita y en la página de notificaciones de su rol. La lista completa de eventos está en la decisión [014](decisiones/014-notificaciones.md).
+La tabla `notificaciones` guarda los avisos de cada usuario: `tipo`, `titulo`, `mensaje`, `link`, `clave` (idempotencia) y `leida_en`. Los crean triggers y funciones de la base (`notificar_usuario`, `notificar_oficina`) ante eventos como derivaciones, entrevistas, aprobaciones, cursos y pre-entrevistas. Los avisos de oferta por vencer o vencida los genera `generar_avisos_vencimiento_empresa` al abrir el panel de la empresa. El usuario los ve en la campanita y en la página de notificaciones de su rol. La lista completa de eventos está en la decisión [014](decisiones/014-notificaciones.md). Las invitaciones a ofertas (migración 056) suman `invitacion_oferta` (al postulante, con email), `invitacion_aceptada` e `invitacion_rechazada` (a la oficina, sin email); la aceptación reemplaza al aviso de postulación nueva de esa postulación, así queda uno solo. Al abrir la campanita o el listado, los avisos se marcan como leídos (las nuevas siguen resaltadas mientras se ven) y no hay indicadores sobre la foto ni el nombre del usuario.
 
 ### Patrón outbox
 
@@ -519,7 +522,7 @@ Si falta alguna variable `SMTP_*` o `EMAIL_FROM`, la app funciona igual y los em
 ### Base de datos
 
 1. En **Storage**, crear los buckets privados `cvs` y `avatares` (la migración 033 falla si no existen).
-2. En el **SQL Editor**, ejecutar en orden numérico todos los archivos `src/migrations/migration_0XX_*.sql`, de `migration_001_schema.sql` a `migration_055_procedencia_y_prioridad.sql`. La 055 necesita el bucket privado `comprobantes` (si no existe lo crea; si es público, se detiene). Leer los `NOTICE` que dejan algunas migraciones.
+2. En el **SQL Editor**, ejecutar en orden numérico todos los archivos `src/migrations/migration_0XX_*.sql`, de `migration_001_schema.sql` a `migration_057_link_invitaciones.sql`. La 055 necesita el bucket privado `comprobantes` (si no existe lo crea; si es público, se detiene). Leer los `NOTICE` que dejan algunas migraciones.
 3. Los datos demo (usuarios para probar cada rol) se documentan en la sección [Usuarios demo del README](../README.md#usuarios-demo).
 4. Crear el primer usuario de la oficina siguiendo la [guía de usuarios de la oficina](guias/guia-usuarios-oficina.md); los demás se invitan desde `/admin/cuentas`.
 5. Si se cambia el esquema: `npx supabase login` y `npm run db:tipos`.
@@ -552,7 +555,7 @@ No hay tests automáticos configurados.
 - El proyecto se importa desde GitHub; Vercel detecta Next.js y usa `npm run build`.
 - **Variables:** cargar en *Settings → Environment Variables* las mismas de `.env.local` salvo `SUPABASE_PROJECT_ID`. Son secretas `SUPABASE_SERVICE_ROLE_KEY`, `SMTP_PASS` y `CRON_SECRET`. `NEXT_PUBLIC_SITE_URL` tiene que ser la URL del sitio, no `localhost`.
 - **Los cambios de variables aplican en el próximo deploy:** después de cambiar una, hay que volver a desplegar. Las `NEXT_PUBLIC_*` además quedan fijas en el código del navegador al momento del build.
-- **Cron:** `vercel.json` programa `GET /api/emails/procesar` todos los días a las 12:00 UTC (9:00 en Argentina) y `GET /api/mantenimiento/purgar` a las 7:00 UTC (`src/lib/mantenimiento.ts`: purga las ofertas eliminadas hace más de 30 días con `purgar_ofertas_eliminadas()` y los CVs y fotos eliminados hace más de 30 días con `archivos_a_purgar()` / `confirmar_archivos_purgados()`, todas solo service role; cada tarea corre aunque otra falle). Vercel manda `Authorization: Bearer <CRON_SECRET>` si la variable está definida; las dos rutas lo validan con `cronAutorizado()` (`src/lib/cron.ts`, comparación en tiempo constante) y son públicas en `proxy.ts`. El plan Hobby solo permite crons diarios, por eso el envío normal de emails va con `after()`.
+- **Cron:** `vercel.json` programa `GET /api/emails/procesar` todos los días a las 12:00 UTC (9:00 en Argentina) y `GET /api/mantenimiento/purgar` a las 7:00 UTC (`src/lib/mantenimiento.ts`: purga las ofertas eliminadas hace más de 30 días con `purgar_ofertas_eliminadas()` los CVs y fotos eliminados hace más de 30 días con `archivos_a_purgar()` / `confirmar_archivos_purgados()` y marca vencidas las invitaciones pendientes de ofertas vencidas por fecha con `vencer_invitaciones_de_ofertas_vencidas()` (056), todas solo service role; cada tarea corre aunque otra falle). Vercel manda `Authorization: Bearer <CRON_SECRET>` si la variable está definida; las dos rutas lo validan con `cronAutorizado()` (`src/lib/cron.ts`, comparación en tiempo constante) y son públicas en `proxy.ts`. El plan Hobby solo permite crons diarios, por eso el envío normal de emails va con `after()`.
 - En Supabase, agregar la URL del sitio en *Site URL* y en *Redirect URLs*.
 
 ---
@@ -588,6 +591,7 @@ No hay tests automáticos configurados.
 | 025 | [Retiro de la postulación y volver a postularse](decisiones/025-retiro-de-postulacion.md) |
 | 026 | [Varios CVs, CV elegido al postularse y borrado lógico de archivos](decisiones/026-cvs-y-borrado-logico-de-archivos.md) |
 | 027 | [Procedencia del postulante, comprobante de domicilio y prioridad](decisiones/027-procedencia-y-prioridad.md) |
+| 028 | [Buscar postulantes para una oferta e invitarlos](decisiones/028-buscar-e-invitar-postulantes.md) |
 
 ---
 

@@ -69,6 +69,11 @@ export function cuentaDesactivada(usuario: UsuarioActual): boolean {
 }
 
 /** Route Handler que cierra la sesión de una cuenta desactivada. */
+/** Cuenta de la oficina con permisos (rol municipalidad y no desactivada). */
+export function esOficinaActiva(usuario: UsuarioActual | null): boolean {
+  return usuario?.perfil?.rol === "municipalidad" && !cuentaDesactivada(usuario);
+}
+
 export const RUTA_CUENTA_DESACTIVADA = "/auth/cuenta-desactivada";
 
 function tieneRol<R extends Rol>(

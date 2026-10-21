@@ -36,6 +36,7 @@ import { requerirRolPagina } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
+import { BadgePorInvitacion } from "@/components/admin/badge-por-invitacion";
 import { estadosDeComprobantes } from "@/lib/comprobantes";
 import { nivelDe, type EstadoComprobante, type NivelPrioridad } from "@/lib/procedencia";
 
@@ -570,7 +571,7 @@ async function ListadoPostulaciones({
   const postulanteIds = filas
     .map((f) => f.postulante?.id)
     .filter((id): id is string => Boolean(id));
-  const [procedenciaRes, comprobantes] = await Promise.all([
+  const [procedenciaRes, comprobantes, porInvitacionRes] = await Promise.all([
     postulanteIds.length > 0
       ? supabase
           .from("postulantes")
@@ -578,8 +579,17 @@ async function ListadoPostulaciones({
           .in("id", postulanteIds)
       : Promise.resolve({ data: [], error: null }),
     estadosDeComprobantes(supabase, usuarioIds),
+    // Las que vinieron de una invitación (migration_056), en una sola consulta
+    // para las cinco pestañas.
+    supabase
+      .from("postulaciones")
+      .select("id")
+      .in("id", filas.map((f) => f.postulacionId))
+      .eq("origen", "invitacion"),
   ]);
   if (procedenciaRes.error) logError("admin_postulaciones_procedencia", procedenciaRes.error);
+  if (porInvitacionRes.error) logError("admin_postulaciones_origen", porInvitacionRes.error);
+  const porInvitacion = new Set((porInvitacionRes.data ?? []).map((p) => p.id));
   const procedenciaMap = new Map<string, Procedencia>();
   for (const fila of filas) {
     const p = (procedenciaRes.data ?? []).find((r) => r.id === fila.postulante?.id);
@@ -715,6 +725,9 @@ async function ListadoPostulaciones({
                         >
                           {fila.badge.label}
                         </Badge>
+                        {porInvitacion.has(fila.postulacionId) && (
+                          <BadgePorInvitacion className="mt-1.5 flex" />
+                        )}
                         <PreEntrevistaCoordinada pre={fila.preEntrevista} className="mt-1.5" />
                       </td>
                       <td className="py-4">
@@ -769,6 +782,9 @@ async function ListadoPostulaciones({
                     procedencia={procedenciaMap.get(fila.postulacionId)}
                     className="mt-2"
                   />
+                  {porInvitacion.has(fila.postulacionId) && (
+                    <BadgePorInvitacion className="mt-2" />
+                  )}
                   <dl className="mt-3 space-y-1.5 text-sm">
                     <div className="flex gap-2">
                       <dt className="w-24 flex-shrink-0 text-muted-foreground">

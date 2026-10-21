@@ -8,8 +8,8 @@ import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { DatosCandidato } from "@/components/admin/datos-candidato";
 import { obtenerCandidato, obtenerCvDePostulacion } from "@/lib/admin/candidato";
 import { CvDePostulacionCard } from "@/components/admin/cv-candidato";
-import { ProcedenciaCandidato } from "@/components/admin/procedencia-candidato";
 import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
+import { BadgePorInvitacion } from "@/components/admin/badge-por-invitacion";
 import {
   BADGE_ESTADO_VISIBLE,
   estadoVisiblePostulacion,
@@ -54,6 +54,7 @@ export default async function PostulacionFichaPage({
       postulante_id,
       oferta_id,
       cv_archivo_id,
+      origen,
       postulantes!postulante_id(id, usuario_id),
       ofertas!oferta_id(id, titulo, empresa_nombre, modalidad, jornada, estado, contenido_editado_en)
     `
@@ -159,6 +160,7 @@ export default async function PostulacionFichaPage({
             <Badge variant={badge.variant} className={badge.className}>
               {badge.label}
             </Badge>
+            {postulacion.origen === "invitacion" && <BadgePorInvitacion />}
             {candidato && (
               <BadgeProcedencia
                 nivel={candidato.nivel}
@@ -190,11 +192,6 @@ export default async function PostulacionFichaPage({
                 domicilio={candidato.postulante.domicilio}
                 telefono={candidato.usuario.telefono}
                 categorias={candidato.categorias}
-              />
-              <ProcedenciaCandidato
-                localidad={candidato.postulante.localidad}
-                nivel={candidato.nivel}
-                comprobante={candidato.comprobante}
               />
               <CvDePostulacionCard cvPostulacion={cvPostulacion} />
             </>

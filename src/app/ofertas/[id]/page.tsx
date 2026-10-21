@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Building, MapPin, Clock, Briefcase } from "lucide-react";
+import { Building, MapPin, Clock, Briefcase, UserSearch } from "lucide-react";
 import { PublicFooter } from "@/components/public/public-footer";
 import { getOfertaById } from "@/lib/ofertas";
 import { formatFecha } from "@/lib/fechas";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { obtenerPostulanteActual, obtenerUsuarioActual } from "@/lib/auth";
+import { esOficinaActiva, obtenerPostulanteActual, obtenerUsuarioActual } from "@/lib/auth";
+import { ofertaAceptaInvitaciones, rutaBuscarPostulantes } from "@/lib/invitaciones";
 import { PostularseCta, type Postulacion } from "./postularse-cta";
 import { RequisitosList, BeneficiosList } from "@/components/ofertas/requisitos-beneficios";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
@@ -29,6 +30,9 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
 
   // Determine who is viewing and build the CTA props
   const user = await obtenerUsuarioActual();
+  // La oficina no se postula: en su lugar busca postulantes para la oferta.
+  const esOficina = esOficinaActiva(user);
+  const puedeBuscarPostulantes = esOficina && ofertaAceptaInvitaciones("activa", oferta.venceEn);
 
   const loginHref = `/auth/login?redirect=${encodeURIComponent(`/ofertas/${oferta.id}?accion=postular`)}`;
 
@@ -170,6 +174,17 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
               <p className="text-xs text-muted-foreground">
                 Las postulaciones son revisadas por el equipo de intermediación laboral municipal.
               </p>
+              {esOficina ? (
+                puedeBuscarPostulantes && (
+                  <Link
+                    href={rutaBuscarPostulantes(oferta.id, { volver: `/ofertas/${oferta.id}` })}
+                    className="btn-primario min-h-11 shrink-0 justify-center"
+                  >
+                    <UserSearch className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    Buscar postulantes
+                  </Link>
+                )
+              ) : (
               <PostularseCta
                 variant={ctaVariant}
                 ofertaId={oferta.id}
@@ -180,6 +195,7 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
                 postulacion={postulacion}
                 autoOpen={autoOpen}
               />
+              )}
             </div>
             )}
           </article>

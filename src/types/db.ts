@@ -92,6 +92,18 @@ export type FilaMiPreEntrevista = FilaRpc<"mis_pre_entrevistas">;
 /** CVs (migration_054): con qué CV se postuló y el CV que ve la empresa. */
 export type FilaCvDeMiPostulacion = FilaRpc<"cvs_de_mis_postulaciones">;
 export type FilaCvParaEmpresa = FilaRpc<"cv_de_derivacion_empresa">;
+/** Búsqueda e invitaciones (migration_056). */
+export type FilaCandidatoParaOferta = ConNulos<
+  FilaRpc<"buscar_candidatos_para_oferta">,
+  | "localidad"
+  | "ultima_invitacion_estado"
+  | "ultima_invitacion_fecha"
+  | "ultima_invitacion_motivo"
+>;
+export type FilaMiInvitacion = ConNulos<
+  FilaRpc<"mis_invitaciones">,
+  "empresa_nombre" | "respondida_en" | "vencida_en" | "motivo_rechazo" | "postulacion_id"
+>;
 
 /** Indicadores del dashboard (migration_047): las tasas son NULL sin datos. */
 export type FilaIndicadoresPortal = ConNulos<

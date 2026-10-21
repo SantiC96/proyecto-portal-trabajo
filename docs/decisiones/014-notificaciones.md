@@ -165,13 +165,23 @@ src/migrations/migration_043_avisos_oficina_y_oferta_rechazada.sql
 src/migrations/migration_044_pre_entrevistas.sql          — BLOQUE 9: avisos de pre-entrevista
 src/lib/admin/empresas-sin-confirmar.ts                  — ids de empresas pendientes sin email confirmado
 src/lib/notificaciones.ts                                — tipos, resumen, rutaNotificaciones, esLinkInterno, generarAvisosVencimientoEmpresa
-src/app/(dashboard)/notificaciones/actions.ts           — refrescar, marcar leída(s), abrir (tres roles)
+src/app/(dashboard)/notificaciones/actions.ts           — refrescar, abrir la campanita (marca leídas), marcar vistas, abrir (tres roles)
 src/app/(dashboard)/notificaciones/page.tsx             — listado del postulante
 src/app/empresa/notificaciones/page.tsx                 — listado de la empresa
 src/app/admin/notificaciones/page.tsx                   — listado de la oficina
 src/components/notificaciones/campana-notificaciones.tsx
 src/components/notificaciones/pagina-notificaciones.tsx — listado paginado compartido
-src/components/notificaciones/acciones-notificaciones.tsx
+src/components/notificaciones/acciones-notificaciones.tsx — marca leídas al entrar al listado
 src/components/notificaciones/icono-notificacion.tsx
 src/components/notificaciones/eventos.ts
 ```
+
+---
+
+## Actualización (2026-10-21)
+
+- **Se marcan como leídas al abrir la campanita.** Al abrirla, el número pasa a cero enseguida y una sola acción (`abrirCampanaNotificaciones`) trae las últimas y marca como leídas todas hasta la más nueva (`marcarLeidasHasta`, por `created_at`: las que llegan después siguen nuevas). Mientras el panel está abierto, las que eran nuevas siguen resaltadas; al cerrarlo y volver a abrir ya se ven leídas. `useAccion` evita marcar dos veces.
+- **Listado de cada rol:** al entrar se marcan como leídas (`marcarNotificacionesVistas`) sin refrescar la página, así las nuevas siguen resaltadas en esa visita.
+- **Sin botones** "Marcar como leída" ni "Marcar todas como leídas" en la campanita ni en los listados.
+- **Si falla el marcado** no se muestra error: se registra con `logError` y se reintenta la próxima vez.
+- **Sin indicadores en la foto ni en el nombre.** El menú del usuario no muestra puntos ni contadores (antes: cursos pendientes e invitaciones del postulante). Las novedades se informan solo con la campanita, igual en los tres roles.
