@@ -72,7 +72,7 @@ flowchart LR
 ```text
 src/
 ├── app/
-│   ├── (dashboard)/        # Postulante: perfil, mis-postulaciones, invitaciones, mis-cursos, notificaciones
+│   ├── (dashboard)/        # Postulante: panel, perfil, mis-postulaciones, invitaciones, mis-cursos, notificaciones
 │   ├── admin/              # Oficina de Empleo: empresas, ofertas, postulaciones, postulantes, cursos, indicadores
 │   ├── empresa/            # Empresa: (panel)/ofertas, candidatos, candidatos-guardados, indicadores, solicitud
 │   ├── auth/               # Login, registro, verificación, recuperación de contraseña, callback
@@ -258,6 +258,8 @@ Están en [`src/migrations/`](../src/migrations/) y se ejecutan **a mano, en ord
 | 055 | Procedencia del postulante, comprobante de domicilio verificado por la oficina y nivel de prioridad |
 | 056 | Búsqueda de postulantes que coinciden con una oferta (texto completo en español) e invitaciones a postularse |
 | 057 | El aviso de invitación apunta a la pantalla `/invitaciones` (avisos y emails pendientes ya creados incluidos) |
+| 058 | Panel del postulante: `indicadores_postulante()`, `ofertas_recomendadas_para_mi()` y el puntaje de coincidencia en una función interna compartida con `buscar_candidatos_para_oferta` |
+| 059 | Mis postulaciones muestra el título y la empresa de las ofertas que el postulante ya no puede leer (`ofertas_de_mis_postulaciones()`) |
 
 El número 014 no se usó.
 
@@ -307,7 +309,7 @@ El número 014 no se usó.
 - **RLS** activado en todas las tablas de `public`. Las funciones `rol_actual()`, `mi_empresa_id()` y `empresa_es_duena_de_oferta()` se usan dentro de las políticas.
 - **Permisos por columna:** se revoca `UPDATE`/`INSERT` completo y se otorga solo sobre columnas editables. Ejemplos: `usuarios (nombre, apellido, telefono)`, `postulaciones` solo inserta `(oferta_id, postulante_id)`, `notificaciones` solo actualiza `leida_en` (migraciones 018, 021, 028, 031, 038, 046).
 - **Datos de candidatos para la empresa:** la empresa solo ve candidatos derivados a sus ofertas o guardados, a través de funciones como `candidato_para_empresa` que devuelven únicamente los campos permitidos (decisión [007](decisiones/007-acceso-candidatos-empresa.md)). Las notas internas de la oficina nunca se exponen al postulante ni a la empresa.
-- **Indicadores:** `indicadores_portal`, `postulaciones_por_mes` y `postulaciones_por_rubro` (047) solo responden al rol `municipalidad`. `indicadores_empresa` e `indicadores_por_oferta_empresa` (049) solo al rol `empresa`, toman la empresa de `auth.uid()` (nunca de un parámetro), cuentan solo sus ofertas y las derivaciones que recibió, y devuelven cero o nada si la empresa no está aprobada (decisiones [019](decisiones/019-dashboard-de-indicadores.md) y [021](decisiones/021-dashboard-de-empresa.md)).
+- **Indicadores:** `indicadores_portal`, `postulaciones_por_mes` y `postulaciones_por_rubro` (047) solo responden al rol `municipalidad`. `indicadores_empresa` e `indicadores_por_oferta_empresa` (049) solo al rol `empresa`, toman la empresa de `auth.uid()` (nunca de un parámetro), cuentan solo sus ofertas y las derivaciones que recibió, y devuelven cero o nada si la empresa no está aprobada (decisiones [019](decisiones/019-dashboard-de-indicadores.md) y [021](decisiones/021-dashboard-de-empresa.md)). `indicadores_postulante`, `ofertas_recomendadas_para_mi` y `ultimos_movimientos_postulante` (058) y `ofertas_de_mis_postulaciones` (059, solo título y empresa de sus propias postulaciones, hasta 100 ids) solo al rol `postulante` y toman el postulante de `auth.uid()`; `puntaje_coincidencia` es interna, sin `EXECUTE` para `authenticated` (decisión [029](decisiones/029-dashboard-postulante.md)).
 - **`supabaseAdmin`** (service role, salta RLS) se usa solo en el servidor para casos puntuales: alta de perfiles, subida de archivos y cola de emails (decisión [005](decisiones/005-uso-de-supabase-admin.md)). `src/lib/supabase-admin.ts` importa `server-only`: importarlo desde un componente de cliente rompe el build.
 
 ### Aprobación de empresas
@@ -522,7 +524,7 @@ Si falta alguna variable `SMTP_*` o `EMAIL_FROM`, la app funciona igual y los em
 ### Base de datos
 
 1. En **Storage**, crear los buckets privados `cvs` y `avatares` (la migración 033 falla si no existen).
-2. En el **SQL Editor**, ejecutar en orden numérico todos los archivos `src/migrations/migration_0XX_*.sql`, de `migration_001_schema.sql` a `migration_057_link_invitaciones.sql`. La 055 necesita el bucket privado `comprobantes` (si no existe lo crea; si es público, se detiene). Leer los `NOTICE` que dejan algunas migraciones.
+2. En el **SQL Editor**, ejecutar en orden numérico todos los archivos `src/migrations/migration_0XX_*.sql`, de `migration_001_schema.sql` a `migration_059_titulos_mis_postulaciones.sql`. La 055 necesita el bucket privado `comprobantes` (si no existe lo crea; si es público, se detiene). Leer los `NOTICE` que dejan algunas migraciones.
 3. Los datos demo (usuarios para probar cada rol) se documentan en la sección [Usuarios demo del README](../README.md#usuarios-demo).
 4. Crear el primer usuario de la oficina siguiendo la [guía de usuarios de la oficina](guias/guia-usuarios-oficina.md); los demás se invitan desde `/admin/cuentas`.
 5. Si se cambia el esquema: `npx supabase login` y `npm run db:tipos`.
@@ -592,6 +594,7 @@ No hay tests automáticos configurados.
 | 026 | [Varios CVs, CV elegido al postularse y borrado lógico de archivos](decisiones/026-cvs-y-borrado-logico-de-archivos.md) |
 | 027 | [Procedencia del postulante, comprobante de domicilio y prioridad](decisiones/027-procedencia-y-prioridad.md) |
 | 028 | [Buscar postulantes para una oferta e invitarlos](decisiones/028-buscar-e-invitar-postulantes.md) |
+| 029 | [Panel del postulante](decisiones/029-dashboard-postulante.md) |
 
 ---
 
