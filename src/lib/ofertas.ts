@@ -39,10 +39,17 @@ const OFERTA_SELECT = `
   oferta_categorias(categorias(nombre))
 ` as const;
 
-function mapRow(row: DbOfertaRow): OfertaLaboral {
-  const categorias = (row.oferta_categorias ?? [])
+/** Nombres de los rubros de una oferta leídos con oferta_categorias(categorias(nombre)). */
+export function nombresCategorias(
+  ofertaCategorias: DbOfertaRow["oferta_categorias"] | null | undefined,
+): string[] {
+  return (ofertaCategorias ?? [])
     .map((oc) => oc.categorias?.nombre)
     .filter((n): n is string => Boolean(n));
+}
+
+function mapRow(row: DbOfertaRow): OfertaLaboral {
+  const categorias = nombresCategorias(row.oferta_categorias);
   return {
     id: row.id,
     titulo: row.titulo,

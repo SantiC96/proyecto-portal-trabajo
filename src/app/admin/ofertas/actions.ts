@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirRol } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errCampo, errConRef, okMsg, type Resultado } from "@/lib/resultado";
+import { err, errCampo, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
 import { esUuid, LARGO_MAXIMO, MENSAJE_OBLIGATORIO, validarTextoOpcional } from "@/lib/validaciones";
 import { programarEnvioEmails } from "@/lib/emails/cola";
 
@@ -119,4 +119,39 @@ export async function rechazarOferta(
   programarEnvioEmails();
   revalidarOfertas(ofertaId);
   return okMsg("Oferta rechazada.");
+}
+
+/**
+ * Invita a un postulante a postularse a la oferta (migration_056,
+ * invitar_a_oferta). La base controla el rol, que la oferta siga activa y
+ * vigente, que la persona no se haya postulado y que no tenga ya una
+ * invitación pendiente; el aviso y el email al postulante salen de un
+ * trigger.
+ */
+export async function invitarAOferta(
+  ofertaId: string,
+  postulanteId: string,
+): Promise<Resultado<void>> {
+  const auth = await requerirRol("municipalidad");
+  if (!auth.ok) return auth;
+
+  if (!esUuid(ofertaId) || !esUuid(postulanteId)) return err("DATOS_INVALIDOS");
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("invitar_a_oferta", {
+    p_oferta_id: ofertaId,
+    p_postulante_id: postulanteId,
+  });
+
+  if (error) {
+    if (error.code === "P0001" || error.code === "42501") return fromSupabaseError(error);
+    const ref = logError("invitarAOferta", error, { ofertaId, postulanteId });
+    return errConRef("ERROR_INTERNO", "No se pudo enviar la invitación. Intentá de nuevo.", ref);
+  }
+
+  programarEnvioEmails();
+  revalidatePath(`/admin/ofertas/${ofertaId}`);
+  revalidatePath(`/admin/ofertas/${ofertaId}/candidatos`);
+  revalidatePath(`/admin/postulantes/${postulanteId}`);
+  return okMsg("Invitación enviada. Le avisamos a la persona por el portal y por email.");
 }
