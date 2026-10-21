@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { FileText, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { logError } from "@/lib/logger";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
@@ -31,7 +31,7 @@ import { formatFechaCorta } from "@/lib/fechas";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
 import { estadosDeComprobantes } from "@/lib/comprobantes";
-import { leerNivelPrioridad, nivelDe, type NivelPrioridad } from "@/lib/procedencia";
+import { nivelDe, type NivelPrioridad } from "@/lib/procedencia";
 
 export const metadata: Metadata = {
   title: "Postulantes | Panel municipal | Portal de Empleo Funes",
@@ -39,30 +39,31 @@ export const metadata: Metadata = {
 
 const RUTA = "/admin/postulantes";
 
+// La lista se ordena por nivel de prioridad (decisión 027): cada grupo de la
+// página lleva este título arriba de su primera tarjeta.
+const TITULO_NIVEL: Record<NivelPrioridad, string> = {
+  1: "De Funes, domicilio verificado",
+  2: "De Funes, sin verificar",
+  3: "Otra localidad o sin informar",
+};
+
+const BADGE_CHICO =
+  "inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium";
+
 type FiltrosListado = {
   q: string;
   rubroIds: string[];
-  conCv: boolean;
-  esperandoCurso: boolean;
-  cursoPendiente: boolean;
-  /** Nivel de prioridad (migration_055); null = todos. */
-  nivel: NivelPrioridad | null;
-  /** Solo con el comprobante de domicilio pendiente de revisión. */
-  comprobantePendiente: boolean;
   pagina: number;
 };
 
 export default async function PostulantesPage({
   searchParams,
 }: {
+  // con_cv, nivel, comprobante, esperando_curso y curso_pendiente eran filtros
+  // que ya no existen: si llegan de un link viejo se ignoran.
   searchParams: Promise<{
     q?: string;
     rubros?: string;
-    con_cv?: string;
-    esperando_curso?: string;
-    curso_pendiente?: string;
-    nivel?: string;
-    comprobante?: string;
     pagina?: string;
   }>;
 }) {
@@ -77,11 +78,6 @@ export default async function PostulantesPage({
           .map((s) => s.trim())
           .filter(Boolean)
       : [],
-    conCv: sp.con_cv === "1",
-    esperandoCurso: sp.esperando_curso === "1",
-    cursoPendiente: sp.curso_pendiente === "1",
-    nivel: leerNivelPrioridad(sp.nivel),
-    comprobantePendiente: sp.comprobante === "pendiente",
     pagina: leerPagina(sp.pagina),
   };
 
@@ -99,11 +95,6 @@ export default async function PostulantesPage({
       opciones={opciones}
       rubroIds={filtros.rubroIds}
       hayBusqueda={filtros.q.length > 0}
-      conCv={filtros.conCv}
-      esperandoCurso={filtros.esperandoCurso}
-      cursoPendiente={filtros.cursoPendiente}
-      nivel={filtros.nivel}
-      comprobantePendiente={filtros.comprobantePendiente}
     >
       <Suspense
         key={JSON.stringify(filtros)}
@@ -122,16 +113,8 @@ async function ListadoPostulantes({
   filtros: FiltrosListado;
   searchParams: ParamsUrl;
 }) {
-  const { q, rubroIds, conCv, esperandoCurso, cursoPendiente, nivel, comprobantePendiente, pagina } =
-    filtros;
-  const hayFiltros =
-    rubroIds.length > 0 ||
-    conCv ||
-    q.length > 0 ||
-    esperandoCurso ||
-    cursoPendiente ||
-    nivel !== null ||
-    comprobantePendiente;
+  const { q, rubroIds, pagina } = filtros;
+  const hayFiltros = rubroIds.length > 0 || q.length > 0;
 
   const supabase = await createSupabaseServerClient();
 
@@ -144,45 +127,13 @@ async function ListadoPostulantes({
 
   const cursosActivos = cursosRes.data ?? [];
 
-  // Pre-filtros paralelos
-  const [
-    rubroPreResult,
-    cvPreResult,
-    esperandoPreResult,
-    pendientePreResult,
-    comprobantePreResult,
-  ] = await Promise.all([
+  const rubroPreResult =
     rubroIds.length > 0
-      ? supabase
+      ? await supabase
           .from("postulante_categorias")
           .select("postulante_id")
           .in("categoria_id", rubroIds)
-      : Promise.resolve({ data: null }),
-    conCv
-      ? supabase
-          .from("archivos_usuario")
-          .select("usuario_id")
-          .eq("tipo", "cv")
-          .is("eliminado_en", null)
-      : Promise.resolve({ data: null }),
-    esperandoCurso
-      ? supabase.rpc("postulantes_esperando_curso_ids")
-      : Promise.resolve({ data: null }),
-    cursoPendiente
-      ? supabase
-          .from("asignaciones_curso")
-          .select("postulante_id")
-          .in("estado", ["asignado", "en_curso"])
-      : Promise.resolve({ data: null }),
-    comprobantePendiente
-      ? supabase
-          .from("archivos_usuario")
-          .select("usuario_id")
-          .eq("tipo", "comprobante_domicilio")
-          .is("eliminado_en", null)
-          .eq("verificacion_estado", "pendiente")
-      : Promise.resolve({ data: null }),
-  ]);
+      : { data: null };
 
   const rubroPrefilterId: string[] | undefined =
     rubroIds.length > 0
@@ -192,29 +143,6 @@ async function ListadoPostulantes({
           ),
         ]
       : undefined;
-
-  // Con CV: al menos un CV disponible (puede tener varios, migration_054).
-  const cvUsuarioIds: string[] | undefined = conCv
-    ? [...new Set((cvPreResult.data ?? []).map((r) => r.usuario_id))]
-    : undefined;
-
-  if (esperandoCurso && "error" in esperandoPreResult && esperandoPreResult.error)
-    logError("postulantes_esperando_curso_ids", esperandoPreResult.error);
-  const esperandoCursoFilterIds: string[] | undefined = esperandoCurso
-    ? (esperandoPreResult.data ?? []).map((r) => r.postulante_id)
-    : undefined;
-
-  if (cursoPendiente && "error" in pendientePreResult && pendientePreResult.error)
-    logError("postulantes_curso_pendiente", pendientePreResult.error);
-  const cursoPendienteFilterIds: string[] | undefined = cursoPendiente
-    ? (pendientePreResult.data ?? []).map((r) => r.postulante_id)
-    : undefined;
-
-  if (comprobantePendiente && "error" in comprobantePreResult && comprobantePreResult.error)
-    logError("admin_postulantes_comprobantes_pendientes", comprobantePreResult.error);
-  const comprobanteUsuarioIds: string[] | undefined = comprobantePendiente
-    ? (comprobantePreResult.data ?? []).map((r) => r.usuario_id)
-    : undefined;
 
   // Pre-filtro: búsqueda de texto
   let textFilterIds: string[] | undefined;
@@ -267,13 +195,7 @@ async function ListadoPostulantes({
   // Short-circuit si algún filtro no tiene resultados
   const emptyFilter =
     (rubroPrefilterId !== undefined && rubroPrefilterId.length === 0) ||
-    (cvUsuarioIds !== undefined && cvUsuarioIds.length === 0) ||
-    (textFilterIds !== undefined && textFilterIds.length === 0) ||
-    (esperandoCursoFilterIds !== undefined &&
-      esperandoCursoFilterIds.length === 0) ||
-    (cursoPendienteFilterIds !== undefined &&
-      cursoPendienteFilterIds.length === 0) ||
-    (comprobanteUsuarioIds !== undefined && comprobanteUsuarioIds.length === 0);
+    (textFilterIds !== undefined && textFilterIds.length === 0);
 
   if (emptyFilter) return vacio;
 
@@ -287,18 +209,11 @@ async function ListadoPostulantes({
 
     if (rubroPrefilterId !== undefined)
       query = query.in("id", rubroPrefilterId);
-    if (cvUsuarioIds !== undefined)
-      query = query.in("usuario_id", cvUsuarioIds);
     if (textFilterIds !== undefined) query = query.in("id", textFilterIds);
-    if (esperandoCursoFilterIds !== undefined)
-      query = query.in("id", esperandoCursoFilterIds);
-    if (cursoPendienteFilterIds !== undefined)
-      query = query.in("id", cursoPendienteFilterIds);
-    if (comprobanteUsuarioIds !== undefined)
-      query = query.in("usuario_id", comprobanteUsuarioIds);
-    if (nivel !== null) query = query.eq("nivel_prioridad", nivel);
 
+    // Mismo orden que postulantes_nivel_prioridad_idx (migration_055).
     return query
+      .order("nivel_prioridad", { ascending: true })
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .range(desde, hasta);
@@ -424,6 +339,15 @@ async function ListadoPostulantes({
     cursosPendientesMap.set(row.postulante_id, ids);
   }
 
+  // Las filas llegan ordenadas por nivel: se agrupan las consecutivas.
+  const grupos: { nivel: NivelPrioridad; filas: typeof postulantes }[] = [];
+  for (const p of postulantes) {
+    const nivel = nivelDe(p.nivel_prioridad);
+    const ultimo = grupos.at(-1);
+    if (ultimo?.nivel === nivel) ultimo.filas.push(p);
+    else grupos.push({ nivel, filas: [p] });
+  }
+
   const volverUrl = hrefConParams(RUTA, searchParams, {
     pagina: resultado.pagina,
   });
@@ -442,124 +366,23 @@ async function ListadoPostulantes({
         acomodan en tres columnas. Los textos largos pasan de línea, así que
         nunca hace falta desplazarse hacia los costados.
       */}
-      <ul className="space-y-3">
-        {postulantes.map((p) => {
-          const usuario = p.usuarios;
-          const avatar = avatarMap.get(p.usuario_id);
-          const rubros = rubrosPorPostulante.get(p.id) ?? [];
-          const tieneCv = usuariosConCv.has(p.usuario_id);
-          const numPostulaciones = conteosMap.get(p.id) ?? 0;
-          const cursos = cursosMap.get(p.id);
-          const rechazos = cursos?.rechazos_ventana ?? 0;
-          const puedeRecibirCurso = cursos?.puede_recibir_curso ?? false;
-          const cursosPendientesIds = cursosPendientesMap.get(p.id) ?? [];
-          const pendientes = cursosPendientesIds.length;
-          const nombreCompleto = usuario
-            ? `${usuario.nombre} ${usuario.apellido}`
-            : "—";
-          const fichaUrl = `/admin/postulantes/${p.id}?volver=${encodeURIComponent(
-            volverUrl
-          )}`;
-
-          return (
-            <li
-              key={p.id}
-              className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-border bg-surface p-4 transition-colors hover:bg-surface-tinted lg:flex-row lg:items-center lg:gap-6"
+      <div className="space-y-6">
+        {grupos.map((grupo) => (
+          <section
+            key={grupo.nivel}
+            aria-labelledby={`nivel-${grupo.nivel}`}
+            className="space-y-3"
+          >
+            <h2
+              id={`nivel-${grupo.nivel}`}
+              className="text-sm font-semibold text-muted-foreground-strong"
             >
-              {/* Identidad y datos de contacto */}
-              <div className="flex min-w-0 flex-1 items-start gap-3">
-                <AvatarAjustado
-                  src={avatar?.url ?? null}
-                  alt={nombreCompleto}
-                  ajuste={avatar?.ajuste}
-                  size="sm"
-                />
-                <div className="min-w-0 flex-1 space-y-1">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="break-words font-medium text-foreground">
-                      {nombreCompleto}
-                    </span>
-                    <EtiquetaCurso cursos={cursos} />
-                  </div>
-                  {pendientes > 0 && (
-                    <p className="text-xs font-medium text-amber-700">
-                      {textoCursosPendientes(pendientes)}
-                    </p>
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    <span className="whitespace-nowrap">
-                      DNI <span className="font-mono text-foreground">{p.dni ?? "—"}</span>
-                    </span>
-                    <span aria-hidden="true"> · </span>
-                    <span className="whitespace-nowrap">
-                      Tel. <span className="text-foreground">{usuario?.telefono || "—"}</span>
-                    </span>
-                    <span aria-hidden="true"> · </span>
-                    <span className="whitespace-nowrap">
-                      Registrado el {formatFechaCorta(p.created_at)}
-                    </span>
-                  </p>
-                  <BadgeProcedencia
-                    nivel={nivelDe(p.nivel_prioridad)}
-                    localidad={p.localidad}
-                    comprobante={comprobantes.get(p.usuario_id) ?? null}
-                  />
-                  <RubrosPills rubros={rubros} />
-                </div>
-              </div>
-
-              {/* Números */}
-              <dl className="grid grid-cols-3 gap-2 text-sm lg:w-80 lg:flex-none">
-                <div>
-                  <dt className="text-xs text-muted-foreground">CV</dt>
-                  <dd>
-                    {tieneCv ? (
-                      <span className="inline-flex items-center gap-1 text-primary">
-                        <FileText className="h-4 w-4" aria-hidden="true" />
-                        Sí
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">Sin CV</span>
-                    )}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-muted-foreground">Postulaciones</dt>
-                  <dd className="text-foreground">{numPostulaciones}</dd>
-                </div>
-                <div>
-                  <dt
-                    className="text-xs text-muted-foreground"
-                    title={`Rechazos de empresas en los últimos ${VENTANA_RECHAZOS_DIAS} días, posteriores al último curso completado`}
-                  >
-                    Rechazos ({VENTANA_RECHAZOS_DIAS} días)
-                  </dt>
-                  <dd className="text-foreground">{rechazos}</dd>
-                </div>
-              </dl>
-
-              {/* Acciones */}
-              <div className="flex flex-wrap gap-2 lg:w-36 lg:flex-none lg:flex-col lg:items-stretch">
-                {puedeRecibirCurso && (
-                  <AsignarCursoDialog
-                    postulanteId={p.id}
-                    postulanteNombre={nombreCompleto}
-                    cursosActivos={cursosActivos}
-                    cursosPendientesIds={cursosPendientesIds}
-                    claseBoton="min-h-11 px-4 text-sm lg:min-h-9 lg:px-3"
-                  />
-                )}
-                <Link
-                  href={fichaUrl}
-                  className="btn-secundario inline-flex min-h-11 items-center justify-center whitespace-nowrap px-4 text-sm lg:min-h-9 lg:px-3"
-                >
-                  Ver ficha
-                </Link>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+              {TITULO_NIVEL[grupo.nivel]}
+            </h2>
+            <ul className="space-y-3">{grupo.filas.map(tarjeta)}</ul>
+          </section>
+        ))}
+      </div>
 
       <Paginacion
         ruta={RUTA}
@@ -569,6 +392,118 @@ async function ListadoPostulantes({
       />
     </>
   );
+
+  function tarjeta(p: (typeof postulantes)[number]) {
+    const usuario = p.usuarios;
+    const avatar = avatarMap.get(p.usuario_id);
+    const rubros = rubrosPorPostulante.get(p.id) ?? [];
+    const tieneCv = usuariosConCv.has(p.usuario_id);
+    const comprobante = comprobantes.get(p.usuario_id) ?? null;
+    const numPostulaciones = conteosMap.get(p.id) ?? 0;
+    const cursos = cursosMap.get(p.id);
+    const rechazos = cursos?.rechazos_ventana ?? 0;
+    const puedeRecibirCurso = cursos?.puede_recibir_curso ?? false;
+    const cursosPendientesIds = cursosPendientesMap.get(p.id) ?? [];
+    const pendientes = cursosPendientesIds.length;
+    const nombreCompleto = usuario
+      ? `${usuario.nombre} ${usuario.apellido}`
+      : "—";
+    const fichaUrl = `/admin/postulantes/${p.id}?volver=${encodeURIComponent(
+      volverUrl
+    )}`;
+
+    return (
+      <li
+        key={p.id}
+        className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-border bg-surface p-4 transition-colors hover:bg-surface-tinted lg:flex-row lg:items-center lg:gap-6"
+      >
+        {/* Identidad y datos de contacto */}
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <AvatarAjustado
+            src={avatar?.url ?? null}
+            alt={nombreCompleto}
+            ajuste={avatar?.ajuste}
+            size="sm"
+          />
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="break-words font-medium text-foreground">
+                {nombreCompleto}
+              </span>
+              <EtiquetaCurso cursos={cursos} />
+            </div>
+            {pendientes > 0 && (
+              <p className="text-xs font-medium text-amber-700">
+                {textoCursosPendientes(pendientes)}
+              </p>
+            )}
+            <p className="text-sm text-muted-foreground">
+              <span className="whitespace-nowrap">
+                DNI <span className="font-mono text-foreground">{p.dni ?? "—"}</span>
+              </span>
+              <span aria-hidden="true"> · </span>
+              <span className="whitespace-nowrap">
+                Tel. <span className="text-foreground">{usuario?.telefono || "—"}</span>
+              </span>
+              <span aria-hidden="true"> · </span>
+              <span className="whitespace-nowrap">
+                Registrado el {formatFechaCorta(p.created_at)}
+              </span>
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <BadgeProcedencia
+                nivel={nivelDe(p.nivel_prioridad)}
+                localidad={p.localidad}
+                comprobante={comprobante}
+              />
+              {!tieneCv && (
+                <span className={`${BADGE_CHICO} border-gray-200 bg-gray-100 text-gray-700`}>
+                  Sin CV
+                </span>
+              )}
+            </div>
+            <RubrosPills rubros={rubros} />
+          </div>
+        </div>
+
+        {/* Números */}
+        <dl className="grid grid-cols-2 gap-2 text-sm lg:w-60 lg:flex-none">
+          <div>
+            <dt className="text-xs text-muted-foreground">Postulaciones</dt>
+            <dd className="text-foreground">{numPostulaciones}</dd>
+          </div>
+          <div>
+            <dt
+              className="text-xs text-muted-foreground"
+              title={`Rechazos de empresas en los últimos ${VENTANA_RECHAZOS_DIAS} días, posteriores al último curso completado`}
+            >
+              Rechazos ({VENTANA_RECHAZOS_DIAS} días)
+            </dt>
+            <dd className="text-foreground">{rechazos}</dd>
+          </div>
+        </dl>
+
+        {/* Acciones */}
+        <div className="flex flex-wrap gap-2 lg:w-36 lg:flex-none lg:flex-col lg:items-stretch">
+          {puedeRecibirCurso && (
+            <AsignarCursoDialog
+              postulanteId={p.id}
+              postulanteNombre={nombreCompleto}
+              cursosActivos={cursosActivos}
+              cursosPendientesIds={cursosPendientesIds}
+              claseBoton="min-h-11 px-4 text-sm lg:min-h-9 lg:px-3"
+            />
+          )}
+          <Link
+            href={fichaUrl}
+            className="btn-secundario inline-flex min-h-11 items-center justify-center whitespace-nowrap px-4 text-sm lg:min-h-9 lg:px-3"
+          >
+            Ver ficha
+          </Link>
+        </div>
+      </li>
+    );
+  }
 }
 
 function EtiquetaCurso({
@@ -633,21 +568,11 @@ function PostulantesShell({
   opciones,
   rubroIds,
   hayBusqueda,
-  conCv,
-  esperandoCurso,
-  cursoPendiente,
-  nivel,
-  comprobantePendiente,
   children,
 }: {
   opciones: Tabla<"categorias">[];
   rubroIds: string[];
   hayBusqueda: boolean;
-  conCv: boolean;
-  esperandoCurso: boolean;
-  cursoPendiente: boolean;
-  nivel: NivelPrioridad | null;
-  comprobantePendiente: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -666,11 +591,6 @@ function PostulantesShell({
           opciones={opciones}
           rubros={rubroIds}
           hayBusqueda={hayBusqueda}
-          conCv={conCv}
-          esperandoCurso={esperandoCurso}
-          cursoPendiente={cursoPendiente}
-          nivel={nivel}
-          comprobantePendiente={comprobantePendiente}
         />
       </div>
 

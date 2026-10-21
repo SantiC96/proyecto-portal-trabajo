@@ -1,6 +1,6 @@
 // Nivel de prioridad y estado del comprobante de domicilio (migration_055).
-// Lo usan la oficina (badges, filtros) y el perfil del postulante. La empresa
-// no ve nada de esto (decisión 027).
+// Lo usan la oficina (badges, orden de los listados) y el perfil del
+// postulante. La empresa no ve nada de esto (decisión 027).
 
 /**
  * 1  Funes con comprobante aprobado
@@ -10,28 +10,14 @@
  */
 export type NivelPrioridad = 1 | 2 | 3;
 
-export const NIVELES_PRIORIDAD: readonly NivelPrioridad[] = [1, 2, 3];
-
 export function esNivelPrioridad(valor: unknown): valor is NivelPrioridad {
   return valor === 1 || valor === 2 || valor === 3;
-}
-
-/** Para leer de la URL ("1", "2", "3"); cualquier otro valor da null. */
-export function leerNivelPrioridad(valor: string | undefined): NivelPrioridad | null {
-  const numero = Number(valor);
-  return esNivelPrioridad(numero) ? numero : null;
 }
 
 /** Nivel leído de la base (smallint con CHECK 1..3); ante un valor raro, el más bajo. */
 export function nivelDe(valor: number): NivelPrioridad {
   return esNivelPrioridad(valor) ? valor : 3;
 }
-
-export const ETIQUETA_NIVEL: Record<NivelPrioridad, string> = {
-  1: "Funes · Verificado",
-  2: "Funes · Sin verificar",
-  3: "Otra localidad o sin informar",
-};
 
 export const ESTADOS_COMPROBANTE = ["pendiente", "aprobado", "rechazado"] as const;
 export type EstadoComprobante = (typeof ESTADOS_COMPROBANTE)[number];

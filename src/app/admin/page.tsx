@@ -158,7 +158,7 @@ export default async function AdminDashboardPage() {
         </Link>
 
         <Link
-          href="/admin/postulantes?comprobante=pendiente"
+          href="/admin/comprobantes"
           className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-colors hover:bg-surface-tinted"
         >
           <div className="flex items-center gap-3">

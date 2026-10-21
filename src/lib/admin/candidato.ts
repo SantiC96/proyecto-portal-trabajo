@@ -1,7 +1,11 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { COLUMNAS_CV, consultaCvsDisponibles, conUrlsFirmadas, type CvVista } from "@/lib/cvs";
 import { logError } from "@/lib/logger";
-import { obtenerComprobanteVigente, type ComprobanteVista } from "@/lib/comprobantes";
+import {
+  SEGUNDOS_URL_COMPROBANTE_OFICINA,
+  obtenerComprobanteVigente,
+  type ComprobanteVista,
+} from "@/lib/comprobantes";
 import { nivelDe, type NivelPrioridad } from "@/lib/procedencia";
 import type { Tabla } from "@/types/db";
 
@@ -81,7 +85,7 @@ export async function obtenerCandidato(
       .maybeSingle(),
     consultaCvsDisponibles(supabase, usuarioId),
     supabase.rpc("emails_de_usuarios", { ids: [usuarioId] }),
-    obtenerComprobanteVigente(supabase, usuarioId, 600),
+    obtenerComprobanteVigente(supabase, usuarioId, SEGUNDOS_URL_COMPROBANTE_OFICINA),
   ]);
 
   const categorias = (categoriasResult.data ?? [])
