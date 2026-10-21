@@ -82,7 +82,7 @@ export function SesionActivaModal({
             <input type="hidden" name="redirectTo" value={redirectTo} />
             <BotonFormulario
               textoPendiente="Cerrando sesión…"
-              className={CLASE_ACCION_DIALOGO.primario}
+              className={CLASE_ACCION_DIALOGO.peligro}
             >
               {otroRol
                 ? "Cerrar sesión e ingresar con otra cuenta"
