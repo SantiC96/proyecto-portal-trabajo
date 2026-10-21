@@ -12,6 +12,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
 import { MensajeError, SectionTitle } from "@/components/perfil/piezas";
 import { formatFecha } from "@/lib/fechas";
+import { SECCION_PERFIL } from "@/lib/perfil-secciones";
 import {
   CV_ACCEPT,
   CV_HELP_TEXT,
@@ -85,7 +86,10 @@ export function SeccionCvs({ cvs }: { cvs: CvVista[] }) {
   );
 
   return (
-    <div className="rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6">
+    <div
+      id={SECCION_PERFIL.cvs}
+      className="scroll-mt-20 rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6"
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <SectionTitle>Curriculum Vitae</SectionTitle>
         {cvs.length > 0 && (

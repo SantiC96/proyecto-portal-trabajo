@@ -6,15 +6,19 @@ import { retirarPostulacion } from "@/app/(dashboard)/postulaciones/actions";
 import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { getOfertaEstadoBadge } from "@/lib/oferta-estados";
+import {
+  AVISO_OFERTA_RETIRADA,
+  TEXTO_NO_SELECCIONADO,
+  TEXTO_SELECCIONADO,
+  anclaPostulacion,
+  badgePostulacion,
+} from "@/lib/mis-postulaciones";
 import type {
-  Enum,
   FilaCvDeMiPostulacion,
   FilaEstadoDerivacionPostulante,
   FilaMiPreEntrevista,
   Tabla,
 } from "@/types/db";
-
-type EstadoPostulacion = Enum<"estado_postulacion">;
 
 export type Postulacion = Pick<
   Tabla<"postulaciones">,
@@ -25,6 +29,12 @@ export type Postulacion = Pick<
     Tabla<"ofertas">,
     "id" | "titulo" | "empresa_nombre" | "estado" | "vence_en" | "contenido_editado_en"
   > | null;
+  /**
+   * Título y empresa cuando RLS no deja leer la oferta (cerrada, vencida,
+   * retirada o eliminada), de ofertas_de_mis_postulaciones (migration_059).
+   * null si la oferta se puede leer, si ya no existe o si la consulta falló.
+   */
+  ofertaNoVisible: { titulo: string; empresa_nombre: string | null } | null;
   derivacion: FilaEstadoDerivacionPostulante | null;
   /** Pre-entrevista con la oficina (sin la nota interna). */
   preEntrevista: FilaMiPreEntrevista | null;
@@ -36,23 +46,6 @@ export type Postulacion = Pick<
    */
   puedeVolverAPostularse: boolean;
 };
-
-function getBadgeEstado(estado: EstadoPostulacion) {
-  switch (estado) {
-    case "recibida":
-      return { label: "Recibida", className: "bg-gray-100 text-gray-700" };
-    case "en_revision":
-      return { label: "En revisión", className: "bg-amber-100 text-amber-800" };
-    case "derivada":
-      return { label: "Enviada a la empresa", className: "bg-blue-100 text-blue-800" };
-    case "rechazada_municipalidad":
-      return { label: "No seleccionada", className: "bg-red-100 text-red-700" };
-    case "oferta_retirada":
-      return { label: "Cerrada", className: "bg-gray-100 text-gray-600" };
-    case "retirada_postulante":
-      return { label: "Retirada", className: "bg-slate-100 text-slate-600" };
-  }
-}
 
 /**
  * Se puede retirar mientras el proceso siga abierto: recibida, en revisión o
@@ -66,9 +59,6 @@ function sePuedeRetirar(p: Postulacion): boolean {
     (p.derivacion?.estado_empresa === "pendiente" || p.derivacion?.estado_empresa === "en_proceso")
   );
 }
-
-const AVISO_OFERTA_RETIRADA =
-  "La empresa retiró la oferta. Tu postulación quedó cerrada; podés seguir postulándote a otras ofertas.";
 
 function RetirarBoton({ postulacion }: { postulacion: Postulacion }) {
   const titulo = postulacion.oferta
@@ -97,6 +87,27 @@ function RetirarBoton({ postulacion }: { postulacion: Postulacion }) {
   );
 }
 
+/** Sin resultado todavía: recibida, en revisión o derivada sin cierre de la empresa. */
+function sigueEnCurso(p: Postulacion): boolean {
+  if (p.estado === "recibida" || p.estado === "en_revision") return true;
+  if (p.estado !== "derivada") return false;
+  const estadoEmpresa = p.derivacion?.estado_empresa;
+  return estadoEmpresa == null || estadoEmpresa === "pendiente" || estadoEmpresa === "en_proceso";
+}
+
+/**
+ * Una oferta en revisión o rechazada no cambia el badge (badgePostulacion):
+ * mientras la postulación sigue en curso, se avisa en una línea debajo.
+ */
+function avisoEstadoOferta(p: Postulacion): string | null {
+  if (!p.oferta || !sigueEnCurso(p)) return null;
+  if (p.oferta.estado === "pendiente_aprobacion") {
+    return getOfertaEstadoBadge(p.oferta.estado)?.descripcion ?? null;
+  }
+  if (p.oferta.estado === "rechazada") return "La oferta no está publicada en este momento.";
+  return null;
+}
+
 interface Props {
   postulaciones: Postulacion[];
 }
@@ -106,10 +117,15 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
     <div className="flex flex-col gap-4">
 
       {postulaciones.map((p) => {
-        const badge = getBadgeEstado(p.estado);
         const oferta = p.oferta;
+        const badge = badgePostulacion({
+          estado: p.estado,
+          estadoEmpresa: p.derivacion?.estado_empresa,
+          ofertaEstado: oferta?.estado,
+          ofertaNoVisible: oferta === null,
+        });
         const ofertaActiva = oferta?.estado === "activa";
-        const ofertaBadge = getOfertaEstadoBadge(oferta?.estado);
+        const avisoOferta = avisoEstadoOferta(p);
         const fecha = formatFecha(p.created_at);
 
         // Indicador: la oferta fue editada DESPUÉS de que el postulante se postuló.
@@ -120,7 +136,8 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
         return (
           <article
             key={p.id}
-            className="rounded-xl border border-border bg-white p-4 shadow-xs sm:p-5"
+            id={anclaPostulacion(p.id)}
+            className="scroll-mt-20 rounded-xl border border-border bg-white p-4 shadow-xs sm:p-5"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
@@ -138,34 +155,26 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
                     </span>
                   )
                 ) : (
+                  // Sin link: la oferta ya no se puede ver y /ofertas/[id] daría 404.
                   <span className="text-base font-semibold text-muted-foreground-strong">
-                    Oferta no disponible
+                    {p.ofertaNoVisible?.titulo ?? "Oferta no disponible"}
                   </span>
                 )}
-                {oferta && (
-                  <p className="mt-0.5 text-sm text-muted-foreground">{oferta.empresa_nombre}</p>
+                {(oferta?.empresa_nombre || p.ofertaNoVisible?.empresa_nombre) && (
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    {oferta?.empresa_nombre || p.ofertaNoVisible?.empresa_nombre}
+                  </p>
                 )}
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                {ofertaBadge && (
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${ofertaBadge.className}`}
-                  >
-                    {ofertaBadge.label}
-                  </span>
-                )}
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
-                >
-                  {badge.label}
-                </span>
-              </div>
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
+              >
+                {badge.label}
+              </span>
             </div>
 
-            {ofertaBadge?.descripcion && (
-              <p className="mt-2 text-xs text-amber-700">{ofertaBadge.descripcion}</p>
-            )}
+            {avisoOferta && <p className="mt-2 text-xs text-amber-700">{avisoOferta}</p>}
 
             <p className="mt-2 text-xs text-muted-foreground">Postulado el {fecha}</p>
 
@@ -215,14 +224,14 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
                 return (
                   <div className="mt-3 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
                     <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                    <span className="font-medium">¡Fuiste seleccionado para este puesto!</span>
+                    <span className="font-medium">{TEXTO_SELECCIONADO}</span>
                   </div>
                 );
               }
               if (d.estado_empresa === "rechazado") {
                 return (
                   <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-600">
-                    No fuiste seleccionado para este puesto.
+                    {TEXTO_NO_SELECCIONADO}
                   </div>
                 );
               }
@@ -312,8 +321,16 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
             {" — "}La Oficina de Empleo derivó tu postulación. La empresa te contactará para coordinar una entrevista.
           </li>
           <li>
-            <span className="font-medium text-red-700">No seleccionada</span>
-            {" — "}La Oficina de Empleo no seleccionó tu perfil para esta búsqueda.
+            <span className="font-medium text-emerald-800">Seleccionado</span>
+            {" — "}La empresa te eligió para el puesto.
+          </li>
+          <li>
+            <span className="font-medium text-red-700">No seleccionado</span>
+            {" — "}La Oficina de Empleo o la empresa no seleccionaron tu perfil para esta búsqueda.
+          </li>
+          <li>
+            <span className="font-medium text-gray-600">Oferta cerrada</span>
+            {" — "}La oferta ya no recibe postulaciones y tu proceso terminó sin un resultado.
           </li>
           <li>
             <span className="font-medium text-slate-600">Retirada</span>

@@ -32,7 +32,7 @@ export type Autorizado<T> = { ok: true } & T;
 export function panelDeRol(rol: Rol): string {
   if (rol === "empresa") return "/empresa";
   if (rol === "municipalidad") return "/admin";
-  return "/perfil";
+  return "/panel";
 }
 
 /**

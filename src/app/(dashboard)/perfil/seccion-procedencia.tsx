@@ -28,6 +28,7 @@ import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
 import { CampoLectura, MensajeError, SectionTitle } from "@/components/perfil/piezas";
 import { CampoLocalidad } from "@/components/postulantes/campo-localidad";
 import { formatFecha } from "@/lib/fechas";
+import { SECCION_PERFIL } from "@/lib/perfil-secciones";
 import {
   COMPROBANTE_ACCEPT,
   COMPROBANTE_HELP_TEXT,
@@ -197,7 +198,7 @@ export function SeccionProcedencia({
 
   return (
     <div
-      id="procedencia"
+      id={SECCION_PERFIL.procedencia}
       className="scroll-mt-20 rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6"
     >
       <div className="mb-4 flex items-center justify-between gap-3">
