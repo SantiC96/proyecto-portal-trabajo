@@ -38,6 +38,7 @@ import {
 } from "@/components/perfil/piezas";
 import { EncabezadoPerfil } from "@/components/perfil/encabezado-perfil";
 import { inicialesDePersona } from "@/lib/iniciales";
+import { SECCION_PERFIL } from "@/lib/perfil-secciones";
 import { SeccionContrasena } from "@/components/perfil/seccion-contrasena";
 import { useErroresCampo } from "@/lib/use-errores-campo";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
@@ -236,16 +237,21 @@ export function PerfilForm({
     <div className="flex flex-col gap-6">
 
       {/* ── 1. Encabezado con la foto ──────────────────────────────────────── */}
-      <EncabezadoPerfil
-        avatarActivo={usuario.avatarActivo}
-        titulo={`${usuario.nombre} ${usuario.apellido}`}
-        subtitulo="Postulante"
-        iniciales={inicialesDePersona(usuario.nombre, usuario.apellido)}
-      />
+      <div id={SECCION_PERFIL.foto} className="scroll-mt-20">
+        <EncabezadoPerfil
+          avatarActivo={usuario.avatarActivo}
+          titulo={`${usuario.nombre} ${usuario.apellido}`}
+          subtitulo="Postulante"
+          iniciales={inicialesDePersona(usuario.nombre, usuario.apellido)}
+        />
+      </div>
 
       {/* ── 2. Datos personales ────────────────────────────────────────────── */}
       <form onSubmit={handleGuardarDatos} noValidate>
-        <div className="rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6">
+        <div
+          id={SECCION_PERFIL.datos}
+          className="scroll-mt-20 rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6"
+        >
           <div className="mb-4 flex items-center justify-between gap-3">
             <SectionTitle>Datos personales</SectionTitle>
             {!modoEdicionDatos && (
@@ -414,7 +420,10 @@ export function PerfilForm({
           )}
 
           {/* ── Información laboral (se guarda con los datos personales) ── */}
-          <div className="mt-8 border-t border-border pt-6">
+          <div
+            id={SECCION_PERFIL.informacionLaboral}
+            className="mt-8 scroll-mt-20 border-t border-border pt-6"
+          >
             <SectionTitle>Información laboral</SectionTitle>
             <p className="mt-1 text-xs text-muted-icon">
               Opcional. La ven la Oficina de Empleo y las empresas a las que te deriven.
@@ -584,7 +593,10 @@ export function PerfilForm({
 
       {/* ── 4. Rubros de interés ───────────────────────────────────────────── */}
       <form onSubmit={handleGuardarRubros}>
-        <div className="rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6">
+        <div
+          id={SECCION_PERFIL.rubros}
+          className="scroll-mt-20 rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6"
+        >
           <div className="mb-4 flex items-center justify-between gap-3">
             <SectionTitle>Rubros de interés</SectionTitle>
             {!modoEdicionRubros && (

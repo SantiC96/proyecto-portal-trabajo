@@ -13,6 +13,7 @@ import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { MisPostulacionesLista, type Postulacion } from "./mis-postulaciones-lista";
 import type {
   FilaCvDeMiPostulacion,
+  FilaOfertaDeMiPostulacion,
   FilaEstadoDerivacionPostulante,
   FilaMiPreEntrevista,
 } from "@/types/db";
@@ -164,6 +165,18 @@ async function ListadoMisPostulaciones({
     for (const fila of data ?? []) preEntrevistas[fila.postulacion_id] = fila;
   }
 
+  // Título y empresa de las ofertas que RLS ya no deja leer (migration_059).
+  // Si falla, esas tarjetas quedan como "Oferta no disponible".
+  const sinOferta = rawList.filter((r) => r.ofertas === null).map((r) => r.id);
+  const ofertasNoVisibles: Record<string, FilaOfertaDeMiPostulacion> = {};
+  if (sinOferta.length > 0) {
+    const { data, error } = await supabase.rpc("ofertas_de_mis_postulaciones", {
+      p_postulacion_ids: sinOferta,
+    });
+    if (error) logError("ofertas_de_mis_postulaciones", error);
+    for (const fila of data ?? []) ofertasNoVisibles[fila.postulacion_id] = fila;
+  }
+
   // Con qué CV se postuló (migration_054): nombre y fecha aunque después lo
   // haya eliminado de su perfil.
   const cvsPorPostulacion: Record<string, FilaCvDeMiPostulacion> = {};
@@ -207,6 +220,7 @@ async function ListadoMisPostulaciones({
     created_at: r.created_at,
     retirada_en: r.retirada_en,
     oferta: r.ofertas,
+    ofertaNoVisible: ofertasNoVisibles[r.id] ?? null,
     derivacion: derivacionEstados[r.id] ?? null,
     preEntrevista: preEntrevistas[r.id] ?? null,
     cv: cvsPorPostulacion[r.id] ?? null,
