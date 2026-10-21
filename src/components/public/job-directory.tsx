@@ -13,6 +13,8 @@ import {
   type ResultadoOfertasPublicas,
 } from "@/lib/ofertas";
 import { hrefConParams, type ParamsUrl } from "@/lib/paginacion";
+import { esOficinaActiva, obtenerUsuarioActual } from "@/lib/auth";
+import { rutaBuscarPostulantes } from "@/lib/invitaciones";
 
 const ANCLA = "ofertas";
 
@@ -173,7 +175,12 @@ async function ResultadosOfertas({
   hrefLimpiar: string;
   hayFiltros: boolean;
 }) {
-  const datos = await resultado;
+  const [datos, usuario] = await Promise.all([resultado, obtenerUsuarioActual()]);
+  // buscar_ofertas_publicas solo devuelve ofertas activas y vigentes: la
+  // oficina puede buscar postulantes para cualquiera de ellas.
+  const esOficina = esOficinaActiva(usuario);
+  // La búsqueda vuelve a esta misma vista: el listado con sus filtros, o el inicio.
+  const volver = ruta === "/" ? "/" : hrefConParams(ruta, searchParams);
 
   if (!datos.ok) {
     return (
@@ -224,7 +231,11 @@ async function ResultadosOfertas({
     <>
       <div className="mt-6 grid auto-rows-fr grid-cols-1 gap-5 md:grid-cols-2">
         {datos.ofertas.map((oferta) => (
-          <JobCard key={oferta.id} oferta={oferta} />
+          <JobCard
+            key={oferta.id}
+            oferta={oferta}
+            hrefBuscarPostulantes={esOficina ? rutaBuscarPostulantes(oferta.id, { volver }) : null}
+          />
         ))}
       </div>
       <Paginacion
