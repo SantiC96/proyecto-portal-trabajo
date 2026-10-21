@@ -468,6 +468,74 @@ export type Database = {
           },
         ]
       }
+      invitaciones_oferta: {
+        Row: {
+          creada_en: string
+          estado: string
+          id: string
+          invitado_por: string | null
+          motivo_rechazo: string | null
+          oferta_id: string
+          postulacion_id: string | null
+          postulante_id: string
+          respondida_en: string | null
+          vencida_en: string | null
+        }
+        Insert: {
+          creada_en?: string
+          estado?: string
+          id?: string
+          invitado_por?: string | null
+          motivo_rechazo?: string | null
+          oferta_id: string
+          postulacion_id?: string | null
+          postulante_id: string
+          respondida_en?: string | null
+          vencida_en?: string | null
+        }
+        Update: {
+          creada_en?: string
+          estado?: string
+          id?: string
+          invitado_por?: string | null
+          motivo_rechazo?: string | null
+          oferta_id?: string
+          postulacion_id?: string | null
+          postulante_id?: string
+          respondida_en?: string | null
+          vencida_en?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitaciones_oferta_invitado_por_fkey"
+            columns: ["invitado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitaciones_oferta_oferta_id_fkey"
+            columns: ["oferta_id"]
+            isOneToOne: false
+            referencedRelation: "ofertas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitaciones_oferta_postulacion_id_fkey"
+            columns: ["postulacion_id"]
+            isOneToOne: false
+            referencedRelation: "postulaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitaciones_oferta_postulante_id_fkey"
+            columns: ["postulante_id"]
+            isOneToOne: false
+            referencedRelation: "postulantes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notificaciones: {
         Row: {
           clave: string | null
@@ -659,6 +727,7 @@ export type Database = {
           id: string
           nota_oficina: string | null
           oferta_id: string
+          origen: string
           postulante_id: string
           retirada_en: string | null
           revisado_por: string | null
@@ -671,6 +740,7 @@ export type Database = {
           id?: string
           nota_oficina?: string | null
           oferta_id: string
+          origen?: string
           postulante_id: string
           retirada_en?: string | null
           revisado_por?: string | null
@@ -683,6 +753,7 @@ export type Database = {
           id?: string
           nota_oficina?: string | null
           oferta_id?: string
+          origen?: string
           postulante_id?: string
           retirada_en?: string | null
           revisado_por?: string | null
@@ -941,6 +1012,38 @@ export type Database = {
         Args: { p_pre_entrevista_id: string }
         Returns: Record<string, unknown>
       }
+      buscar_candidatos_para_oferta: {
+        Args: {
+          p_limite?: number
+          p_nivel?: number
+          p_ocultar_rechazos?: boolean
+          p_oferta_id: string
+          p_offset?: number
+          p_solo_con_cv?: boolean
+          p_solo_funes?: boolean
+        }
+        Returns: {
+          apellido: string
+          coincide_titulo: boolean
+          coincidencia: string
+          disponibilidad_ok: boolean
+          invitaciones_total: number
+          localidad: string
+          nivel_prioridad: number
+          nombre: string
+          postulante_id: string
+          puntaje: number
+          requisitos_coincidentes: string[]
+          rubros_coincidentes: string[]
+          tiene_cv: boolean
+          total: number
+          ultima_invitacion_estado: string
+          ultima_invitacion_fecha: string
+          ultima_invitacion_motivo: string
+          usuario_id: string
+          ya_invitado: boolean
+        }[]
+      }
       buscar_ofertas_publicas: {
         Args: {
           p_categoria?: string
@@ -1102,6 +1205,10 @@ export type Database = {
         Args: { p_usuario_id: string }
         Returns: boolean
       }
+      disponibilidad_compatible: {
+        Args: { p_disponibilidad: string; p_jornada: string }
+        Returns: boolean
+      }
       editar_oferta_empresa: {
         Args: {
           p_beneficios: string[]
@@ -1197,6 +1304,7 @@ export type Database = {
           lugar_entrevista: string
         }[]
       }
+      experiencia_tsv: { Args: { p_texto: string }; Returns: unknown }
       generar_avisos_vencimiento_empresa: {
         Args: { p_dias_aviso: number }
         Returns: number
@@ -1271,6 +1379,15 @@ export type Database = {
           tasa_contratacion: number
         }[]
       }
+      invitar_a_oferta: {
+        Args: { p_oferta_id: string; p_postulante_id: string }
+        Returns: string
+      }
+      lexemas_coinciden: {
+        Args: { p_lexemas: string[]; p_lexemas_experiencia: string[] }
+        Returns: boolean
+      }
+      lexemas_significativos: { Args: { p_texto: string }; Returns: string[] }
       listar_cuentas_oficina: {
         Args: never
         Returns: {
@@ -1313,6 +1430,22 @@ export type Database = {
           link: string
           nombre: string
           por_rechazos: boolean
+        }[]
+      }
+      mis_invitaciones: {
+        Args: never
+        Returns: {
+          creada_en: string
+          empresa_nombre: string
+          estado: string
+          id: string
+          motivo_rechazo: string
+          oferta_disponible: boolean
+          oferta_id: string
+          oferta_titulo: string
+          postulacion_id: string
+          respondida_en: string
+          vencida_en: string
         }[]
       }
       mis_pre_entrevistas: {
@@ -1528,9 +1661,28 @@ export type Database = {
         }
         Returns: undefined
       }
+      responder_invitacion: {
+        Args: {
+          p_acepta: boolean
+          p_cv_archivo_id?: string
+          p_invitacion_id: string
+          p_motivo?: string
+        }
+        Returns: string
+      }
       restaurar_oferta: {
         Args: { p_oferta_id: string }
         Returns: Database["public"]["Enums"]["estado_oferta"]
+      }
+      resumen_invitaciones_oferta: {
+        Args: { p_oferta_id: string }
+        Returns: {
+          aceptaron: number
+          invitados: number
+          rechazaron: number
+          sin_respuesta: number
+          vencidas: number
+        }[]
       }
       retirar_oferta: { Args: { p_oferta_id: string }; Returns: number }
       retirar_postulacion: {
@@ -1549,6 +1701,7 @@ export type Database = {
         Args: { p_fecha_hora: string; p_lugar: string; p_nota: string }
         Returns: undefined
       }
+      vencer_invitaciones_de_ofertas_vencidas: { Args: never; Returns: number }
     }
     Enums: {
       estado_empresa:
