@@ -67,6 +67,28 @@ export async function obtenerResumenNotificaciones(
 }
 
 /**
+ * Marca como leídas las notificaciones del usuario creadas hasta `hasta`
+ * (fecha de la más nueva que vio). Las que llegan después siguen nuevas. Si
+ * falla, se registra y devuelve false: se reintenta la próxima vez que abra
+ * la campanita o el listado, sin mostrarle un error.
+ */
+export async function marcarLeidasHasta(usuarioId: string, hasta: string): Promise<boolean> {
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("notificaciones")
+    .update({ leida_en: new Date().toISOString() })
+    .eq("usuario_id", usuarioId)
+    .is("leida_en", null)
+    .lte("created_at", hasta);
+
+  if (error) {
+    logError("marcarLeidasHasta", error);
+    return false;
+  }
+  return true;
+}
+
+/**
  * Crea los avisos de "por vencer" y "vencida" que le falten a la empresa del
  * usuario actual (migration_041; no hay cron). Si falla, se registra y la
  * página sigue cargando.
