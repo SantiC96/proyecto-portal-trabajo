@@ -1,9 +1,9 @@
+import { Badge } from "@/components/ui/badge";
 import {
   ESTADO_CURSO_LABEL,
-  ESTADO_CURSO_STYLE,
+  ESTADO_CURSO_TONO,
   type EstadoAsignacionCurso,
 } from "@/lib/cursos";
-import { cn } from "@/lib/utils";
 
 export function EstadoCursoBadge({
   estado,
@@ -13,14 +13,8 @@ export function EstadoCursoBadge({
   className?: string;
 }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium",
-        ESTADO_CURSO_STYLE[estado] ?? "bg-gray-100 text-gray-600",
-        className,
-      )}
-    >
+    <Badge tono={ESTADO_CURSO_TONO[estado] ?? "neutral"} estado className={className}>
       {ESTADO_CURSO_LABEL[estado] ?? estado}
-    </span>
+    </Badge>
   );
 }

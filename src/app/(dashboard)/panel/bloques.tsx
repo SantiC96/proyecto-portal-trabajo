@@ -26,7 +26,6 @@ import {
   obtenerUltimosMovimientos,
   type Movimiento,
 } from "@/lib/postulante/panel";
-import { cn } from "@/lib/utils";
 import type { FilaOfertaRecomendada, Tabla } from "@/types/db";
 import {
   GrupoIndicadores,
@@ -35,6 +34,8 @@ import {
 } from "@/components/indicadores/grupo-indicadores";
 import { TituloBloque } from "@/components/indicadores/titulo-bloque";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
+import { Badge } from "@/components/ui/badge";
+import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
 import { VencimientoOferta } from "@/components/ofertas/vencimiento-oferta";
 import { BadgeCoincidencia, MotivosCoincidencia } from "@/components/ofertas/coincidencia";
 
@@ -132,15 +133,15 @@ export async function AvisoInvitaciones() {
   return (
     <section
       aria-label="Invitaciones"
-      className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-blue-200 bg-blue-50 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
+      className="flex flex-col gap-3 rounded-[var(--radius-lg)] bg-accent p-4 text-accent-foreground sm:flex-row sm:items-center sm:justify-between sm:p-5"
     >
       <div className="flex items-start gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-blue-700">
-          <Mail className="h-4 w-4" aria-hidden="true" />
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white">
+          <Mail className="h-5 w-5" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <p className="font-semibold text-blue-900">{texto}</p>
-          <p className="mt-0.5 text-sm text-blue-800">
+          <p className="font-bold">{texto}</p>
+          <p className="mt-0.5 text-[15px] leading-[1.45]">
             La Oficina de Empleo te propone ofertas que coinciden con tu perfil.
           </p>
         </div>
@@ -232,14 +233,9 @@ export async function BloqueMovimientos({ postulanteId }: { postulanteId: string
                   <p className="min-w-0 break-words font-semibold text-foreground">
                     {m.oferta.titulo}
                   </p>
-                  <span
-                    className={cn(
-                      "inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium",
-                      badge.className,
-                    )}
-                  >
+                  <Badge tono={badge.tono} estado>
                     {badge.label}
-                  </span>
+                  </Badge>
                 </div>
                 {m.oferta.empresaNombre && (
                   <p className="mt-0.5 text-sm text-muted-foreground">{m.oferta.empresaNombre}</p>
@@ -343,9 +339,7 @@ function TarjetaOferta({ oferta: o }: { oferta: FilaOfertaRecomendada }) {
           <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
           <span className="truncate">{o.lugar}</span>
         </span>
-        <span className="whitespace-nowrap rounded-md bg-gray-100 px-2.5 py-1 font-medium text-muted-foreground-strong">
-          {o.modalidad}
-        </span>
+        <EtiquetaRubro className="whitespace-nowrap">{o.modalidad}</EtiquetaRubro>
       </div>
 
       <VencimientoOferta estado="activa" venceEn={o.vence_en} className="mt-2" />

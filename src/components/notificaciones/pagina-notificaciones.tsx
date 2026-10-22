@@ -143,7 +143,7 @@ async function ListadoNotificaciones({
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 font-medium text-foreground">
                     {nueva && (
-                      <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+                      <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-accent" />
                     )}
                     {n.titulo}
                     {nueva && <span className="sr-only"> (nueva)</span>}

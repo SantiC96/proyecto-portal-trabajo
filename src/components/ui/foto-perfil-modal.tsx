@@ -100,7 +100,7 @@ export function FotoPerfilModal({
         if (e.target === e.currentTarget && !guardando) onClose();
       }}
     >
-      <div className="relative w-full max-w-lg rounded-2xl border border-border bg-white shadow-xl">
+      <div className="relative w-full max-w-lg rounded-[var(--radius-xl)] bg-surface shadow-[var(--sombra-dialogo)]">
         <button
           type="button"
           onClick={onClose}
@@ -142,14 +142,14 @@ export function FotoPerfilModal({
               <button
                 type="button"
                 onClick={abrirAjuste}
-                className="flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-hover"
+                className="btn-primario"
               >
                 Ajustar posición
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="flex h-10 items-center gap-2 rounded-lg border border-border bg-white px-5 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary"
+                className="btn-neutro"
               >
                 Cerrar
               </button>
@@ -248,7 +248,7 @@ export function FotoPerfilModal({
               <button
                 type="button"
                 onClick={() => setAjuste(DEFAULT_AJUSTE)}
-                className="flex h-10 items-center gap-2 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary"
+                className="btn-neutro"
               >
                 Restablecer
               </button>
@@ -257,7 +257,7 @@ export function FotoPerfilModal({
                 onClick={handleGuardar}
                 disabled={guardando}
                 aria-busy={guardando}
-                className="flex h-11 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-60"
+                className="btn-primario"
               >
                 {guardando && <Spinner />}
                 {guardando ? "Guardando…" : "Guardar"}
@@ -266,7 +266,7 @@ export function FotoPerfilModal({
                 type="button"
                 onClick={cancelarAjuste}
                 disabled={guardando}
-                className="flex h-10 items-center gap-2 rounded-lg border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
+                className="btn-neutro"
               >
                 Cancelar
               </button>

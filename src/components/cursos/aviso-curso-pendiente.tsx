@@ -32,18 +32,18 @@ export async function AvisoCursoPendiente({ className }: { className?: string })
     <div
       role="status"
       className={cn(
-        "rounded-[var(--radius-lg)] border border-amber-200 bg-amber-50 p-4 sm:p-5",
+        "rounded-[var(--radius-lg)] bg-accent p-4 text-accent-foreground sm:p-5",
         className,
       )}
     >
       <div className="flex items-start gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white">
           <BookOpen className="h-4.5 w-4.5" aria-hidden="true" />
         </div>
         <div className="min-w-0 flex-1">
           {cursos.length === 1 ? (
             <>
-              <p className="text-sm text-amber-900">
+              <p className="text-[15px] leading-[1.45]">
                 {unico.por_rechazos
                   ? `Tuviste ${UMBRAL_RECHAZOS_CURSO} rechazos recientes y la Oficina de Empleo te asignó un curso: `
                   : "La Oficina de Empleo te asignó un curso: "}
@@ -54,7 +54,7 @@ export async function AvisoCursoPendiente({ className }: { className?: string })
             </>
           ) : (
             <>
-              <p className="text-sm text-amber-900">
+              <p className="text-[15px] leading-[1.45]">
                 La Oficina de Empleo te asignó {cursos.length} cursos que todavía tenés
                 pendientes. Podés seguir postulándote mientras los hacés.
               </p>
@@ -87,7 +87,7 @@ function EnlaceCurso({
     <Link
       href={`/mis-cursos/${curso.asignacion_id}`}
       className={cn(
-        "inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary underline-offset-2 hover:underline",
+        "inline-flex min-h-11 items-center gap-1 text-[15px] font-bold text-accent-foreground underline underline-offset-2",
         className,
       )}
     >

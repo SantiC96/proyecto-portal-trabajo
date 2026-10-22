@@ -23,6 +23,7 @@ import {
 import type { Tabla } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = {
   title: "Detalle del curso | Panel municipal | Portal de Empleo Funes",
@@ -116,15 +117,9 @@ export default async function CursoDetallePage({
           <div>
             <h2 className="font-semibold text-foreground">Estado</h2>
             <div className="mt-2">
-              <span
-                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                  curso.activo
-                    ? "bg-emerald-100 text-emerald-800"
-                    : "bg-gray-100 text-gray-600"
-                }`}
-              >
+              <Badge tono={curso.activo ? "success" : "neutral"} estado>
                 {curso.activo ? "Activo" : "Inactivo"}
-              </span>
+              </Badge>
             </div>
           </div>
 

@@ -1,3 +1,4 @@
+import type { TonoBadge } from "@/components/ui/badge";
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 import type { Enum } from "@/types/db";
 
@@ -6,7 +7,7 @@ import type { Enum } from "@/types/db";
 
 export type EstadoPostulacion = Enum<"estado_postulacion">;
 
-export type BadgeMiPostulacion = { label: string; className: string };
+export type BadgeMiPostulacion = { label: string; tono: TonoBadge };
 
 /**
  * Único badge de cada postulación en Mis postulaciones y en el panel. Combina
@@ -34,13 +35,13 @@ export function badgePostulacion({
   ofertaNoVisible?: boolean;
 }): BadgeMiPostulacion {
   if (estado === "retirada_postulante") {
-    return { label: "Retirada", className: "bg-slate-100 text-slate-600" };
+    return { label: "Retirada", tono: "neutral" };
   }
   if (estadoEmpresa === "contratado") {
-    return { label: "Seleccionado", className: "bg-emerald-100 text-emerald-800" };
+    return { label: "Seleccionado", tono: "success" };
   }
   if (estado === "rechazada_municipalidad" || estadoEmpresa === "rechazado") {
-    return { label: "No seleccionado", className: "bg-red-100 text-red-700" };
+    return { label: "No seleccionado", tono: "neutral" };
   }
   if (
     estado === "oferta_retirada" ||
@@ -48,15 +49,15 @@ export function badgePostulacion({
     ofertaEstado === "cerrada" ||
     ofertaNoVisible
   ) {
-    return { label: "Oferta cerrada", className: "bg-gray-200 text-gray-600" };
+    return { label: "Oferta cerrada", tono: "neutral" };
   }
   switch (estado) {
     case "en_revision":
-      return { label: "En revisión", className: "bg-amber-100 text-amber-800" };
+      return { label: "En revisión", tono: "info" };
     case "derivada":
-      return { label: "Enviada a la empresa", className: "bg-blue-100 text-blue-800" };
+      return { label: "Enviada a la empresa", tono: "teal" };
     default:
-      return { label: "Recibida", className: "bg-gray-100 text-gray-700" };
+      return { label: "Recibida", tono: "neutral" };
   }
 }
 

@@ -1,51 +1,69 @@
-import { mergeProps } from "@base-ui/react/merge-props"
-import { useRender } from "@base-ui/react/use-render"
-import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "cn"
+import type { ComponentProps } from "react"
+import type { LucideIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
 
-const badgeVariants = cva(
-  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-all focus-visible:ring-2 focus-visible:ring-primary/30 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-red-500 aria-invalid:ring-2 aria-invalid:ring-red-500/20 [&>svg]:pointer-events-none [&>svg]:size-3!",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
-        secondary:
-          "bg-secondary text-primary [a]:hover:bg-secondary/80",
-        destructive:
-          "bg-red-100 text-red-700 [a]:hover:bg-red-200",
-        outline:
-          "border-border text-foreground [a]:hover:bg-surface-tinted [a]:hover:text-muted-foreground",
-        ghost:
-          "hover:bg-surface-tinted hover:text-muted-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-)
+/**
+ * Tonos de estado del portal. Fondo sólido con texto blanco; "warning" va en
+ * amarillo con texto oscuro. No se usan colores pastel. La tabla de qué tono
+ * lleva cada estado está en docs/DESIGN_SYSTEM_Portal_Municipal_Empleo.md.
+ */
+export type TonoBadge =
+  | "info"
+  | "teal"
+  | "success"
+  | "neutral"
+  | "warning"
+  | "danger"
+  | "violet"
 
-function Badge({
-  className,
-  variant = "default",
-  render,
-  ...props
-}: useRender.ComponentProps<"span"> & VariantProps<typeof badgeVariants>) {
-  return useRender({
-    defaultTagName: "span",
-    props: mergeProps<"span">(
-      {
-        className: cn(badgeVariants({ variant }), className),
-      },
-      props
-    ),
-    render,
-    state: {
-      slot: "badge",
-      variant,
-    },
-  })
+const CLASE_TONO: Record<TonoBadge, string> = {
+  info: "bg-info text-white",
+  teal: "bg-teal text-white",
+  success: "bg-success text-white",
+  neutral: "bg-neutral text-white",
+  warning: "bg-accent text-accent-foreground",
+  danger: "bg-danger text-white",
+  violet: "bg-violet text-white",
 }
 
-export { Badge, badgeVariants }
+/** Fondo y texto de un tono, para un elemento que no es un Badge (un botón, un aviso corto). */
+export function claseTono(tono: TonoBadge): string {
+  return CLASE_TONO[tono]
+}
+
+type Props = ComponentProps<"span"> & {
+  tono?: TonoBadge
+  /** Variante "estado": un punto del color del texto antes de la etiqueta. */
+  estado?: boolean
+  icono?: LucideIcon
+}
+
+/** Badge de estado: pastilla de 26 px, sin salto de línea. */
+function Badge({
+  tono = "neutral",
+  estado = false,
+  icono: Icono,
+  className,
+  children,
+  ...props
+}: Props) {
+  return (
+    <span
+      data-slot="badge"
+      className={cn(
+        "inline-flex h-[26px] w-fit max-w-full shrink-0 items-center gap-1.5 overflow-hidden rounded-[13px] px-2.5 text-[13px] leading-none font-bold whitespace-nowrap",
+        CLASE_TONO[tono],
+        className,
+      )}
+      {...props}
+    >
+      {estado && (
+        <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-current" />
+      )}
+      {Icono && <Icono aria-hidden="true" className="size-3.5 shrink-0" />}
+      {children}
+    </span>
+  )
+}
+
+export { Badge }

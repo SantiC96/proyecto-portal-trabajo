@@ -1,3 +1,4 @@
+import type { TonoBadge } from "@/components/ui/badge";
 import { formatFecha } from "@/lib/fechas";
 import { leerPagina } from "@/lib/paginacion";
 import { esRutaInterna } from "@/lib/redirect";
@@ -109,10 +110,10 @@ export function nivelCoincidencia(valor: string): NivelCoincidencia {
   return valor === "alta" || valor === "media" ? valor : "baja";
 }
 
-export const COINCIDENCIA: Record<NivelCoincidencia, { label: string; className: string }> = {
-  alta: { label: "Alta coincidencia", className: "border-emerald-200 bg-emerald-50 text-emerald-800" },
-  media: { label: "Media coincidencia", className: "border-amber-200 bg-amber-50 text-amber-900" },
-  baja: { label: "Baja coincidencia", className: "border-gray-200 bg-gray-100 text-gray-700" },
+export const COINCIDENCIA: Record<NivelCoincidencia, { label: string; tono: TonoBadge }> = {
+  alta: { label: "Alta coincidencia", tono: "success" },
+  media: { label: "Media coincidencia", tono: "warning" },
+  baja: { label: "Baja coincidencia", tono: "neutral" },
 };
 
 /** Lo que suma puntaje en puntaje_coincidencia (migration_058). */
@@ -139,15 +140,15 @@ export function motivosCoincidencia(c: DatosCoincidencia): string[] {
 }
 
 /**
- * Estilo de la última invitación a una oferta (oficina). El texto dice lo
- * mismo que el color: azul pendiente, rojo dijo que no, gris vencida, verde
- * aceptada.
+ * Tono de la última invitación a una oferta (oficina). El texto dice lo
+ * mismo que el color: amarillo pendiente, rojo dijo que no, gris vencida,
+ * verde aceptada.
  */
-export const ESTILO_INVITACION: Record<EstadoInvitacion, string> = {
-  pendiente: "border-blue-200 bg-blue-50 text-blue-800",
-  aceptada: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  rechazada: "border-red-200 bg-red-50 text-red-800",
-  vencida: "border-gray-200 bg-gray-100 text-gray-700",
+export const TONO_INVITACION: Record<EstadoInvitacion, TonoBadge> = {
+  pendiente: "warning",
+  aceptada: "success",
+  rechazada: "danger",
+  vencida: "neutral",
 };
 
 export const ETIQUETA_INVITACION: Record<EstadoInvitacion, string> = {

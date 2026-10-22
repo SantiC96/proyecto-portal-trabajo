@@ -6,12 +6,12 @@ import { logError } from "@/lib/logger";
 import { formatFecha } from "@/lib/fechas";
 import { consultaCvsDisponibles, conUrlsFirmadas, type CvVista } from "@/lib/cvs";
 import {
-  ESTILO_INVITACION,
+  TONO_INVITACION,
   esEstadoInvitacion,
   type EstadoInvitacion,
 } from "@/lib/invitaciones";
 import type { FilaMiInvitacion } from "@/types/db";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { InvitacionAcciones } from "./invitacion-acciones";
 
 /** Cuántas respondidas o vencidas se muestran en el historial. */
@@ -149,14 +149,12 @@ function EstadoMiInvitacion({ invitacion }: { invitacion: FilaMiInvitacion }) {
 
   return (
     <p className="mt-1">
-      <span
-        className={cn(
-          "inline-flex max-w-full items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
-          ESTILO_INVITACION[estado],
-        )}
+      <Badge
+        tono={TONO_INVITACION[estado]}
+        className="h-auto min-h-[26px] py-1 leading-tight whitespace-normal"
       >
         {texto}
-      </span>
+      </Badge>
     </p>
   );
 }

@@ -1,3 +1,4 @@
+import type { TonoBadge } from "@/components/ui/badge";
 import type { ConNulos, FilaRpc } from "@/types/db";
 
 // Valores de la regla de rechazos para los textos de la interfaz.
@@ -23,11 +24,11 @@ export const ESTADO_CURSO_LABEL: Record<EstadoAsignacionCurso, string> = {
   abandonado: "Abandonado",
 };
 
-export const ESTADO_CURSO_STYLE: Record<EstadoAsignacionCurso, string> = {
-  asignado: "bg-amber-100 text-amber-800",
-  en_curso: "bg-blue-100 text-blue-800",
-  completado: "bg-emerald-100 text-emerald-800",
-  abandonado: "bg-gray-100 text-gray-600",
+export const ESTADO_CURSO_TONO: Record<EstadoAsignacionCurso, TonoBadge> = {
+  asignado: "violet",
+  en_curso: "violet",
+  completado: "success",
+  abandonado: "neutral",
 };
 
 export function esEstadoCurso(valor: unknown): valor is EstadoAsignacionCurso {

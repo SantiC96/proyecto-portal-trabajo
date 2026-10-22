@@ -156,55 +156,87 @@ En espacios reducidos se permite utilizar solamente el escudo.
 # 5. Paleta
 
 La paleta es la identidad visual implementada en producción. Los valores
-de esta sección son la fuente de verdad.
+de esta sección son la fuente de verdad. Ver la decisión
+`docs/decisiones/030-identidad-visual.md`.
 
-## Acción principal
+**No se usan colores pastel.** Estados, badges, avisos y toasts van con
+fondo sólido y texto blanco (el amarillo, con texto oscuro). No usar las
+clases de colores de Tailwind (`bg-amber-100`, `text-red-700`,
+`bg-emerald-50`, etc.): siempre los tokens de esta sección.
+
+## Marca
 
   Token                    Valor       Uso
   ------------------------ ----------- --------------------------------
-  `primary`                `#006833`   botones, íconos, texto activo
-  `primary-hover`          `#00522A`   hover de botones y CTA
+  `primary`                `#006833`   verde institucional: botones, íconos, texto activo
+  `primary-hover`          `#00532A`   hover de botones y CTA
   `primary-foreground`     `#FFFFFF`   texto sobre fondo primary
 
-## Superficies y neutrales
+## Superficies y bordes
 
-  Token                         Valor       Uso
-  ----------------------------- ----------- --------------------------------
-  `background`                  `#F6F8F6`   fondo general de página
-  `surface`                     `#FFFFFF`   cards, formularios, paneles
-  `border`                      `#D9E2DC`   bordes y separadores
-  `foreground`                  `#17241D`   texto principal
-  `muted-foreground`            `#666F6A`   texto secundario estándar
-  `muted-foreground-strong`     `#4F5A54`   labels, nav links inactivos
-  `muted-icon`                  `#9CA3A0`   íconos en inputs, indicadores
-  `placeholder`                 `#B0B8B4`   placeholder de inputs
+  Token                 Valor       Uso
+  --------------------- ----------- ----------------------------------------
+  `background`          `#F4F7F5`   fondo general de página
+  `surface`             `#FFFFFF`   cards, formularios, paneles
+  `surface-tinted`      `#F0F5F2`   superficies muy claras, hover del botón neutro
+  `secondary`           `#EEF1EF`   hover del botón secundario, notas neutras
+  `secondary-hover`     `#E3E9E5`   hover sobre fondos secondary, esqueletos
+  `border`              `#DDE5E0`   bordes de tarjetas y separadores
+  `border-strong`       `#C6D3CB`   bordes de campos
+  `border-control`      `#CBD6CF`   borde del botón neutro y de la paginación
+  `border-tab`          `#C6D8CD`   borde de las pestañas inactivas
 
-## Superficies tintadas
+## Texto
 
-  Token                Valor       Uso
-  -------------------- ----------- ----------------------------------------
-  `secondary`          `#E6F2EB`   fondo suave tintado principal
-  `secondary-hover`    `#D9EBE0`   hover discreto sobre fondos secondary
-  `surface-tinted`     `#EEF5F0`   superficies muy claras (badges, selects)
+  Token                       Valor       Uso
+  --------------------------- ----------- --------------------------------
+  `foreground`                `#17251D`   texto principal
+  `heading`                   `#0F2A1B`   títulos
+  `control-foreground`        `#22332A`   labels y texto del botón neutro
+  `muted-foreground`          `#55665C`   texto secundario
+  `muted-foreground-strong`   `#33443A`   texto secundario destacado, etiquetas de rubro
+  `muted-icon`                `#8A988F`   íconos de campos, borde de etiquetas de rubro
+  `placeholder`               `#5F6F66`   placeholder de campos (AA sobre blanco)
+
+## Acento amarillo
+
+  Token                 Valor       Uso
+  --------------------- ----------- --------------------------------
+  `accent`              `#F2B705`   botón de acento, tono warning, contadores
+  `accent-hover`        `#FFC928`   hover del botón de acento
+  `accent-foreground`   `#2B2000`   texto sobre amarillo
+
+El amarillo no se usa como color de texto sobre blanco: para texto de
+aviso suelto se usa `warning-text` (`#8A5A00`).
+
+## Estados (fondos sólidos)
+
+  Token            Valor       Texto        Contraste
+  ---------------- ----------- ------------ -----------
+  `info`           `#1D4E9E`   blanco       7,97:1
+  `teal`           `#0B5D57`   blanco       7,73:1
+  `success`        `#006833`   blanco       6,94:1
+  `neutral`        `#4F5E55`   blanco       6,85:1
+  `danger`         `#B42318`   blanco       6,57:1
+  `danger-hover`   `#912018`   blanco       8,66:1
+  `violet`         `#5B3A9E`   blanco       8,26:1
+  warning          `accent`    `#2B2000`    8,82:1
+
+Todos superan AA (4,5:1) para texto de 13 px en negrita.
+
+Texto de estado suelto sobre blanco (sin fondo):
+
+  Uso       Clase                 Valor       Contraste
+  --------- --------------------- ----------- -----------
+  aviso     `text-warning-text`   `#8A5A00`   5,93:1
+  error     `text-danger`         `#B42318`   6,57:1
+  éxito     `text-primary`        `#006833`   6,94:1
 
 ## Decorativo
 
   Token             Valor       Uso
   ----------------- ----------- -----------------------------------------
   `brand-subtle`    `#B9DCC7`   blobs y órbitas del panel login intro
-
-## Colores semánticos
-
-Los colores semánticos no reemplazan al verde institucional.
-
-Definir tokens independientes:
-
--   `success`
--   `warning`
--   `danger`
--   `info`
-
-No utilizar tokens de acción para representar errores o advertencias.
 
 ------------------------------------------------------------------------
 
@@ -214,49 +246,23 @@ Los componentes no deben contener colores HEX directamente.
 
 La fuente de verdad vive en el bloque `@theme` de `src/app/globals.css`
 (Tailwind CSS v4). Cada `--color-*` genera automáticamente clases de
-utilidad: `bg-primary`, `text-foreground`, `border-border`, etc.
+utilidad: `bg-primary`, `text-heading`, `bg-danger`, `border-border-strong`,
+etc.
 
-``` css
-@theme {
-  /* Acción principal */
-  --color-primary:            #006833;
-  --color-primary-hover:      #00522a;
-  --color-primary-foreground: #ffffff;
+En `:root` están los radios (`--radius-sm` 8 px, `--radius-md` 10 px,
+`--radius-lg` 12 px, `--radius-xl` 16 px) y las sombras con nombre:
 
-  /* Superficies y neutrales */
-  --color-background: #f6f8f6;
-  --color-surface:    #ffffff;
-  --color-border:     #d9e2dc;
-  --color-foreground: #17241d;
+  Variable                   Valor
+  -------------------------- ------------------------------------
+  `--sombra-foco`            `0 0 0 3px rgb(0 104 51 / .25)`
+  `--sombra-foco-campo`      `0 0 0 3px rgb(0 104 51 / .18)`
+  `--sombra-error-campo`     `0 0 0 3px rgb(180 35 24 / .18)`
+  `--sombra-dialogo`         `0 24px 60px rgb(0 40 20 / .18)`
+  `--sombra-tarjeta-hover`   `0 8px 20px rgb(15 42 27 / .08)`
 
-  /* Texto atenuado — 4 niveles */
-  --color-muted-foreground:        #666f6a;
-  --color-muted-foreground-strong: #4f5a54;
-  --color-muted-icon:              #9ca3a0;
-  --color-placeholder:             #b0b8b4;
-
-  /* Superficies tintadas verde */
-  --color-secondary:       #e6f2eb;
-  --color-secondary-hover: #d9ebe0;
-  --color-surface-tinted:  #eef5f0;
-
-  /* Decorativo (solo login intro) */
-  --color-brand-subtle: #b9dcc7;
-
-  /* Tipografía */
-  --font-sans:    "Trebuchet MS", "Segoe UI", sans-serif;
-  --font-display: Georgia, "Times New Roman", serif;
-}
-
-:root {
-  --radius-sm: 0.5rem;
-  --radius-md: 0.625rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-}
-```
-
-Los prefijos `--font-*` generan las clases `font-sans` y `font-display`.
+Clases de componente en `globals.css`: `.btn-primario`, `.btn-secundario`,
+`.btn-neutro`, `.btn-peligro`, `.btn-acento`, `.campo`, `.campo-grupo`,
+`.etiqueta-campo`, `.tarjeta` y `.tarjeta-clickeable`.
 
 ------------------------------------------------------------------------
 
@@ -264,30 +270,34 @@ Los prefijos `--font-*` generan las clases `font-sans` y `font-display`.
 
 ## Familias
 
-**Body (token `font-sans`):** `"Trebuchet MS", "Segoe UI", sans-serif`
-
-Usada en todo el portal: body, párrafos, labels, botones, inputs, nav.
+**Body y títulos (token `font-sans`):** Public Sans, cargada con
+`next/font/google` en `src/app/layout.tsx` (pesos 400, 500, 600, 700 y
+800; subset latin; `display: swap`) y expuesta como `--font-public-sans`.
 
 **Display (token `font-display`):** `Georgia, "Times New Roman", serif`
 
-Excepción documentada: solo para los títulos grandes del panel izquierdo
-del login (`.intro-copy h1`, `.login-heading h2`). No usar en otros
-contextos ni en la interfaz autenticada.
+Excepción documentada: solo para los títulos grandes del login. No usar
+en otros contextos ni en la interfaz autenticada.
 
 No introducir familias tipográficas adicionales.
 
-## Escala recomendada
+El `body` usa `-webkit-font-smoothing: antialiased`.
 
-  Uso               Tamaño       Peso
-  ------------ ----------- ----------
-  Display        36--40 px        700
-  H1             30--32 px        700
-  H2                 24 px   600--700
-  H3                 20 px        600
-  Body               16 px        400
-  Body small         14 px        400
-  Label              14 px        500
-  Caption            12 px   400--500
+## Escala
+
+  Uso                   Tamaño       Peso   Color
+  -------------------- ------------ ------ -----------
+  Título de página      24--30 px    800    `heading`
+  Título de sección     20 px        800    `heading`
+  Body                  15--16 px    400    `foreground`
+  Label                 15 px        600    `control-foreground`
+  Botón                 15 px        700
+  Badge                 13 px        700
+  Caption               12--14 px    400--500
+
+Los `h1` y `h2` toman el peso 800 y el color `heading` desde
+`globals.css` aunque cada pantalla tenga sus propias clases
+(`font-bold text-foreground`). Un `h2` sin tamaño propio mide 20 px.
 
 En mobile los títulos pueden reducirse un nivel visual cuando sea
 necesario.
@@ -317,11 +327,13 @@ No introducir valores arbitrarios si existe un token equivalente.
 
   Elemento                Radius
   ----------------------- -------------------------------
-  Input                   10 px aprox.
-  Button                  10 px aprox.
-  Card                    12 px
-  Modal                   16 px
-  Badge                   pill o 6--8 px según variante
+  Button                  10 px (`--radius-md`)
+  Campo                   12 px (`--radius-lg`)
+  Aviso, toast            12 px (`--radius-lg`)
+  Card                    16 px (`--radius-xl`)
+  Modal                   16 px (`--radius-xl`)
+  Badge                   13 px (pastilla de 26 px)
+  Pestaña                 pastilla
   Avatar/Icon container   circular o 10--12 px
 
 Evitar cards excesivamente redondeadas.
@@ -336,7 +348,8 @@ Las sombras deben ser discretas.
 
 ### Card normal
 
-Borde sutil, sin sombra o con `shadow-sm`.
+Borde de 1 px `border`, sin sombra. Una tarjeta clickeable se eleva 2 px
+con `--sombra-tarjeta-hover` al pasar el mouse.
 
 ### Elemento elevado
 
@@ -452,49 +465,61 @@ En mobile las acciones pasan debajo del título.
 
 # 14. Button
 
-Basado en `shadcn/ui Button`.
+Las clases de `globals.css` y las variantes de
+`src/components/ui/button.tsx` se ven igual (las variantes usan las
+mismas clases).
+
+## Medidas comunes
+
+-   alto mínimo 44 px, padding horizontal 18 px;
+-   radio 10 px;
+-   Public Sans 700, 15 px;
+-   8 px entre ícono y texto, ícono de 18 px;
+-   transición de color de 150 ms;
+-   foco visible: anillo de 3 px `rgb(0 104 51 / .25)`;
+-   deshabilitado: opacidad .6 y cursor `not-allowed`.
+
+Estas medidas van fuera de capa en `globals.css` para que ganen sobre las
+clases sueltas de cada pantalla.
 
 ## Variantes
 
-### Primary
+  Clase              `Button variant`   Fondo           Borde                   Texto                 Hover
+  ------------------ ------------------ --------------- ----------------------- --------------------- -------------------
+  `.btn-primario`    `default`          `primary`       ---                     blanco                `primary-hover`
+  `.btn-secundario`  `secondary`        blanco          1,5 px `primary`        `primary`             fondo `secondary`
+  `.btn-neutro`      `outline`          blanco          1,5 px `border-control` `control-foreground`  `surface-tinted`
+  `.btn-peligro`     `destructive`      `danger`        ---                     blanco                `danger-hover`
+  `.btn-acento`      `accent`           `accent`        ---                     `accent-foreground`   `accent-hover`
 
--   fondo `brand-800`;
--   texto blanco;
--   hover `brand-900`.
+`ghost` y `link` quedan para acciones de baja jerarquía y botones de
+ícono (44 × 44).
 
-Para la acción principal de la vista.
+## Reglas
 
-### Secondary
-
--   fondo `brand-100`;
--   texto `brand-800`.
-
-### Outline
-
--   fondo transparente/blanco;
--   borde;
--   texto principal.
-
-### Ghost
-
-Para acciones de baja jerarquía.
-
-### Destructive
-
-Reservado para acciones destructivas reales.
-
-## Regla
-
-Una sección no debe contener varios botones `primary` con igual
-jerarquía salvo que representen acciones equivalentes.
+-   Una sección no debe contener varios botones primarios con igual
+    jerarquía salvo que representen acciones equivalentes.
+-   "Cancelar" en los diálogos usa el botón neutro.
+-   "Cerrar sesión" y toda acción destructiva usan el botón de peligro.
+-   El botón de acento se reserva para la navegación (rediseño, PR 2).
+-   Dentro de un aviso rojo, la acción usa el botón neutro (el verde no
+    contrasta sobre el rojo).
 
 ------------------------------------------------------------------------
 
-# 15. Inputs
+# 15. Campos
 
-Basados en los componentes de shadcn/ui.
+Clase `.campo` (la usan `Input`, `Textarea`, el select de
+`CampoFechaHora` y el `Buscador`); `.campo-grupo` para contenedores que
+se ven como un campo (los chips de `MultiCombobox`).
 
-Altura visual consistente.
+-   borde 1,5 px `border-strong`, radio 12 px, fondo blanco;
+-   texto 16 px (evita el zoom automático de iOS);
+-   placeholder `placeholder`;
+-   alto mínimo 48 px en una línea;
+-   foco: borde `primary` y `--sombra-foco-campo`;
+-   error (`aria-invalid`): borde `danger` y `--sombra-error-campo`;
+-   deshabilitado: fondo `surface-tinted`.
 
 Cada campo debe tener:
 
@@ -504,17 +529,8 @@ Label
 Texto de ayuda / error
 ```
 
-## Estados
-
--   default;
--   hover;
--   focus;
--   disabled;
--   error.
-
-El focus debe ser claramente visible y utilizar el color institucional.
-
-Los errores deben usar el token semántico de error, no verde.
+Labels: clase `.etiqueta-campo` (15 px, 600, `control-foreground`). El
+asterisco de obligatorio (`<Obligatorio />`) va en `danger`.
 
 ------------------------------------------------------------------------
 
@@ -529,19 +545,22 @@ Usar `Combobox` cuando:
 -   se seleccionan categorías extensas.
 
 Para selección múltiple, mostrar elementos seleccionados de manera clara
-y removible.
+y removible (chip blanco con borde verde, como la etiqueta de rubro
+verde).
 
 ------------------------------------------------------------------------
 
 # 17. Card
 
-Componente base:
+Clase `.tarjeta`:
 
 -   superficie blanca;
--   borde sutil;
--   radius `12px`;
--   padding consistente;
--   sombra mínima.
+-   borde 1 px `border`;
+-   radius 16 px;
+-   sin sombra.
+
+`.tarjeta-clickeable` (además de `.tarjeta`): al pasar el mouse se eleva
+2 px con una sombra suave y el borde pasa a `border-strong`.
 
 Una card debe agrupar información relacionada.
 
@@ -602,40 +621,95 @@ actor.
 
 # 20. Badge
 
-Usar badges para información breve:
+Componente único: `src/components/ui/badge.tsx`.
 
--   estado;
--   categoría;
--   modalidad;
--   tipo de jornada.
+``` tsx
+<Badge tono="success" estado>Publicada</Badge>
+<Badge tono="warning" icono={Clock}>Funes · Sin verificar</Badge>
+```
+
+-   pastilla de 26 px de alto, padding `0 10px`, radio 13 px;
+-   13 px, 700, sin salto de línea;
+-   ícono opcional de 14 px (`icono`);
+-   variante `estado`: punto de 8 px del color del texto antes de la
+    etiqueta;
+-   fondo sólido del tono y texto blanco; `warning` usa `accent` con
+    `accent-foreground`.
+
+Tonos: `info`, `teal`, `success`, `neutral`, `warning`, `danger`,
+`violet`. `claseTono(tono)` da las mismas clases para un elemento que no
+es un badge (el ícono de una notificación, un aviso corto).
+
+Los helpers de estado devuelven el **tono**, nunca clases sueltas.
+
+## Etiqueta de rubro
+
+`src/components/ui/etiqueta-rubro.tsx`. No es un estado: rubros,
+modalidad, jornada, motivos de coincidencia.
+
+-   fondo blanco, borde interno 1,5 px `muted-icon`, texto
+    `muted-foreground-strong`, 13 px 600;
+-   variante `verde`: borde `primary` y texto `primary-hover`.
 
 No convertir párrafos o información extensa en badges.
 
-Los estados deben mantener el mismo color y etiqueta en toda la
-aplicación.
-
 ------------------------------------------------------------------------
 
-# 21. Estados de postulación
+# 21. Tonos por estado
 
-El Design System debe admitir visualmente los estados funcionales
-definidos por el producto.
+**El componente visual no inventa estados**: los estados vienen del
+dominio y cada helper los mapea a un tono en un único lugar.
 
-Regla estricta:
+  Dominio           Estado                                    Tono        Helper
+  ----------------- ----------------------------------------- ----------- ------------------------------------------------
+  Postulación       Recibida                                  neutral     `badgePostulacion` (`lib/mis-postulaciones.ts`)
+                    En revisión                               info        y `BADGE_ESTADO_VISIBLE`
+                    Enviada a la empresa / Derivada           teal        (`lib/admin/postulacion-estados.ts`)
+                    Seleccionado / Contratado                 success
+                    No seleccionado                           neutral
+                    Oferta cerrada                            neutral
+                    Retirada                                  neutral
+  Oferta            Borrador                                  neutral     `ESTADO_OFERTA_EMPRESA_TONO`,
+                    En revisión / pendiente                   warning     `getOfertaEstadoBadge`
+                    Activa / publicada                        success     (`lib/oferta-estados.ts`)
+                    Rechazada                                 danger
+                    Vencida                                   danger
+                    Cerrada                                   neutral
+                    Modificada                                info
+  Empresa           Pendiente / Reenviada                     warning     `/admin/empresas`
+                    Aprobada                                  success
+                    Rechazada                                 danger
+  Derivación        Por contactar                             warning     `DERIVACION_ESTADO_TONO`
+                    Entrevista coordinada                     info        (`lib/derivacion-estados.ts`)
+                    Seleccionado                              success
+                    No seleccionado / Cerrada / Se retiró     neutral
+  Pre-entrevista    Sin coordinar / Cancelada                 neutral     `PRE_ENTREVISTA_TONO`
+                    Coordinada                                info        (`lib/pre-entrevistas.ts`)
+                    Realizada                                 success
+                    No asistió                                warning
+  Procedencia       De Funes verificado                       success     `BadgeProcedencia`
+                    De Funes sin verificar                    warning
+                    Otra localidad                            neutral
+  Comprobante       En revisión                               warning     perfil y `/admin/comprobantes`
+                    Aprobado                                  success
+                    Rechazado                                 danger
+  CV                Sin CV                                    warning     `/admin/postulantes`
+  Curso             Necesita curso / Cuenta para el curso     warning     `ESTADO_CURSO_TONO` (`lib/cursos.ts`)
+                    Asignado / En curso                       violet
+                    Completado                                success
+                    Abandonado                                neutral
+                    Curso activo / inactivo                   success / neutral
+  Invitación        Pendiente / Por invitación                warning     `TONO_INVITACION` (`lib/invitaciones.ts`),
+                    Aceptada                                  success     `BadgePorInvitacion`
+                    No interesado / Dijo que no               danger
+                    Vencida                                   neutral
+  Coincidencia      Alta                                      success     `COINCIDENCIA` (`lib/invitaciones.ts`)
+                    Media                                     warning
+                    Baja                                      neutral
+  Cuenta oficina    Activa / Desactivada                      success / neutral
+  Contadores        Pendientes (pestañas, tarjetas)           warning     `ContadoresEstado`, `PestanasEstado`
 
-**el componente visual no inventa estados.**
-
-Los estados definitivos deben provenir del dominio.
-
-Cada estado debe tener:
-
--   label;
--   color semántico;
--   fondo;
--   foreground;
--   icono opcional.
-
-Centralizar el mapping en un único lugar.
+Contraste de cada tono: ver la sección 5 (todos superan 6,5:1).
 
 ------------------------------------------------------------------------
 
@@ -684,7 +758,9 @@ No esconder filtros básicos detrás de un modal en desktop.
 
 # 24. Modal / Dialog
 
-Usar `Dialog` de shadcn/ui.
+Usar `Dialog` de shadcn/ui: radio 16 px, sombra `--sombra-dialogo`,
+título 800 en `heading`, los mismos botones que el resto del portal
+(Cancelar neutro a la izquierda, acción a la derecha).
 
 Estructura:
 
@@ -839,10 +915,40 @@ Usar:
 
 -   toast para confirmaciones no bloqueantes;
 -   error inline para validación;
--   alert para información persistente;
+-   aviso para información persistente;
 -   dialog para confirmaciones críticas.
 
 No depender exclusivamente del color para comunicar estados.
+
+## Aviso
+
+Componente `src/components/ui/aviso.tsx`, tonos `info`, `success`,
+`warning` y `danger`:
+
+-   fondo sólido del token y texto blanco (`warning`: `accent` con
+    `accent-foreground`);
+-   radio 12 px, padding 14 × 16;
+-   ícono de Lucide de 20 px a la izquierda (uno por tono, se puede
+    cambiar con `icono`);
+-   15 px con interlineado 1,45; `titulo` opcional en negrita;
+-   links subrayados que heredan el color del texto;
+-   `role="status"` para info, success y warning; `role="alert"` para
+    danger.
+
+Las notas neutras (por ejemplo "No fuiste seleccionado") no son avisos:
+van sobre `surface-tinted` con borde `border` y texto
+`muted-foreground-strong`.
+
+## Toasts
+
+Sonner sin `richColors`: fondo `heading` por defecto y el tono sólido
+según el tipo (success, info, error → danger, warning → accent), texto
+blanco, radio 12 px.
+
+## Texto de estado suelto
+
+Sin fondo: `text-warning-text` para aviso, `text-danger` para error,
+`text-primary` para éxito.
 
 ------------------------------------------------------------------------
 
@@ -993,9 +1099,17 @@ Permitido:
 -   transiciones de sidebar;
 -   aparición de dropdown/popover/dialog.
 
-Duración habitual:
+Duración habitual: `150–200ms`.
 
-`150–250ms`
+-   botones, campos, pestañas, filas y tarjetas clickeables: transición
+    de color y sombra de 150--200 ms;
+-   tarjetas clickeables: se elevan 2 px con sombra suave;
+-   diálogos, popovers y el desplegable de `MultiCombobox`: fundido y
+    escala de .97 a 1 en 180 ms.
+
+El movimiento va dentro de `@media (prefers-reduced-motion:
+no-preference)`; con `reduce`, `globals.css` anula transiciones y
+animaciones.
 
 Evitar animaciones continuas en áreas administrativas.
 

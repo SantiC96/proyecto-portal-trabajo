@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { obtenerEmpresaActual, requerirRolPagina } from "@/lib/auth";
 import { PublicFooter } from "@/components/public/public-footer";
 import { Clock, XCircle } from "lucide-react";
+import { Aviso } from "@/components/ui/aviso";
 
 export default async function EmpresaPanelLayout({
   children,
@@ -72,7 +73,7 @@ export default async function EmpresaPanelLayout({
       <>
         <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
           <div className="w-full max-w-md rounded-2xl border border-border bg-white px-8 py-10 text-center shadow-sm">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-600">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-danger text-white">
               <XCircle className="h-7 w-7" />
             </div>
             <h1 className="text-xl font-bold tracking-tight text-foreground">
@@ -83,14 +84,13 @@ export default async function EmpresaPanelLayout({
               este momento.
             </p>
             {empresa.motivo_rechazo && (
-              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-700">
-                <p className="font-semibold">Motivo:</p>
-                <p className="mt-1">{empresa.motivo_rechazo}</p>
-              </div>
+              <Aviso tono="danger" titulo="Motivo:" role="none" className="mt-4 text-left">
+                {empresa.motivo_rechazo}
+              </Aviso>
             )}
             <Link
               href="/empresa/solicitud"
-              className="mt-6 inline-flex items-center justify-center rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="btn-primario mt-6"
             >
               Corregir y reenviar solicitud
             </Link>

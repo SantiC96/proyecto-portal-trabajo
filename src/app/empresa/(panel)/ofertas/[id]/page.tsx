@@ -11,7 +11,9 @@ import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
-import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_STYLE } from "@/lib/derivacion-estados";
+import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_TONO } from "@/lib/derivacion-estados";
+import { Badge } from "@/components/ui/badge";
+import { Aviso } from "@/components/ui/aviso";
 import type { FilaCandidatoParaEmpresa, FilaDerivacionDeOfertaEmpresa } from "@/types/db";
 import { VencimientoOferta } from "@/components/ofertas/vencimiento-oferta";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
@@ -63,9 +65,9 @@ export default async function OfertaDetallePage({
     <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
       <BotonVolver href="/empresa/ofertas">Volver a mis ofertas</BotonVolver>
 
-      <div className="mt-4 flex items-center gap-3">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl font-bold tracking-tight break-words text-foreground sm:text-2xl">
             {oferta.titulo}
           </h1>
           <p className="text-sm text-muted-foreground">{oferta.empresa_nombre}</p>
@@ -75,41 +77,35 @@ export default async function OfertaDetallePage({
             venceEn={oferta.vence_en}
           />
         </div>
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center gap-2 empty:hidden">
-        <BajaOfertaBtn oferta={oferta} baja={bajas[oferta.id]} volverA="/empresa/ofertas" />
+        <div className="flex flex-wrap gap-2 empty:hidden *:grow *:basis-32 sm:shrink-0 sm:justify-end sm:*:grow-0 sm:*:basis-auto">
+          <BajaOfertaBtn oferta={oferta} baja={bajas[oferta.id]} volverA="/empresa/ofertas" />
+          {estadoVencimiento(oferta.estado, oferta.vence_en).vencida && (
+            <RenovarOfertaBtn
+              ofertaId={oferta.id}
+              ofertaTitulo={oferta.titulo}
+              duracionDias={oferta.duracion_dias}
+            />
+          )}
+        </div>
       </div>
 
       {oferta.estado === "rechazada" && (
-        <div className="mt-6 rounded-[var(--radius-lg)] border border-red-200 bg-red-50 p-4 sm:p-5">
-          <p className="text-sm font-semibold text-red-700">
-            La Oficina de Empleo rechazó esta oferta
-          </p>
+        <Aviso tono="danger" titulo="La Oficina de Empleo rechazó esta oferta" className="mt-6">
           {oferta.motivo_rechazo && (
-            <p className="mt-1 whitespace-pre-line text-sm text-red-700">
+            <p className="whitespace-pre-line">
               <span className="font-semibold">Motivo del rechazo:</span>{" "}
               {oferta.motivo_rechazo}
             </p>
           )}
+          {/* Botón blanco: sobre el rojo del aviso, el verde no contrasta. */}
           <Link
             href={`/empresa/ofertas/${oferta.id}/editar`}
-            className="btn-primario mt-4 min-h-11 justify-center"
+            className="btn-neutro mt-3 no-underline!"
           >
             <Pencil className="h-4 w-4" />
             Corregir y reenviar
           </Link>
-        </div>
-      )}
-
-      {estadoVencimiento(oferta.estado, oferta.vence_en).vencida && (
-        <div className="mt-4">
-          <RenovarOfertaBtn
-            ofertaId={oferta.id}
-            ofertaTitulo={oferta.titulo}
-            duracionDias={oferta.duracion_dias}
-          />
-        </div>
+        </Aviso>
       )}
 
       {/* Candidatos derivados */}
@@ -211,8 +207,6 @@ async function ListadoDerivados({
                 : "Candidato";
               const estadoLabel =
                 DERIVACION_ESTADO_LABEL[d.estado_empresa] ?? d.estado_empresa;
-              const estadoStyle =
-                DERIVACION_ESTADO_STYLE[d.estado_empresa] ?? "bg-gray-100 text-gray-600";
 
               return (
                 <li
@@ -222,11 +216,9 @@ async function ListadoDerivados({
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-semibold text-foreground">{nombre}</p>
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${estadoStyle}`}
-                      >
+                      <Badge tono={DERIVACION_ESTADO_TONO[d.estado_empresa] ?? "neutral"} estado>
                         {estadoLabel}
-                      </span>
+                      </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Derivado el {formatFecha(d.derivacion_created_at)}

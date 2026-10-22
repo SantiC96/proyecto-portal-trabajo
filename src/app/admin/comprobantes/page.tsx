@@ -11,13 +11,13 @@ import {
   urlsFirmadasDeComprobantes,
 } from "@/lib/comprobantes";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
-import { cn } from "@/lib/utils";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { PestanasEstado } from "@/components/ui/pestanas-estado";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { RevisarComprobante } from "@/components/admin/revisar-comprobante";
+import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = {
   title: "Comprobantes | Panel municipal | Portal de Empleo Funes",
@@ -205,7 +205,7 @@ async function ListadoComprobantes({
                 </dl>
 
                 {rechazado && f.verificacion_motivo && (
-                  <p className="whitespace-pre-line break-words text-sm text-red-700">
+                  <p className="whitespace-pre-line break-words text-sm text-danger">
                     Motivo: {f.verificacion_motivo}
                   </p>
                 )}
@@ -256,15 +256,8 @@ function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactN
 
 function EstadoRevision({ rechazado }: { rechazado: boolean }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium",
-        rechazado
-          ? "border-red-200 bg-red-50 text-red-700"
-          : "border-emerald-200 bg-emerald-50 text-emerald-800",
-      )}
-    >
+    <Badge tono={rechazado ? "danger" : "success"} estado>
       {rechazado ? "Rechazado" : "Aprobado"}
-    </span>
+    </Badge>
   );
 }

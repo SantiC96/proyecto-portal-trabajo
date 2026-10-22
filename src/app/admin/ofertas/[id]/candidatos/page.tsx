@@ -11,7 +11,7 @@ import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
 import { estadosDeComprobantes } from "@/lib/comprobantes";
 import { nivelDe } from "@/lib/procedencia";
 import {
-  ESTILO_INVITACION,
+  TONO_INVITACION,
   destinoVolverBusqueda,
   esEstadoInvitacion,
   rutaBuscarPostulantes,
@@ -24,7 +24,7 @@ import { BotonVolver } from "@/components/ui/boton-volver";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
-import { Badge } from "@/components/ui/badge";
+import { Badge, claseTono } from "@/components/ui/badge";
 import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
 import { BadgeCoincidencia, MotivosCoincidencia } from "@/components/ofertas/coincidencia";
 import { BadgePorInvitacion } from "@/components/admin/badge-por-invitacion";
@@ -297,13 +297,13 @@ function TarjetaCandidato({
           {estado === "rechazada" ? (
             <NoInteresado
               motivo={f.ultima_invitacion_motivo}
-              className={ESTILO_INVITACION.rechazada}
+              className={claseTono(TONO_INVITACION.rechazada)}
             />
           ) : (
             <p
               className={cn(
-                "rounded-[var(--radius-md)] border px-3 py-2 text-sm font-medium",
-                ESTILO_INVITACION[estado],
+                "rounded-[var(--radius-md)] px-3 py-2 text-sm font-semibold",
+                claseTono(TONO_INVITACION[estado]),
               )}
             >
               {textoUltimaInvitacion(estado, f.ultima_invitacion_fecha)}
@@ -387,7 +387,7 @@ async function YaSePostularon({ ofertaId }: { ofertaId: string }) {
                     {usuario ? `${usuario.nombre} ${usuario.apellido}` : "—"}
                   </p>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant={badge.variant} className={badge.className}>
+                    <Badge tono={badge.tono} estado>
                       {badge.label}
                     </Badge>
                     {p.origen === "invitacion" && <BadgePorInvitacion />}

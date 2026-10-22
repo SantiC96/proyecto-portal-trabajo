@@ -2,34 +2,31 @@ import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 
+// Las variantes con relleno o borde usan las clases de globals.css
+// (.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento)
+// para que un <Button> y un link con esas clases se vean igual.
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:ring-2 focus-visible:ring-primary/30 active:not-aria-[haspopup]:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-red-500 aria-invalid:ring-2 aria-invalid:ring-red-500/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--radius-md)] border-[1.5px] border-transparent bg-clip-padding text-[15px] font-bold whitespace-nowrap transition-colors duration-150 outline-none select-none focus-visible:shadow-[var(--sombra-foco)] disabled:cursor-not-allowed disabled:opacity-60 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[18px]",
   {
     variants: {
       variant: {
-        default: "bg-primary text-white hover:bg-primary-hover",
-        outline:
-          "border-border bg-white text-foreground hover:border-primary hover:bg-primary/10 hover:text-primary hover:shadow-sm",
-        secondary:
-          "bg-surface-tinted text-primary hover:bg-primary/10",
-        ghost:
-          "hover:bg-surface-tinted hover:text-primary",
-        destructive:
-          "bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-600/30",
+        default: "btn-primario",
+        secondary: "btn-secundario",
+        outline: "btn-neutro",
+        destructive: "btn-peligro",
+        accent: "btn-acento",
+        ghost: "text-foreground hover:bg-surface-tinted hover:text-primary",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default:
-          "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
-        lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        icon: "size-8",
-        "icon-xs":
-          "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm":
-          "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
-        "icon-lg": "size-9",
+        default: "h-11 px-[18px]",
+        xs: "h-11 px-[18px]",
+        sm: "h-11 px-[18px]",
+        lg: "h-11 px-[18px]",
+        icon: "size-11",
+        "icon-xs": "size-11",
+        "icon-sm": "size-11",
+        "icon-lg": "size-11",
       },
     },
     defaultVariants: {

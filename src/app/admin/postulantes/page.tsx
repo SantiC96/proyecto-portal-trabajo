@@ -30,6 +30,8 @@ import { requerirRolPagina } from "@/lib/auth";
 import { formatFechaCorta } from "@/lib/fechas";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
+import { Badge } from "@/components/ui/badge";
+import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
 import { estadosDeComprobantes } from "@/lib/comprobantes";
 import { nivelDe, type NivelPrioridad } from "@/lib/procedencia";
 
@@ -46,9 +48,6 @@ const TITULO_NIVEL: Record<NivelPrioridad, string> = {
   2: "De Funes, sin verificar",
   3: "Otra localidad o sin informar",
 };
-
-const BADGE_CHICO =
-  "inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium";
 
 type FiltrosListado = {
   q: string;
@@ -433,7 +432,7 @@ async function ListadoPostulantes({
               <EtiquetaCurso cursos={cursos} />
             </div>
             {pendientes > 0 && (
-              <p className="text-xs font-medium text-amber-700">
+              <p className="text-xs font-medium text-warning-text">
                 {textoCursosPendientes(pendientes)}
               </p>
             )}
@@ -457,9 +456,7 @@ async function ListadoPostulantes({
                 comprobante={comprobante}
               />
               {!tieneCv && (
-                <span className={`${BADGE_CHICO} border-gray-200 bg-gray-100 text-gray-700`}>
-                  Sin CV
-                </span>
+                <Badge tono="warning">Sin CV</Badge>
               )}
             </div>
             <RubrosPills rubros={rubros} />
@@ -516,18 +513,16 @@ function EtiquetaCurso({
   if (!cursos) return null;
   if (cursos.necesita_curso) {
     return (
-      <span
-        className={`inline-flex items-center whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 ${className ?? ""}`}
-      >
+      <Badge tono="warning" estado className={className}>
         Necesita curso · {textoRechazos(cursos.rechazos_ventana)}
-      </span>
+      </Badge>
     );
   }
   if (cursos.asignacion_activa_estado) {
     return (
       <EstadoCursoBadge
         estado={cursos.asignacion_activa_estado}
-        className={`px-2 ${className ?? ""}`}
+        className={className}
       />
     );
   }
@@ -548,17 +543,10 @@ function RubrosPills({
   return (
     <div className="flex flex-wrap gap-1">
       {visible.map((r) => (
-        <span
-          key={r.id}
-          className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-foreground"
-        >
-          {r.nombre}
-        </span>
+        <EtiquetaRubro key={r.id}>{r.nombre}</EtiquetaRubro>
       ))}
       {extra > 0 && (
-        <span className="inline-flex items-center rounded-full bg-surface-tinted px-2 py-0.5 text-xs text-muted-foreground">
-          +{extra}
-        </span>
+        <EtiquetaRubro>+{extra}</EtiquetaRubro>
       )}
     </div>
   );

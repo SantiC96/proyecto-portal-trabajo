@@ -4,8 +4,21 @@ import { cn } from "@/lib/utils";
 export type Contador = {
   label: string;
   valor: number;
-  /** Clase de color del número (text-amber-700, text-emerald-700…). */
-  color: string;
+  /** Tono del número; los pendientes van en "warning". Sin tono, el color del texto. */
+  tono?: TonoContador;
+};
+
+export type TonoContador = "info" | "teal" | "success" | "warning" | "danger" | "neutral" | "primary";
+
+// Colores de texto con contraste AA sobre blanco.
+const COLOR_CONTADOR: Record<TonoContador, string> = {
+  info: "text-info",
+  teal: "text-teal",
+  success: "text-success",
+  warning: "text-warning-text",
+  danger: "text-danger",
+  neutral: "text-muted-foreground-strong",
+  primary: "text-primary",
 };
 
 /**
@@ -34,10 +47,17 @@ export function ContadoresEstado({
       {contadores.map((c) => (
         <div
           key={c.label}
-          className="rounded-[var(--radius-lg)] border border-border bg-surface p-4"
+          className="tarjeta p-4"
         >
-          <dt className="text-xs font-medium text-muted-foreground">{c.label}</dt>
-          <dd className={cn("mt-1 text-2xl font-bold", c.color)}>{c.valor}</dd>
+          <dt className="text-sm font-semibold text-muted-foreground">{c.label}</dt>
+          <dd
+            className={cn(
+              "mt-1 text-2xl font-extrabold",
+              c.tono ? COLOR_CONTADOR[c.tono] : "text-heading",
+            )}
+          >
+            {c.valor}
+          </dd>
         </div>
       ))}
     </dl>
@@ -67,7 +87,7 @@ export function PestanasEstado({
     <nav
       aria-label={etiqueta}
       className={cn(
-        "flex gap-1 overflow-x-auto rounded-[var(--radius-md)] border border-border bg-surface p-1",
+        "flex gap-2 overflow-x-auto pb-1",
         className,
       )}
     >
@@ -77,18 +97,17 @@ export function PestanasEstado({
           href={p.href}
           aria-current={p.activa ? "page" : undefined}
           className={cn(
-            "flex min-h-11 flex-1 items-center justify-center whitespace-nowrap rounded-[var(--radius-sm)] px-3 py-2 text-center text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+            "flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full border-[1.5px] px-4 py-2 text-center text-[15px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-[var(--sombra-foco)]",
             p.activa
-              ? "bg-primary font-medium text-primary-foreground"
-              : "text-muted-foreground hover:text-foreground",
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border-tab bg-surface text-muted-foreground-strong hover:border-primary hover:text-primary",
           )}
         >
           {p.label}
           {(p.cantidad ?? 0) > 0 && (
             <span
               className={cn(
-                "ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-semibold",
-                p.activa ? "bg-white/20 text-primary-foreground" : "bg-primary/15 text-primary",
+                "ml-2 inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-accent px-1.5 text-[13px] font-bold text-accent-foreground",
               )}
             >
               {p.cantidad}

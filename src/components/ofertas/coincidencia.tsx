@@ -5,6 +5,8 @@ import {
   nivelCoincidencia,
   type DatosCoincidencia,
 } from "@/lib/invitaciones";
+import { Badge } from "@/components/ui/badge";
+import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
 import { cn } from "@/lib/utils";
 
 // Coincidencia entre una oferta y un postulante (puntaje_coincidencia,
@@ -14,15 +16,10 @@ import { cn } from "@/lib/utils";
 export function BadgeCoincidencia({ nivel, puntaje }: { nivel: string; puntaje: number }) {
   const coincidencia = COINCIDENCIA[nivelCoincidencia(nivel)];
   return (
-    <span
-      className={cn(
-        "inline-flex w-fit shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold",
-        coincidencia.className,
-      )}
-    >
+    <Badge tono={coincidencia.tono}>
       {coincidencia.label}
       <span className="sr-only">, puntaje {puntaje} de 100</span>
-    </span>
+    </Badge>
   );
 }
 
@@ -39,16 +36,15 @@ export function MotivosCoincidencia({
   return (
     <ul className={cn("flex flex-wrap gap-1.5", className)} aria-label="Por qué coincide">
       {motivos.map((motivo) => (
-        <li
-          key={motivo}
-          className="inline-flex max-w-full items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-xs text-muted-foreground-strong"
-        >
-          {motivo.startsWith("Tiene CV") ? (
-            <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
-          ) : (
-            <Tag className="h-3 w-3 shrink-0" aria-hidden="true" />
-          )}
-          <span className="break-words">{motivo}</span>
+        <li key={motivo} className="max-w-full">
+          <EtiquetaRubro verde>
+            {motivo.startsWith("Tiene CV") ? (
+              <FileText className="size-3.5 shrink-0" aria-hidden="true" />
+            ) : (
+              <Tag className="size-3.5 shrink-0" aria-hidden="true" />
+            )}
+            <span className="break-words">{motivo}</span>
+          </EtiquetaRubro>
         </li>
       ))}
     </ul>

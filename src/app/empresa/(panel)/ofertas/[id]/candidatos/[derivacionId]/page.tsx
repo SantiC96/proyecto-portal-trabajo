@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Mail, Phone, FileText, ExternalLink, User } from "lucide-react";
+import { CalendarClock, Mail, Phone, FileText, ExternalLink, User } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirEmpresaPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
-import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_STYLE } from "@/lib/derivacion-estados";
+import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_TONO } from "@/lib/derivacion-estados";
+import { Badge } from "@/components/ui/badge";
+import { Aviso } from "@/components/ui/aviso";
 import type {
   FilaCandidatoParaEmpresa,
   FilaCvParaEmpresa,
@@ -90,8 +92,7 @@ export default async function CandidatoFichaPage({
 
   const estadoLabel =
     DERIVACION_ESTADO_LABEL[derivacion.estado_empresa] ?? derivacion.estado_empresa;
-  const estadoStyle =
-    DERIVACION_ESTADO_STYLE[derivacion.estado_empresa] ?? "bg-gray-100 text-gray-600";
+  const estadoTono = DERIVACION_ESTADO_TONO[derivacion.estado_empresa] ?? "neutral";
 
   return (
     <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
@@ -106,11 +107,9 @@ export default async function CandidatoFichaPage({
               : "Candidato"}
           </h1>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <span
-              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${estadoStyle}`}
-            >
+            <Badge tono={estadoTono} estado>
               {estadoLabel}
-            </span>
+            </Badge>
             {derivacion.fecha_respuesta && (
               <span className="text-xs text-muted-foreground">
                 Respuesta: {formatFechaHora(derivacion.fecha_respuesta)}
@@ -201,19 +200,12 @@ export default async function CandidatoFichaPage({
 
           {/* Entrevista (si está coordinada) */}
           {derivacion.estado_empresa === "en_proceso" && derivacion.fecha_entrevista && (
-            <div className="rounded-[var(--radius-lg)] border border-blue-200 bg-blue-50 p-5">
-              <p className="text-sm font-semibold text-blue-800">
-                Entrevista coordinada
-              </p>
-              <p className="mt-1 text-sm text-blue-700">
-                {formatFechaHora(derivacion.fecha_entrevista)}
-              </p>
+            <Aviso tono="info" icono={CalendarClock} titulo="Entrevista coordinada">
+              <p>{formatFechaHora(derivacion.fecha_entrevista)}</p>
               {derivacion.lugar_entrevista && (
-                <p className="mt-1 text-sm text-blue-600">
-                  {derivacion.lugar_entrevista}
-                </p>
+                <p className="mt-1">{derivacion.lugar_entrevista}</p>
               )}
-            </div>
+            </Aviso>
           )}
 
           {/* Nota del candidato guardado */}

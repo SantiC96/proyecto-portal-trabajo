@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 
 function textoEstado(hayPendientes: boolean): string {
   return hayPendientes
-    ? "text-sm font-medium text-amber-700 dark:text-amber-400"
+    ? "text-sm font-medium text-warning-text"
     : "text-sm text-muted-foreground";
 }
 

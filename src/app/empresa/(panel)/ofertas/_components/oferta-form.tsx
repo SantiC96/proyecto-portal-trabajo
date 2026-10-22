@@ -24,6 +24,7 @@ import {
   ariaErrorCampo,
 } from "@/components/ui/obligatorio";
 import { useErroresCampo } from "@/lib/use-errores-campo";
+import { Aviso } from "@/components/ui/aviso";
 
 type Categoria = Pick<Tabla<"categorias">, "id" | "nombre">;
 
@@ -214,9 +215,9 @@ export function OfertaForm({
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-6">
       {estaPublicada && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <Aviso tono="warning">
           Al guardar los cambios, la oferta vuelve a revisión de la Oficina de Empleo.
-        </div>
+        </Aviso>
       )}
 
       {/* Título */}
@@ -361,7 +362,7 @@ export function OfertaForm({
         <ErrorCampo idCampo="vacantes" mensaje={campos.errores.cantidadVacantes} />
         <p className="text-xs text-muted-foreground">No se muestra a los postulantes.</p>
         {minimoVacantes > 1 && (
-          <p className="text-xs text-amber-700">
+          <p className="text-xs text-warning-text">
             Ya tenés {minimoVacantes} {minimoVacantes === 1 ? "candidato seleccionado" : "candidatos seleccionados"}. La cantidad no puede ser menor.
           </p>
         )}
@@ -413,7 +414,7 @@ export function OfertaForm({
                 <button
                   type="button"
                   onClick={() => setRequisitos(requisitos.filter((_, j) => j !== i))}
-                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-red-100 hover:text-red-600"
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-danger hover:text-white"
                   aria-label="Quitar requisito"
                 >
                   <X size={12} />
@@ -472,7 +473,7 @@ export function OfertaForm({
                 <button
                   type="button"
                   onClick={() => setBeneficios(beneficios.filter((_, j) => j !== i))}
-                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-red-100 hover:text-red-600"
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-danger hover:text-white"
                   aria-label="Quitar beneficio"
                 >
                   <X size={12} />
@@ -516,18 +517,14 @@ export function OfertaForm({
 
       {/* Error de validación junto al botón */}
       {error && (
-        <div
-          ref={errorRef}
-          className="flex flex-col gap-1 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-          role="alert"
-        >
+        <Aviso ref={errorRef} tono="danger">
           <p>{error.mensaje}</p>
           {error.ref && (
-            <p className="text-xs text-gray-500">
+            <p className="mt-1 text-sm">
               Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
             </p>
           )}
-        </div>
+        </Aviso>
       )}
 
       {/* Botones */}

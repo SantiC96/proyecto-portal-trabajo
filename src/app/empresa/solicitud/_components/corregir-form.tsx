@@ -26,6 +26,7 @@ import {
   ariaErrorCampo,
 } from "@/components/ui/obligatorio";
 import { useErroresCampo } from "@/lib/use-errores-campo";
+import { Aviso } from "@/components/ui/aviso";
 
 const CAMPOS = [
   "razonSocial",
@@ -140,12 +141,9 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
     <div className="w-full max-w-xl">
       {/* Motivo del rechazo */}
       {datos.motivoRechazo && (
-        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-5 py-4">
-          <p className="text-sm font-semibold text-red-700">
-            Motivo del rechazo:
-          </p>
-          <p className="mt-1 text-sm text-red-700">{datos.motivoRechazo}</p>
-        </div>
+        <Aviso tono="danger" titulo="Motivo del rechazo:" role="none" className="mb-6">
+          {datos.motivoRechazo}
+        </Aviso>
       )}
 
       <form
@@ -209,7 +207,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                   placeholder="30-12345678-9"
                   className={`${inputClass} ${
                     cuitError
-                      ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
+                      ? "border-danger focus:border-danger focus:ring-danger/20"
                       : ""
                   }`}
                   disabled={isPending}
@@ -218,7 +216,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
               </InputWrapper>
               <ErrorCampo idCampo="sol-cuit" mensaje={campos.errores.cuit} />
               {cuitError && (
-                <p className="flex items-center gap-1.5 text-xs text-red-500">
+                <p className="flex items-center gap-1.5 text-xs text-danger">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                   CUIT inválido. Verificá el dígito verificador.
                 </p>
@@ -392,17 +390,14 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
 
         {/* ── Error global ─────────────────────────────────────────────── */}
         {submitError && (
-          <div className="flex flex-col gap-1 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-            <div className="flex items-start gap-2.5">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{submitError.mensaje}</span>
-            </div>
+          <Aviso tono="danger">
+            <p>{submitError.mensaje}</p>
             {submitError.ref && (
-              <p className="ml-7 text-xs text-gray-500">
+              <p className="mt-1 text-sm">
                 Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {submitError.ref}
               </p>
             )}
-          </div>
+          </Aviso>
         )}
 
         {/* ── Submit ──────────────────────────────────────────────────── */}

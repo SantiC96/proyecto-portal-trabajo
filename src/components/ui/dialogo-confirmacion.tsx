@@ -18,12 +18,10 @@ import { cn } from "@/lib/utils";
 
 /** Clases de una acción del pie que no es un Button (un Link o un BotonFormulario). */
 export const CLASE_ACCION_DIALOGO = {
-  primario: "btn-primario min-h-11 justify-center sm:min-h-9",
-  secundario:
-    "btn-secundario inline-flex min-h-11 items-center justify-center whitespace-nowrap px-4 text-sm font-medium sm:min-h-9",
+  primario: "btn-primario",
+  secundario: "btn-secundario whitespace-nowrap",
   /** Mismo rojo que Button variant="destructive" (por ejemplo, cerrar sesión). */
-  peligro:
-    "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 focus-visible:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:opacity-60 sm:min-h-9",
+  peligro: "btn-peligro",
 } as const;
 
 /** Estilos de los botones que abren un diálogo, según la jerarquía de la acción. */
@@ -69,7 +67,7 @@ export function BotonesDialogo({
         type="button"
         onClick={onCancelar}
         disabled={pendiente}
-        className="btn-secundario inline-flex min-h-11 items-center justify-center whitespace-nowrap px-4 text-sm font-medium sm:min-h-9"
+        className="btn-neutro whitespace-nowrap"
       >
         {textoCancelar}
       </button>
@@ -80,7 +78,6 @@ export function BotonesDialogo({
           disabled={pendiente || deshabilitado}
           aria-busy={pendiente}
           variant={destructivo ? "destructive" : "default"}
-          className="min-h-11 px-4 sm:min-h-9"
         >
           {pendiente && <Spinner />}
           {pendiente ? (textoPendiente ?? "Guardando…") : textoConfirmar}
@@ -156,7 +153,7 @@ export function DialogoConfirmacion<T>({
         title={ayudaBoton}
         className={cn(
           CLASE_BOTON[estiloBoton],
-          "inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap px-4 text-sm font-medium",
+          "whitespace-nowrap",
           claseBoton,
         )}
       >

@@ -167,7 +167,7 @@ export function EncabezadoPerfil({
   );
 
   return (
-    <div className="rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6">
+    <div className="tarjeta px-4 py-5 sm:px-6 sm:py-6">
       <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:gap-6 sm:text-left">
         <div className="shrink-0">
           {puedeVer ? (

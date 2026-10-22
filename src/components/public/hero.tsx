@@ -53,7 +53,7 @@ export function Hero() {
             <a
               href="#ofertas"
               onClick={handleScrollToOfertas}
-              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover sm:w-auto"
+              className="btn-primario w-full sm:w-auto"
             >
               <span>Ver ofertas disponibles</span>
               <ArrowDown className="h-4 w-4" />
@@ -61,14 +61,14 @@ export function Hero() {
             {esEmpresa ? (
               <Link
                 href="/empresa"
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white px-6 text-sm font-semibold text-foreground shadow-xs transition hover:border-primary hover:text-primary sm:w-auto"
+                className="btn-neutro w-full sm:w-auto"
               >
                 <span>Mi panel de empresa</span>
               </Link>
             ) : (
               <AuthLink
                 href="/auth/login"
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white px-6 text-sm font-semibold text-foreground shadow-xs transition hover:border-primary hover:text-primary sm:w-auto"
+                className="btn-neutro w-full sm:w-auto"
               >
                 <span>Acceso usuarios y empresas</span>
               </AuthLink>

@@ -4,7 +4,8 @@ import { Mail, Phone, FileText, ExternalLink, Briefcase, User } from "lucide-rea
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirEmpresaPagina } from "@/lib/auth";
 import { formatFecha } from "@/lib/fechas";
-import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_STYLE } from "@/lib/derivacion-estados";
+import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_TONO } from "@/lib/derivacion-estados";
+import { Badge } from "@/components/ui/badge";
 import { esUuid } from "@/lib/validaciones";
 import { logError } from "@/lib/logger";
 import type {
@@ -187,7 +188,6 @@ export default async function PerfilCandidatoPage({
             <ul className="mt-4 divide-y divide-border">
               {historial.map((h) => {
                 const estadoLabel = DERIVACION_ESTADO_LABEL[h.estado_empresa] ?? h.estado_empresa;
-                const estadoStyle = DERIVACION_ESTADO_STYLE[h.estado_empresa] ?? "bg-gray-100 text-gray-600";
                 return (
                   <li key={h.derivacion_id} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
@@ -198,11 +198,9 @@ export default async function PerfilCandidatoPage({
                         </p>
                       )}
                     </div>
-                    <span
-                      className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${estadoStyle}`}
-                    >
+                    <Badge tono={DERIVACION_ESTADO_TONO[h.estado_empresa] ?? "neutral"} estado>
                       {estadoLabel}
-                    </span>
+                    </Badge>
                   </li>
                 );
               })}

@@ -71,9 +71,7 @@ export function MultiCombobox({
       {/* Campo: chips + input + botón chevron */}
       <div
         className={cn(
-          "flex min-h-[2.75rem] cursor-text items-start gap-2 rounded-lg border border-border bg-background px-3 py-2 transition",
-          "focus-within:border-primary focus-within:bg-white focus-within:ring-2 focus-within:ring-primary/20",
-          ariaInput?.["aria-invalid"] && "border-red-500 ring-2 ring-red-500/20",
+          "campo-grupo flex cursor-text items-start gap-2 px-3.5 py-2.5",
           campoClassName,
         )}
         onClick={() => inputRef.current?.focus()}
@@ -86,7 +84,7 @@ export function MultiCombobox({
             return (
               <span
                 key={sid}
-                className="flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 py-0.5 pl-2.5 pr-1 text-xs font-medium text-primary"
+                className="flex items-center gap-1 rounded-full border-[1.5px] border-primary bg-white py-0.5 pl-2.5 pr-1 text-[13px] font-semibold text-primary-hover"
               >
                 {opcion.nombre}
                 <button
@@ -109,7 +107,7 @@ export function MultiCombobox({
             placeholder={seleccionados.length === 0 ? placeholder : ""}
             onKeyDown={handleKeyDown}
             {...ariaInput}
-            className="min-w-[8rem] flex-1 bg-transparent text-sm text-foreground placeholder:text-placeholder focus:outline-none"
+            className="min-w-[8rem] flex-1 bg-transparent text-base text-foreground placeholder:text-placeholder focus:outline-none"
           />
         </div>
 
@@ -125,13 +123,13 @@ export function MultiCombobox({
       {/* Popup */}
       <Combobox.Portal>
         <Combobox.Positioner side="bottom" align="start" sideOffset={4} className="z-50">
-          <Combobox.Popup className="w-[var(--anchor-width)] rounded-lg border border-border bg-white shadow-md">
+          <Combobox.Popup data-slot="combobox-popup" className="w-[var(--anchor-width)] rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--sombra-dialogo)]">
             <Combobox.List className="max-h-64 overflow-y-auto p-1">
               {filtradas.map((opt) => (
                 <Combobox.Item
                   key={opt.id}
                   value={opt.id}
-                  className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground hover:bg-primary/10 hover:text-primary data-[highlighted]:bg-primary/10 data-[highlighted]:text-primary"
+                  className="flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-3 py-2 text-[15px] text-foreground transition-colors duration-150 hover:bg-secondary hover:text-primary data-[highlighted]:bg-secondary data-[highlighted]:text-primary"
                 >
                   <span className="flex w-4 flex-shrink-0 items-center justify-center text-primary">
                     <Combobox.ItemIndicator>

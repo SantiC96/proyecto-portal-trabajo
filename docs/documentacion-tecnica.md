@@ -596,6 +596,7 @@ No hay tests automáticos configurados.
 | 027 | [Procedencia del postulante, comprobante de domicilio y prioridad](decisiones/027-procedencia-y-prioridad.md) |
 | 028 | [Buscar postulantes para una oferta e invitarlos](decisiones/028-buscar-e-invitar-postulantes.md) |
 | 029 | [Panel del postulante](decisiones/029-dashboard-postulante.md) |
+| 030 | [Identidad visual: verde institucional, acento amarillo, Public Sans, colores sólidos y badges por tono](decisiones/030-identidad-visual.md) |
 
 ---
 

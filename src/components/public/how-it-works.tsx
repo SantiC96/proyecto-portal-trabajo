@@ -23,7 +23,7 @@ export function HowItWorks() {
         {/* 4 Steps Timeline/Grid */}
         <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {/* Step 1 */}
-          <div className="relative flex flex-col rounded-2xl border border-border bg-white p-6 shadow-xs">
+          <div className="tarjeta relative flex flex-col p-6">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <FileText className="h-6 w-6" />
             </div>
@@ -35,7 +35,7 @@ export function HowItWorks() {
           </div>
 
           {/* Step 2 */}
-          <div className="relative flex flex-col rounded-2xl border border-border bg-white p-6 shadow-xs">
+          <div className="tarjeta relative flex flex-col p-6">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <UserCheck className="h-6 w-6" />
             </div>
@@ -47,7 +47,7 @@ export function HowItWorks() {
           </div>
 
           {/* Step 3 */}
-          <div className="relative flex flex-col rounded-2xl border border-border bg-white p-6 shadow-xs">
+          <div className="tarjeta relative flex flex-col p-6">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <MessagesSquare className="h-6 w-6" />
             </div>
@@ -59,7 +59,7 @@ export function HowItWorks() {
           </div>
 
           {/* Step 4 */}
-          <div className="relative flex flex-col rounded-2xl border border-border bg-white p-6 shadow-xs">
+          <div className="tarjeta relative flex flex-col p-6">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <CheckCircle className="h-6 w-6" />
             </div>
@@ -78,14 +78,14 @@ export function HowItWorks() {
         >
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-emerald-200 backdrop-blur-xs">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-brand-subtle backdrop-blur-xs">
                 <Building2 className="h-3.5 w-3.5" />
                 <span>Espacio para Empresas y Comercios</span>
               </div>
               <h3 className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl">
                 ¿Buscás personal para tu empresa en Funes?
               </h3>
-              <p className="mt-2 text-sm text-gray-200 leading-relaxed sm:text-base">
+              <p className="mt-2 text-sm text-white/85 leading-relaxed sm:text-base">
                 Registrá tu razón social en el portal. Nuestro equipo municipal valida tu registro, publica
                 tus avisos y te envía una preselección de postulantes calificados sin costo de intermediación.
               </p>
@@ -94,7 +94,7 @@ export function HowItWorks() {
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col shrink-0">
               <AuthLink
                 href="/auth/registro?tipo=empresa"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-primary-hover shadow-sm transition hover:bg-gray-100"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-primary-hover shadow-sm transition hover:bg-secondary"
               >
                 <span>Registrar empresa</span>
                 <ArrowRight className="h-4 w-4" />

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { CheckCircle, AlertTriangle, CalendarClock, FileText } from "lucide-react";
 import { retirarPostulacion } from "@/app/(dashboard)/postulaciones/actions";
 import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
+import { Aviso } from "@/components/ui/aviso";
+import { Badge } from "@/components/ui/badge";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { getOfertaEstadoBadge } from "@/lib/oferta-estados";
 import {
@@ -167,14 +169,12 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
                 )}
               </div>
 
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
-              >
+              <Badge tono={badge.tono} estado>
                 {badge.label}
-              </span>
+              </Badge>
             </div>
 
-            {avisoOferta && <p className="mt-2 text-xs text-amber-700">{avisoOferta}</p>}
+            {avisoOferta && <p className="mt-2 text-sm text-warning-text">{avisoOferta}</p>}
 
             <p className="mt-2 text-xs text-muted-foreground">Postulado el {fecha}</p>
 
@@ -192,21 +192,16 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
 
             {(p.estado === "recibida" || p.estado === "en_revision") &&
               p.preEntrevista?.estado === "coordinada" && (
-                <div className="mt-3 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm text-blue-800">
-                  <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
-                  <div className="min-w-0">
-                    <span className="font-medium">Pre-entrevista con la Oficina de Empleo: </span>
-                    {formatFechaHora(p.preEntrevista.fecha_hora)}
-                    <span className="mt-0.5 block break-words text-blue-700">
-                      {p.preEntrevista.lugar}
-                    </span>
-                  </div>
-                </div>
+                <Aviso tono="info" icono={CalendarClock} className="mt-3">
+                  <span className="font-semibold">Pre-entrevista con la Oficina de Empleo: </span>
+                  {formatFechaHora(p.preEntrevista.fecha_hora)}
+                  <span className="mt-0.5 block break-words">{p.preEntrevista.lugar}</span>
+                </Aviso>
               )}
 
             {/* Derivacion: estado de la empresa (nunca notas) */}
             {p.estado === "oferta_retirada" && (
-              <p className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-600">
+              <p className="mt-3 rounded-[var(--radius-lg)] border border-border bg-surface-tinted px-4 py-3 text-[15px] text-muted-foreground-strong">
                 {AVISO_OFERTA_RETIRADA}
               </p>
             )}
@@ -215,40 +210,34 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
               const d = p.derivacion;
               if (d.estado_empresa === "oferta_retirada") {
                 return (
-                  <p className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-600">
+                  <p className="mt-3 rounded-[var(--radius-lg)] border border-border bg-surface-tinted px-4 py-3 text-[15px] text-muted-foreground-strong">
                     {AVISO_OFERTA_RETIRADA}
                   </p>
                 );
               }
               if (d.estado_empresa === "contratado") {
                 return (
-                  <div className="mt-3 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
-                    <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                    <span className="font-medium">{TEXTO_SELECCIONADO}</span>
-                  </div>
+                  <Aviso tono="success" icono={CheckCircle} className="mt-3">
+                    <span className="font-semibold">{TEXTO_SELECCIONADO}</span>
+                  </Aviso>
                 );
               }
               if (d.estado_empresa === "rechazado") {
                 return (
-                  <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-600">
+                  <div className="mt-3 rounded-[var(--radius-lg)] border border-border bg-surface-tinted px-4 py-3 text-[15px] text-muted-foreground-strong">
                     {TEXTO_NO_SELECCIONADO}
                   </div>
                 );
               }
               if (d.estado_empresa === "en_proceso" && d.fecha_entrevista) {
                 return (
-                  <div className="mt-3 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm text-blue-800">
-                    <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
-                    <div>
-                      <span className="font-medium">Entrevista coordinada: </span>
-                      {formatFechaHora(d.fecha_entrevista)}
-                      {d.lugar_entrevista && (
-                        <span className="block mt-0.5 text-blue-700">
-                          {d.lugar_entrevista}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                  <Aviso tono="info" icono={CalendarClock} className="mt-3">
+                    <span className="font-semibold">Entrevista coordinada: </span>
+                    {formatFechaHora(d.fecha_entrevista)}
+                    {d.lugar_entrevista && (
+                      <span className="mt-0.5 block">{d.lugar_entrevista}</span>
+                    )}
+                  </Aviso>
                 );
               }
               // estado_empresa === 'pendiente' — empresa aún no contactó
@@ -261,7 +250,7 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
 
             {modificada && (
               <div className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground">
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning-text" />
                 <span>
                   Modificada después de tu postulación
                   {" "}({formatFecha(oferta!.contenido_editado_en!)})
@@ -281,7 +270,7 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
             )}
 
             {p.estado === "retirada_postulante" && (
-              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
+              <div className="mt-3 rounded-[var(--radius-lg)] border border-border bg-surface-tinted px-4 py-3 text-[15px] text-muted-foreground-strong">
                 <p>
                   Retiraste esta postulación
                   {p.retirada_en ? ` el ${formatFecha(p.retirada_en)}` : ""}.
@@ -309,31 +298,31 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
         </p>
         <ul className="flex flex-col gap-1.5 text-xs text-muted-foreground-strong">
           <li>
-            <span className="font-medium text-gray-700">Recibida</span>
+            <span className="font-medium text-muted-foreground-strong">Recibida</span>
             {" — "}Tu postulación llegó y está esperando revisión por la Oficina de Empleo.
           </li>
           <li>
-            <span className="font-medium text-amber-700">En revisión</span>
+            <span className="font-medium text-warning-text">En revisión</span>
             {" — "}La Oficina de Empleo está evaluando tu perfil para esta oferta.
           </li>
           <li>
-            <span className="font-medium text-blue-700">Enviada a la empresa</span>
+            <span className="font-medium text-info">Enviada a la empresa</span>
             {" — "}La Oficina de Empleo derivó tu postulación. La empresa te contactará para coordinar una entrevista.
           </li>
           <li>
-            <span className="font-medium text-emerald-800">Seleccionado</span>
+            <span className="font-medium text-success">Seleccionado</span>
             {" — "}La empresa te eligió para el puesto.
           </li>
           <li>
-            <span className="font-medium text-red-700">No seleccionado</span>
+            <span className="font-medium text-danger">No seleccionado</span>
             {" — "}La Oficina de Empleo o la empresa no seleccionaron tu perfil para esta búsqueda.
           </li>
           <li>
-            <span className="font-medium text-gray-600">Oferta cerrada</span>
+            <span className="font-medium text-muted-foreground">Oferta cerrada</span>
             {" — "}La oferta ya no recibe postulaciones y tu proceso terminó sin un resultado.
           </li>
           <li>
-            <span className="font-medium text-slate-600">Retirada</span>
+            <span className="font-medium text-muted-foreground">Retirada</span>
             {" — "}Retiraste tu postulación. Si la oferta sigue abierta, podés volver a postularte.
           </li>
         </ul>

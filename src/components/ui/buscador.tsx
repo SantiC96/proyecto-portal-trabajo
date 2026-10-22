@@ -84,7 +84,7 @@ export function Buscador({ placeholder, etiqueta, className, inputClassName }: P
   return (
     <form role="search" onSubmit={handleSubmit} className={cn("relative", className)}>
       <Search
-        className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-icon"
+        className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-icon"
         aria-hidden="true"
       />
       <input
@@ -96,7 +96,7 @@ export function Buscador({ placeholder, etiqueta, className, inputClassName }: P
         maxLength={LARGO_MAXIMO_BUSQUEDA}
         enterKeyHint="search"
         className={cn(
-          "h-11 w-full rounded-lg border border-border bg-surface pl-10 pr-24 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-primary/30 [&::-webkit-search-cancel-button]:hidden",
+          "campo pl-10 pr-24 [&::-webkit-search-cancel-button]:hidden",
           inputClassName,
         )}
       />
@@ -110,7 +110,7 @@ export function Buscador({ placeholder, etiqueta, className, inputClassName }: P
           <button
             type="button"
             onClick={handleLimpiar}
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
+            className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] text-muted-foreground transition-colors duration-150 hover:text-foreground"
             aria-label="Limpiar búsqueda"
           >
             <X className="h-4 w-4" />

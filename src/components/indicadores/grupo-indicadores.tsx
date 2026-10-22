@@ -41,7 +41,7 @@ export function GrupoIndicadores({
   return (
     <section
       aria-label={titulo}
-      className="rounded-[var(--radius-lg)] border border-border bg-surface p-4 shadow-xs sm:p-5"
+      className="tarjeta p-4 sm:p-5"
     >
       <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-primary">

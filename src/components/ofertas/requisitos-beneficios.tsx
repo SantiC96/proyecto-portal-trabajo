@@ -48,7 +48,7 @@ export function BeneficiosList({ items, headingTag: Tag = "h2" }: BeneficiosList
       <ul className="mt-3 flex flex-col gap-2">
         {items.map((ben, i) => (
           <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground-strong">
-            <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+            <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
             {ben}
           </li>
         ))}
