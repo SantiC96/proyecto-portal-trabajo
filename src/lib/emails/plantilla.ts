@@ -9,13 +9,13 @@ const PIE = "Recibís este correo porque tenés una cuenta en el Portal de Emple
 // tokens de globals.css (primary, foreground, muted-foreground-strong, background,
 // surface, border).
 const COLOR = {
-  primario: "#0f5b53",
+  primario: "#006833",
   textoPrimario: "#ffffff",
-  texto: "#1b2926",
+  texto: "#17241d",
   textoSecundario: "#4f5a54",
-  fondo: "#f8f8f4",
+  fondo: "#f6f8f6",
   superficie: "#ffffff",
-  borde: "#d8ddd7",
+  borde: "#d9e2dc",
 } as const;
 
 export type EmailArmado = {
