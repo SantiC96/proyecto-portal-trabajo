@@ -1,3 +1,4 @@
+import type { TonoBadge } from "@/components/ui/badge";
 import { formatFechaHoraCorta } from "@/lib/fechas";
 import { LARGO_MAXIMO, MENSAJE_OBLIGATORIO, validarTextoOpcional } from "@/lib/validaciones";
 import type { Tabla } from "@/types/db";
@@ -35,26 +36,26 @@ export const PRE_ENTREVISTA_LABEL: Record<EstadoPreEntrevista | "sin_coordinar",
   cancelada: "Cancelada (postulación retirada)",
 };
 
-export const PRE_ENTREVISTA_STYLE: Record<EstadoPreEntrevista | "sin_coordinar", string> = {
-  sin_coordinar: "bg-gray-100 text-gray-600",
-  coordinada: "bg-blue-100 text-blue-800",
-  realizada: "bg-emerald-100 text-emerald-800",
-  no_asistio: "bg-amber-100 text-amber-800",
-  cancelada: "bg-slate-100 text-slate-600",
+export const PRE_ENTREVISTA_TONO: Record<EstadoPreEntrevista | "sin_coordinar", TonoBadge> = {
+  sin_coordinar: "neutral",
+  coordinada: "info",
+  realizada: "success",
+  no_asistio: "warning",
+  cancelada: "neutral",
 };
 
-/** Etiqueta y estilo del estado; la coordinada lleva la fecha. */
+/** Etiqueta y tono del estado; la coordinada lleva la fecha. */
 export function badgePreEntrevista(
   pre: Pick<Tabla<"pre_entrevistas">, "estado" | "fecha_hora"> | null | undefined,
-): { label: string; className: string } {
+): { label: string; tono: TonoBadge } {
   if (!pre || !esEstadoPreEntrevista(pre.estado)) {
-    return { label: PRE_ENTREVISTA_LABEL.sin_coordinar, className: PRE_ENTREVISTA_STYLE.sin_coordinar };
+    return { label: PRE_ENTREVISTA_LABEL.sin_coordinar, tono: PRE_ENTREVISTA_TONO.sin_coordinar };
   }
   const label =
     pre.estado === "coordinada"
       ? `${PRE_ENTREVISTA_LABEL.coordinada}: ${formatFechaHoraCorta(pre.fecha_hora)}`
       : PRE_ENTREVISTA_LABEL[pre.estado];
-  return { label, className: PRE_ENTREVISTA_STYLE[pre.estado] };
+  return { label, tono: PRE_ENTREVISTA_TONO[pre.estado] };
 }
 
 /** La fecha ya pasó: se puede registrar el resultado. */

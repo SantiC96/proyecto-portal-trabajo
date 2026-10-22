@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { PublicFooter } from "@/components/public/public-footer";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { RECOVERY_COOKIE } from "@/lib/session-config";
 import { NuevaContrasenaForm } from "./form";
 
@@ -18,13 +18,10 @@ export default async function NuevaContrasenaPage({
   }
 
   return (
-    <>
-      <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
-        <NuevaContrasenaForm
-          tokenHash={type === "recovery" ? (token_hash ?? "") : ""}
-        />
-      </main>
-      <PublicFooter />
-    </>
+    <AuthShell>
+      <NuevaContrasenaForm
+        tokenHash={type === "recovery" ? (token_hash ?? "") : ""}
+      />
+    </AuthShell>
   );
 }

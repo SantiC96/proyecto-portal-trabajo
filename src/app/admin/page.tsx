@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 
 function textoEstado(hayPendientes: boolean): string {
   return hayPendientes
-    ? "text-sm font-medium text-amber-700 dark:text-amber-400"
+    ? "text-sm font-medium text-warning-text"
     : "text-sm text-muted-foreground";
 }
 
@@ -66,7 +66,7 @@ export default async function AdminDashboardPage() {
   const postulantesEsperando = Number(esperandoCursoRes.data ?? 0);
 
   return (
-    <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
+    <section>
       <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         Panel de la Oficina de Empleo
       </h1>
@@ -158,7 +158,7 @@ export default async function AdminDashboardPage() {
         </Link>
 
         <Link
-          href="/admin/postulantes?comprobante=pendiente"
+          href="/admin/comprobantes"
           className="flex items-center justify-between rounded-[var(--radius-lg)] border border-border bg-surface p-5 transition-colors hover:bg-surface-tinted"
         >
           <div className="flex items-center gap-3">

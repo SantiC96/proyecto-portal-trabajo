@@ -52,7 +52,7 @@ export default async function EmpresaDashboardPage() {
   const cantidadPorVencer = porVencer.count ?? 0;
 
   return (
-    <section className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
+    <section>
       <Suspense>
         <AvisoUrl />
       </Suspense>
@@ -92,15 +92,15 @@ export default async function EmpresaDashboardPage() {
         {(cantidadVencidas > 0 || cantidadPorVencer > 0) && (
           <Link
             href="/empresa/ofertas"
-            className="mt-3 flex items-start gap-3 rounded-[var(--radius-lg)] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 transition hover:bg-amber-100"
+            className="mt-3 flex items-start gap-3 rounded-[var(--radius-lg)] bg-accent px-4 py-3.5 text-[15px] leading-[1.45] text-accent-foreground transition-colors duration-150 hover:bg-accent-hover"
           >
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <AlertTriangle className="mt-px h-5 w-5 shrink-0" aria-hidden="true" />
             <span>
               {cantidadVencidas > 0 &&
                 `${cantidadVencidas === 1 ? "Tenés 1 oferta vencida" : `Tenés ${cantidadVencidas} ofertas vencidas`} que ya no se ${cantidadVencidas === 1 ? "ve" : "ven"} en el portal. `}
               {cantidadPorVencer > 0 &&
                 `${cantidadPorVencer === 1 ? "1 oferta vence" : `${cantidadPorVencer} ofertas vencen`} en los próximos ${DIAS_AVISO_VENCIMIENTO} días. `}
-              <span className="font-semibold underline-offset-2 hover:underline">
+              <span className="font-semibold underline underline-offset-2">
                 {cantidadVencidas > 0 ? "Renovalas desde Mis ofertas" : "Ver mis ofertas"}
               </span>
             </span>

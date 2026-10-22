@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Info, Mail } from "lucide-react";
-import { PublicFooter } from "@/components/public/public-footer";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { Aviso } from "@/components/ui/aviso";
 
 export const metadata: Metadata = {
   title: "Verificá tu correo | Portal de Empleo Funes",
@@ -18,9 +19,8 @@ export default async function VerificarEmailPage({
   const comprobanteSinSubir = comprobante === "pendiente";
 
   return (
-    <>
-      <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
-        <div className="w-full max-w-md rounded-2xl border border-border bg-white px-8 py-10 text-center shadow-sm">
+    <AuthShell>
+        <div className="text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Mail className="h-7 w-7" />
           </div>
@@ -32,16 +32,10 @@ export default async function VerificarEmailPage({
             activar tu cuenta y empezar a buscar empleo.
           </p>
           {comprobanteSinSubir && (
-            <div
-              role="status"
-              className="mt-4 flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm text-amber-900"
-            >
-              <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              <p>
-                Tu cuenta se creó, pero no pudimos subir tu comprobante de domicilio. Podés
-                subirlo desde tu perfil, en la sección «Procedencia».
-              </p>
-            </div>
+            <Aviso tono="warning" icono={Info} className="mt-4 text-left">
+              Tu cuenta se creó, pero no pudimos subir tu comprobante de domicilio. Podés
+              subirlo desde tu perfil, en la sección «Procedencia».
+            </Aviso>
           )}
           <div className="mt-4 rounded-lg border border-border bg-secondary px-4 py-3 text-left text-sm text-muted-foreground-strong">
             <p className="font-semibold text-foreground">¿Qué sigue después de confirmar?</p>
@@ -59,9 +53,6 @@ export default async function VerificarEmailPage({
             </Link>
           </p>
         </div>
-      </main>
-
-      <PublicFooter />
-    </>
+    </AuthShell>
   );
 }

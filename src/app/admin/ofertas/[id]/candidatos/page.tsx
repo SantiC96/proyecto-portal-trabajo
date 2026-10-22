@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Building, ChevronDown, Clock, FileText, Tag, Users } from "lucide-react";
+import { Building, ChevronDown, Clock, Users } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirRolPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
@@ -11,11 +11,9 @@ import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
 import { estadosDeComprobantes } from "@/lib/comprobantes";
 import { nivelDe } from "@/lib/procedencia";
 import {
-  COINCIDENCIA,
-  ESTILO_INVITACION,
+  TONO_INVITACION,
   destinoVolverBusqueda,
   esEstadoInvitacion,
-  nivelCoincidencia,
   rutaBuscarPostulantes,
   textoUltimaInvitacion,
 } from "@/lib/invitaciones";
@@ -26,8 +24,9 @@ import { BotonVolver } from "@/components/ui/boton-volver";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
-import { Badge } from "@/components/ui/badge";
+import { Badge, claseTono } from "@/components/ui/badge";
 import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
+import { BadgeCoincidencia, MotivosCoincidencia } from "@/components/ofertas/coincidencia";
 import { BadgePorInvitacion } from "@/components/admin/badge-por-invitacion";
 import type { FilaCandidatoParaOferta } from "@/types/db";
 import { cn } from "@/lib/utils";
@@ -73,7 +72,7 @@ export default async function CandidatosOfertaPage({
 
   if (!abierta) {
     return (
-      <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+      <section>
         {volver}
         <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           Buscar postulantes
@@ -92,7 +91,7 @@ export default async function CandidatosOfertaPage({
   const pagina = leerPagina(sp.pagina);
 
   return (
-    <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+    <section>
       {volver}
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
@@ -269,16 +268,7 @@ function TarjetaCandidato({
   hrefFicha: string;
 }) {
   const nombre = `${f.nombre} ${f.apellido}`.trim();
-  const coincidencia = COINCIDENCIA[nivelCoincidencia(f.coincidencia)];
   const estado = esEstadoInvitacion(f.ultima_invitacion_estado) ? f.ultima_invitacion_estado : null;
-
-  const razones: string[] = [
-    ...f.rubros_coincidentes.map((r) => `Rubro: ${r}`),
-    ...f.requisitos_coincidentes.map((r) => `Requisito: ${r}`),
-    ...(f.coincide_titulo ? ["Experiencia en el puesto"] : []),
-    ...(f.disponibilidad_ok ? ["Disponibilidad compatible"] : []),
-    ...(f.tiene_cv ? ["Tiene CV"] : []),
-  ];
 
   return (
     <article
@@ -297,47 +287,23 @@ function TarjetaCandidato({
             comprobante={comprobante}
           />
         </div>
-        <span
-          className={cn(
-            "inline-flex w-fit shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold",
-            coincidencia.className,
-          )}
-        >
-          {coincidencia.label}
-          <span className="sr-only">, puntaje {f.puntaje} de 100</span>
-        </span>
+        <BadgeCoincidencia nivel={f.coincidencia} puntaje={f.puntaje} />
       </div>
 
-      {razones.length > 0 && (
-        <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Por qué coincide">
-          {razones.map((r) => (
-            <li
-              key={r}
-              className="inline-flex max-w-full items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-xs text-muted-foreground-strong"
-            >
-              {r.startsWith("Tiene CV") ? (
-                <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
-              ) : (
-                <Tag className="h-3 w-3 shrink-0" aria-hidden="true" />
-              )}
-              <span className="break-words">{r}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <MotivosCoincidencia datos={f} className="mt-3" />
 
       {estado && (
         <div className="mt-3">
           {estado === "rechazada" ? (
             <NoInteresado
               motivo={f.ultima_invitacion_motivo}
-              className={ESTILO_INVITACION.rechazada}
+              className={claseTono(TONO_INVITACION.rechazada)}
             />
           ) : (
             <p
               className={cn(
-                "rounded-[var(--radius-md)] border px-3 py-2 text-sm font-medium",
-                ESTILO_INVITACION[estado],
+                "rounded-[var(--radius-md)] px-3 py-2 text-sm font-semibold",
+                claseTono(TONO_INVITACION[estado]),
               )}
             >
               {textoUltimaInvitacion(estado, f.ultima_invitacion_fecha)}
@@ -421,7 +387,7 @@ async function YaSePostularon({ ofertaId }: { ofertaId: string }) {
                     {usuario ? `${usuario.nombre} ${usuario.apellido}` : "—"}
                   </p>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant={badge.variant} className={badge.className}>
+                    <Badge tono={badge.tono} estado>
                       {badge.label}
                     </Badge>
                     {p.origen === "invitacion" && <BadgePorInvitacion />}

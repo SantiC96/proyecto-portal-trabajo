@@ -77,7 +77,7 @@ export function DatosContactoForm({
 
   return (
     <form onSubmit={guardar} noValidate>
-      <div className="rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6">
+      <div className="tarjeta px-4 py-5 sm:px-6 sm:py-6">
         <div className="mb-4 flex items-center justify-between gap-3">
           <SectionTitle>Datos de contacto</SectionTitle>
           {!editando && (

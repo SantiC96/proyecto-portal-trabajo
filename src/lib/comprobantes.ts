@@ -19,6 +19,9 @@ import type { ClienteSupabase } from "@/types/db";
 
 const BUCKET = "comprobantes";
 
+/** Duración de las URLs firmadas que abre la oficina (ficha y /admin/comprobantes). */
+export const SEGUNDOS_URL_COMPROBANTE_OFICINA = 600;
+
 const COLUMNAS_COMPROBANTE =
   "id, ruta, nombre_original, creado_en, tamano, mime_type, verificacion_estado, verificacion_motivo, verificado_en" as const;
 
@@ -98,6 +101,29 @@ export async function estadosDeComprobantes(
     }
   }
   return estados;
+}
+
+/**
+ * URLs firmadas de varios comprobantes en una sola llamada a Storage, por
+ * ruta. Las rutas sin URL (archivo borrado, sin permiso) no aparecen.
+ */
+export async function urlsFirmadasDeComprobantes(
+  supabase: ClienteSupabase,
+  rutas: string[],
+  segundos: number,
+): Promise<Map<string, string>> {
+  const urls = new Map<string, string>();
+  if (rutas.length === 0) return urls;
+
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrls(rutas, segundos);
+  if (error) {
+    logError("urlsFirmadasDeComprobantes", error);
+    return urls;
+  }
+  for (const fila of data) {
+    if (fila.path && fila.signedUrl) urls.set(fila.path, fila.signedUrl);
+  }
+  return urls;
 }
 
 export type ComprobanteValidado = {

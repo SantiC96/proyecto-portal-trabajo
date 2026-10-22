@@ -49,7 +49,7 @@ export async function PaginaNotificaciones({
   const masNueva = nuevas?.[0]?.created_at ?? null;
 
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+    <section>
       <BotonVolver href={panel.href}>{panel.label}</BotonVolver>
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
@@ -143,7 +143,7 @@ async function ListadoNotificaciones({
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 font-medium text-foreground">
                     {nueva && (
-                      <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+                      <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-accent" />
                     )}
                     {n.titulo}
                     {nueva && <span className="sr-only"> (nueva)</span>}

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
  */
 export function NoInteresado({ motivo, className }: { motivo: string | null; className: string }) {
   const clase = cn(
-    "inline-flex min-h-11 items-center gap-1.5 rounded-[var(--radius-md)] border px-3 text-sm font-medium sm:min-h-9",
+    "inline-flex min-h-11 items-center gap-1.5 rounded-[var(--radius-md)] px-3 text-sm font-semibold",
     className,
   );
   const texto = motivo?.trim();
@@ -24,7 +24,7 @@ export function NoInteresado({ motivo, className }: { motivo: string | null; cla
         openOnHover
         delay={150}
         aria-label="No interesado. Ver el motivo"
-        className={cn(clase, "cursor-help focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30")}
+        className={cn(clase, "cursor-help focus-visible:outline-none focus-visible:shadow-[var(--sombra-foco)]")}
       >
         No interesado
         <Info className="h-4 w-4 shrink-0" aria-hidden="true" />

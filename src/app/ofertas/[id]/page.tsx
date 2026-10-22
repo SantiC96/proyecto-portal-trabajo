@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Building, MapPin, Clock, Briefcase, UserSearch } from "lucide-react";
-import { PublicFooter } from "@/components/public/public-footer";
 import { getOfertaById } from "@/lib/ofertas";
 import { formatFecha } from "@/lib/fechas";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
@@ -12,6 +11,7 @@ import { RequisitosList, BeneficiosList } from "@/components/ofertas/requisitos-
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { consultaCvsDisponibles, conUrlsFirmadas, type CvVista } from "@/lib/cvs";
+import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -84,8 +84,8 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
 
   return (
     <>
-      <main className="flex-1 px-4 py-8 sm:px-6 sm:py-12">
-        <div className="mx-auto max-w-3xl">
+      <main className="flex-1">
+        <div className="contenido-lectura">
           <BotonVolver href="/ofertas">Volver a ofertas</BotonVolver>
 
           {/* Card */}
@@ -126,12 +126,8 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
 
             {/* Modalidad & jornada */}
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-md bg-gray-100 px-2.5 py-1 font-medium text-muted-foreground-strong">
-                {oferta.modalidad}
-              </span>
-              <span className="rounded-md bg-gray-100 px-2.5 py-1 font-medium text-muted-foreground-strong">
-                {oferta.jornada}
-              </span>
+              <EtiquetaRubro>{oferta.modalidad}</EtiquetaRubro>
+              <EtiquetaRubro>{oferta.jornada}</EtiquetaRubro>
             </div>
 
             <hr className="my-6 border-border/60" />
@@ -202,7 +198,6 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
         </div>
       </main>
 
-      <PublicFooter />
     </>
   );
 }

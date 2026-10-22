@@ -38,7 +38,7 @@ export default async function IndicadoresPage({
   const periodo = leerPeriodo(sp.periodo);
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+    <section>
       <BotonVolver href="/admin">Volver al panel</BotonVolver>
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
@@ -294,7 +294,7 @@ function TarjetaGrafico({
 
 function ErrorGrafico() {
   return (
-    <p role="alert" className="text-sm text-red-700">
+    <p role="alert" className="text-sm text-danger">
       No pudimos cargar este gráfico. Intentá de nuevo en unos minutos.
     </p>
   );

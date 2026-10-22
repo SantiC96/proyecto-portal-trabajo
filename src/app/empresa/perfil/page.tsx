@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { requerirRolPagina, obtenerEmpresaActual } from "@/lib/auth";
 import { fotoDePerfil } from "@/lib/fotos-perfil";
 import { formatearCUIT } from "@/lib/cuit";
-import { PublicFooter } from "@/components/public/public-footer";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { EncabezadoPerfil } from "@/components/perfil/encabezado-perfil";
 import { inicialesDeEmpresa, inicialesDePersona } from "@/lib/iniciales";
@@ -40,7 +39,7 @@ export default async function EmpresaPerfilPage() {
   return (
     <>
       <main className="flex-1">
-        <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+        <section className="contenido-lectura-ancho">
           <BotonVolver href="/empresa">Volver al panel</BotonVolver>
           <h1 className="mb-6 mt-4 text-2xl font-bold tracking-tight text-foreground">
             Mi perfil
@@ -100,7 +99,6 @@ export default async function EmpresaPerfilPage() {
           </div>
         </section>
       </main>
-      <PublicFooter />
     </>
   );
 }

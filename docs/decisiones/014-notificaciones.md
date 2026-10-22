@@ -126,7 +126,7 @@ No hay cron (decisión 013): una oferta vencida sigue en estado `activa`. Los av
 
 ### 9. Interfaz
 
-- **Campanita** (`CampanaNotificaciones`) en la navbar de los tres roles: cantidad de no leídas (oculta en 0), últimos 5 avisos con ícono y color por tipo y fecha relativa ("hace 2 horas"; la fecha exacta en el `title`), "Marcar como leída" por aviso, "Marcar todas como leídas" y "Ver todas las notificaciones".
+- **Campanita** (`CampanaNotificaciones`) en la navegación de los tres roles (al pie de la sidebar en escritorio y en la barra superior del celular, decisión 031): cantidad de no leídas (oculta en 0), últimos 5 avisos con ícono y color por tipo y fecha relativa ("hace 2 horas"; la fecha exacta en el `title`), "Marcar como leída" por aviso, "Marcar todas como leídas" y "Ver todas las notificaciones".
 - **El contador no viene del layout.** En Next 16 los layouts no se vuelven a ejecutar al navegar, así que la campanita pide los datos con la server action `obtenerNotificacionesRecientes` al montarse, en cada cambio de ruta (`usePathname`), al abrirse y cuando el listado avisa que marcó notificaciones (evento de ventana `notificaciones:cambiaron`, `src/components/notificaciones/eventos.ts`). El layout raíz solo pasa la ruta del listado del rol (`notificacionesHref` en `obtenerSesionActual()`).
 - **Listado completo**, paginado (20 por página), con el mismo componente `PaginaNotificaciones` en:
   - `/notificaciones` (postulante, dentro de `(dashboard)`),

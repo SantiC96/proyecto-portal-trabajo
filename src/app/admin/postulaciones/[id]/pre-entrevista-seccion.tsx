@@ -25,6 +25,7 @@ import { formatFechaHora } from "@/lib/fechas";
 import { useAccion } from "@/lib/use-accion";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
 import { badgePreEntrevista, type PreEntrevista } from "@/lib/pre-entrevistas";
+import { Badge } from "@/components/ui/badge";
 import {
   coordinarPreEntrevista,
   registrarResultadoPreEntrevista,
@@ -230,9 +231,9 @@ export function PreEntrevistaSeccion({
           <CalendarClock className="h-4 w-4 text-primary" aria-hidden="true" />
           Pre-entrevista
         </h2>
-        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}>
+        <Badge tono={badge.tono} estado>
           {badge.label}
-        </span>
+        </Badge>
       </div>
 
       {preEntrevista ? (

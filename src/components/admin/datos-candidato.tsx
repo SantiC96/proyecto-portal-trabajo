@@ -16,7 +16,7 @@ export function DatosCandidato({
   return (
     <>
       {/* Datos personales */}
-      <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
+      <div className="tarjeta p-5">
         <h2 className="font-semibold text-foreground">Datos del candidato</h2>
         <dl className="mt-4 grid grid-cols-1 gap-y-3 text-sm sm:grid-cols-2">
           <div>

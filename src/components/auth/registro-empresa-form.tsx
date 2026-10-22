@@ -30,7 +30,7 @@ import {
 import { useErroresCampo } from "@/lib/use-errores-campo";
 import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
-import { BotonVolver } from "@/components/ui/boton-volver";
+import { Aviso } from "@/components/ui/aviso";
 
 const CAMPOS = [
   "razonSocial",
@@ -152,10 +152,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
 
   // ── render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="w-full max-w-xl">
-      <BotonVolver href="/" className="mb-3">
-        Volver al inicio
-      </BotonVolver>
+    <div className="w-full">
       {/* Header */}
       <div className="mb-6 text-center">
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -172,7 +169,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
       <form
         onSubmit={handleSubmit}
         noValidate
-        className="flex flex-col gap-6 rounded-2xl border border-border bg-white px-4 py-6 shadow-sm sm:px-7 sm:py-8"
+        className="flex flex-col gap-6"
       >
         {/* ── 1. Datos de la empresa ────────────────────────────────────── */}
         <section>
@@ -229,7 +226,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                   placeholder="30-12345678-9"
                   className={`${inputClass} ${
                     cuitError
-                      ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
+                      ? "border-danger focus:border-danger focus:ring-danger/20"
                       : ""
                   }`}
                   {...ariaErrorCampo("reg-cuit", campos.errores.cuit)}
@@ -237,7 +234,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
               </InputWrapper>
               <ErrorCampo idCampo="reg-cuit" mensaje={campos.errores.cuit} />
               {cuitError && (
-                <p className="flex items-center gap-1.5 text-xs text-red-500">
+                <p className="flex items-center gap-1.5 text-xs text-danger">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                   CUIT inválido. Verificá el dígito verificador.
                 </p>
@@ -498,7 +495,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                   placeholder="Repetí tu contraseña"
                   className={`${inputClass} pr-10 ${
                     passwordRepeatError
-                      ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
+                      ? "border-danger focus:border-danger focus:ring-danger/20"
                       : ""
                   }`}
                   {...ariaErrorCampo("reg-password-repeat", campos.errores.passwordRepeat)}
@@ -522,7 +519,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
               </InputWrapper>
               <ErrorCampo idCampo="reg-password-repeat" mensaje={campos.errores.passwordRepeat} />
               {passwordRepeatError && (
-                <p className="flex items-center gap-1.5 text-xs text-red-500">
+                <p className="flex items-center gap-1.5 text-xs text-danger">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                   Las contraseñas no coinciden.
                 </p>
@@ -539,17 +536,14 @@ export function RegistroEmpresaForm({ categorias }: Props) {
 
         {/* ── Error global ───────────────────────────────────────────────── */}
         {submitError && (
-          <div className="flex flex-col gap-1 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-            <div className="flex items-start gap-2.5">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{submitError.mensaje}</span>
-            </div>
+          <Aviso tono="danger">
+            <p>{submitError.mensaje}</p>
             {submitError.ref && (
-              <p className="ml-6 text-xs text-gray-500">
+              <p className="mt-1 text-sm">
                 Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {submitError.ref}
               </p>
             )}
-          </div>
+          </Aviso>
         )}
 
         {/* ── Submit ─────────────────────────────────────────────────────── */}
@@ -558,7 +552,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
           id="reg-empresa-submit"
           disabled={isLoading || passwordRepeatError || cuitError}
           aria-busy={isLoading}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+          className="btn-primario w-full"
         >
           {isLoading ? (
             <Spinner />

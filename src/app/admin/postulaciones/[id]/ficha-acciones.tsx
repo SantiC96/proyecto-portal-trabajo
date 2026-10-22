@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/obligatorio";
 import { useErroresCampo } from "@/lib/use-errores-campo";
 import { cn } from "@/lib/utils";
+import { Aviso } from "@/components/ui/aviso";
 
 type Props = {
   postulacionId: string;
@@ -160,13 +161,13 @@ export function FichaAcciones({
       <div className="space-y-3">
         <div className="rounded-[var(--radius-lg)] border border-border bg-surface-tinted p-4">
           {estadoVisible === "contratado" ? (
-            <p className="text-sm font-medium text-emerald-800">
+            <p className="text-sm font-medium text-success">
               Contratado por {empresa}
               {derivacion?.fecha_respuesta &&
                 ` el ${formatFecha(derivacion.fecha_respuesta)}`}
             </p>
           ) : estadoVisible === "no_seleccionado_empresa" ? (
-            <p className="text-sm font-medium text-red-700">
+            <p className="text-sm font-medium text-danger">
               No seleccionado por {empresa}
               {derivacion?.fecha_respuesta &&
                 ` el ${formatFecha(derivacion.fecha_respuesta)}`}
@@ -265,9 +266,9 @@ export function FichaAcciones({
   return (
     <div className="space-y-3">
       {ofertaEnRevision && (
-        <div className="rounded-[var(--radius-lg)] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <Aviso tono="warning">
           La oferta está en revisión: no se puede derivar ni rechazar hasta que se vuelva a aprobar.
-        </div>
+        </Aviso>
       )}
 
 
@@ -375,12 +376,9 @@ export function FichaAcciones({
             </DialogDescription>
           </DialogHeader>
           {avisoCurso && (
-            <p
-              role="note"
-              className="rounded-[var(--radius-md)] border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-            >
+            <Aviso tono="warning" role="note">
               {avisoCurso}
-            </p>
+            </Aviso>
           )}
           <div className="space-y-2">
             <label

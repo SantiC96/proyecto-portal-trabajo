@@ -13,6 +13,9 @@ import { requerirRolPagina } from "@/lib/auth";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { fotoDePerfil } from "@/lib/fotos-perfil";
+import { Badge } from "@/components/ui/badge";
+import { Aviso } from "@/components/ui/aviso";
+import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
 
 export const metadata: Metadata = {
   title: "Oferta | Panel municipal | Portal de Empleo Funes",
@@ -88,7 +91,7 @@ export default async function AdminOfertaDetallePage({
     .filter((n): n is string => Boolean(n));
 
   return (
-    <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+    <section className="contenido-lectura-ancho">
       <BotonVolver href="/admin/ofertas">Volver a ofertas</BotonVolver>
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -117,9 +120,9 @@ export default async function AdminOfertaDetallePage({
             </h1>
 
             {oferta.contenido_editado_en && (
-              <span className="mt-2 inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
+              <Badge tono="info" className="mt-2">
                 Modificada el {formatFecha(oferta.contenido_editado_en)}
-              </span>
+              </Badge>
             )}
 
             <div className="mt-3 flex flex-wrap gap-3 text-sm text-muted-foreground">
@@ -134,12 +137,8 @@ export default async function AdminOfertaDetallePage({
             </div>
 
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-md bg-gray-100 px-2.5 py-1 font-medium text-muted-foreground">
-                {oferta.modalidad}
-              </span>
-              <span className="rounded-md bg-gray-100 px-2.5 py-1 font-medium text-muted-foreground">
-                {oferta.jornada}
-              </span>
+              <EtiquetaRubro>{oferta.modalidad}</EtiquetaRubro>
+              <EtiquetaRubro>{oferta.jornada}</EtiquetaRubro>
             </div>
           </div>
 
@@ -265,12 +264,9 @@ export default async function AdminOfertaDetallePage({
 
           {/* Motivo de rechazo */}
           {oferta.motivo_rechazo && (
-            <div className="rounded-[var(--radius-lg)] border border-red-200 bg-red-50 p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-red-700">
-                Motivo del rechazo
-              </p>
-              <p className="mt-2 text-sm text-red-800">{oferta.motivo_rechazo}</p>
-            </div>
+            <Aviso tono="danger" titulo="Motivo del rechazo" role="none">
+              {oferta.motivo_rechazo}
+            </Aviso>
           )}
         </div>
 

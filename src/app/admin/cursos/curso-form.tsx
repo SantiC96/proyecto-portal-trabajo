@@ -161,9 +161,9 @@ export function CursoForm({ modo, cursoId, inicial }: Props) {
 
       {error && (
         <div>
-          <p className="text-sm text-red-600">{error.mensaje}</p>
+          <p className="text-sm text-danger">{error.mensaje}</p>
           {error.ref && (
-            <p className="mt-0.5 text-xs text-gray-500">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
             </p>
           )}

@@ -1379,6 +1379,18 @@ export type Database = {
           tasa_contratacion: number
         }[]
       }
+      indicadores_postulante: {
+        Args: never
+        Returns: {
+          contratadas: number
+          derivadas_sin_resultado: number
+          en_revision: number
+          invitaciones_pendientes: number
+          no_seleccionadas: number
+          postulaciones_activas: number
+          retiradas: number
+        }[]
+      }
       invitar_a_oferta: {
         Args: { p_oferta_id: string; p_postulante_id: string }
         Returns: string
@@ -1519,7 +1531,34 @@ export type Database = {
           oferta_id: string
         }[]
       }
+      ofertas_de_mis_postulaciones: {
+        Args: { p_postulacion_ids: string[] }
+        Returns: {
+          empresa_nombre: string
+          oferta_id: string
+          postulacion_id: string
+          titulo: string
+        }[]
+      }
       ofertas_dias_restauracion: { Args: never; Returns: number }
+      ofertas_recomendadas_para_mi: {
+        Args: { p_limite?: number }
+        Returns: {
+          coincide_titulo: boolean
+          disponibilidad_ok: boolean
+          empresa_nombre: string
+          id: string
+          lugar: string
+          modalidad: Database["public"]["Enums"]["modalidad_oferta"]
+          nivel: string
+          puntaje: number
+          requisitos_coincidentes: string[]
+          rubros_coincidentes: string[]
+          tiene_cv: boolean
+          titulo: string
+          vence_en: string
+        }[]
+      }
       parametros_cursos: {
         Args: never
         Returns: {
@@ -1593,6 +1632,18 @@ export type Database = {
           candidatos_derivados: number
           oferta_id: string
           postulaciones_oficina: number
+        }[]
+      }
+      puntaje_coincidencia: {
+        Args: { p_oferta_id: string; p_postulante_id: string }
+        Returns: {
+          coincide_titulo: boolean
+          disponibilidad_ok: boolean
+          nivel: string
+          puntaje: number
+          requisitos_coincidentes: string[]
+          rubros_coincidentes: string[]
+          tiene_cv: boolean
         }[]
       }
       purgar_ofertas_eliminadas: { Args: never; Returns: number }
@@ -1696,6 +1747,19 @@ export type Database = {
       rol_actual: {
         Args: never
         Returns: Database["public"]["Enums"]["rol_usuario"]
+      }
+      ultimos_movimientos_postulante: {
+        Args: { p_limite?: number }
+        Returns: {
+          empresa_nombre: string
+          estado: Database["public"]["Enums"]["estado_postulacion"]
+          estado_empresa: Database["public"]["Enums"]["estado_empresa"]
+          fecha: string
+          fecha_entrevista: string
+          oferta_id: string
+          postulacion_id: string
+          titulo: string
+        }[]
       }
       validar_datos_pre_entrevista: {
         Args: { p_fecha_hora: string; p_lugar: string; p_nota: string }

@@ -19,7 +19,7 @@ import { FichaAcciones } from "./ficha-acciones";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { logError } from "@/lib/logger";
 import { aEstadoCursos, avisoCursoAlDerivar } from "@/lib/cursos";
-import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_STYLE } from "@/lib/derivacion-estados";
+import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_TONO } from "@/lib/derivacion-estados";
 import { requerirRolPagina } from "@/lib/auth";
 import { preEntrevistaYaPaso } from "@/lib/pre-entrevistas";
 import { PreEntrevistaSeccion } from "./pre-entrevista-seccion";
@@ -134,7 +134,7 @@ export default async function PostulacionFichaPage({
       : null;
 
   return (
-    <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+    <section className="contenido-lectura-ancho">
       {postulacion.estado === "recibida" && <MarcarFichaAbierta postulacionId={postulacionId} />}
       <BotonVolver href="/admin/postulaciones">Volver a postulaciones</BotonVolver>
 
@@ -157,7 +157,7 @@ export default async function PostulacionFichaPage({
               : "Candidato desconocido"}
           </h1>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <Badge variant={badge.variant} className={badge.className}>
+            <Badge tono={badge.tono} estado>
               {badge.label}
             </Badge>
             {postulacion.origen === "invitacion" && <BadgePorInvitacion />}
@@ -236,7 +236,7 @@ export default async function PostulacionFichaPage({
                   oferta.contenido_editado_en > postulacion.created_at && (
                   <div className="sm:col-span-2">
                     <dt className="text-muted-foreground">Modificada tras la postulación</dt>
-                    <dd className="mt-0.5 text-amber-700 font-medium">
+                    <dd className="mt-0.5 text-warning-text font-medium">
                       {formatFecha(oferta.contenido_editado_en)}
                     </dd>
                   </div>
@@ -322,11 +322,9 @@ export default async function PostulacionFichaPage({
                 <div>
                   <dt className="text-muted-foreground">Estado</dt>
                   <dd className="mt-0.5">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${DERIVACION_ESTADO_STYLE[derivacion.estado_empresa] ?? "bg-gray-100 text-gray-600"}`}
-                    >
+                    <Badge tono={DERIVACION_ESTADO_TONO[derivacion.estado_empresa] ?? "neutral"} estado>
                       {DERIVACION_ESTADO_LABEL[derivacion.estado_empresa] ?? derivacion.estado_empresa}
-                    </span>
+                    </Badge>
                   </dd>
                 </div>
                 {derivacion.fecha_entrevista && (

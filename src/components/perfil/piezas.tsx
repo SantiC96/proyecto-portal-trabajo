@@ -1,6 +1,6 @@
-import { AlertCircle } from "lucide-react";
 import type { ErrorAccion } from "@/lib/resultado";
 import { CLASE_CONTROL_INVALIDO } from "@/components/ui/obligatorio";
+import { Aviso } from "@/components/ui/aviso";
 
 // Piezas comunes de las páginas "Mi perfil" de los tres roles.
 
@@ -61,17 +61,14 @@ export function CampoLectura({
 
 export function MensajeError({ error }: { error: ErrorAccion }) {
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-      <div className="flex items-start gap-2.5">
-        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-        <span>{error.mensaje}</span>
-      </div>
+    <Aviso tono="danger">
+      <p>{error.mensaje}</p>
       {error.ref && (
-        <p className="ml-7 text-xs text-gray-500">
+        <p className="mt-1 text-sm">
           Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
         </p>
       )}
-    </div>
+    </Aviso>
   );
 }
 
@@ -85,7 +82,7 @@ export function TarjetaPerfil({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6 ${className}`}
+      className={`tarjeta px-4 py-5 sm:px-6 sm:py-6 ${className}`}
     >
       {children}
     </div>

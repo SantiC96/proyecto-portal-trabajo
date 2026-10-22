@@ -19,6 +19,7 @@ import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { UMBRAL_RECHAZOS_CURSO, VENTANA_RECHAZOS_DIAS } from "@/lib/cursos";
 import { requerirRolPagina } from "@/lib/auth";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = {
   title: "Cursos | Panel municipal | Portal de Empleo Funes",
@@ -38,7 +39,7 @@ export default async function CursosPage({
   const pagina = leerPagina(sp.pagina);
 
   return (
-    <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
+    <section>
       <Suspense>
         <AvisoUrl />
       </Suspense>
@@ -222,15 +223,9 @@ async function ListadoCursos({
                       {conteosAsignaciones[c.id] ?? 0}
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          c.activo
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
+                      <Badge tono={c.activo ? "success" : "neutral"} estado>
                         {c.activo ? "Activo" : "Inactivo"}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="px-4 py-3 w-px whitespace-nowrap">
                       <Link
@@ -255,15 +250,9 @@ async function ListadoCursos({
               >
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-medium text-foreground">{c.nombre}</p>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${
-                      c.activo
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
+                  <Badge tono={c.activo ? "success" : "neutral"} estado>
                     {c.activo ? "Activo" : "Inactivo"}
-                  </span>
+                  </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {conteosAsignaciones[c.id] ?? 0} asignación

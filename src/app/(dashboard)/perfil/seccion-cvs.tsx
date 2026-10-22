@@ -12,6 +12,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
 import { MensajeError, SectionTitle } from "@/components/perfil/piezas";
 import { formatFecha } from "@/lib/fechas";
+import { SECCION_PERFIL } from "@/lib/perfil-secciones";
 import {
   CV_ACCEPT,
   CV_HELP_TEXT,
@@ -21,6 +22,7 @@ import {
   textoTamanoArchivo,
   validarTipoCV,
 } from "@/lib/archivos";
+import { Aviso } from "@/components/ui/aviso";
 
 /**
  * Sección "Curriculum Vitae" del perfil del postulante: hasta CV_MAXIMOS CVs
@@ -85,7 +87,10 @@ export function SeccionCvs({ cvs }: { cvs: CvVista[] }) {
   );
 
   return (
-    <div className="rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6">
+    <div
+      id={SECCION_PERFIL.cvs}
+      className="scroll-mt-20 rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6"
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <SectionTitle>Curriculum Vitae</SectionTitle>
         {cvs.length > 0 && (
@@ -201,13 +206,9 @@ export function SeccionCvs({ cvs }: { cvs: CvVista[] }) {
 
       <div aria-live="polite" className="mt-4 empty:hidden">
         {avisoLimite && enLimite && (
-          <div
-            id="aviso-limite-cvs"
-            className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
-          >
-            <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>{ERRORES_ARCHIVO.cvLimite}</span>
-          </div>
+          <Aviso id="aviso-limite-cvs" tono="warning" icono={Info} role="none">
+            {ERRORES_ARCHIVO.cvLimite}
+          </Aviso>
         )}
         {error && <MensajeError error={error} />}
       </div>

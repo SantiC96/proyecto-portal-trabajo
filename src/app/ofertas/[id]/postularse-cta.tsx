@@ -19,6 +19,7 @@ import type { Enum, Tabla } from "@/types/db";
 import { formatFecha } from "@/lib/fechas";
 import type { CvVista } from "@/lib/cvs";
 import { SelectorCv } from "@/components/postulantes/selector-cv";
+import { Badge, type TonoBadge } from "@/components/ui/badge";
 
 const ESTADO_LABEL: Record<Enum<"estado_postulacion">, string> = {
   recibida: "Recibida",
@@ -27,6 +28,16 @@ const ESTADO_LABEL: Record<Enum<"estado_postulacion">, string> = {
   rechazada_municipalidad: "No seleccionada",
   oferta_retirada: "Cerrada",
   retirada_postulante: "Retirada",
+};
+
+// Mismos tonos que Mis postulaciones (src/lib/mis-postulaciones.ts).
+const ESTADO_TONO: Record<Enum<"estado_postulacion">, TonoBadge> = {
+  recibida: "neutral",
+  en_revision: "info",
+  derivada: "teal",
+  rechazada_municipalidad: "neutral",
+  oferta_retirada: "neutral",
+  retirada_postulante: "neutral",
 };
 
 export type Postulacion = Pick<Tabla<"postulaciones">, "id" | "estado" | "created_at">;
@@ -117,17 +128,17 @@ export function PostularseCta({
   if (variant === "ya-postulado" && postulacion) {
     const fecha = formatFecha(postulacion.created_at);
     return (
-      <div className="flex flex-col gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+      <div className="tarjeta flex flex-col gap-2 px-4 py-3">
         <div className="flex items-center gap-2">
-          <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600" />
-          <span className="text-sm font-semibold text-emerald-800">
+          <CheckCircle className="h-5 w-5 shrink-0 text-success" />
+          <span className="text-[15px] font-bold text-success">
             Ya te postulaste el {fecha}
           </span>
         </div>
-        <div className="flex items-center gap-2 pl-6">
-          <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+        <div className="flex flex-wrap items-center gap-2 pl-7">
+          <Badge tono={ESTADO_TONO[postulacion.estado] ?? "neutral"} estado>
             {ESTADO_LABEL[postulacion.estado] ?? postulacion.estado}
-          </span>
+          </Badge>
           <Link
             href="/mis-postulaciones"
             className="text-xs font-medium text-primary underline-offset-2 hover:underline"

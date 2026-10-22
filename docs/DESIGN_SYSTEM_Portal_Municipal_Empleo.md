@@ -156,55 +156,119 @@ En espacios reducidos se permite utilizar solamente el escudo.
 # 5. Paleta
 
 La paleta es la identidad visual implementada en producción. Los valores
-de esta sección son la fuente de verdad.
+de esta sección son la fuente de verdad. Ver la decisión
+`docs/decisiones/030-identidad-visual.md`.
 
-## Acción principal
+**No se usan colores pastel.** Estados, badges, avisos y toasts van con
+fondo sólido y texto blanco (el amarillo, con texto oscuro). No usar las
+clases de colores de Tailwind (`bg-amber-100`, `text-red-700`,
+`bg-emerald-50`, etc.): siempre los tokens de esta sección.
+
+## Marca
 
   Token                    Valor       Uso
   ------------------------ ----------- --------------------------------
-  `primary`                `#0F5B53`   botones, íconos, texto activo
-  `primary-hover`          `#093E39`   hover de botones y CTA
+  `primary`                `#006833`   verde institucional: botones, íconos, texto activo
+  `primary-hover`          `#00532A`   hover de botones y CTA
   `primary-foreground`     `#FFFFFF`   texto sobre fondo primary
 
-## Superficies y neutrales
+## Superficies y bordes
 
-  Token                         Valor       Uso
-  ----------------------------- ----------- --------------------------------
-  `background`                  `#F8F8F4`   fondo general de página
-  `surface`                     `#FFFFFF`   cards, formularios, paneles
-  `border`                      `#D8DDD7`   bordes y separadores
-  `foreground`                  `#1B2926`   texto principal
-  `muted-foreground`            `#6E7772`   texto secundario estándar
-  `muted-foreground-strong`     `#4F5A54`   labels, nav links inactivos
-  `muted-icon`                  `#9CA3A0`   íconos en inputs, indicadores
-  `placeholder`                 `#B0B8B4`   placeholder de inputs
+  Token                 Valor       Uso
+  --------------------- ----------- ----------------------------------------
+  `background`          `#F4F7F5`   fondo general de página
+  `surface`             `#FFFFFF`   cards, formularios, paneles
+  `surface-tinted`      `#F0F5F2`   superficies muy claras, hover del botón neutro
+  `secondary`           `#EEF1EF`   hover del botón secundario, notas neutras
+  `secondary-hover`     `#E3E9E5`   hover sobre fondos secondary, esqueletos
+  `border`              `#DDE5E0`   bordes de tarjetas y separadores
+  `border-strong`       `#C6D3CB`   bordes de campos
+  `border-control`      `#CBD6CF`   borde del botón neutro y de la paginación
+  `border-tab`          `#C6D8CD`   borde de las pestañas inactivas
 
-## Superficies tintadas
+## Texto
 
-  Token                Valor       Uso
-  -------------------- ----------- ----------------------------------------
-  `secondary`          `#E8F0E9`   fondo suave tintado principal
-  `secondary-hover`    `#E4ECE5`   hover discreto sobre fondos secondary
-  `surface-tinted`     `#F0F4F1`   superficies muy claras (badges, selects)
+  Token                       Valor       Uso
+  --------------------------- ----------- --------------------------------
+  `foreground`                `#17251D`   texto principal
+  `heading`                   `#0F2A1B`   títulos
+  `control-foreground`        `#22332A`   labels y texto del botón neutro
+  `muted-foreground`          `#55665C`   texto secundario
+  `muted-foreground-strong`   `#33443A`   texto secundario destacado, etiquetas de rubro
+  `muted-icon`                `#8A988F`   íconos de campos, borde de etiquetas de rubro
+  `placeholder`               `#5F6F66`   placeholder de campos (AA sobre blanco)
+
+## Acento amarillo
+
+  Token                 Valor       Uso
+  --------------------- ----------- --------------------------------
+  `accent`              `#F2B705`   botón de acento, tono warning, contadores
+  `accent-hover`        `#FFC928`   hover del botón de acento
+  `accent-foreground`   `#2B2000`   texto sobre amarillo
+
+El amarillo no se usa como color de texto sobre blanco: para texto de
+aviso suelto se usa `warning-text` (`#8A5A00`).
+
+## Estados (fondos sólidos)
+
+  Token            Valor       Texto        Contraste
+  ---------------- ----------- ------------ -----------
+  `info`           `#1D4E9E`   blanco       7,97:1
+  `teal`           `#0B5D57`   blanco       7,73:1
+  `success`        `#006833`   blanco       6,94:1
+  `neutral`        `#4F5E55`   blanco       6,85:1
+  `danger`         `#B42318`   blanco       6,57:1
+  `danger-hover`   `#912018`   blanco       8,66:1
+  `violet`         `#5B3A9E`   blanco       8,26:1
+  warning          `accent`    `#2B2000`    8,82:1
+
+Todos superan AA (4,5:1) para texto de 13 px en negrita.
+
+Texto de estado suelto sobre blanco (sin fondo):
+
+  Uso       Clase                 Valor       Contraste
+  --------- --------------------- ----------- -----------
+  aviso     `text-warning-text`   `#8A5A00`   5,93:1
+  error     `text-danger`         `#B42318`   6,57:1
+  éxito     `text-primary`        `#006833`   6,94:1
 
 ## Decorativo
 
   Token             Valor       Uso
   ----------------- ----------- -----------------------------------------
-  `brand-subtle`    `#C7E1CD`   blobs y órbitas del panel login intro
+  `brand-subtle`    `#B9DCC7`   sin uso desde el rediseño del inicio
 
-## Colores semánticos
+## Navegación y pantallas de /auth
 
-Los colores semánticos no reemplazan al verde institucional.
+  Token                 Valor       Uso
+  --------------------- ----------- ---------------------------------------------
+  `sidebar-texto`       `#E3F0E8`   secciones de la sidebar; bajada del login
+  `sidebar-suave`       `#CFE6D9`   "Portal de empleo", rol del usuario, "Contraer menú"
+  `sidebar-grupo`       `#C2DECE`   títulos de grupo de la sidebar
+  `tooltip`             `#0F1D15`   tooltips de la sidebar contraída
+  `danger-fondo`        `#FDEDEC`   hover de "Cerrar sesión" en el menú del usuario
+  `fondo-auth`          `#F3F5F4`   fondo del login y de las pantallas de /auth
+  `texto-volver`        `#2E4337`   link "Volver al inicio" de /auth
+  `login-suave`         `#D7EBDF`   volanta y nota del panel verde del login
 
-Definir tokens independientes:
+## Inicio, panel y listas
 
--   `success`
--   `warning`
--   `danger`
--   `info`
+  Token                  Valor       Uso
+  ---------------------- ----------- ---------------------------------------------
+  `texto-bajada`         `#2E4337`   bajada del inicio; empresa en la tarjeta de oferta
+  `invitacion-titulo`    `#3A2A00`   título de la tarjeta y del aviso de invitaciones
+  `invitacion-texto`     `#4A3700`   texto de la tarjeta de invitaciones del inicio
+  `invitacion-detalle`   `#5A4300`   detalle del aviso de invitaciones del panel
+  `progreso-fondo`       `#D3DCD6`   fondo de la barra de progreso
+  `punto-carrusel`       `#B9C8BF`   indicadores de posición del carrusel (decorativos)
+  `tabla-encabezado`     `#F8FAF9`   encabezado de tabla
+  `tabla-borde`          `#E6ECE8`   borde entre filas
+  `tabla-hover`          `#F8FBF9`   hover de fila
+  `tabla-separador`      `#E8ECEA`   separadores de prioridad
 
-No utilizar tokens de acción para representar errores o advertencias.
+`border-tab` (`#C6D8CD`) también es el borde de las pastillas de rubro y
+del buscador del inicio. Sombra del buscador: `--sombra-buscador`
+(`0 8px 24px rgb(0 60 30 / 0.08)`).
 
 ------------------------------------------------------------------------
 
@@ -214,49 +278,23 @@ Los componentes no deben contener colores HEX directamente.
 
 La fuente de verdad vive en el bloque `@theme` de `src/app/globals.css`
 (Tailwind CSS v4). Cada `--color-*` genera automáticamente clases de
-utilidad: `bg-primary`, `text-foreground`, `border-border`, etc.
+utilidad: `bg-primary`, `text-heading`, `bg-danger`, `border-border-strong`,
+etc.
 
-``` css
-@theme {
-  /* Acción principal */
-  --color-primary:            #0f5b53;
-  --color-primary-hover:      #093e39;
-  --color-primary-foreground: #ffffff;
+En `:root` están los radios (`--radius-sm` 8 px, `--radius-md` 10 px,
+`--radius-lg` 12 px, `--radius-xl` 16 px) y las sombras con nombre:
 
-  /* Superficies y neutrales */
-  --color-background: #f8f8f4;
-  --color-surface:    #ffffff;
-  --color-border:     #d8ddd7;
-  --color-foreground: #1b2926;
+  Variable                   Valor
+  -------------------------- ------------------------------------
+  `--sombra-foco`            `0 0 0 3px rgb(0 104 51 / .25)`
+  `--sombra-foco-campo`      `0 0 0 3px rgb(0 104 51 / .18)`
+  `--sombra-error-campo`     `0 0 0 3px rgb(180 35 24 / .18)`
+  `--sombra-dialogo`         `0 24px 60px rgb(0 40 20 / .18)`
+  `--sombra-tarjeta-hover`   `0 8px 20px rgb(15 42 27 / .08)`
 
-  /* Texto atenuado — 4 niveles */
-  --color-muted-foreground:        #6e7772;
-  --color-muted-foreground-strong: #4f5a54;
-  --color-muted-icon:              #9ca3a0;
-  --color-placeholder:             #b0b8b4;
-
-  /* Superficies tintadas verde */
-  --color-secondary:       #e8f0e9;
-  --color-secondary-hover: #e4ece5;
-  --color-surface-tinted:  #f0f4f1;
-
-  /* Decorativo (solo login intro) */
-  --color-brand-subtle: #c7e1cd;
-
-  /* Tipografía */
-  --font-sans:    "Trebuchet MS", "Segoe UI", sans-serif;
-  --font-display: Georgia, "Times New Roman", serif;
-}
-
-:root {
-  --radius-sm: 0.5rem;
-  --radius-md: 0.625rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-}
-```
-
-Los prefijos `--font-*` generan las clases `font-sans` y `font-display`.
+Clases de componente en `globals.css`: `.btn-primario`, `.btn-secundario`,
+`.btn-neutro`, `.btn-peligro`, `.btn-acento`, `.campo`, `.campo-grupo`,
+`.etiqueta-campo`, `.tarjeta` y `.tarjeta-clickeable`.
 
 ------------------------------------------------------------------------
 
@@ -264,30 +302,34 @@ Los prefijos `--font-*` generan las clases `font-sans` y `font-display`.
 
 ## Familias
 
-**Body (token `font-sans`):** `"Trebuchet MS", "Segoe UI", sans-serif`
-
-Usada en todo el portal: body, párrafos, labels, botones, inputs, nav.
+**Body y títulos (token `font-sans`):** Public Sans, cargada con
+`next/font/google` en `src/app/layout.tsx` (pesos 400, 500, 600, 700 y
+800; subset latin; `display: swap`) y expuesta como `--font-public-sans`.
 
 **Display (token `font-display`):** `Georgia, "Times New Roman", serif`
 
-Excepción documentada: solo para los títulos grandes del panel izquierdo
-del login (`.intro-copy h1`, `.login-heading h2`). No usar en otros
-contextos ni en la interfaz autenticada.
+Excepción documentada: solo para los títulos grandes del login. No usar
+en otros contextos ni en la interfaz autenticada.
 
 No introducir familias tipográficas adicionales.
 
-## Escala recomendada
+El `body` usa `-webkit-font-smoothing: antialiased`.
 
-  Uso               Tamaño       Peso
-  ------------ ----------- ----------
-  Display        36--40 px        700
-  H1             30--32 px        700
-  H2                 24 px   600--700
-  H3                 20 px        600
-  Body               16 px        400
-  Body small         14 px        400
-  Label              14 px        500
-  Caption            12 px   400--500
+## Escala
+
+  Uso                   Tamaño       Peso   Color
+  -------------------- ------------ ------ -----------
+  Título de página      24--30 px    800    `heading`
+  Título de sección     20 px        800    `heading`
+  Body                  15--16 px    400    `foreground`
+  Label                 15 px        600    `control-foreground`
+  Botón                 15 px        700
+  Badge                 13 px        700
+  Caption               12--14 px    400--500
+
+Los `h1` y `h2` toman el peso 800 y el color `heading` desde
+`globals.css` aunque cada pantalla tenga sus propias clases
+(`font-bold text-foreground`). Un `h2` sin tamaño propio mide 20 px.
 
 En mobile los títulos pueden reducirse un nivel visual cuando sea
 necesario.
@@ -317,11 +359,13 @@ No introducir valores arbitrarios si existe un token equivalente.
 
   Elemento                Radius
   ----------------------- -------------------------------
-  Input                   10 px aprox.
-  Button                  10 px aprox.
-  Card                    12 px
-  Modal                   16 px
-  Badge                   pill o 6--8 px según variante
+  Button                  10 px (`--radius-md`)
+  Campo                   12 px (`--radius-lg`)
+  Aviso, toast            12 px (`--radius-lg`)
+  Card                    16 px (`--radius-xl`)
+  Modal                   16 px (`--radius-xl`)
+  Badge                   13 px (pastilla de 26 px)
+  Pestaña                 pastilla
   Avatar/Icon container   circular o 10--12 px
 
 Evitar cards excesivamente redondeadas.
@@ -336,7 +380,8 @@ Las sombras deben ser discretas.
 
 ### Card normal
 
-Borde sutil, sin sombra o con `shadow-sm`.
+Borde de 1 px `border`, sin sombra. Una tarjeta clickeable se eleva 2 px
+con `--sombra-tarjeta-hover` al pasar el mouse.
 
 ### Elemento elevado
 
@@ -354,25 +399,37 @@ No usar sombras fuertes en todas las cards.
 
 # 11. Layout
 
-## Desktop autenticado
+## Estructura (`AppShell`)
 
-Estructura recomendada:
+`src/components/layout/app-shell.tsx` arma todas las páginas, con o sin
+sesión (decisión 031):
 
 ``` text
-┌───────────────┬─────────────────────────────────────────┐
-│               │ Header / contexto / usuario             │
-│   Sidebar     ├─────────────────────────────────────────┤
-│               │                                         │
-│               │              Page content               │
-│               │                                         │
-└───────────────┴─────────────────────────────────────────┘
+Desde lg (1024 px)                    Menos de lg
+┌──────────┬────────────────────────┐ ┌──────────────────────────┐
+│          │                        │ │ ☰ [trébol] Portal  🔔    │ barra 60 px
+│ Sidebar  │      Contenido         │ ├──────────────────────────┤
+│ 260 px   │   (todo el ancho)      │ │       Contenido          │
+│ (72 px)  │                        │ │                          │
+└──────────┴────────────────────────┘ └──────────────────────────┘
 ```
+
+Las rutas de `/auth/*` no llevan navegación: solo el contenido.
 
 ## Contenido
 
-Ancho máximo recomendado para páginas de contenido:
-
-`max-w-7xl`
+-   Padding del área de contenido: 32 px en escritorio, 24 px en tablet
+    y 16 px en celular.
+-   Sin `max-width` global: cada página decide su ancho.
+-   Las páginas no agregan padding propio ni `mx-auto max-w-*`: el
+    margen lo pone `.app-contenido`.
+-   Listas y paneles: todo el ancho.
+-   Textos largos, formularios y detalles: clase `.contenido-lectura`
+    (`max-width: 720px`), o `.contenido-lectura-ancho` (`960px`) si el
+    formulario o el detalle tiene dos columnas. Alineados a la izquierda.
+-   Para pasar de una a varias columnas dentro del contenido se prefieren
+    container queries (`@container`, `@xl:`, `@4xl:`) a los breakpoints
+    de la ventana: la sidebar le quita ancho al contenido.
 
 Los formularios no deben expandirse innecesariamente a todo el viewport.
 
@@ -391,45 +448,94 @@ Responsabilidades:
 
 # 12. Sidebar
 
-## Apariencia
+Componentes: `src/components/layout/sidebar.tsx` (contenido),
+`secciones-rol.ts` (secciones por rol), `menu-usuario.tsx` (bloque del
+usuario) y las clases `.sidebar-*` de `globals.css`.
 
--   fondo `brand-900` o `brand-800`;
--   escudo blanco;
--   texto blanco o blanco atenuado;
--   íconos Lucide;
--   item activo claramente visible;
--   separadores mínimos.
+## Escritorio (desde lg)
 
-## Item normal
+-   Fija a la izquierda (sticky, 100vh), 260 px de ancho, fondo
+    `primary`, texto blanco, padding 20 px 12 px 14 px. Solo la lista de
+    secciones tiene scroll si no entra.
+-   **Marca:** logo blanco de 170 px y debajo "PORTAL DE EMPLEO" (12 px,
+    700, letter-spacing .08em, `sidebar-suave`). Línea
+    `rgba(255,255,255,.18)` y 12 px de margen.
+-   **Sección:** ícono Lucide de 20 px y texto 15 px 500, alto 44 px,
+    padding 0 12 px, radio 10, gap 12, color `sidebar-texto`.
+    -   Hover: fondo `rgba(255,255,255,.12)` y texto blanco (150 ms).
+    -   Actual: fondo blanco, texto `primary` 700, `aria-current="page"`.
+        Se calcula con la ruta: coincidencia exacta o por prefijo, la más
+        específica gana.
+    -   Destacada ("Publicar oferta" de la empresa): fondo `accent`,
+        texto `accent-foreground` 700, hover `accent-hover`, 4 px de
+        margen arriba y abajo.
+-   **Títulos de grupo** (solo oficina): 11 px, 700, mayúsculas,
+    letter-spacing .08em, `sidebar-grupo`, padding 12 px 12 px 4 px.
+    **Separador:** línea de 1 px `rgba(255,255,255,.2)` con 8 px de margen.
+-   **Contador** (solo pendientes de la oficina): pastilla de 22 px, radio
+    11, fondo `accent`, texto `accent-foreground` 12 px 800, a la derecha
+    del texto. En la sección actual va en `primary` con texto blanco.
+-   **Pie** (misma línea que arriba):
+    -   Con sesión: bloque del usuario (foto o iniciales de 38 px con
+        borde blanco, nombre 14 px 700, rol 12 px `sidebar-suave`,
+        chevron) y la campanita (44 px; número en pastilla `accent` con
+        borde `primary` de 2 px). El bloque abre hacia arriba un menú
+        blanco (radio 12, sombra `0 12px 32px rgba(0,30,15,.28)`,
+        padding 6): "Mi perfil" y, tras una línea, "Cerrar sesión" en
+        `danger` (hover `danger-fondo`). Ítems de 44 px, 15 px 600, ícono
+        de 18 px. La campanita abre su panel al costado de la sidebar.
+    -   Sin sesión: "Ingresar" (fondo blanco, texto verde) y
+        "Registrarme" (borde 1,5 px `rgba(255,255,255,.8)`), 44 px.
+    -   "Contraer menú" (14 px, `sidebar-suave`, PanelLeftClose /
+        PanelLeftOpen).
 
-Fondo transparente.
+## Contraída (72 px)
 
-## Hover
+-   Solo íconos centrados en botones de 48 × 44; arriba el trébol en un
+    cuadrado blanco de 44 px con radio 10.
+-   Los títulos de grupo pasan a ser una línea separadora.
+-   El contador pasa a una pastilla de 18 px con borde `primary` de 2 px
+    arriba a la derecha del ícono.
+-   El usuario muestra solo la foto, con la campanita arriba;
+    "Ingresar" y "Registrarme", solo el ícono.
+-   Tooltip a la derecha con el nombre al pasar el mouse o con el foco
+    del teclado (fondo `tooltip`, texto blanco 13 px 600, radio 6). Con
+    contador: "Comprobantes · 5 por revisar". Los links conservan su
+    `aria-label`.
+-   La preferencia se guarda en `localStorage` y se aplica antes de
+    pintar (atributo `data-sidebar` en `<html>`).
 
-Fondo blanco con baja opacidad.
+## Barra y panel del celular (menos de lg)
 
-## Item activo
+-   Barra fija de 60 px, fondo `primary`: botón de menú (44 × 44,
+    "Abrir menú", `aria-expanded`), el trébol en un cuadrado blanco de
+    36 px, "Portal de Empleo" (15 px 700, blanco) y a la derecha la
+    campanita o "Ingresar".
+-   El botón abre la sidebar completa (260 px) como panel desde la
+    izquierda (translateX de -100 % a 0 en 250 ms) sobre un fondo
+    `rgba(15,29,21,.5)`. Se cierra con la X, tocando el fondo, con Escape
+    o al elegir una sección. Mientras está abierto, la página no
+    scrollea y el foco queda dentro; al cerrar vuelve al botón de menú.
+    La campanita queda en la barra, no en el panel.
 
-Debe diferenciarse mediante fondo claro/translúcido y mayor contraste,
-no únicamente mediante cambio de color del texto.
+## Animaciones
 
-## Marca
+Todas se desactivan con `prefers-reduced-motion: reduce`.
 
-Parte superior:
-
-``` text
-[Escudo] MUNICIPALIDAD
-         DE FUNES
-         Portal de Empleo
-```
-
-En modo compacto puede quedar únicamente el escudo.
+-   Contraer o expandir: ancho en 250 ms ease; textos, logo y títulos de
+    grupo con fundido de 300 ms y 100 ms de demora.
+-   Menú del usuario: entra desde abajo (translateY 8 px y escala .97)
+    en 180 ms; los ítems con fundido escalonado de 60 ms.
 
 ------------------------------------------------------------------------
 
 # 13. Header de página
 
-Componente compartido: `PageHeader`.
+Componente compartido: `EncabezadoPagina`
+(`src/components/ui/encabezado-pagina.tsx`): título de 32 px 800,
+letter-spacing `-.01em`, color `heading`; bajada de 16 px
+`muted-foreground` con 6 px de margen; acciones a la derecha, alineadas
+abajo.
 
 Puede contener:
 
@@ -452,49 +558,61 @@ En mobile las acciones pasan debajo del título.
 
 # 14. Button
 
-Basado en `shadcn/ui Button`.
+Las clases de `globals.css` y las variantes de
+`src/components/ui/button.tsx` se ven igual (las variantes usan las
+mismas clases).
+
+## Medidas comunes
+
+-   alto mínimo 44 px, padding horizontal 18 px;
+-   radio 10 px;
+-   Public Sans 700, 15 px;
+-   8 px entre ícono y texto, ícono de 18 px;
+-   transición de color de 150 ms;
+-   foco visible: anillo de 3 px `rgb(0 104 51 / .25)`;
+-   deshabilitado: opacidad .6 y cursor `not-allowed`.
+
+Estas medidas van fuera de capa en `globals.css` para que ganen sobre las
+clases sueltas de cada pantalla.
 
 ## Variantes
 
-### Primary
+  Clase              `Button variant`   Fondo           Borde                   Texto                 Hover
+  ------------------ ------------------ --------------- ----------------------- --------------------- -------------------
+  `.btn-primario`    `default`          `primary`       ---                     blanco                `primary-hover`
+  `.btn-secundario`  `secondary`        blanco          1,5 px `primary`        `primary`             fondo `secondary`
+  `.btn-neutro`      `outline`          blanco          1,5 px `border-control` `control-foreground`  `surface-tinted`
+  `.btn-peligro`     `destructive`      `danger`        ---                     blanco                `danger-hover`
+  `.btn-acento`      `accent`           `accent`        ---                     `accent-foreground`   `accent-hover`
 
--   fondo `brand-800`;
--   texto blanco;
--   hover `brand-900`.
+`ghost` y `link` quedan para acciones de baja jerarquía y botones de
+ícono (44 × 44).
 
-Para la acción principal de la vista.
+## Reglas
 
-### Secondary
-
--   fondo `brand-100`;
--   texto `brand-800`.
-
-### Outline
-
--   fondo transparente/blanco;
--   borde;
--   texto principal.
-
-### Ghost
-
-Para acciones de baja jerarquía.
-
-### Destructive
-
-Reservado para acciones destructivas reales.
-
-## Regla
-
-Una sección no debe contener varios botones `primary` con igual
-jerarquía salvo que representen acciones equivalentes.
+-   Una sección no debe contener varios botones primarios con igual
+    jerarquía salvo que representen acciones equivalentes.
+-   "Cancelar" en los diálogos usa el botón neutro.
+-   "Cerrar sesión" y toda acción destructiva usan el botón de peligro.
+-   El botón de acento se reserva para la navegación (rediseño, PR 2).
+-   Dentro de un aviso rojo, la acción usa el botón neutro (el verde no
+    contrasta sobre el rojo).
 
 ------------------------------------------------------------------------
 
-# 15. Inputs
+# 15. Campos
 
-Basados en los componentes de shadcn/ui.
+Clase `.campo` (la usan `Input`, `Textarea`, el select de
+`CampoFechaHora` y el `Buscador`); `.campo-grupo` para contenedores que
+se ven como un campo (los chips de `MultiCombobox`).
 
-Altura visual consistente.
+-   borde 1,5 px `border-strong`, radio 12 px, fondo blanco;
+-   texto 16 px (evita el zoom automático de iOS);
+-   placeholder `placeholder`;
+-   alto mínimo 48 px en una línea;
+-   foco: borde `primary` y `--sombra-foco-campo`;
+-   error (`aria-invalid`): borde `danger` y `--sombra-error-campo`;
+-   deshabilitado: fondo `surface-tinted`.
 
 Cada campo debe tener:
 
@@ -504,17 +622,8 @@ Label
 Texto de ayuda / error
 ```
 
-## Estados
-
--   default;
--   hover;
--   focus;
--   disabled;
--   error.
-
-El focus debe ser claramente visible y utilizar el color institucional.
-
-Los errores deben usar el token semántico de error, no verde.
+Labels: clase `.etiqueta-campo` (15 px, 600, `control-foreground`). El
+asterisco de obligatorio (`<Obligatorio />`) va en `danger`.
 
 ------------------------------------------------------------------------
 
@@ -529,19 +638,22 @@ Usar `Combobox` cuando:
 -   se seleccionan categorías extensas.
 
 Para selección múltiple, mostrar elementos seleccionados de manera clara
-y removible.
+y removible (chip blanco con borde verde, como la etiqueta de rubro
+verde).
 
 ------------------------------------------------------------------------
 
 # 17. Card
 
-Componente base:
+Clase `.tarjeta`:
 
 -   superficie blanca;
--   borde sutil;
--   radius `12px`;
--   padding consistente;
--   sombra mínima.
+-   borde 1 px `border`;
+-   radius 16 px;
+-   sin sombra.
+
+`.tarjeta-clickeable` (además de `.tarjeta`): al pasar el mouse se eleva
+2 px con una sombra suave y el borde pasa a `border-strong`.
 
 Una card debe agrupar información relacionada.
 
@@ -582,6 +694,48 @@ Evitar llenar la card de información secundaria.
 
 ------------------------------------------------------------------------
 
+## Tarjeta de oferta (inicio y panel)
+
+`src/components/ofertas/tarjeta-oferta.tsx` (`TarjetaOferta`). `.tarjeta`
+clickeable, padding 24, gap 14:
+
+``` text
+┌──────────────────────────────────────┐
+│ [Gastronomía +1] [Presencial] [Te invitaron] │
+│ Ayudante de cocina                   │  20 px 700, hasta 2 renglones
+│ Restaurante El Molino                │  15 px 600 texto-bajada
+│ 📍 Funes    🕒 Jornada completa       │  14 px muted, íconos 16 px
+│ [ Ver oferta ]                       │  secundario (primario: "Postularme")
+└──────────────────────────────────────┘
+```
+
+-   Etiquetas: rubro (`EtiquetaRubro verde`, el primero y "+N"),
+    modalidad (`EtiquetaRubro`) y badges extra (`Te invitaron` warning,
+    coincidencia).
+-   El título es el link y cubre la tarjeta (un paso de teclado por
+    oferta); el botón de abajo es visual. Una acción extra con su propio
+    link (`Buscar postulantes` de la oficina) va por encima.
+-   El listado `/ofertas` sigue usando `JobCard`.
+
+## Carrusel
+
+`src/components/public/carrusel-ofertas.tsx`. Título de 26 px 800 y
+bajada; a la derecha el link "Ver todas las ofertas" y dos botones
+redondos de 44 px (anterior / siguiente, con `aria-label`, deshabilitados
+en los extremos).
+
+-   Scroll horizontal con `scroll-snap`; 3 tarjetas desde 896 px de ancho
+    disponible, 2 desde 576 px y una (85 %, mostrando el borde de la
+    siguiente) más angosto.
+-   Las flechas desplazan una página; con teclado se llega a cada
+    tarjeta. Desplazamiento suave, sin animación con
+    `prefers-reduced-motion`.
+-   Debajo, puntos de posición (`aria-hidden`): pastilla de 24 × 8 verde
+    para la página actual y puntos de 8 px `punto-carrusel`.
+-   Si todas las tarjetas entran, no hay flechas ni puntos.
+
+------------------------------------------------------------------------
+
 # 19. CandidateCard
 
 Para Empresa y Municipalidad.
@@ -602,40 +756,95 @@ actor.
 
 # 20. Badge
 
-Usar badges para información breve:
+Componente único: `src/components/ui/badge.tsx`.
 
--   estado;
--   categoría;
--   modalidad;
--   tipo de jornada.
+``` tsx
+<Badge tono="success" estado>Publicada</Badge>
+<Badge tono="warning" icono={Clock}>Funes · Sin verificar</Badge>
+```
+
+-   pastilla de 26 px de alto, padding `0 10px`, radio 13 px;
+-   13 px, 700, sin salto de línea;
+-   ícono opcional de 14 px (`icono`);
+-   variante `estado`: punto de 8 px del color del texto antes de la
+    etiqueta;
+-   fondo sólido del tono y texto blanco; `warning` usa `accent` con
+    `accent-foreground`.
+
+Tonos: `info`, `teal`, `success`, `neutral`, `warning`, `danger`,
+`violet`. `claseTono(tono)` da las mismas clases para un elemento que no
+es un badge (el ícono de una notificación, un aviso corto).
+
+Los helpers de estado devuelven el **tono**, nunca clases sueltas.
+
+## Etiqueta de rubro
+
+`src/components/ui/etiqueta-rubro.tsx`. No es un estado: rubros,
+modalidad, jornada, motivos de coincidencia.
+
+-   fondo blanco, borde interno 1,5 px `muted-icon`, texto
+    `muted-foreground-strong`, 13 px 600;
+-   variante `verde`: borde `primary` y texto `primary-hover`.
 
 No convertir párrafos o información extensa en badges.
 
-Los estados deben mantener el mismo color y etiqueta en toda la
-aplicación.
-
 ------------------------------------------------------------------------
 
-# 21. Estados de postulación
+# 21. Tonos por estado
 
-El Design System debe admitir visualmente los estados funcionales
-definidos por el producto.
+**El componente visual no inventa estados**: los estados vienen del
+dominio y cada helper los mapea a un tono en un único lugar.
 
-Regla estricta:
+  Dominio           Estado                                    Tono        Helper
+  ----------------- ----------------------------------------- ----------- ------------------------------------------------
+  Postulación       Recibida                                  neutral     `badgePostulacion` (`lib/mis-postulaciones.ts`)
+                    En revisión                               info        y `BADGE_ESTADO_VISIBLE`
+                    Enviada a la empresa / Derivada           teal        (`lib/admin/postulacion-estados.ts`)
+                    Seleccionado / Contratado                 success
+                    No seleccionado                           neutral
+                    Oferta cerrada                            neutral
+                    Retirada                                  neutral
+  Oferta            Borrador                                  neutral     `ESTADO_OFERTA_EMPRESA_TONO`,
+                    En revisión / pendiente                   warning     `getOfertaEstadoBadge`
+                    Activa / publicada                        success     (`lib/oferta-estados.ts`)
+                    Rechazada                                 danger
+                    Vencida                                   danger
+                    Cerrada                                   neutral
+                    Modificada                                info
+  Empresa           Pendiente / Reenviada                     warning     `/admin/empresas`
+                    Aprobada                                  success
+                    Rechazada                                 danger
+  Derivación        Por contactar                             warning     `DERIVACION_ESTADO_TONO`
+                    Entrevista coordinada                     info        (`lib/derivacion-estados.ts`)
+                    Seleccionado                              success
+                    No seleccionado / Cerrada / Se retiró     neutral
+  Pre-entrevista    Sin coordinar / Cancelada                 neutral     `PRE_ENTREVISTA_TONO`
+                    Coordinada                                info        (`lib/pre-entrevistas.ts`)
+                    Realizada                                 success
+                    No asistió                                warning
+  Procedencia       De Funes verificado                       success     `BadgeProcedencia`
+                    De Funes sin verificar                    warning
+                    Otra localidad                            neutral
+  Comprobante       En revisión                               warning     perfil y `/admin/comprobantes`
+                    Aprobado                                  success
+                    Rechazado                                 danger
+  CV                Sin CV                                    warning     `/admin/postulantes`
+  Curso             Necesita curso / Cuenta para el curso     warning     `ESTADO_CURSO_TONO` (`lib/cursos.ts`)
+                    Asignado / En curso                       violet
+                    Completado                                success
+                    Abandonado                                neutral
+                    Curso activo / inactivo                   success / neutral
+  Invitación        Pendiente / Por invitación                warning     `TONO_INVITACION` (`lib/invitaciones.ts`),
+                    Aceptada                                  success     `BadgePorInvitacion`
+                    No interesado / Dijo que no               danger
+                    Vencida                                   neutral
+  Coincidencia      Alta                                      success     `COINCIDENCIA` (`lib/invitaciones.ts`)
+                    Media                                     warning
+                    Baja                                      neutral
+  Cuenta oficina    Activa / Desactivada                      success / neutral
+  Contadores        Pendientes (pestañas, tarjetas)           warning     `ContadoresEstado`, `PestanasEstado`
 
-**el componente visual no inventa estados.**
-
-Los estados definitivos deben provenir del dominio.
-
-Cada estado debe tener:
-
--   label;
--   color semántico;
--   fondo;
--   foreground;
--   icono opcional.
-
-Centralizar el mapping en un único lugar.
+Contraste de cada tono: ver la sección 5 (todos superan 6,5:1).
 
 ------------------------------------------------------------------------
 
@@ -664,6 +873,29 @@ Características:
 En mobile no forzar tablas ilegibles: utilizar cards o una
 representación responsive definida.
 
+## Tabla con separadores (lista de postulantes)
+
+Una sola marca para los dos formatos (`/admin/postulantes`):
+
+-   Desde 896 px de ancho disponible: tarjeta (radio 16, `overflow
+    hidden`) con encabezado de 12 px 700 en mayúsculas, letter-spacing
+    `.06em`, color `neutral`, fondo `tabla-encabezado`. Filas en grilla
+    (las mismas columnas que el encabezado), padding 12 × 20, gap 16,
+    borde superior `tabla-borde`, hover `tabla-hover`. La acción va a la
+    derecha (botón neutro de 40 px y 14 px).
+-   Separadores de grupo: fila con fondo `tabla-separador`, el badge del
+    grupo, el título en 14 px 700 y "· N" con el total del grupo según los
+    filtros.
+-   Más angosto: cada fila es una tarjeta (foto y nombre arriba, datos
+    debajo, badges que bajan de renglón y la acción a todo el ancho); los
+    separadores quedan como franjas redondeadas.
+-   El encabezado de columnas es visual (`aria-hidden`); cada celda lleva
+    su rótulo para lectores de pantalla.
+-   Paginación con números: `<Paginacion variante="numeros" />`
+    ("Página N de M" a la izquierda; Anterior, números y Siguiente de 44
+    px a la derecha; la actual en verde y "…" si son muchas). El total
+    ("Mostrando X–Y de N") va en la fila de filtros.
+
 ------------------------------------------------------------------------
 
 # 23. Filtros
@@ -684,7 +916,9 @@ No esconder filtros básicos detrás de un modal en desktop.
 
 # 24. Modal / Dialog
 
-Usar `Dialog` de shadcn/ui.
+Usar `Dialog` de shadcn/ui: radio 16 px, sombra `--sombra-dialogo`,
+título 800 en `heading`, los mismos botones que el resto del portal
+(Cancelar neutro a la izquierda, acción a la derecha).
 
 Estructura:
 
@@ -738,6 +972,25 @@ Puede incluir:
 Las métricas no deben convertirse en grandes cards sin contexto
 únicamente para llenar espacio.
 
+## Tarjetas de indicadores (panel del postulante)
+
+Cada tarjeta es un link (`.tarjeta-clickeable`, padding 20, gap 10): el
+`Badge` del estado como etiqueta (con su tono) y el número debajo (36 px
+800, interlineado 1, `heading`). 2 columnas en celular, 3 en tablet y una
+fila en pantallas anchas. Al pasar el mouse se eleva.
+
+## Barra de progreso
+
+`src/components/ui/barra-progreso.tsx`: alto 10, radio 5, fondo
+`progreso-fondo`, relleno `primary`, `role="progressbar"` con
+`aria-label` ("Perfil completo al 70%") y `aria-valuenow`. El porcentaje
+visible va al lado, en 14 px 700.
+
+## Invitaciones
+
+Borde de 2 px `accent` sobre blanco, título `invitacion-titulo`, badge
+warning y botón `.btn-oscuro` (fondo `accent-foreground`, texto blanco).
+
 ------------------------------------------------------------------------
 
 # 26. Landing pública
@@ -756,15 +1009,18 @@ Debe mantener:
 Estructura visual sugerida:
 
 ``` text
-Navbar
-Hero
-Buscador de ofertas
-Categorías / accesos
-Ofertas destacadas o recientes
-Cómo funciona
-Bloque institucional
-Footer
+Navegación lateral (sección 12)
+Bloque principal: volanta, título, bajada, buscador y rubros
+Últimas ofertas (carrusel)
+Tu actividad (solo postulante con sesión)
+Cómo funciona (solo sin sesión)
+Contacto de la Oficina de Empleo
 ```
+
+Gap de 48 px entre secciones; títulos de sección de 26 px 800. El bloque
+principal es una tarjeta blanca de radio 24 (padding 56 / 56 / 48, 24 en
+celular). El buscador (`role="search"`, hasta 960 px) lleva a `/ofertas`
+con `q` y `categoria`.
 
 El objetivo visual principal debe ser facilitar el acceso a las ofertas
 laborales.
@@ -775,18 +1031,62 @@ laborales.
 
 El login debe sentirse parte del mismo producto.
 
-Desktop:
+Sin navegación. Página: `src/app/auth/login/page.tsx`; formulario:
+`src/components/auth/login-form.tsx`; clases `.login-*` y `.auth-*` de
+`globals.css`.
+
+Desktop (desde lg), dos columnas a pantalla completa (`100svh`):
 
 ``` text
 ┌────────────────────────┬──────────────────────────────┐
-│                        │                              │
-│ Identidad institucional│          Login              │
-│ / mensaje / gráfica    │                              │
-│                        │                              │
-└────────────────────────┴──────────────────────────────┘
+│ [logo blanco]          │   ← Volver al inicio         │
+│                 ▢      │  ┌────────────────────────┐  │
+│ TALENTO LOCAL, …    ▢  │  │ [logo verde]           │  │
+│ Un nuevo               │  │ TU ESPACIO PARA AVANZAR│  │
+│ camino            ▢    │  │ Tu próximo trabajo …   │  │
+│ empieza acá.           │  │ [correo] [contraseña]  │  │
+│ Conectamos a …   ▢     │  │ [ Iniciar sesión ]     │  │
+│ ↗ Tu talento puede …   │  │ ¿Nuevo? Registrate     │  │
+└────────────────────────┴──┴────────────────────────┴──┘
 ```
 
-En mobile se prioriza el formulario y la marca se simplifica.
+-   **Panel verde:** 640 px (42 %, mínimo 360 px, en pantallas más
+    chicas), `primary` con patrón de puntos (`rgba(255,255,255,.09)`
+    cada 28 px), padding 72 px 72 px 28 px. Volanta 12 px 700
+    letter-spacing .14em (`login-suave`); título en Georgia 400 hasta
+    92 px, interlineado .98; bajada 17 px, interlineado 1.6,
+    `sidebar-texto`, máximo 360 px. Abajo, ícono de gráfico ascendente y
+    "Tu talento puede llegar más lejos".
+-   **Decoración** (`aria-hidden`): brillo circular difuso que pulsa
+    (8 s), anillo grande abajo a la derecha y seis íconos flotantes
+    (48 px, radio 12, blanco al 10 %) que suben 10 px y bajan en 6 s.
+    Los dos que quedan al costado del título se ocultan por debajo de
+    1280 px.
+-   **Columna derecha:** fondo `fondo-auth`, contenido centrado de
+    460 px. Tarjeta blanca radio 24, padding 40, sombra
+    `0 24px 60px rgba(0,40,20,.10)`, gap 22: logo verde de 120 px,
+    volanta, título Georgia 42 px, campos de 52 px con ícono (Mail,
+    Lock; botón de mostrar contraseña de 44 × 44), botón primario de
+    52 px con radio 12 y sombra. Mensajes con `Aviso` (info para avisos
+    de sesión, danger para errores).
+-   **Registrate:** botón con `aria-expanded` que despliega dos opciones
+    (filas de 64 px, borde 1,5 px `border-strong`, radio 14, ícono en un
+    cuadrado verde de 44 px, hover borde verde) hacia
+    `/auth/registro` y `/auth/registro?tipo=empresa`.
+-   **Animaciones** (sin movimiento reducido): título y tarjeta suben
+    16 px con fundido en 700 ms (la tarjeta 150 ms después); las
+    opciones de registro aparecen en 250 ms.
+
+Celular: sin el panel verde, fondo `fondo-auth`, tarjeta a todo el ancho
+con padding 24 px y título de 34 px.
+
+## Demás pantallas de /auth
+
+Registro, recuperar y nueva contraseña, reset enviado, verificar email
+e invitación usan `AuthShell` (`src/components/auth/auth-shell.tsx`):
+fondo `fondo-auth`, "Volver al inicio", y el contenido en la misma
+tarjeta que el login con el logo verde arriba. Ancho 460 px; el registro,
+640 px.
 
 Evitar:
 
@@ -839,10 +1139,40 @@ Usar:
 
 -   toast para confirmaciones no bloqueantes;
 -   error inline para validación;
--   alert para información persistente;
+-   aviso para información persistente;
 -   dialog para confirmaciones críticas.
 
 No depender exclusivamente del color para comunicar estados.
+
+## Aviso
+
+Componente `src/components/ui/aviso.tsx`, tonos `info`, `success`,
+`warning` y `danger`:
+
+-   fondo sólido del token y texto blanco (`warning`: `accent` con
+    `accent-foreground`);
+-   radio 12 px, padding 14 × 16;
+-   ícono de Lucide de 20 px a la izquierda (uno por tono, se puede
+    cambiar con `icono`);
+-   15 px con interlineado 1,45; `titulo` opcional en negrita;
+-   links subrayados que heredan el color del texto;
+-   `role="status"` para info, success y warning; `role="alert"` para
+    danger.
+
+Las notas neutras (por ejemplo "No fuiste seleccionado") no son avisos:
+van sobre `surface-tinted` con borde `border` y texto
+`muted-foreground-strong`.
+
+## Toasts
+
+Sonner sin `richColors`: fondo `heading` por defecto y el tono sólido
+según el tipo (success, info, error → danger, warning → accent), texto
+blanco, radio 12 px.
+
+## Texto de estado suelto
+
+Sin fondo: `text-warning-text` para aviso, `text-danger` para error,
+`text-primary` para éxito.
 
 ------------------------------------------------------------------------
 
@@ -870,7 +1200,7 @@ Breakpoints según Tailwind.
 
 ## Mobile
 
--   sidebar → navegación móvil;
+-   sidebar → barra de 60 px y panel lateral (sección 12);
 -   grids → una columna;
 -   acciones de PageHeader → debajo del título;
 -   cards → ancho completo;
@@ -993,9 +1323,17 @@ Permitido:
 -   transiciones de sidebar;
 -   aparición de dropdown/popover/dialog.
 
-Duración habitual:
+Duración habitual: `150–200ms`.
 
-`150–250ms`
+-   botones, campos, pestañas, filas y tarjetas clickeables: transición
+    de color y sombra de 150--200 ms;
+-   tarjetas clickeables: se elevan 2 px con sombra suave;
+-   diálogos, popovers y el desplegable de `MultiCombobox`: fundido y
+    escala de .97 a 1 en 180 ms.
+
+El movimiento va dentro de `@media (prefers-reduced-motion:
+no-preference)`; con `reduce`, `globals.css` anula transiciones y
+animaciones.
 
 Evitar animaciones continuas en áreas administrativas.
 

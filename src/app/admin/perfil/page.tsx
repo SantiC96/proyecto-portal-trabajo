@@ -17,7 +17,7 @@ export default async function AdminPerfilPage() {
   const foto = await fotoDePerfil(usuario.id);
 
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+    <section className="contenido-lectura-ancho">
       <BotonVolver href="/admin">Volver al panel</BotonVolver>
       <h1 className="mb-6 mt-4 text-2xl font-bold tracking-tight text-foreground">Mi perfil</h1>
 

@@ -1,3 +1,4 @@
+import type { TonoBadge } from "@/components/ui/badge";
 import { formatFecha } from "@/lib/fechas";
 import { leerPagina } from "@/lib/paginacion";
 import { esRutaInterna } from "@/lib/redirect";
@@ -109,22 +110,45 @@ export function nivelCoincidencia(valor: string): NivelCoincidencia {
   return valor === "alta" || valor === "media" ? valor : "baja";
 }
 
-export const COINCIDENCIA: Record<NivelCoincidencia, { label: string; className: string }> = {
-  alta: { label: "Alta coincidencia", className: "border-emerald-200 bg-emerald-50 text-emerald-800" },
-  media: { label: "Media coincidencia", className: "border-amber-200 bg-amber-50 text-amber-900" },
-  baja: { label: "Baja coincidencia", className: "border-gray-200 bg-gray-100 text-gray-700" },
+export const COINCIDENCIA: Record<NivelCoincidencia, { label: string; tono: TonoBadge }> = {
+  alta: { label: "Alta coincidencia", tono: "success" },
+  media: { label: "Media coincidencia", tono: "warning" },
+  baja: { label: "Baja coincidencia", tono: "neutral" },
+};
+
+/** Lo que suma puntaje en puntaje_coincidencia (migration_058). */
+export type DatosCoincidencia = {
+  rubros_coincidentes: string[];
+  requisitos_coincidentes: string[];
+  coincide_titulo: boolean;
+  disponibilidad_ok: boolean;
+  tiene_cv: boolean;
 };
 
 /**
- * Estilo de la última invitación a una oferta (oficina). El texto dice lo
- * mismo que el color: azul pendiente, rojo dijo que no, gris vencida, verde
- * aceptada.
+ * Por qué coinciden una oferta y un postulante. Los mismos motivos en la
+ * búsqueda de la oficina y en las ofertas recomendadas del postulante.
  */
-export const ESTILO_INVITACION: Record<EstadoInvitacion, string> = {
-  pendiente: "border-blue-200 bg-blue-50 text-blue-800",
-  aceptada: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  rechazada: "border-red-200 bg-red-50 text-red-800",
-  vencida: "border-gray-200 bg-gray-100 text-gray-700",
+export function motivosCoincidencia(c: DatosCoincidencia): string[] {
+  return [
+    ...c.rubros_coincidentes.map((r) => `Rubro: ${r}`),
+    ...c.requisitos_coincidentes.map((r) => `Requisito: ${r}`),
+    ...(c.coincide_titulo ? ["Experiencia en el puesto"] : []),
+    ...(c.disponibilidad_ok ? ["Disponibilidad compatible"] : []),
+    ...(c.tiene_cv ? ["Tiene CV"] : []),
+  ];
+}
+
+/**
+ * Tono de la última invitación a una oferta (oficina). El texto dice lo
+ * mismo que el color: amarillo pendiente, rojo dijo que no, gris vencida,
+ * verde aceptada.
+ */
+export const TONO_INVITACION: Record<EstadoInvitacion, TonoBadge> = {
+  pendiente: "warning",
+  aceptada: "success",
+  rechazada: "danger",
+  vencida: "neutral",
 };
 
 export const ETIQUETA_INVITACION: Record<EstadoInvitacion, string> = {
@@ -151,3 +175,18 @@ export function textoUltimaInvitacion(estado: EstadoInvitacion, fecha: string | 
 
 /** Etiqueta de las postulaciones que vienen de una invitación (postulaciones.origen). */
 export const ETIQUETA_POR_INVITACION = "Por invitación";
+
+/**
+ * Detalle de la invitación pendiente más reciente para el postulante, con
+ * "y N más" si tiene otras. Las invitaciones las manda la Oficina de Empleo,
+ * no la empresa (decisión 028): por eso la empresa va como dueña de la oferta.
+ */
+export function textoInvitacionReciente(
+  invitacion: { oferta_titulo: string; empresa_nombre: string | null },
+  pendientes: number,
+): string {
+  const empresa = invitacion.empresa_nombre ? ` de ${invitacion.empresa_nombre}` : "";
+  const otras = pendientes - 1;
+  const mas = otras > 0 ? ` y ${otras} más` : "";
+  return `La Oficina de Empleo te invitó a postularte a «${invitacion.oferta_titulo}»${empresa}${mas}.`;
+}

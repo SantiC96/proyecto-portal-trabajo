@@ -48,7 +48,7 @@ export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDir
   ];
 
   return (
-    <section id={ANCLA} className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16 scroll-mt-20">
+    <section id={ANCLA} className="scroll-mt-20">
       {/* Section Header */}
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
@@ -69,7 +69,7 @@ export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDir
       </div>
 
       {/* Search and Filters Bar */}
-      <div className="mt-6 rounded-2xl border border-border bg-white p-4 shadow-xs">
+      <div className="tarjeta mt-6 p-4">
         {/* Main Search Input */}
         <Buscador
           placeholder="Buscar por puesto, empresa, palabra clave o conocimiento..."
@@ -154,7 +154,7 @@ async function ContadorOfertas({ resultado }: { resultado: Promise<ResultadoOfer
   if (!datos.ok) return null;
   return (
     <div className="mt-2 flex items-center gap-2 text-xs font-medium text-muted-foreground-strong md:mt-0">
-      <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+      <span className="inline-flex h-2 w-2 rounded-full bg-success" />
       <span>
         {datos.total} {datos.total === 1 ? "oferta disponible" : "ofertas disponibles"}
       </span>
@@ -195,7 +195,7 @@ async function ResultadosOfertas({
   if (datos.ofertas.length === 0) {
     return (
       <div className="mt-8 rounded-2xl border border-dashed border-border bg-white p-10 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-muted-foreground">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-secondary text-muted-foreground">
           {hayFiltros ? <Filter className="h-6 w-6" /> : <Briefcase className="h-6 w-6" />}
         </div>
         {hayFiltros ? (
@@ -208,7 +208,7 @@ async function ResultadosOfertas({
             </p>
             <Link
               href={hrefLimpiar}
-              className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-primary-hover"
+              className="btn-primario mt-4"
             >
               Ver todas las ofertas
             </Link>

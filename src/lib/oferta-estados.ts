@@ -1,3 +1,4 @@
+import type { TonoBadge } from "@/components/ui/badge";
 import type { Enum } from "@/types/db";
 
 /**
@@ -15,20 +16,20 @@ export const ESTADO_OFERTA_EMPRESA_LABEL: Record<EstadoOfertaEmpresa, string> = 
   vencida: "Vencida",
 };
 
-export const ESTADO_OFERTA_EMPRESA_STYLE: Record<EstadoOfertaEmpresa, string> = {
-  pendiente_aprobacion: "bg-amber-100 text-amber-800",
-  activa: "bg-emerald-100 text-emerald-800",
-  rechazada: "bg-red-100 text-red-700",
-  cerrada: "bg-gray-100 text-gray-600",
-  // Azul "info": distinto del gris de Cerrada y de los demás estados (contraste AA).
-  borrador: "bg-blue-100 text-blue-800",
-  vencida: "bg-red-100 text-red-700",
+export const ESTADO_OFERTA_EMPRESA_TONO: Record<EstadoOfertaEmpresa, TonoBadge> = {
+  pendiente_aprobacion: "warning",
+  activa: "success",
+  rechazada: "danger",
+  cerrada: "neutral",
+  borrador: "neutral",
+  // Dejó de estar publicada sin que nadie la cerrara: pide una acción.
+  vencida: "danger",
 };
 
 export type OfertaEstadoBadge = {
   label: string;
   descripcion?: string;
-  className: string;
+  tono: TonoBadge;
 };
 
 // Returns null for "activa" (no badge needed) and for null/undefined estado.
@@ -42,22 +43,22 @@ export function getOfertaEstadoBadge(estado: string | undefined): OfertaEstadoBa
       return {
         label: "Oferta en revisión",
         descripcion: "La empresa modificó esta oferta y la oficina la está revisando.",
-        className: "bg-amber-100 text-amber-700",
+        tono: "warning",
       };
     case "rechazada":
       return {
         label: "Oferta rechazada",
-        className: "bg-red-100 text-red-700",
+        tono: "danger",
       };
     case "cerrada":
       return {
         label: "Oferta cerrada",
-        className: "bg-gray-200 text-gray-600",
+        tono: "neutral",
       };
     default:
       return {
         label: "Oferta no disponible",
-        className: "bg-gray-200 text-gray-600",
+        tono: "neutral",
       };
   }
 }

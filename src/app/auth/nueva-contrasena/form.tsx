@@ -14,6 +14,7 @@ import { useErroresCampo } from "@/lib/use-errores-campo";
 import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
 import type { Resultado } from "@/lib/resultado";
+import { Aviso } from "@/components/ui/aviso";
 
 type Campo = "password" | "confirmar";
 
@@ -91,7 +92,7 @@ export function NuevaContrasenaForm({
     "w-full rounded-lg border bg-background py-2.5 pl-10 pr-10 text-sm text-foreground placeholder:text-placeholder outline-none transition";
   const inputFocus = "focus:bg-white focus:ring-2";
   const inputNormal = `border-border focus:border-primary ${inputFocus} focus:ring-primary/20`;
-  const inputError = `border-red-400 focus:border-red-400 ${inputFocus} focus:ring-red-400/20`;
+  const inputError = `border-danger focus:border-danger ${inputFocus} focus:ring-danger/20`;
   const inputOk = `border-border focus:border-primary ${inputFocus} focus:ring-primary/20`;
 
   const confirmarInputClass = `${inputBase} ${
@@ -102,7 +103,7 @@ export function NuevaContrasenaForm({
   const errorRef = state && !state.ok && state.codigo === "ERROR_INTERNO" ? state.ref : undefined;
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-border bg-white px-5 py-8 shadow-sm sm:px-8 sm:py-10">
+    <div className="w-full">
       <div className="mb-6 text-center">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Lock className="h-7 w-7" />
@@ -202,7 +203,7 @@ export function NuevaContrasenaForm({
           {confirmarTocado && (
             <p
               className={`flex items-center gap-1 text-xs ${
-                coinciden ? "text-green-600" : "text-red-500"
+                coinciden ? "text-success" : "text-danger"
               }`}
             >
               {coinciden ? (
@@ -222,25 +223,19 @@ export function NuevaContrasenaForm({
 
         {/* Error de la server action */}
         {stateError && !campoServidor && (
-          <div className="flex flex-col gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-            <div className="flex items-start gap-2.5">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{stateError}</span>
-            </div>
+          <Aviso tono="danger">
+            <p>{stateError}</p>
             {errorRef && (
-              <p className="ml-6 text-xs text-gray-500">
+              <p className="mt-1 text-sm">
                 Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {errorRef}
               </p>
             )}
             {tokenVencido && (
-              <Link
-                href={textos.linkVencido.href}
-                className="ml-6 font-medium underline hover:text-red-700"
-              >
+              <Link href={textos.linkVencido.href} className="mt-1 inline-block">
                 {textos.linkVencido.texto}
               </Link>
             )}
-          </div>
+          </Aviso>
         )}
 
         <button

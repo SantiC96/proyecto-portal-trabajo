@@ -3,7 +3,6 @@
 import { es } from "react-day-picker/locale";
 import { Calendar } from "@/components/ui/calendar";
 import {
-  CLASE_CONTROL_INVALIDO,
   ErrorCampo,
   Obligatorio,
   ariaErrorCampo,
@@ -84,7 +83,7 @@ export function CampoFechaHora({
   return (
     <>
       <div>
-        <p id={`${idDia}-label`} className="mb-2 text-sm font-medium text-foreground">
+        <p id={`${idDia}-label`} className="etiqueta-campo mb-2">
           Día <Obligatorio />
         </p>
         {/* El calendario no es un control de formulario: el grupo lleva el
@@ -97,7 +96,7 @@ export function CampoFechaHora({
           {...ariaErrorCampo(idDia, errorDia)}
           className={cn(
             "flex justify-center rounded-lg outline-none",
-            errorDia && "ring-2 ring-red-500/20"
+            errorDia && "shadow-[var(--sombra-error-campo)]"
           )}
         >
           <Calendar
@@ -113,7 +112,7 @@ export function CampoFechaHora({
       </div>
 
       <div>
-        <label htmlFor={idHorario} className="mb-1.5 block text-sm font-medium text-foreground">
+        <label htmlFor={idHorario} className="etiqueta-campo mb-1.5 block">
           Horario <Obligatorio />
         </label>
         <select
@@ -122,10 +121,7 @@ export function CampoFechaHora({
           onChange={(e) => onHoraChange(e.target.value)}
           disabled={!dia || deshabilitado}
           {...ariaErrorCampo(idHorario, errorHora)}
-          className={cn(
-            "h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:bg-surface-tinted disabled:text-muted-foreground",
-            CLASE_CONTROL_INVALIDO
-          )}
+          className="campo"
         >
           <option value="">Elegí un horario…</option>
           {HORARIOS.map((slot) => (

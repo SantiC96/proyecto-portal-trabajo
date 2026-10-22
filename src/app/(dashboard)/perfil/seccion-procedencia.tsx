@@ -28,6 +28,7 @@ import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
 import { CampoLectura, MensajeError, SectionTitle } from "@/components/perfil/piezas";
 import { CampoLocalidad } from "@/components/postulantes/campo-localidad";
 import { formatFecha } from "@/lib/fechas";
+import { SECCION_PERFIL } from "@/lib/perfil-secciones";
 import {
   COMPROBANTE_ACCEPT,
   COMPROBANTE_HELP_TEXT,
@@ -44,6 +45,7 @@ import {
 } from "@/lib/localidades";
 import type { EstadoComprobante } from "@/lib/procedencia";
 import { cn } from "@/lib/utils";
+import { Badge, type TonoBadge } from "@/components/ui/badge";
 
 /** Comprobante vigente tal como lo recibe el cliente (sin la ruta). */
 export type ComprobantePerfil = {
@@ -60,11 +62,11 @@ const CAMPOS: readonly CampoProcedencia[] = ["localidad", "otraLocalidad"];
 
 const ESTADO_COMPROBANTE: Record<
   EstadoComprobante,
-  { texto: string; Icono: typeof Clock; clase: string }
+  { texto: string; Icono: typeof Clock; tono: TonoBadge }
 > = {
-  pendiente: { texto: "En revisión", Icono: Clock, clase: "bg-amber-100 text-amber-900" },
-  aprobado: { texto: "Verificado", Icono: CheckCircle2, clase: "bg-emerald-100 text-emerald-800" },
-  rechazado: { texto: "Rechazado", Icono: XCircle, clase: "bg-red-100 text-red-700" },
+  pendiente: { texto: "En revisión", Icono: Clock, tono: "warning" },
+  aprobado: { texto: "Verificado", Icono: CheckCircle2, tono: "success" },
+  rechazado: { texto: "Rechazado", Icono: XCircle, tono: "danger" },
 };
 
 /** Qué pasa con la verificación al cambiar de localidad (BLOQUE 5 de migration_055). */
@@ -197,7 +199,7 @@ export function SeccionProcedencia({
 
   return (
     <div
-      id="procedencia"
+      id={SECCION_PERFIL.procedencia}
       className="scroll-mt-20 rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6"
     >
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -280,21 +282,17 @@ export function SeccionProcedencia({
                     Subido el {formatFecha(comprobante.subidoEn)}
                   </p>
                   {comprobante.estado === "rechazado" ? (
-                    <p className="mt-2 flex items-start gap-1.5 whitespace-pre-line break-words text-sm font-medium text-red-700">
+                    <p className="mt-2 flex items-start gap-1.5 whitespace-pre-line break-words text-sm font-medium text-danger">
                       <XCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                       <span>
                         Rechazado{comprobante.motivo ? `: ${comprobante.motivo}` : ""}
                       </span>
                     </p>
                   ) : (
-                    <p
-                      className={cn(
-                        "mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium",
-                        estado.clase,
-                      )}
-                    >
-                      <estado.Icono className="h-3.5 w-3.5" aria-hidden="true" />
-                      {estado.texto}
+                    <p className="mt-2">
+                      <Badge tono={estado.tono} icono={estado.Icono}>
+                        {estado.texto}
+                      </Badge>
                     </p>
                   )}
                 </div>

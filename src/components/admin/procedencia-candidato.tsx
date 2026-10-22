@@ -30,7 +30,7 @@ export function ProcedenciaCandidato({
   const esFunes = esLocalidadFunes(localidad);
 
   return (
-    <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
+    <div className="tarjeta p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold text-foreground">Procedencia</h2>
         <BadgeProcedencia
@@ -74,7 +74,7 @@ export function ProcedenciaCandidato({
                 </p>
               )}
               {comprobante.estado === "rechazado" && comprobante.motivo && (
-                <p className="mt-1 whitespace-pre-line break-words text-xs text-red-700">
+                <p className="mt-1 whitespace-pre-line break-words text-xs text-danger">
                   Motivo: {comprobante.motivo}
                 </p>
               )}

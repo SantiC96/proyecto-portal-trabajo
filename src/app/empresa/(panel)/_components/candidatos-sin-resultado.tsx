@@ -29,26 +29,26 @@ export async function CandidatosSinResultado() {
   return (
     <section
       aria-labelledby="sin-resultado-titulo"
-      className="mt-8 rounded-[var(--radius-lg)] border border-amber-200 bg-amber-50 p-4 sm:p-5"
+      className="mt-8 rounded-[var(--radius-lg)] bg-accent p-4 text-accent-foreground sm:p-5"
     >
       <div className="flex items-start gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white">
           <UserCheck className="h-4.5 w-4.5" aria-hidden="true" />
         </div>
         <div className="min-w-0">
-          <h2 id="sin-resultado-titulo" className="font-semibold text-amber-900">
+          <h2 id="sin-resultado-titulo" className="text-lg font-bold text-accent-foreground">
             {filas.length === 1
               ? "Tenés 1 candidato esperando tu respuesta: ¿lo contrataste?"
               : `Tenés ${filas.length} candidatos esperando tu respuesta: ¿los contrataste?`}
           </h2>
-          <p className="mt-0.5 text-sm text-amber-900/80">
+          <p className="mt-0.5 text-[15px] leading-[1.45]">
             La entrevista fue hace más de {DIAS_SIN_RESULTADO} días. Indicá si lo
             seleccionaste o no para que la Oficina de Empleo pueda seguir acompañándolo.
           </p>
         </div>
       </div>
 
-      <ul className="mt-4 divide-y divide-amber-200 overflow-hidden rounded-[var(--radius-md)] border border-amber-200 bg-white">
+      <ul className="mt-4 divide-y divide-border overflow-hidden rounded-[var(--radius-md)] bg-white">
         {visibles.map((f) => (
           <li key={f.derivacion_id}>
             <Link
@@ -72,7 +72,7 @@ export async function CandidatosSinResultado() {
         ))}
       </ul>
       {filas.length > visibles.length && (
-        <p className="mt-2 text-xs text-amber-900/80">
+        <p className="mt-2 text-sm">
           Y {filas.length - visibles.length} más. Los encontrás en cada oferta, en Mis ofertas.
         </p>
       )}

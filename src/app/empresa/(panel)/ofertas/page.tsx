@@ -8,6 +8,9 @@ import { Paginacion } from "@/components/ui/paginacion";
 import { PestanasEstado } from "@/components/ui/pestanas-estado";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { Aviso } from "@/components/ui/aviso";
+import { Badge } from "@/components/ui/badge";
+import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirEmpresaPagina } from "@/lib/auth";
 import { bajasDeOfertas } from "@/lib/empresa/bajas-oferta";
@@ -22,6 +25,7 @@ import {
 import { BajaOfertaBtn } from "./_components/baja-oferta-btn";
 import { RestaurarOfertaBtn } from "./_components/restaurar-oferta-btn";
 import { RenovarOfertaBtn } from "./_components/renovar-oferta-btn";
+import { TarjetaOferta } from "./_components/tarjeta-oferta";
 import { VencimientoOferta } from "@/components/ofertas/vencimiento-oferta";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 import { formatFecha } from "@/lib/fechas";
@@ -29,7 +33,7 @@ import {
   diasParaRestaurar,
   DIAS_RESTAURACION_OFERTA,
   ESTADO_OFERTA_EMPRESA_LABEL,
-  ESTADO_OFERTA_EMPRESA_STYLE,
+  ESTADO_OFERTA_EMPRESA_TONO,
   type EstadoOfertaEmpresa,
 } from "@/lib/oferta-estados";
 import { BotonVolver } from "@/components/ui/boton-volver";
@@ -52,7 +56,7 @@ export default async function MisOfertasPage({
   const empresa = await requerirEmpresaPagina("/empresa");
 
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+    <section>
       <BotonVolver href="/empresa">Volver al panel</BotonVolver>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -205,36 +209,32 @@ async function ListadoMisOfertas({
             const dias = diasParaRestaurar(oferta.eliminada_en!);
             const estadoLabel = ESTADO_OFERTA_EMPRESA_LABEL[oferta.estado] ?? oferta.estado;
             return (
-              <li
+              <TarjetaOferta
                 key={oferta.id}
-                className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between sm:p-5"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-base font-semibold text-foreground">{oferta.titulo}</h2>
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ESTADO_OFERTA_EMPRESA_STYLE[oferta.estado] ?? "bg-gray-100 text-gray-600"}`}
-                    >
-                      {estadoLabel}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                titulo={oferta.titulo}
+                datos={
+                  <p className="text-xs text-muted-foreground">
                     Eliminada el {formatFecha(oferta.eliminada_en!)} ·{" "}
                     {dias > 0
                       ? `${dias === 1 ? "queda 1 día" : `quedan ${dias} días`} para restaurarla`
                       : "ya no se puede restaurar"}
                   </p>
-                </div>
-                {dias > 0 && (
-                  <div className="flex shrink-0 items-center gap-2">
+                }
+                badges={
+                  <Badge tono={ESTADO_OFERTA_EMPRESA_TONO[oferta.estado] ?? "neutral"} estado>
+                    {estadoLabel}
+                  </Badge>
+                }
+                acciones={
+                  dias > 0 && (
                     <RestaurarOfertaBtn
                       ofertaId={oferta.id}
                       ofertaTitulo={oferta.titulo}
                       estadoLabel={estadoLabel}
                     />
-                  </div>
-                )}
-              </li>
+                  )
+                }
+              />
             );
           })}
         </ul>
@@ -277,73 +277,55 @@ async function ListadoMisOfertas({
             const estadoVisible: EstadoOfertaEmpresa = vencida ? "vencida" : oferta.estado;
 
             return (
-              <li
+              <TarjetaOferta
                 key={oferta.id}
-                className="rounded-[var(--radius-lg)] border border-border bg-white p-4 shadow-xs sm:p-5"
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-base font-semibold text-foreground">{oferta.titulo}</h2>
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ESTADO_OFERTA_EMPRESA_STYLE[estadoVisible] ?? "bg-gray-100 text-gray-600"}`}
-                      >
-                        {ESTADO_OFERTA_EMPRESA_LABEL[estadoVisible] ?? estadoVisible}
-                      </span>
-                      {tienePendientes && (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                          Candidatos por contactar
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="mt-1 text-xs text-muted-foreground">
+                titulo={oferta.titulo}
+                datos={
+                  <>
+                    <p className="text-xs text-muted-foreground">
                       {esBorrador ? `Creado el ${fecha}` : `Publicada el ${fecha}`}
                     </p>
-                    <VencimientoOferta
-                      className="mt-1"
-                      estado={oferta.estado}
-                      venceEn={oferta.vence_en}
-                    />
-
                     {categorias.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-1.5">
                         {categorias.map((cat) => (
-                          <span
-                            key={cat}
-                            className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
-                          >
-                            {cat}
-                          </span>
+                          <EtiquetaRubro key={cat}>{cat}</EtiquetaRubro>
                         ))}
                       </div>
                     )}
-
-                    {oferta.estado === "rechazada" && oferta.motivo_rechazo && (
-                      <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                        <span className="font-semibold">Motivo del rechazo:</span>{" "}
-                        {oferta.motivo_rechazo}
-                      </div>
+                  </>
+                }
+                badges={
+                  <>
+                    <Badge tono={ESTADO_OFERTA_EMPRESA_TONO[estadoVisible] ?? "neutral"} estado>
+                      {ESTADO_OFERTA_EMPRESA_LABEL[estadoVisible] ?? estadoVisible}
+                    </Badge>
+                    {tienePendientes && (
+                      <Badge tono="warning" estado>
+                        Candidatos por contactar
+                      </Badge>
                     )}
-
-                  </div>
-
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    {mostrarContinuar && (
+                  </>
+                }
+                detalle={
+                  oferta.estado === "rechazada" &&
+                  oferta.motivo_rechazo && (
+                    <Aviso tono="danger">
+                      <span className="font-semibold">Motivo del rechazo:</span>{" "}
+                      {oferta.motivo_rechazo}
+                    </Aviso>
+                  )
+                }
+                info={<VencimientoOferta estado={oferta.estado} venceEn={oferta.vence_en} />}
+                acciones={
+                  <>
+                    <BajaOfertaBtn oferta={oferta} baja={baja} />
+                    {mostrarEditar && (
                       <Link
                         href={`/empresa/ofertas/${oferta.id}/editar`}
-                        className="btn-primario inline-flex min-h-11 items-center px-3 text-xs sm:min-h-9"
+                        className="btn-secundario inline-flex min-h-11 items-center px-3 text-xs font-medium sm:min-h-9"
                       >
-                        Continuar
+                        Editar
                       </Link>
-                    )}
-                    {vencida && (
-                      <RenovarOfertaBtn
-                        ofertaId={oferta.id}
-                        ofertaTitulo={oferta.titulo}
-                        duracionDias={oferta.duracion_dias}
-                      />
                     )}
                     {oferta.estado === "activa" && (
                       <Link
@@ -353,18 +335,24 @@ async function ListadoMisOfertas({
                         Ver candidatos
                       </Link>
                     )}
-                    {mostrarEditar && (
+                    {vencida && (
+                      <RenovarOfertaBtn
+                        ofertaId={oferta.id}
+                        ofertaTitulo={oferta.titulo}
+                        duracionDias={oferta.duracion_dias}
+                      />
+                    )}
+                    {mostrarContinuar && (
                       <Link
                         href={`/empresa/ofertas/${oferta.id}/editar`}
-                        className="btn-secundario inline-flex min-h-11 items-center px-3 text-xs font-medium sm:min-h-9"
+                        className="btn-primario inline-flex min-h-11 items-center px-3 text-xs sm:min-h-9"
                       >
-                        Editar
+                        Continuar
                       </Link>
                     )}
-                    <BajaOfertaBtn oferta={oferta} baja={baja} />
-                  </div>
-                </div>
-              </li>
+                  </>
+                }
+              />
             );
           })}
         </ul>

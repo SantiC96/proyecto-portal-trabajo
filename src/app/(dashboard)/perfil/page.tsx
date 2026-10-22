@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { AlertCircle, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirRolPagina } from "@/lib/auth";
 import { PerfilForm } from "./perfil-form";
@@ -8,6 +8,7 @@ import { AvisoCursoPendiente } from "@/components/cursos/aviso-curso-pendiente";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { consultaCvsDisponibles, conUrlsFirmadas } from "@/lib/cvs";
 import { obtenerComprobanteVigente } from "@/lib/comprobantes";
+import { Aviso } from "@/components/ui/aviso";
 
 export const metadata: Metadata = {
   title: "Mi perfil | Portal de Empleo Funes",
@@ -54,15 +55,11 @@ export default async function PerfilPage() {
 
   if (!postulante) {
     return (
-      <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+      <section className="contenido-lectura-ancho">
         <h1 className="mb-8 text-2xl font-bold tracking-tight text-foreground">Mi perfil</h1>
-        <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
-          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-          <div>
-            <p className="font-semibold">No pudimos cargar tu perfil</p>
-            <p className="mt-0.5 text-red-600">Intentá de nuevo más tarde. Si el problema persiste, comunicate con la oficina de empleo.</p>
-          </div>
-        </div>
+        <Aviso tono="danger" titulo="No pudimos cargar tu perfil">
+          Intentá de nuevo más tarde. Si el problema persiste, comunicate con la oficina de empleo.
+        </Aviso>
       </section>
     );
   }
@@ -93,7 +90,7 @@ export default async function PerfilPage() {
     : null;
 
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+    <section className="contenido-lectura-ancho">
       <BotonVolver href="/">Volver al inicio</BotonVolver>
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-foreground">
         Mi perfil
@@ -103,19 +100,11 @@ export default async function PerfilPage() {
       </Suspense>
       {/* Postulantes registrados antes de migration_055: no bloquea nada. */}
       {!postulante.localidad && (
-        <div
-          role="status"
-          className="-mt-4 mb-8 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-        >
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <p>
-            Contanos de dónde sos: completá tu localidad en{" "}
-            <a href="#procedencia" className="font-semibold underline underline-offset-2">
-              Procedencia
-            </a>
-            . La Oficina de Empleo la usa para organizar las postulaciones.
-          </p>
-        </div>
+        <Aviso tono="warning" icono={MapPin} className="-mt-4 mb-8">
+          Contanos de dónde sos: completá tu localidad en{" "}
+          <a href="#procedencia">Procedencia</a>. La Oficina de Empleo la usa para organizar las
+          postulaciones.
+        </Aviso>
       )}
       <PerfilForm
         usuario={{

@@ -8,16 +8,16 @@ import { cn } from "@/lib/utils";
  */
 export function Obligatorio({ className }: { className?: string }) {
   return (
-    <span className={cn("font-normal text-red-600", className)}>
+    <span className={cn("font-normal text-danger", className)}>
       <span aria-hidden="true">*</span>
       <span className="sr-only">(obligatorio)</span>
     </span>
   );
 }
 
-/** Borde rojo de un control con aria-invalid (lo trae Input; para inputs y selects nativos). */
+/** Borde rojo de un control con aria-invalid (lo trae .campo; para inputs y selects nativos con otras clases). */
 export const CLASE_CONTROL_INVALIDO =
-  "aria-invalid:border-red-500 aria-invalid:ring-2 aria-invalid:ring-red-500/20";
+  "aria-invalid:border-danger aria-invalid:shadow-[var(--sombra-error-campo)]";
 
 /** id del mensaje de error de un campo, para aria-describedby. */
 export function idErrorCampo(idCampo: string): string {
@@ -45,7 +45,7 @@ export function ErrorCampo({
   return (
     <p
       id={idErrorCampo(idCampo)}
-      className={cn("flex items-start gap-1.5 text-xs text-red-600", className)}
+      className={cn("flex items-start gap-1.5 text-sm text-danger", className)}
     >
       <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
       {mensaje}

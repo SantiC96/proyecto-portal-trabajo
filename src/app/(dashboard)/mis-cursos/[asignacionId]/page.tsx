@@ -9,6 +9,7 @@ import { aMisCursos, type MiCurso } from "@/lib/cursos";
 import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
 import { AccionesMiCurso } from "../acciones-mi-curso";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { Aviso } from "@/components/ui/aviso";
 
 async function obtenerMiCurso(asignacionId: string): Promise<MiCurso | null> {
   if (!esUuid(asignacionId)) return null;
@@ -44,8 +45,8 @@ export default async function MiCursoDetallePage({
   if (!curso) notFound();
 
   return (
-    <section className="px-4 py-8 sm:px-6 sm:py-12">
-      <div className="mx-auto max-w-3xl">
+    <section>
+      <div className="contenido-lectura">
         <BotonVolver href="/mis-cursos">Volver a mis cursos</BotonVolver>
 
         <article className="mt-6 rounded-2xl border border-border bg-white p-6 shadow-xs sm:p-8 space-y-6">
@@ -90,9 +91,9 @@ export default async function MiCursoDetallePage({
           )}
 
           {curso.estado === "completado" && (
-            <p className="rounded-[var(--radius-md)] bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            <Aviso tono="success">
               Ya le avisamos a la Oficina de Empleo que completaste este curso.
-            </p>
+            </Aviso>
           )}
 
           <AccionesMiCurso

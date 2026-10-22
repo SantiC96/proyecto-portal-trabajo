@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { Mail, AlertCircle } from "lucide-react";
-import { PublicFooter } from "@/components/public/public-footer";
+import { Mail } from "lucide-react";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { RecuperarContrasenaForm } from "./form";
-import { BotonVolver } from "@/components/ui/boton-volver";
+import { Aviso } from "@/components/ui/aviso";
 
 export const metadata: Metadata = {
   title: "Recuperar contraseña | Portal de Empleo Funes",
@@ -18,13 +18,8 @@ export default async function RecuperarContrasenaPage({
   const linkVencido = error === "link-vencido";
 
   return (
-    <>
-      <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
-        <div className="w-full max-w-md">
-          <BotonVolver href="/auth/login" className="mb-3">
-            Volver al inicio de sesión
-          </BotonVolver>
-          <div className="rounded-2xl border border-border bg-white px-5 py-8 shadow-sm sm:px-8 sm:py-10">
+    <AuthShell volver={{ href: "/auth/login", texto: "Volver al inicio de sesión" }}>
+          <div>
           <div className="mb-6 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
               <Mail className="h-7 w-7" />
@@ -39,18 +34,13 @@ export default async function RecuperarContrasenaPage({
           </div>
 
           {linkVencido && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-1">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>El enlace venció o ya fue usado. Pedí uno nuevo.</span>
-            </div>
+            <Aviso tono="danger" className="mb-1">
+              El enlace venció o ya fue usado. Pedí uno nuevo.
+            </Aviso>
           )}
 
           <RecuperarContrasenaForm />
           </div>
-        </div>
-      </main>
-
-      <PublicFooter />
-    </>
+    </AuthShell>
   );
 }

@@ -31,7 +31,7 @@ export default async function CandidatosGuardadosPage({
   const empresa = await requerirEmpresaPagina("/empresa");
 
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+    <section>
       <BotonVolver href="/empresa">Volver al panel</BotonVolver>
       <div className="flex items-center gap-3">
         <BookmarkCheck className="h-6 w-6 text-primary" />

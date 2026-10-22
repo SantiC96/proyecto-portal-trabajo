@@ -9,13 +9,13 @@ import { leerPeriodo, PERIODO_LABEL, type Periodo } from "@/lib/indicadores-peri
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 import {
   ESTADO_OFERTA_EMPRESA_LABEL,
-  ESTADO_OFERTA_EMPRESA_STYLE,
+  ESTADO_OFERTA_EMPRESA_TONO,
   type EstadoOfertaEmpresa,
 } from "@/lib/oferta-estados";
 import { formatFechaCorta } from "@/lib/fechas";
-import { cn } from "@/lib/utils";
 import type { FilaIndicadoresEmpresa, FilaIndicadoresPorOfertaEmpresa } from "@/types/db";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
+import { Badge } from "@/components/ui/badge";
 import {
   GrupoIndicadores,
   formatDecimal,
@@ -43,7 +43,7 @@ export default async function IndicadoresEmpresaPage({
   const periodo = leerPeriodo(sp.periodo);
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+    <section>
       <BotonVolver href="/empresa">Volver al panel</BotonVolver>
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
@@ -226,14 +226,9 @@ function estadoVisible(o: FilaIndicadoresPorOfertaEmpresa): EstadoOfertaEmpresa 
 
 function BadgeEstado({ estado }: { estado: EstadoOfertaEmpresa }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium",
-        ESTADO_OFERTA_EMPRESA_STYLE[estado],
-      )}
-    >
+    <Badge tono={ESTADO_OFERTA_EMPRESA_TONO[estado]} estado>
       {ESTADO_OFERTA_EMPRESA_LABEL[estado]}
-    </span>
+    </Badge>
   );
 }
 

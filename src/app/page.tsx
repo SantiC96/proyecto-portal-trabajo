@@ -1,9 +1,12 @@
+import { Suspense } from "react";
 import { Hero } from "@/components/public/hero";
-import { JobDirectory } from "@/components/public/job-directory";
 import { HowItWorks } from "@/components/public/how-it-works";
-import { PublicFooter } from "@/components/public/public-footer";
-import { getCategorias, leerFiltrosOfertasPublicas } from "@/lib/ofertas";
+import { UltimasOfertas, EsqueletoUltimasOfertas } from "@/components/public/ultimas-ofertas";
+import { TuActividad, EsqueletoTuActividad } from "@/components/public/tu-actividad";
+import { ContactoOficina } from "@/components/public/contacto-oficina";
+import { getCategorias } from "@/lib/ofertas";
 import { obtenerSesionActual } from "@/lib/sesion";
+import { esOficinaActiva, obtenerPostulanteActual, obtenerUsuarioActual } from "@/lib/auth";
 import { SesionActivaLanding } from "@/components/auth/sesion-activa-landing";
 import { esRol, rutaInterna, urlLogin } from "@/lib/redirect";
 import type { Rol } from "@/types/db";
@@ -16,16 +19,16 @@ export default async function HomePage({
     redirectTo?: string;
     accion?: string;
     rol?: string;
-    q?: string;
-    categoria?: string;
-    modalidad?: string;
-    pagina?: string;
   }>;
 }) {
   const params = await searchParams;
 
-  const categorias = await getCategorias();
-  const filtros = leerFiltrosOfertasPublicas(params, categorias);
+  const [categorias, usuario, postulante] = await Promise.all([
+    getCategorias(),
+    obtenerUsuarioActual(),
+    obtenerPostulanteActual(),
+  ]);
+  const esOficina = esOficinaActiva(usuario);
 
   let sesionAviso: {
     nombre: string;
@@ -75,18 +78,26 @@ export default async function HomePage({
           profileHref={sesionAviso.profileHref}
         />
       )}
-      <main className="flex-1">
-        <Hero />
-        <JobDirectory
-          ruta="/"
-          searchParams={params}
+      <main className="flex flex-1 flex-col gap-12">
+        <Hero
+          nombrePostulante={postulante ? (usuario?.perfil?.nombre.trim() ?? "") : null}
           categorias={categorias}
-          filtros={filtros}
         />
-        <HowItWorks />
-      </main>
 
-      <PublicFooter />
+        <Suspense fallback={<EsqueletoUltimasOfertas />}>
+          <UltimasOfertas esOficina={esOficina} esPostulante={postulante !== null} />
+        </Suspense>
+
+        {postulante && (
+          <Suspense fallback={<EsqueletoTuActividad />}>
+            <TuActividad postulanteId={postulante.id} />
+          </Suspense>
+        )}
+
+        {!usuario && <HowItWorks />}
+
+        <ContactoOficina />
+      </main>
     </>
   );
 }

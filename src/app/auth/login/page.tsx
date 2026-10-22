@@ -1,21 +1,34 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import {
-  BriefcaseBusiness,
+  Briefcase,
   Building2,
-  CalendarDays,
-  ChartNoAxesCombined,
+  Calendar,
   FileText,
-  LaptopMinimalCheck,
+  MonitorCheck,
   Search,
+  TrendingUp,
 } from "lucide-react";
-import { PublicFooter } from "@/components/public/public-footer";
 import { LoginForm } from "@/components/auth/login-form";
+import { LinkVolverAuth } from "@/components/auth/auth-shell";
 
 export const metadata: Metadata = {
   title: "Iniciar sesión | Portal de Empleo Funes",
   description:
     "Accedé a tu cuenta en el Portal de Empleo de la Municipalidad de Funes. Tanto Postulantes como Empresas usan este mismo acceso.",
 };
+
+// Íconos flotantes del panel verde (decorativos), en la mitad derecha, arriba
+// y abajo del texto. Los "anchos" quedan al costado del título: se ocultan en
+// pantallas angostas para no taparlo.
+const ICONOS_FLOTANTES = [
+  { Icono: Calendar, clase: "top-[11%] right-[34%]", demora: "0s" },
+  { Icono: Briefcase, clase: "top-[20%] right-[10%]", demora: "-1.5s" },
+  { Icono: Building2, clase: "login-icono-flotante--ancho top-[36%] right-[5%]", demora: "-3s" },
+  { Icono: FileText, clase: "login-icono-flotante--ancho bottom-[30%] right-[6%]", demora: "-4.5s" },
+  { Icono: Search, clase: "bottom-[16%] right-[36%]", demora: "-2.2s" },
+  { Icono: MonitorCheck, clase: "bottom-[9%] right-[12%]", demora: "-5.2s" },
+];
 
 export default async function LoginPage({
   searchParams,
@@ -24,65 +37,65 @@ export default async function LoginPage({
 }) {
   const { error, redirect, motivo } = await searchParams;
   return (
-    <>
-      <main className="login-experience">
-        <section className="login-visual" aria-label="Oportunidades laborales en Funes">
-          <div className="login-visual-glow" aria-hidden="true" />
-          <div className="login-visual-brand">
-            <span className="login-visual-brand-icon">
-              <BriefcaseBusiness aria-hidden="true" />
+    <main className="login-pantalla">
+      <section className="login-panel" aria-label="Portal de Empleo de la Municipalidad de Funes">
+        <div className="login-panel-brillo" aria-hidden="true" />
+        <div className="login-panel-anillo" aria-hidden="true" />
+        <div aria-hidden="true">
+          {ICONOS_FLOTANTES.map(({ Icono, clase, demora }) => (
+            <span
+              key={demora}
+              className={`login-icono-flotante ${clase}`}
+              style={{ animationDelay: demora }}
+            >
+              <Icono />
             </span>
-            <span>
-              Municipalidad de Funes
-              <strong>Portal de Empleo</strong>
-            </span>
-          </div>
+          ))}
+        </div>
 
-          <div className="login-visual-copy">
-            <p className="login-visual-eyebrow">Talento local, nuevas oportunidades</p>
-            <h1>
-              Un nuevo camino
-              <br />
-              empieza <span>acá.</span>
-            </h1>
-            <p>
-              Conectamos a las personas que buscan crecer con las empresas que necesitan su
-              talento.
-            </p>
-          </div>
+        <Image
+          src="/images/logo-funes-blanco.png"
+          alt="Municipalidad de Funes"
+          width={185}
+          height={52}
+          loading="eager"
+          className="relative h-auto w-[185px]"
+        />
 
-          <div className="login-visual-note">
-            <ChartNoAxesCombined aria-hidden="true" />
-            <span>Tu talento puede llegar más lejos</span>
-          </div>
+        <div className="login-panel-texto login-entrada">
+          <p className="login-panel-volanta">Talento local, nuevas oportunidades</p>
+          <p className="login-panel-titulo">
+            Un nuevo
+            <br />
+            camino
+            <br />
+            empieza acá.
+          </p>
+          <p className="login-panel-bajada">
+            Conectamos a las personas que buscan crecer con las empresas que necesitan su
+            talento.
+          </p>
+        </div>
 
-          <div className="login-work-icons" aria-hidden="true">
-            <span className="login-work-icon login-work-icon--briefcase"><BriefcaseBusiness /></span>
-            <span className="login-work-icon login-work-icon--document"><FileText /></span>
-            <span className="login-work-icon login-work-icon--laptop"><LaptopMinimalCheck /></span>
-            <span className="login-work-icon login-work-icon--calendar"><CalendarDays /></span>
-            <span className="login-work-icon login-work-icon--search"><Search /></span>
-            <span className="login-work-icon login-work-icon--company"><Building2 /></span>
-          </div>
-        </section>
+        <p className="login-panel-nota">
+          <TrendingUp aria-hidden="true" className="h-5 w-5" />
+          Tu talento puede llegar más lejos
+        </p>
+      </section>
 
-        <section className="login-content" aria-label="Iniciar sesión">
+      <div className="login-columna">
+        <div className="w-full max-w-[460px]">
+          <LinkVolverAuth />
           <LoginForm
             confirmacionError={error === "confirmacion"}
             inactividad={motivo === "inactividad"}
-          sesionAnterior={motivo === "sesion-anterior"}
+            sesionAnterior={motivo === "sesion-anterior"}
             contrasenaActualizada={motivo === "contrasena-actualizada"}
-          cuentaDesactivada={motivo === "cuenta-desactivada"}
+            cuentaDesactivada={motivo === "cuenta-desactivada"}
             redirect={redirect}
           />
-        </section>
-      </main>
-
-      <PublicFooter />
-    </>
+        </div>
+      </div>
+    </main>
   );
 }
-
-
-
-

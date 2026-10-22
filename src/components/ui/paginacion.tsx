@@ -21,11 +21,43 @@ type Props = {
    * varias paginaciones independientes en la misma pantalla.
    */
   parametro?: string;
+  /**
+   * "simple": "Mostrando X–Y de N" y la página actual entre Anterior y
+   * Siguiente. "numeros": "Página N de M" y un botón por página (con puntos
+   * suspensivos si son muchas), para listas que ya muestran el total arriba.
+   */
+  variante?: "simple" | "numeros";
   className?: string;
 };
 
-const BOTON =
-  "inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg border px-3 text-sm font-medium sm:px-4";
+// Botón neutro de 44 × 44 como mínimo (en pantallas muy angostas queda solo la flecha).
+const BOTON = "btn-neutro min-w-11";
+const BOTON_NUMERO = "btn-neutro min-w-11 px-0!";
+const PAGINA_ACTUAL =
+  "inline-flex size-11 items-center justify-center rounded-[var(--radius-md)] bg-primary font-bold text-primary-foreground";
+
+/**
+ * Páginas a mostrar: la primera, la última y las vecinas de la actual; los
+ * huecos se marcan con null ("…").
+ */
+function paginasVisibles(actual: number, total: number): (number | null)[] {
+  const vecinas = new Set([1, total, actual - 1, actual, actual + 1]);
+  // Cerca de un extremo se completa para que la cantidad de botones no salte.
+  if (actual <= 3) [2, 3, 4].forEach((p) => vecinas.add(p));
+  if (actual >= total - 2) [total - 1, total - 2, total - 3].forEach((p) => vecinas.add(p));
+  const ordenadas = [...vecinas].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b);
+
+  const resultado: (number | null)[] = [];
+  ordenadas.forEach((p, i) => {
+    const anterior = ordenadas[i - 1];
+    if (anterior !== undefined && p - anterior > 1) {
+      // Un hueco de una sola página se muestra como número, no como "…".
+      resultado.push(p - anterior === 2 ? p - 1 : null);
+    }
+    resultado.push(p);
+  });
+  return resultado;
+}
 
 export function Paginacion({
   ruta,
@@ -35,6 +67,7 @@ export function Paginacion({
   tamano = TAMANO_PAGINA,
   ancla,
   parametro = "pagina",
+  variante = "simple",
   className,
 }: Props) {
   if (total <= 0) return null;
@@ -51,6 +84,77 @@ export function Paginacion({
       ancla,
     );
 
+  const anterior =
+    pagina > 1 ? (
+      <Link href={href(pagina - 1)} rel="prev" className={BOTON}>
+        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+        <span className="max-[359px]:sr-only">Anterior</span>
+      </Link>
+    ) : (
+      <span aria-disabled="true" className={BOTON}>
+        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+        <span className="max-[359px]:sr-only">Anterior</span>
+      </span>
+    );
+
+  const siguiente =
+    pagina < totalPaginas ? (
+      <Link href={href(pagina + 1)} rel="next" className={BOTON}>
+        <span className="max-[359px]:sr-only">Siguiente</span>
+        <ChevronRight className="h-4 w-4" aria-hidden="true" />
+      </Link>
+    ) : (
+      <span aria-disabled="true" className={BOTON}>
+        <span className="max-[359px]:sr-only">Siguiente</span>
+        <ChevronRight className="h-4 w-4" aria-hidden="true" />
+      </span>
+    );
+
+  if (variante === "numeros") {
+    return (
+      <nav
+        aria-label="Paginación"
+        className={cn(
+          "flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between",
+          className,
+        )}
+      >
+        <p className="text-center text-muted-foreground-strong sm:text-left">
+          Página {pagina} de {totalPaginas}
+        </p>
+
+        {totalPaginas > 1 && (
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end">
+            {anterior}
+            {/* En el celular solo entran Anterior y Siguiente; los números, desde sm. */}
+            <ul className="hidden items-center gap-1.5 sm:flex">
+              {paginasVisibles(pagina, totalPaginas).map((p, i) => (
+                <li key={p ?? `hueco-${i}`}>
+                  {p === null ? (
+                    <span aria-hidden="true" className="inline-flex size-11 items-center justify-center text-muted-foreground">
+                      …
+                    </span>
+                  ) : p === pagina ? (
+                    <span aria-current="page" className={PAGINA_ACTUAL}>
+                      <span className="sr-only">Página </span>
+                      {p}
+                    </span>
+                  ) : (
+                    <Link href={href(p)} className={BOTON_NUMERO}>
+                      <span className="sr-only">Página </span>
+                      {p}
+                    </Link>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {siguiente}
+          </div>
+        )}
+      </nav>
+    );
+  }
+
   return (
     <nav
       aria-label="Paginación"
@@ -65,47 +169,17 @@ export function Paginacion({
 
       {totalPaginas > 1 && (
         <div className="flex items-center justify-between gap-2 sm:justify-end">
-          {pagina > 1 ? (
-            <Link
-              href={href(pagina - 1)}
-              rel="prev"
-              className={cn(BOTON, "btn-secundario")}
-            >
-              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-              <span className="max-[359px]:sr-only">Anterior</span>
-            </Link>
-          ) : (
-            <span
-              aria-disabled="true"
-              className={cn(BOTON, "border-border bg-white text-muted-icon")}
-            >
-              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-              <span className="max-[359px]:sr-only">Anterior</span>
-            </span>
-          )}
+          {anterior}
 
-          <span className="whitespace-nowrap px-1 text-center text-muted-foreground-strong">
-            Página {pagina} de {totalPaginas}
+          <span className="flex items-center gap-1.5 whitespace-nowrap px-1 text-center text-muted-foreground-strong">
+            Página
+            <span aria-current="page" className={PAGINA_ACTUAL}>
+              {pagina}
+            </span>
+            de {totalPaginas}
           </span>
 
-          {pagina < totalPaginas ? (
-            <Link
-              href={href(pagina + 1)}
-              rel="next"
-              className={cn(BOTON, "btn-secundario")}
-            >
-              <span className="max-[359px]:sr-only">Siguiente</span>
-              <ChevronRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
-          ) : (
-            <span
-              aria-disabled="true"
-              className={cn(BOTON, "border-border bg-white text-muted-icon")}
-            >
-              <span className="max-[359px]:sr-only">Siguiente</span>
-              <ChevronRight className="h-4 w-4" aria-hidden="true" />
-            </span>
-          )}
+          {siguiente}
         </div>
       )}
     </nav>

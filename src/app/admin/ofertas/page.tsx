@@ -17,6 +17,7 @@ import {
 } from "@/lib/paginacion";
 import { Buscador } from "@/components/ui/buscador";
 import { ContadoresEstado, PestanasEstado } from "@/components/ui/pestanas-estado";
+import { Badge, type TonoBadge } from "@/components/ui/badge";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
@@ -50,12 +51,13 @@ const LABEL_FILTRO: Record<EstadoFiltro, string> = {
 
 type EstadoVisible = Enum<"estado_oferta"> | "vencida";
 
-const ESTADO_STYLE: Partial<Record<EstadoVisible, string>> = {
-  pendiente_aprobacion: "bg-amber-100 text-amber-800",
-  activa: "bg-emerald-100 text-emerald-800",
-  vencida: "bg-red-100 text-red-700",
-  rechazada: "bg-red-100 text-red-700",
-  cerrada: "bg-gray-100 text-gray-600",
+const ESTADO_TONO: Record<EstadoVisible, TonoBadge> = {
+  borrador: "neutral",
+  pendiente_aprobacion: "warning",
+  activa: "success",
+  vencida: "danger",
+  rechazada: "danger",
+  cerrada: "neutral",
 };
 
 type OfertaRow = Pick<Tabla<"ofertas">, "estado" | "vence_en">;
@@ -111,7 +113,7 @@ export default async function AdminOfertasPage({
   ]);
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+    <section>
       <BotonVolver href="/admin">Volver al panel</BotonVolver>
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
@@ -121,11 +123,11 @@ export default async function AdminOfertasPage({
       <ContadoresEstado
         className="mt-6"
         contadores={[
-          { label: "Pendientes", valor: cPendientes ?? 0, color: "text-amber-700" },
-          { label: "Activas", valor: cActivas ?? 0, color: "text-emerald-700" },
-          { label: "Vencidas", valor: cVencidas ?? 0, color: "text-red-600" },
-          { label: "Rechazadas", valor: cRechazadas ?? 0, color: "text-red-600" },
-          { label: "Cerradas", valor: cCerradas ?? 0, color: "text-muted-foreground" },
+          { label: "Pendientes", valor: cPendientes ?? 0, tono: "warning" },
+          { label: "Activas", valor: cActivas ?? 0, tono: "success" },
+          { label: "Vencidas", valor: cVencidas ?? 0, tono: "danger" },
+          { label: "Rechazadas", valor: cRechazadas ?? 0, tono: "danger" },
+          { label: "Cerradas", valor: cCerradas ?? 0, tono: "neutral" },
         ]}
       />
 
@@ -247,9 +249,7 @@ async function ListadoOfertas({
                       <div className="flex items-center gap-2">
                         {row.titulo}
                         {row.contenido_editado_en && (
-                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                            Modificada
-                          </span>
+                          <Badge tono="info">Modificada</Badge>
                         )}
                       </div>
                       <VencimientoOferta
@@ -265,16 +265,14 @@ async function ListadoOfertas({
                       {formatFechaCorta(row.created_at)}
                     </td>
                     <td className="py-4 pr-4">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ESTADO_STYLE[estadoVisible(row)] ?? "bg-gray-100 text-gray-600"}`}
-                      >
+                      <Badge tono={ESTADO_TONO[estadoVisible(row)] ?? "neutral"} estado>
                         {etiquetaEstado(row)}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="py-4">
                       <Link
                         href={`/admin/ofertas/${row.id}`}
-                        className="inline-flex h-8 items-center rounded-lg border border-border px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface-tinted"
+                        className="btn-neutro whitespace-nowrap"
                       >
                         Ver oferta
                       </Link>
@@ -296,9 +294,7 @@ async function ListadoOfertas({
                   <div>
                     <p className="font-semibold text-foreground">{row.titulo}</p>
                     {row.contenido_editado_en && (
-                      <span className="mt-1 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                        Modificada
-                      </span>
+                      <Badge tono="info" className="mt-1">Modificada</Badge>
                     )}
                     <VencimientoOferta
                       className="mt-1"
@@ -306,11 +302,9 @@ async function ListadoOfertas({
                       venceEn={row.vence_en}
                     />
                   </div>
-                  <span
-                    className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ESTADO_STYLE[estadoVisible(row)] ?? "bg-gray-100 text-gray-600"}`}
-                  >
+                  <Badge tono={ESTADO_TONO[estadoVisible(row)] ?? "neutral"} estado>
                     {etiquetaEstado(row)}
-                  </span>
+                  </Badge>
                 </div>
                 <dl className="mt-3 space-y-1.5 text-sm">
                   <div className="flex gap-2">

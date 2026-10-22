@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type TonoBadge } from "@/components/ui/badge";
 import { aprobarEmpresa, rechazarEmpresa } from "../actions";
 import { mostrarAviso } from "@/lib/avisos";
 import type { HistorialEntry } from "./page";
@@ -40,13 +40,10 @@ const EVENTO_LABEL: Record<HistorialEntry["evento"], string> = {
   reenviada: "Reenviada",
 };
 
-const EVENTO_COLOR: Record<
-  HistorialEntry["evento"],
-  "default" | "destructive" | "secondary"
-> = {
-  aprobada: "default",
-  rechazada: "destructive",
-  reenviada: "secondary",
+const EVENTO_TONO: Record<HistorialEntry["evento"], TonoBadge> = {
+  aprobada: "success",
+  rechazada: "danger",
+  reenviada: "warning",
 };
 
 export function EmpresaAcciones({
@@ -102,9 +99,7 @@ export function EmpresaAcciones({
       {/* Etiqueta "Reenviada" con fecha (solo en pestaña pendiente) */}
       {estadoActual === "pendiente" && fechaReenvio && (
         <div className="flex items-center gap-2">
-          <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">
-            Reenviada
-          </Badge>
+          <Badge tono="warning">Reenviada</Badge>
           <span className="text-xs text-muted-foreground">
             {formatFechaCorta(fechaReenvio)}
           </span>
@@ -157,14 +152,7 @@ export function EmpresaAcciones({
               {historial.map((entry) => (
                 <li key={entry.id} className="flex flex-col gap-0.5">
                   <div className="flex items-center gap-2">
-                    <Badge
-                      variant={EVENTO_COLOR[entry.evento]}
-                      className={
-                        entry.evento === "reenviada"
-                          ? "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100"
-                          : undefined
-                      }
-                    >
+                    <Badge tono={EVENTO_TONO[entry.evento]}>
                       {EVENTO_LABEL[entry.evento]}
                     </Badge>
                     <span className="text-xs text-muted-foreground">

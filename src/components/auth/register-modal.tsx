@@ -57,11 +57,11 @@ export function RegisterModal({ onClose }: RegisterModalProps) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-xl">
+      <div className="relative w-full max-w-md rounded-[var(--radius-xl)] bg-surface p-6 shadow-[var(--sombra-dialogo)]">
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 rounded-full p-1.5 text-muted-foreground transition hover:bg-gray-100 hover:text-foreground"
+          className="absolute top-4 right-4 rounded-full p-1.5 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
           aria-label="Cerrar ventana"
         >
           <X className="h-5 w-5" />

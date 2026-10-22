@@ -60,7 +60,7 @@ Antes se valida que sea razonable: entre 2 y 60 caracteres, solo letras, espacio
 - Es un tipo más de `archivos_usuario` (`comprobante_domicilio`): PDF, JPG, PNG o WEBP de hasta 5 MB, con las mismas validaciones de tipo, tamaño y firma que el resto (`src/lib/archivos.ts`) y los `CHECK` de la base. Como mucho uno vigente por usuario (índice único parcial); al subir otro, el anterior pasa a eliminado y lo borra la purga diaria.
 - La verificación va en la misma fila (`verificacion_estado`, `verificacion_motivo`, `verificado_por`, `verificado_en`) y no en una tabla aparte: cada comprobante tiene una sola revisión, el estado nace y muere con el archivo y la purga borra todo junto. Los `CHECK` impiden usar esas columnas en CVs o fotos y exigen motivo al rechazar.
 - Solo se puede tener comprobante si la localidad es Funes (trigger). Al cambiar la localidad, la verificación se reinicia: si sigue siendo Funes, el comprobante vuelve a "pendiente"; si deja de serlo, pasa a eliminado. El perfil lo avisa con un diálogo de confirmación antes de guardar.
-- Solo la oficina revisa (`revisar_comprobante_domicilio`, valida `rol_actual() = 'municipalidad'`), solo un comprobante vigente y pendiente, y rechazar exige motivo (hasta 500 caracteres). El postulante recibe el resultado como aviso y por email; la oficina recibe un aviso (sin email) cada vez que hay uno por revisar, y tiene un contador en su inicio que lleva a la lista de postulantes filtrada.
+- Solo la oficina revisa (`revisar_comprobante_domicilio`, valida `rol_actual() = 'municipalidad'`), solo un comprobante vigente y pendiente, y rechazar exige motivo (hasta 500 caracteres). El postulante recibe el resultado como aviso y por email; la oficina recibe un aviso (sin email) cada vez que hay uno por revisar, y tiene un contador en su inicio que lleva a la pantalla de comprobantes (ver Actualización).
 - En el registro el comprobante es opcional. Se valida antes de crear la cuenta; la subida va después y, si falla, la cuenta queda creada igual y la página de verificación avisa que se puede subir desde el perfil.
 
 ### 5. Protección de los comprobantes (datos personales)
@@ -81,6 +81,38 @@ La prioridad es un criterio de la oficina para ordenar su trabajo, no un dato de
 - Las funciones que le devuelven datos de un candidato (`candidato_para_empresa`, `candidato_para_empresa_completo`, `derivaciones_de_oferta_empresa`, `derivaciones_de_postulante_empresa`, `cv_de_derivacion_empresa`, `cv_de_candidato_empresa`) devuelven columnas fijas que no incluyen nada de esto. No se modificaron.
 - El bucket `comprobantes` no tiene política para la empresa.
 - `nivel_prioridad()` es `SECURITY INVOKER`: llamada por una empresa, no ve la fila y devuelve NULL.
+
+---
+
+## Actualización (2026-10-21)
+
+### Lista de postulantes ordenada por nivel
+
+- `/admin/postulantes` se ordena siempre por `nivel_prioridad` ascendente, después `created_at` descendente y por último `id` descendente, con o sin búsqueda y filtros. Es el orden del índice `postulantes_nivel_prioridad_idx`, y la paginación (`range`) no cambia.
+- En cada página, arriba de la primera tarjeta de cada nivel va un título (`h2`): "De Funes, domicilio verificado", "De Funes, sin verificar" y "Otra localidad o sin informar".
+- Cada tarjeta mantiene el badge de procedencia, que en el nivel 2 ya dice si el comprobante está en revisión, y suma un badge chico "Sin CV" (ningún CV disponible). Los dos salen de consultas por página (estado del comprobante y CVs vigentes de los postulantes de la página), no de una por tarjeta. La columna "CV" de la tarjeta se quitó porque repetía el badge.
+
+### Filtros que se quitaron
+
+- Procedencia (nivel), "Comprobante por revisar" y "Solo con CV". Con el orden por nivel, filtrar por procedencia ya no hace falta; los comprobantes se revisan en su propia pantalla, y el CV se ve en el badge.
+- "Esperando curso" y "Con curso pendiente". La tarjeta ya muestra el estado del curso ("Necesita curso · N rechazos" o el estado de la asignación activa) y la línea "N cursos pendientes por terminar", que salen de consultas por página (`estado_cursos_postulantes` y las asignaciones pendientes de los postulantes de la página). Se sacaron las consultas previas que solo usaban esos filtros: `postulantes_esperando_curso_ids()` y la de `asignaciones_curso` del pre-filtro.
+- Quedan el buscador y el filtro por rubros.
+- El servidor ignora los parámetros `nivel`, `con_cv`, `comprobante`, `esperando_curso` y `curso_pendiente`: un link viejo muestra la lista sin esos filtros, sin error. Al cambiar un filtro se borran de la URL.
+- La función `postulantes_esperando_curso_ids()` quedó sin uso en el código. Se borra en la migración de limpieza; `contar_postulantes_esperando_curso()` sigue en uso (contador del inicio de la oficina).
+
+### Pantalla de comprobantes
+
+- `/admin/comprobantes` (solo la oficina), en el menú después de "Postulantes". La tarjeta "Comprobantes por revisar" del inicio lleva acá.
+- Pestañas "Por revisar (N)" (pendientes, primero los más viejos) y "Revisados" (aprobados y rechazados, primero los más recientes, con la fecha, quién lo revisó y el motivo del rechazo). Solo comprobantes vigentes (`eliminado_en` NULL), paginados como el resto de las listas.
+- Cada fila muestra nombre (link a la ficha), DNI, localidad, domicilio declarado, fecha de carga y "Ver comprobante" con una URL firmada de 10 minutos generada en el servidor, igual que en la ficha (una sola llamada a Storage por página).
+- Aprobar y rechazar usan la misma acción (`revisarComprobante`) y los mismos diálogos (`RevisarComprobante`) que la ficha. Al terminar se recarga la página: la fila sale de la lista y el número de la pestaña baja.
+- La sección "Procedencia" de la ficha no cambió. El aviso a la oficina por un comprobante nuevo sigue llevando a la ficha del postulante (no se tocó la migración).
+
+- **Rediseño (2026-10-22):** la lista es una tabla (tarjetas en pantallas angostas) y cada separador de nivel muestra el total de ese nivel con los filtros actuales, con un conteo `head: true` por nivel; ya no muestra la cantidad de postulaciones, los rechazos sueltos ni la fecha de registro (los rechazos siguen en "Necesita curso · N rechazos").
+
+### Por qué el CV no entra en el orden
+
+La lista de postulantes es un directorio: sirve para encontrar a una persona, no para elegir candidatos. Donde el CV importa, en la búsqueda de postulantes para una oferta (decisión 028), ya suma puntaje. En la lista alcanza con el badge "Sin CV" para verlo de un vistazo.
 
 ---
 

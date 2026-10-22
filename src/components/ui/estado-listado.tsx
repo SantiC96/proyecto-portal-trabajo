@@ -4,7 +4,7 @@ import { AlertCircle, SearchX, X, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const CONTENEDOR =
-  "flex flex-col items-center gap-3 rounded-[var(--radius-lg)] border border-dashed border-border bg-surface px-4 py-12 text-center sm:px-8";
+  "flex flex-col items-center gap-3 rounded-[var(--radius-xl)] border border-dashed border-border-strong bg-surface px-4 py-12 text-center sm:px-8";
 
 const ICONO = "flex h-12 w-12 items-center justify-center rounded-full";
 
@@ -87,16 +87,16 @@ export function ErrorListado({ mensaje, refError, className }: PropsError) {
     <div
       role="alert"
       className={cn(
-        "flex flex-col items-center gap-2 rounded-[var(--radius-lg)] border border-red-200 bg-red-50 px-4 py-10 text-center sm:px-8",
+        "flex flex-col items-center gap-2 rounded-[var(--radius-lg)] bg-danger px-4 py-10 text-center text-white sm:px-8",
         className,
       )}
     >
-      <AlertCircle className="h-6 w-6 text-red-600" aria-hidden="true" />
-      <p className="font-semibold text-red-700">
+      <AlertCircle className="h-6 w-6" aria-hidden="true" />
+      <p className="font-semibold">
         {mensaje ?? "No pudimos cargar el listado. Intentá de nuevo en unos minutos."}
       </p>
       {refError && (
-        <p className="text-xs text-gray-500">
+        <p className="text-sm text-white/90">
           Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código:{" "}
           <span className="font-mono">{refError}</span>
         </p>

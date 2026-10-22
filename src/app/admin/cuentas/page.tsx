@@ -7,6 +7,7 @@ import { logError } from "@/lib/logger";
 import { formatFechaCorta } from "@/lib/fechas";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { Badge } from "@/components/ui/badge";
+import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
@@ -59,8 +60,8 @@ export default async function AdminCuentasPage() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="break-words font-semibold text-foreground">{nombreCompleto}</p>
-                    {esPropia && <Badge variant="outline">Vos</Badge>}
-                    <Badge variant={cuenta.activo ? "default" : "destructive"}>
+                    {esPropia && <EtiquetaRubro verde>Vos</EtiquetaRubro>}
+                    <Badge tono={cuenta.activo ? "success" : "neutral"} estado>
                       {cuenta.activo ? "Activa" : "Desactivada"}
                     </Badge>
                   </div>
@@ -116,7 +117,7 @@ export default async function AdminCuentasPage() {
   }
 
   return (
-    <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
+    <section>
       <BotonVolver href="/admin">Volver al panel</BotonVolver>
 
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

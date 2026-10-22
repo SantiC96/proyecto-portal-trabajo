@@ -119,3 +119,18 @@ export type FilaIndicadoresPorOfertaEmpresa = ConNulos<
   FilaRpc<"indicadores_por_oferta_empresa">,
   "vacantes" | "vence_en"
 >;
+/** Panel del postulante (migration_058). */
+export type FilaIndicadoresPostulante = FilaRpc<"indicadores_postulante">;
+export type FilaOfertaRecomendada = ConNulos<
+  FilaRpc<"ofertas_recomendadas_para_mi">,
+  "empresa_nombre"
+>;
+export type FilaMovimientoPostulante = ConNulos<
+  FilaRpc<"ultimos_movimientos_postulante">,
+  "empresa_nombre" | "estado_empresa" | "fecha_entrevista"
+>;
+/** Título y empresa de las ofertas de Mis postulaciones (migration_059). */
+export type FilaOfertaDeMiPostulacion = ConNulos<
+  FilaRpc<"ofertas_de_mis_postulaciones">,
+  "empresa_nombre"
+>;

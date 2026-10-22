@@ -23,7 +23,9 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 
 ### Postulante
 
+- Panel de inicio: cómo están sus postulaciones, aviso de invitaciones para responder, últimos movimientos, qué le falta al perfil y ofertas que coinciden con su perfil (con el mismo puntaje que usa la oficina).
 - Buscar ofertas por texto, rubro y modalidad, sin necesidad de registrarse.
+- Inicio con buscador (puesto o palabra clave y rubro, lleva al listado de ofertas), accesos por rubro y un carrusel con las últimas 10 ofertas publicadas.
 - Postularse a una oferta eligiendo con cuál de sus CVs (el más reciente viene elegido) y retirarla en cualquier momento salvo si ya fue seleccionado; la retirada queda en el historial y se puede volver a postular mientras la oferta siga abierta.
 - Ver el estado de cada postulación, con qué CV se postuló, la pre-entrevista y la entrevista con la empresa.
 - Recibir invitaciones de la Oficina de Empleo a ofertas que coinciden con su perfil (aviso y email). En su pantalla de Invitaciones responder "Me interesa" (eligiendo el CV: queda una postulación normal pendiente de revisión) o "No me interesa" (con un motivo opcional); las anteriores quedan en un historial.
@@ -53,8 +55,8 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 - Aprobar o rechazar ofertas antes de que se publiquen.
 - Revisar postulaciones, coordinar una pre-entrevista opcional y derivar a la empresa o descartar.
 - Corregir el resultado de una derivación cuando hace falta.
-- Consultar la base de postulantes con filtros (rubro, con CV, esperando curso, procedencia, comprobante por revisar) y ver la ficha de cada uno, con sus CVs y el CV de cada postulación.
-- Ver la procedencia de cada postulante con un badge ("Funes · Verificado", "Funes · Sin verificar", "Otra localidad: …") en listas y fichas, revisar el comprobante de domicilio (aprobar, o rechazar con motivo) y ordenar las postulaciones con "Primero verificados de Funes". Las empresas no ven nada de esto.
+- Consultar la base de postulantes, ordenada por prioridad (primero los de Funes con domicilio verificado), con búsqueda y filtro por rubro, y ver la ficha de cada uno, con sus CVs y el CV de cada postulación.
+- Ver la procedencia de cada postulante con un badge ("Funes · Verificado", "Funes · Sin verificar", "Otra localidad: …") en listas y fichas, revisar los comprobantes de domicilio en su propia pantalla o desde la ficha (aprobar, o rechazar con motivo) y ordenar las postulaciones con "Primero verificados de Funes". Las empresas no ven nada de esto.
 - Desde una oferta publicada (en su panel o en el listado público de ofertas), buscar postulantes que coinciden con ella aunque no se hayan postulado (rubro, requisitos y título contra su experiencia, disponibilidad y CV), con un nivel de coincidencia y las razones, e invitarlos a postularse. Los ya invitados aparecen al final con su última respuesta ("No interesado" muestra el motivo al pasar el mouse o tocarlo); se puede volver a invitar a quien dijo que no, también desde la ficha del postulante. Si aceptan, la postulación ("Por invitación") se revisa y deriva como cualquier otra. La empresa no ve nada de esto.
 - Crear cursos de inserción laboral y asignarlos a quien acumula rechazos.
 - Gestionar las cuentas de la oficina: invitar por email, desactivar y reactivar (siempre queda al menos una activa; nadie se desactiva a sí mismo).
@@ -85,6 +87,8 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 - **Supabase** como base de datos (Postgres), autenticación y almacenamiento de archivos (CV y fotos en buckets privados).
 - **Seguridad por roles en la base:** Row Level Security, permisos por columna y funciones SQL que validan rol, propiedad y estado.
 - **Emails por Gmail (SMTP)** con una cola en la base y un cron diario de respaldo.
+- **Interfaz con Tailwind CSS y shadcn/ui:** verde institucional, Public Sans y estados en colores sólidos según el [design system](docs/DESIGN_SYSTEM_Portal_Municipal_Empleo.md).
+- **Navegación lateral por rol:** sidebar a la izquierda (contraíble) y, en el celular, barra superior con panel; las pantallas de `/auth` van sin navegación.
 - **Git** con `main` (producción) y `develop` (integración), ramas `feat/`, `fix/`, `refactor/`, `docs/` y pull requests.
 
 El detalle (arquitectura, base de datos, seguridad, storage, puesta en marcha y deploy) está en la [documentación técnica](docs/documentacion-tecnica.md).
