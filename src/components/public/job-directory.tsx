@@ -48,7 +48,7 @@ export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDir
   ];
 
   return (
-    <section id={ANCLA} className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16 scroll-mt-20">
+    <section id={ANCLA} className="scroll-mt-20">
       {/* Section Header */}
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>

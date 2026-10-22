@@ -175,3 +175,18 @@ export function textoUltimaInvitacion(estado: EstadoInvitacion, fecha: string | 
 
 /** Etiqueta de las postulaciones que vienen de una invitación (postulaciones.origen). */
 export const ETIQUETA_POR_INVITACION = "Por invitación";
+
+/**
+ * Detalle de la invitación pendiente más reciente para el postulante, con
+ * "y N más" si tiene otras. Las invitaciones las manda la Oficina de Empleo,
+ * no la empresa (decisión 028): por eso la empresa va como dueña de la oferta.
+ */
+export function textoInvitacionReciente(
+  invitacion: { oferta_titulo: string; empresa_nombre: string | null },
+  pendientes: number,
+): string {
+  const empresa = invitacion.empresa_nombre ? ` de ${invitacion.empresa_nombre}` : "";
+  const otras = pendientes - 1;
+  const mas = otras > 0 ? ` y ${otras} más` : "";
+  return `La Oficina de Empleo te invitó a postularte a «${invitacion.oferta_titulo}»${empresa}${mas}.`;
+}

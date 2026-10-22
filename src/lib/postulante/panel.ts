@@ -2,12 +2,14 @@ import "server-only";
 
 import { cache } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { obtenerUsuarioActual } from "@/lib/auth";
 import { TAMANO_PAGINA } from "@/lib/paginacion";
 import { anclaPostulacion } from "@/lib/mis-postulaciones";
 import { hrefSeccionPerfil, SECCION_PERFIL } from "@/lib/perfil-secciones";
 import { esEstadoComprobante } from "@/lib/procedencia";
 import type {
   FilaIndicadoresPostulante,
+  FilaMiInvitacion,
   FilaMovimientoPostulante,
   FilaOfertaRecomendada,
   Tabla,
@@ -16,7 +18,8 @@ import type {
 // Datos del panel del postulante (/panel, docs/decisiones/029). Los números y
 // las ofertas recomendadas se calculan en la base (migration_058); el
 // postulante sale de la sesión dentro de cada función. El resto se lee con el
-// cliente del usuario (RLS).
+// cliente del usuario (RLS). El inicio (/) usa las mismas funciones para
+// "Tu actividad".
 
 type ConError<T> = { data: T; error: null } | { data: null; error: unknown };
 
@@ -56,6 +59,30 @@ export function obtenerOfertasRecomendadas(): Promise<ConError<FilaOfertaRecomen
     return { data: data ?? [], error: null };
   });
 }
+
+// ── Invitaciones pendientes ─────────────────────────────────────────────────
+
+/**
+ * Invitaciones pendientes, la más reciente primero. Salen de
+ * mis_invitaciones (migration_056), la misma función que usa /invitaciones.
+ * Dan el detalle del aviso de invitaciones y la marca "Te invitaron" de las
+ * tarjetas del inicio; el número del aviso sigue saliendo de los indicadores.
+ */
+export const obtenerInvitacionesPendientes = cache(
+  (): Promise<ConError<FilaMiInvitacion[]>> =>
+    seguro(async () => {
+      const supabase = await createSupabaseServerClient();
+      const { data, error } = await supabase.rpc("mis_invitaciones");
+      if (error) return { data: null, error };
+      const filas: FilaMiInvitacion[] = data ?? [];
+      return {
+        data: filas
+          .filter((i) => i.estado === "pendiente")
+          .sort((a, b) => b.creada_en.localeCompare(a.creada_en)),
+        error: null,
+      };
+    }),
+);
 
 // ── Últimos movimientos ─────────────────────────────────────────────────────
 
@@ -132,7 +159,22 @@ export function obtenerUltimosMovimientos(postulanteId: string): Promise<ConErro
 
 // ── Completá tu perfil ──────────────────────────────────────────────────────
 
-export type PendientePerfil = { clave: string; texto: string; href: string };
+export type ItemPerfil = {
+  clave: string;
+  completo: boolean;
+  /** Completo: qué está cargado. Pendiente: qué falta, como un pedido. */
+  texto: string;
+  href: string;
+};
+
+export type CompletitudPerfil = {
+  items: ItemPerfil[];
+  pendientes: ItemPerfil[];
+  /** Ítems completos sobre el total, redondeado. */
+  porcentaje: number;
+  /** Rubros de interés del postulante, en orden alfabético. */
+  rubros: string[];
+};
 
 function vacio(valor: string | null | undefined): boolean {
   return !valor || valor.trim() === "";
@@ -145,132 +187,160 @@ function enumerar(items: string[]): string {
 }
 
 /**
- * Lo que le falta al perfil, en el orden de /perfil. No hay otra lógica de
- * completitud en el proyecto: los datos obligatorios son los que pide el
- * registro del postulante y guarda el perfil.
+ * Qué tiene y qué le falta al perfil, en el orden de /perfil. No hay otra
+ * lógica de completitud en el proyecto: los datos obligatorios son los que
+ * pide el registro del postulante y guarda el perfil. Son siete ítems y el
+ * porcentaje es completos sobre el total.
+ *
+ * Una sola lectura por request: la usan "Completá tu perfil" y los rubros de
+ * "Ofertas para vos" en el panel, y "Tu actividad" en el inicio.
  */
-export function obtenerPendientesPerfil(
-  usuario: Pick<Tabla<"usuarios">, "id" | "nombre" | "apellido" | "telefono">,
-): Promise<ConError<PendientePerfil[]>> {
-  return seguro(async () => {
-    const supabase = await createSupabaseServerClient();
+export const obtenerCompletitudPerfil = cache(
+  (): Promise<ConError<CompletitudPerfil>> =>
+    seguro(async () => {
+      const usuario = (await obtenerUsuarioActual())?.perfil;
+      if (!usuario) return { data: null, error: "sin fila de usuarios" };
 
-    const [postulante, cvs, foto, comprobante] = await Promise.all([
-      supabase
-        .from("postulantes")
-        .select(
-          "dni, domicilio, localidad, es_de_funes, disponibilidad, experiencia_laboral, postulante_categorias(categoria_id)",
-        )
-        .eq("usuario_id", usuario.id)
-        .maybeSingle(),
-      supabase
-        .from("archivos_usuario")
-        .select("id", { count: "exact", head: true })
-        .eq("usuario_id", usuario.id)
-        .eq("tipo", "cv")
-        .is("eliminado_en", null),
-      supabase
-        .from("archivos_usuario")
-        .select("id", { count: "exact", head: true })
-        .eq("usuario_id", usuario.id)
-        .eq("tipo", "avatar")
-        .eq("activo", true),
-      supabase
-        .from("archivos_usuario")
-        .select("verificacion_estado")
-        .eq("usuario_id", usuario.id)
-        .eq("tipo", "comprobante_domicilio")
-        .is("eliminado_en", null)
-        .maybeSingle(),
-    ]);
+      const supabase = await createSupabaseServerClient();
 
-    const error = postulante.error ?? cvs.error ?? foto.error ?? comprobante.error;
-    if (error) return { data: null, error };
-    const p = postulante.data;
-    if (!p) return { data: null, error: "sin fila de postulantes" };
+      const [postulante, cvs, foto, comprobante] = await Promise.all([
+        supabase
+          .from("postulantes")
+          .select(
+            "dni, domicilio, localidad, es_de_funes, disponibilidad, experiencia_laboral, postulante_categorias(categorias!categoria_id(nombre))",
+          )
+          .eq("usuario_id", usuario.id)
+          .maybeSingle(),
+        supabase
+          .from("archivos_usuario")
+          .select("id", { count: "exact", head: true })
+          .eq("usuario_id", usuario.id)
+          .eq("tipo", "cv")
+          .is("eliminado_en", null),
+        supabase
+          .from("archivos_usuario")
+          .select("id", { count: "exact", head: true })
+          .eq("usuario_id", usuario.id)
+          .eq("tipo", "avatar")
+          .eq("activo", true),
+        supabase
+          .from("archivos_usuario")
+          .select("verificacion_estado")
+          .eq("usuario_id", usuario.id)
+          .eq("tipo", "comprobante_domicilio")
+          .is("eliminado_en", null)
+          .maybeSingle(),
+      ]);
 
-    const pendientes: PendientePerfil[] = [];
+      const error = postulante.error ?? cvs.error ?? foto.error ?? comprobante.error;
+      if (error) return { data: null, error };
+      const p = postulante.data;
+      if (!p) return { data: null, error: "sin fila de postulantes" };
 
-    const datosFaltantes = [
-      vacio(usuario.nombre) && "nombre",
-      vacio(usuario.apellido) && "apellido",
-      vacio(p.dni) && "DNI",
-      vacio(usuario.telefono) && "teléfono",
-      vacio(p.domicilio) && "domicilio",
-    ].filter((d): d is string => typeof d === "string");
-    if (datosFaltantes.length > 0) {
-      pendientes.push({
-        clave: "datos",
-        texto: `Completá tus datos personales: ${enumerar(datosFaltantes)}`,
-        href: hrefSeccionPerfil(SECCION_PERFIL.datos),
-      });
-    }
+      const rubros = (p.postulante_categorias ?? [])
+        .map((pc) => pc.categorias?.nombre)
+        .filter((n): n is string => Boolean(n))
+        .sort((a, b) => a.localeCompare(b, "es"));
 
-    if (!foto.count) {
-      pendientes.push({
-        clave: "foto",
-        texto: "Agregá una foto de perfil",
-        href: hrefSeccionPerfil(SECCION_PERFIL.foto),
-      });
-    }
+      const items: ItemPerfil[] = [];
+      const agregar = (clave: string, completo: boolean, texto: string, href: string) =>
+        items.push({ clave, completo, texto, href });
 
-    if (vacio(p.experiencia_laboral)) {
-      pendientes.push({
-        clave: "experiencia",
-        texto: "Contá tu experiencia laboral",
-        href: hrefSeccionPerfil(SECCION_PERFIL.informacionLaboral),
-      });
-    }
+      const datosFaltantes = [
+        vacio(usuario.nombre) && "nombre",
+        vacio(usuario.apellido) && "apellido",
+        vacio(p.dni) && "DNI",
+        vacio(usuario.telefono) && "teléfono",
+        vacio(p.domicilio) && "domicilio",
+      ].filter((d): d is string => typeof d === "string");
+      agregar(
+        "datos",
+        datosFaltantes.length === 0,
+        datosFaltantes.length === 0
+          ? "Datos personales"
+          : `Completá tus datos personales: ${enumerar(datosFaltantes)}`,
+        hrefSeccionPerfil(SECCION_PERFIL.datos),
+      );
 
-    if (vacio(p.disponibilidad)) {
-      pendientes.push({
-        clave: "disponibilidad",
-        texto: "Indicá tu disponibilidad horaria",
-        href: hrefSeccionPerfil(SECCION_PERFIL.informacionLaboral),
-      });
-    }
+      agregar(
+        "foto",
+        Boolean(foto.count),
+        foto.count ? "Foto de perfil" : "Agregá una foto de perfil",
+        hrefSeccionPerfil(SECCION_PERFIL.foto),
+      );
 
-    if (vacio(p.localidad)) {
-      pendientes.push({
-        clave: "localidad",
-        texto: "Indicá tu localidad",
-        href: hrefSeccionPerfil(SECCION_PERFIL.procedencia),
-      });
-    } else if (p.es_de_funes) {
-      // Pendiente de revisión no es algo que el postulante tenga que resolver.
-      const verificacion = comprobante.data?.verificacion_estado;
-      const estado = esEstadoComprobante(verificacion) ? verificacion : null;
-      if (estado === null) {
-        pendientes.push({
-          clave: "comprobante",
-          texto: "Subí tu comprobante de domicilio en Funes",
-          href: hrefSeccionPerfil(SECCION_PERFIL.procedencia),
-        });
-      } else if (estado === "rechazado") {
-        pendientes.push({
-          clave: "comprobante",
-          texto: "Tu comprobante de domicilio fue rechazado: subí uno nuevo",
-          href: hrefSeccionPerfil(SECCION_PERFIL.procedencia),
-        });
+      const conExperiencia = !vacio(p.experiencia_laboral);
+      agregar(
+        "experiencia",
+        conExperiencia,
+        conExperiencia ? "Experiencia laboral" : "Contá tu experiencia laboral",
+        hrefSeccionPerfil(SECCION_PERFIL.informacionLaboral),
+      );
+
+      const conDisponibilidad = !vacio(p.disponibilidad);
+      agregar(
+        "disponibilidad",
+        conDisponibilidad,
+        conDisponibilidad ? "Disponibilidad horaria" : "Indicá tu disponibilidad horaria",
+        hrefSeccionPerfil(SECCION_PERFIL.informacionLaboral),
+      );
+
+      // Localidad y comprobante son un solo ítem. Un comprobante en revisión
+      // no es algo que el postulante tenga que resolver: cuenta como completo.
+      const hrefProcedencia = hrefSeccionPerfil(SECCION_PERFIL.procedencia);
+      if (vacio(p.localidad)) {
+        agregar("procedencia", false, "Indicá tu localidad", hrefProcedencia);
+      } else if (!p.es_de_funes) {
+        agregar("procedencia", true, "Localidad", hrefProcedencia);
+      } else {
+        const verificacion = comprobante.data?.verificacion_estado;
+        const estado = esEstadoComprobante(verificacion) ? verificacion : null;
+        if (estado === null) {
+          agregar("procedencia", false, "Subí tu comprobante de domicilio en Funes", hrefProcedencia);
+        } else if (estado === "rechazado") {
+          agregar(
+            "procedencia",
+            false,
+            "Tu comprobante de domicilio fue rechazado: subí uno nuevo",
+            hrefProcedencia,
+          );
+        } else {
+          agregar(
+            "procedencia",
+            true,
+            estado === "aprobado"
+              ? "Domicilio en Funes verificado"
+              : "Comprobante de domicilio en revisión",
+            hrefProcedencia,
+          );
+        }
       }
-    }
 
-    if ((p.postulante_categorias ?? []).length === 0) {
-      pendientes.push({
-        clave: "intereses",
-        texto: "Elegí los rubros en los que te interesa trabajar",
-        href: hrefSeccionPerfil(SECCION_PERFIL.rubros),
-      });
-    }
+      agregar(
+        "intereses",
+        rubros.length > 0,
+        rubros.length > 0
+          ? "Rubros de interés"
+          : "Elegí los rubros en los que te interesa trabajar",
+        hrefSeccionPerfil(SECCION_PERFIL.rubros),
+      );
 
-    if (!cvs.count) {
-      pendientes.push({
-        clave: "cv",
-        texto: "Subí al menos un CV",
-        href: hrefSeccionPerfil(SECCION_PERFIL.cvs),
-      });
-    }
+      agregar(
+        "cv",
+        Boolean(cvs.count),
+        cvs.count ? "CV cargado" : "Subí al menos un CV",
+        hrefSeccionPerfil(SECCION_PERFIL.cvs),
+      );
 
-    return { data: pendientes, error: null };
-  });
-}
+      const completos = items.filter((i) => i.completo).length;
+      return {
+        data: {
+          items,
+          pendientes: items.filter((i) => !i.completo),
+          porcentaje: Math.round((completos / items.length) * 100),
+          rubros,
+        },
+        error: null,
+      };
+    }),
+);

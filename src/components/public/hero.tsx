@@ -1,108 +1,68 @@
-"use client";
-
 import Link from "next/link";
-import { ArrowDown, CheckCircle2, ShieldCheck, Users } from "lucide-react";
-import { AuthLink } from "@/components/auth/auth-link";
-import { useSesion } from "@/components/layout/sesion-provider";
+import { BuscadorInicio } from "@/components/public/buscador-inicio";
+import { hrefConParams } from "@/lib/paginacion";
 
-export function Hero() {
-  const sesion = useSesion();
-  const esEmpresa = sesion?.rol === "empresa";
+type Props = {
+  /** Solo el postulante con sesión ve el saludo y los textos para él. */
+  nombrePostulante: string | null;
+  categorias: string[];
+};
 
-  const handleScrollToOfertas = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    const element = document.getElementById("ofertas");
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
-      window.history.pushState(null, "", "#ofertas");
-    }
-  };
+const TEXTOS_GENERALES = {
+  volanta: "Portal de empleo · Ciudad de Funes",
+  titulo: "Trabajo en Funes, cerca de tu casa.",
+  bajada:
+    "Ofertas de empresas de la ciudad, revisadas por la Oficina de Empleo. Cargá tu perfil una vez y postulate sin llevar el CV impreso.",
+};
+
+/** Bloque principal del inicio: textos, buscador de ofertas y rubros. */
+export function Hero({ nombrePostulante, categorias }: Props) {
+  const textos =
+    nombrePostulante !== null
+      ? {
+          volanta: nombrePostulante ? `Hola, ${nombrePostulante}` : "Hola",
+          titulo: "Encontrá tu próximo trabajo en Funes.",
+          bajada:
+            "Buscá entre las ofertas aprobadas por la Oficina de Empleo y postulate con tu perfil.",
+        }
+      : TEXTOS_GENERALES;
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-secondary to-background pt-10 pb-12 sm:pt-16 sm:pb-20">
-      {/* Decorative background aura */}
-      <div
-        className="pointer-events-none absolute -top-24 right-1/2 h-80 w-80 translate-x-1/2 rounded-full bg-primary/10 blur-3xl sm:h-96 sm:w-96"
-        aria-hidden="true"
-      />
-
-      <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="mx-auto max-w-3xl text-center">
-          {/* Institutional Badge */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-white/80 px-3.5 py-1.5 text-xs font-semibold text-primary shadow-xs backdrop-blur-xs">
-            <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-            Oficina de Empleo • Municipalidad de Funes
-          </div>
-
-          {/* Main Title */}
-          <h1 className="mt-5 text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl sm:leading-tight">
-            Encontrá tu próximo trabajo o sumá{" "}
-            <span className="text-primary underline decoration-primary/30 underline-offset-4">
-              talento en Funes
-            </span>
-          </h1>
-
-          {/* Subtitle */}
-          <p className="mt-4 text-base text-muted-foreground-strong sm:text-lg sm:leading-relaxed">
-            El portal oficial de intermediación laboral para vecinos, comercios e industrias de nuestra ciudad.
-            Acompañamiento personalizado, pre-entrevistas y selección transparente.
-          </p>
-
-          {/* CTAs */}
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-            <a
-              href="#ofertas"
-              onClick={handleScrollToOfertas}
-              className="btn-primario w-full sm:w-auto"
-            >
-              <span>Ver ofertas disponibles</span>
-              <ArrowDown className="h-4 w-4" />
-            </a>
-            {esEmpresa ? (
-              <Link
-                href="/empresa"
-                className="btn-neutro w-full sm:w-auto"
-              >
-                <span>Mi panel de empresa</span>
-              </Link>
-            ) : (
-              <AuthLink
-                href="/auth/login"
-                className="btn-neutro w-full sm:w-auto"
-              >
-                <span>Acceso usuarios y empresas</span>
-              </AuthLink>
-            )}
-          </div>
-
-          {/* Highlights */}
-          <div className="mt-10 grid grid-cols-1 gap-3 pt-6 border-t border-border/70 text-left sm:grid-cols-3 sm:gap-4">
-            <div className="flex items-center gap-3 rounded-lg bg-white/60 p-3 backdrop-blur-xs">
-              <ShieldCheck className="h-5 w-5 text-primary shrink-0" />
-              <div className="text-xs font-medium text-foreground">
-                <strong className="block text-sm font-semibold">100% Oficial y Gratuito</strong>
-                Sin intermediarios con costo
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 rounded-lg bg-white/60 p-3 backdrop-blur-xs">
-              <Users className="h-5 w-5 text-primary shrink-0" />
-              <div className="text-xs font-medium text-foreground">
-                <strong className="block text-sm font-semibold">Talento Local de Funes</strong>
-                Prioridad de cercanía geográfica
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 rounded-lg bg-white/60 p-3 backdrop-blur-xs">
-              <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
-              <div className="text-xs font-medium text-foreground">
-                <strong className="block text-sm font-semibold">Preselección Cuidada</strong>
-                Entrevistas previas del municipio
-              </div>
-            </div>
-          </div>
-        </div>
+    <section
+      aria-labelledby="inicio-titulo"
+      className="flex flex-col gap-6 rounded-3xl border border-border bg-surface p-6 sm:px-14 sm:pt-14 sm:pb-12"
+    >
+      <div className="flex max-w-[720px] flex-col gap-4">
+        <p className="text-[13px] font-bold tracking-[0.08em] text-primary-hover uppercase">
+          {textos.volanta}
+        </p>
+        <h1
+          id="inicio-titulo"
+          className="text-[32px] leading-[1.08] font-extrabold tracking-[-0.02em] text-heading sm:text-[46px]"
+        >
+          {textos.titulo}
+        </h1>
+        <p className="text-lg leading-[1.55] text-texto-bajada">{textos.bajada}</p>
       </div>
+
+      <BuscadorInicio categorias={categorias} />
+
+      {categorias.length > 0 && (
+        <nav aria-label="Rubros" className="flex flex-wrap items-center gap-2">
+          <span className="mr-1 text-sm font-semibold text-muted-foreground-strong">Rubros:</span>
+          {categorias.map((c) => (
+            <Link
+              key={c}
+              href={hrefConParams("/ofertas", {}, { categoria: c })}
+              // 36 px de alto; el área táctil llega a 44 px con el margen
+              // vertical invisible del ::before.
+              className="relative inline-flex h-9 items-center rounded-[18px] border border-border-tab bg-surface px-3.5 text-sm font-semibold text-control-foreground outline-none transition-colors before:absolute before:-inset-y-1 before:inset-x-0 hover:border-primary hover:text-primary focus-visible:shadow-[var(--sombra-foco)]"
+            >
+              {c}
+            </Link>
+          ))}
+        </nav>
+      )}
     </section>
   );
 }
