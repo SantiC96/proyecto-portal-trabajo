@@ -11,7 +11,7 @@ import {
   leerPagina,
   type ParamsUrl,
 } from "@/lib/paginacion";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type TonoBadge } from "@/components/ui/badge";
 import { Buscador } from "@/components/ui/buscador";
 import { ContadoresEstado, PestanasEstado } from "@/components/ui/pestanas-estado";
 import { Paginacion } from "@/components/ui/paginacion";
@@ -51,10 +51,10 @@ const LABELS: Record<EstadoAprobacion, string> = {
   rechazada: "Rechazadas",
 };
 
-const BADGE_VARIANT: Record<EstadoAprobacion, "secondary" | "default" | "destructive"> = {
-  pendiente: "secondary",
-  aprobada: "default",
-  rechazada: "destructive",
+const TONO_ESTADO: Record<EstadoAprobacion, TonoBadge> = {
+  pendiente: "warning",
+  aprobada: "success",
+  rechazada: "danger",
 };
 
 const RUTA = "/admin/empresas";
@@ -104,9 +104,9 @@ export default async function AdminEmpresasPage({
       <ContadoresEstado
         className="mt-6"
         contadores={[
-          { label: "Pendientes", valor: cPendientes, color: "text-amber-700" },
-          { label: "Aprobadas", valor: cAprobadas ?? 0, color: "text-emerald-700" },
-          { label: "Rechazadas", valor: cRechazadas ?? 0, color: "text-red-600" },
+          { label: "Pendientes", valor: cPendientes, tono: "warning" },
+          { label: "Aprobadas", valor: cAprobadas ?? 0, tono: "success" },
+          { label: "Rechazadas", valor: cRechazadas ?? 0, tono: "danger" },
         ]}
       />
 
@@ -384,11 +384,9 @@ async function ListadoEmpresas({
                     </p>
                   </div>
                   <div className="flex flex-wrap justify-end gap-1">
-                    <Badge variant={BADGE_VARIANT[estado]}>{LABELS[estado]}</Badge>
+                    <Badge tono={TONO_ESTADO[estado]} estado>{LABELS[estado]}</Badge>
                     {estado === "pendiente" && reenviadas.has(empresa.id) && (
-                      <Badge variant="secondary" className="bg-amber-100 text-amber-700 border-amber-200">
-                        Reenviada
-                      </Badge>
+                      <Badge tono="warning">Reenviada</Badge>
                     )}
                   </div>
                 </div>

@@ -294,7 +294,7 @@ function TarjetaGrafico({
 
 function ErrorGrafico() {
   return (
-    <p role="alert" className="text-sm text-red-700">
+    <p role="alert" className="text-sm text-danger">
       No pudimos cargar este gráfico. Intentá de nuevo en unos minutos.
     </p>
   );

@@ -74,8 +74,8 @@ export function AsignarCursoDialog({
   }
 
   const triggerClass = destacado
-    ? "btn-primario inline-flex items-center justify-center whitespace-nowrap px-4 py-2 text-sm font-medium"
-    : "inline-flex items-center justify-center whitespace-nowrap rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-xs font-medium text-amber-700 transition hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30";
+    ? "btn-primario whitespace-nowrap"
+    : "btn-neutro whitespace-nowrap";
 
   const descripcionSeleccionada =
     disponibles.find((c) => c.id === cursoId)?.descripcion ?? null;

@@ -18,7 +18,7 @@ import { formatFecha, formatFechaCorta, formatFechaHoraCorta } from "@/lib/fecha
 import { InformacionLaboralResumen } from "@/components/postulantes/informacion-laboral-resumen";
 import {
   PRE_ENTREVISTA_LABEL,
-  PRE_ENTREVISTA_STYLE,
+  PRE_ENTREVISTA_TONO,
   esEstadoPreEntrevista,
 } from "@/lib/pre-entrevistas";
 import {
@@ -30,7 +30,6 @@ import {
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { BookOpen, Briefcase, Mail, ThumbsDown } from "lucide-react";
-import { cn } from "@/lib/utils";
 import {
   UMBRAL_RECHAZOS_CURSO,
   VENTANA_RECHAZOS_DIAS,
@@ -45,7 +44,7 @@ import type { ClienteSupabase } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import {
-  ESTILO_INVITACION,
+  TONO_INVITACION,
   esEstadoInvitacion,
   ofertaAceptaInvitaciones,
   volverALaBusqueda,
@@ -265,9 +264,9 @@ export default async function PostulanteFichaPage({
               className="mt-1"
             />
             {necesitaCurso ? (
-              <span className="mt-1 inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+              <Badge tono="warning" estado className="mt-1">
                 Necesita curso · {textoRechazos(rechazosVentana)} en {VENTANA_RECHAZOS_DIAS} días
-              </span>
+              </Badge>
             ) : (
               asignacionActivaEstado && (
                 <EstadoCursoBadge estado={asignacionActivaEstado} className="mt-1" />
@@ -340,7 +339,7 @@ export default async function PostulanteFichaPage({
               </dt>
               <dd
                 className={`mt-1 text-2xl font-bold ${
-                  rechazosVentana >= UMBRAL_RECHAZOS_CURSO ? "text-amber-700" : "text-foreground"
+                  rechazosVentana >= UMBRAL_RECHAZOS_CURSO ? "text-warning-text" : "text-foreground"
                 }`}
               >
                 {rechazosVentana}
@@ -359,9 +358,9 @@ export default async function PostulanteFichaPage({
               <dt className="text-xs text-muted-foreground">Cursos</dt>
               <dd className="mt-1.5">
                 {necesitaCurso ? (
-                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                  <Badge tono="warning" estado>
                     Necesita curso
-                  </span>
+                  </Badge>
                 ) : cantidadCursosPendientes > 0 ? (
                   <span className="text-sm font-medium text-foreground">
                     {textoCursosPendientes(cantidadCursosPendientes)}
@@ -371,7 +370,7 @@ export default async function PostulanteFichaPage({
                 )}
               </dd>
               {cantidadCursosPendientes > 0 && puedeRecibirCurso && (
-                <dd className="mt-1 text-xs text-amber-700">
+                <dd className="mt-1 text-xs text-warning-text">
                   Tiene {UMBRAL_RECHAZOS_CURSO} o más rechazos recientes: se le puede asignar otro curso.
                 </dd>
               )}
@@ -544,9 +543,7 @@ function HistorialRechazos({
                   <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
                     {formatFechaCorta(fecha)}
                     {rechazoCuentaParaCurso(fecha, ultimoCompletadoEn) && (
-                      <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-800">
-                        Cuenta para el curso
-                      </span>
+                      <Badge tono="warning">Cuenta para el curso</Badge>
                     )}
                   </div>
                 </li>
@@ -691,7 +688,7 @@ function HistorialPostulaciones({
                         {formatFecha(p.created_at)}
                       </td>
                       <td className="py-3 pr-4">
-                        <Badge variant={badgeCfg.variant} className={badgeCfg.className}>
+                        <Badge tono={badgeCfg.tono} estado>
                           {badgeCfg.label}
                         </Badge>
                       </td>
@@ -729,7 +726,7 @@ function HistorialPostulaciones({
                     <p className="font-medium text-foreground text-sm">
                       {p.ofertas?.titulo ?? "Oferta eliminada"}
                     </p>
-                    <Badge variant={badgeCfg.variant} className={badgeCfg.className}>
+                    <Badge tono={badgeCfg.tono} estado>
                       {badgeCfg.label}
                     </Badge>
                   </div>
@@ -800,14 +797,9 @@ function PreEntrevistaHistorial({ pre }: { pre: PostulacionHistorial["pre_entrev
   }
   return (
     <div className="space-y-1 text-xs">
-      <span
-        className={cn(
-          "inline-flex items-center rounded-full px-2 py-0.5 font-medium",
-          PRE_ENTREVISTA_STYLE[pre.estado],
-        )}
-      >
+      <Badge tono={PRE_ENTREVISTA_TONO[pre.estado]} estado>
         {PRE_ENTREVISTA_LABEL[pre.estado]}
-      </span>
+      </Badge>
       <p className="text-foreground">{formatFechaHoraCorta(pre.fecha_hora)}</p>
       <p className="break-words text-muted-foreground">{pre.lugar}</p>
       {pre.nota_oficina && (
@@ -897,14 +889,7 @@ function HistorialInvitaciones({
                           ` por ${inv.invitador.nombre} ${inv.invitador.apellido}`}
                       </p>
                     </div>
-                    <span
-                      className={cn(
-                        "inline-flex w-fit shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
-                        ESTILO_INVITACION[estado],
-                      )}
-                    >
-                      {texto}
-                    </span>
+                    <Badge tono={TONO_INVITACION[estado]}>{texto}</Badge>
                   </div>
                   {estado === "rechazada" && inv.motivo_rechazo && (
                     <p className="mt-2 text-xs text-muted-foreground-strong">

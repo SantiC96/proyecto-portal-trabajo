@@ -7,6 +7,7 @@ import { logError } from "@/lib/logger";
 import { formatFechaCorta } from "@/lib/fechas";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { Badge } from "@/components/ui/badge";
+import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
@@ -59,8 +60,8 @@ export default async function AdminCuentasPage() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="break-words font-semibold text-foreground">{nombreCompleto}</p>
-                    {esPropia && <Badge variant="outline">Vos</Badge>}
-                    <Badge variant={cuenta.activo ? "default" : "destructive"}>
+                    {esPropia && <EtiquetaRubro verde>Vos</EtiquetaRubro>}
+                    <Badge tono={cuenta.activo ? "success" : "neutral"} estado>
                       {cuenta.activo ? "Activa" : "Desactivada"}
                     </Badge>
                   </div>

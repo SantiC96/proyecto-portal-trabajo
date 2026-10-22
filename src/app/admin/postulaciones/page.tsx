@@ -176,12 +176,12 @@ export default async function PostulacionesPage({
   const pendientesTotal = (cRecibidas ?? 0) + (cRevision ?? 0);
 
   const contadores: Contador[] = [
-    { label: "Recibidas", valor: cRecibidas ?? 0, color: "text-foreground" },
-    { label: "En revisión", valor: cRevision ?? 0, color: "text-blue-700" },
-    { label: "Derivadas", valor: cDerivadas ?? 0, color: "text-primary" },
-    { label: "Contratado", valor: cContratados ?? 0, color: "text-emerald-700" },
-    { label: "No seleccionado", valor: cRechazadas ?? 0, color: "text-red-600" },
-    { label: "Retiradas", valor: cRetiradas ?? 0, color: "text-muted-foreground" },
+    { label: "Recibidas", valor: cRecibidas ?? 0, tono: "warning" },
+    { label: "En revisión", valor: cRevision ?? 0, tono: "info" },
+    { label: "Derivadas", valor: cDerivadas ?? 0, tono: "teal" },
+    { label: "Contratado", valor: cContratados ?? 0, tono: "success" },
+    { label: "No seleccionado", valor: cRechazadas ?? 0, tono: "neutral" },
+    { label: "Retiradas", valor: cRetiradas ?? 0, tono: "neutral" },
   ];
 
   return (
@@ -719,10 +719,7 @@ async function ListadoPostulaciones({
                         {formatFechaCorta(fila.fecha)}
                       </td>
                       <td className="py-4 pr-4">
-                        <Badge
-                          variant={fila.badge.variant}
-                          className={fila.badge.className}
-                        >
+                        <Badge tono={fila.badge.tono} estado>
                           {fila.badge.label}
                         </Badge>
                         {porInvitacion.has(fila.postulacionId) && (
@@ -733,7 +730,7 @@ async function ListadoPostulaciones({
                       <td className="py-4">
                         <Link
                           href={`/admin/postulaciones/${fila.postulacionId}`}
-                          className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface-tinted"
+                          className="btn-neutro whitespace-nowrap"
                         >
                           Ver ficha
                         </Link>
@@ -774,7 +771,7 @@ async function ListadoPostulaciones({
                           : "—"}
                       </p>
                     </div>
-                    <Badge variant={fila.badge.variant} className={fila.badge.className}>
+                    <Badge tono={fila.badge.tono} estado>
                       {fila.badge.label}
                     </Badge>
                   </div>
