@@ -35,6 +35,7 @@ import {
 import { useErroresCampo } from "@/lib/use-errores-campo";
 import { formatFechaHora } from "@/lib/fechas";
 import { cn } from "@/lib/utils";
+import { Aviso } from "@/components/ui/aviso";
 
 /** "fecha" es el error de fecha y hora que devuelve el servidor; va debajo del horario. */
 type CampoEntrevista = "dia" | "hora" | "fecha" | "lugar";
@@ -249,12 +250,9 @@ export function AccionesDerivacion({
 
   if (estado === "contratado") {
     return (
-      <div className="rounded-[var(--radius-lg)] border border-emerald-200 bg-emerald-50 p-4">
-        <p className="text-sm font-semibold text-emerald-800">Seleccionado</p>
-        <p className="mt-1 text-xs text-emerald-700">
-          Marcaste a este candidato como seleccionado para el puesto.
-        </p>
-      </div>
+      <Aviso tono="success" titulo="Seleccionado">
+        Marcaste a este candidato como seleccionado para el puesto.
+      </Aviso>
     );
   }
 
