@@ -22,6 +22,7 @@ import {
   textoTamanoArchivo,
   validarTipoCV,
 } from "@/lib/archivos";
+import { Aviso } from "@/components/ui/aviso";
 
 /**
  * Sección "Curriculum Vitae" del perfil del postulante: hasta CV_MAXIMOS CVs
@@ -205,13 +206,9 @@ export function SeccionCvs({ cvs }: { cvs: CvVista[] }) {
 
       <div aria-live="polite" className="mt-4 empty:hidden">
         {avisoLimite && enLimite && (
-          <div
-            id="aviso-limite-cvs"
-            className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
-          >
-            <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>{ERRORES_ARCHIVO.cvLimite}</span>
-          </div>
+          <Aviso id="aviso-limite-cvs" tono="warning" icono={Info} role="none">
+            {ERRORES_ARCHIVO.cvLimite}
+          </Aviso>
         )}
         {error && <MensajeError error={error} />}
       </div>
