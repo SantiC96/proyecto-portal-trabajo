@@ -103,7 +103,7 @@ export function NuevaContrasenaForm({
   const errorRef = state && !state.ok && state.codigo === "ERROR_INTERNO" ? state.ref : undefined;
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-border bg-white px-5 py-8 shadow-sm sm:px-8 sm:py-10">
+    <div className="w-full">
       <div className="mb-6 text-center">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Lock className="h-7 w-7" />

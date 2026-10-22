@@ -45,7 +45,6 @@ import {
 import { useErroresCampo } from "@/lib/use-errores-campo";
 import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
-import { BotonVolver } from "@/components/ui/boton-volver";
 import { Aviso } from "@/components/ui/aviso";
 
 const CAMPOS = [
@@ -218,10 +217,7 @@ export function RegistroPostulanteForm() {
 
   // ── render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="w-full max-w-xl">
-      <BotonVolver href="/" className="mb-3">
-        Volver al inicio
-      </BotonVolver>
+    <div className="w-full">
       {/* Header */}
       <div className="mb-6 text-center">
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -238,7 +234,7 @@ export function RegistroPostulanteForm() {
       <form
         onSubmit={handleSubmit}
         noValidate
-        className="tarjeta flex flex-col gap-6 px-4 py-6 sm:px-7 sm:py-8"
+        className="flex flex-col gap-6"
       >
         {/* ── 1. Datos personales ────────────────────────────────────────── */}
         <section>
