@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { AlertCircle } from "lucide-react";
-import { PublicFooter } from "@/components/public/public-footer";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { INVITACION_COOKIE } from "@/lib/session-config";
 import { NuevaContrasenaForm } from "../nueva-contrasena/form";
 
@@ -24,12 +24,11 @@ export default async function AceptarInvitacionPage({
   const hayReintento = !!(await cookies()).get(INVITACION_COOKIE);
 
   return (
-    <>
-      <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
+    <AuthShell>
         {tokenHash || hayReintento ? (
           <NuevaContrasenaForm tokenHash={tokenHash} variante="invitacion" />
         ) : (
-          <div className="w-full max-w-md rounded-2xl border border-border bg-white px-5 py-8 text-center shadow-sm sm:px-8 sm:py-10">
+          <div className="text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-danger text-white">
               <AlertCircle className="h-7 w-7" aria-hidden="true" />
             </div>
@@ -45,8 +44,6 @@ export default async function AceptarInvitacionPage({
             </Link>
           </div>
         )}
-      </main>
-      <PublicFooter />
-    </>
+    </AuthShell>
   );
 }

@@ -1,7 +1,6 @@
 import { Hero } from "@/components/public/hero";
 import { JobDirectory } from "@/components/public/job-directory";
 import { HowItWorks } from "@/components/public/how-it-works";
-import { PublicFooter } from "@/components/public/public-footer";
 import { getCategorias, leerFiltrosOfertasPublicas } from "@/lib/ofertas";
 import { obtenerSesionActual } from "@/lib/sesion";
 import { SesionActivaLanding } from "@/components/auth/sesion-activa-landing";
@@ -86,7 +85,6 @@ export default async function HomePage({
         <HowItWorks />
       </main>
 
-      <PublicFooter />
     </>
   );
 }

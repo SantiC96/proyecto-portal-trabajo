@@ -3,12 +3,12 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, LogOut } from "lucide-react";
+import { ChevronUp, LogOut, User } from "lucide-react";
 import { logout } from "@/app/auth/actions";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { BotonFormulario } from "@/components/ui/boton-formulario";
-import { seccionActual, seccionesDeRol } from "@/components/layout/secciones-rol";
-import { cn } from "@/lib/utils";
+import { etiquetaRol, rutaPerfil } from "@/components/layout/secciones-rol";
+import { inicialesDeEmpresa, inicialesDePersona } from "@/lib/iniciales";
 import type { Rol } from "@/types/db";
 
 export type SesionMenu = {
@@ -19,21 +19,12 @@ export type SesionMenu = {
   ajuste?: { x: number; y: number; zoom: number } | null;
 };
 
-export function etiquetaRol(rol?: Rol | null): string {
-  if (rol === "empresa") return "Empresa";
-  if (rol === "municipalidad") return "Oficina de empleo";
-  return "Postulante";
-}
-
-const CLASE_ITEM =
-  "mx-1 flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-sm font-medium transition hover:bg-surface-tinted hover:text-primary focus-visible:bg-surface-tinted focus-visible:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30";
-
 /**
- * Botón con la foto, el nombre y el rol que despliega el menú con todas las
- * secciones del panel del rol y "Cerrar sesión". El mismo componente sirve en
- * escritorio y en el celular (ahí el botón muestra solo la foto). Teclado:
- * flechas y Inicio/Fin recorren el menú, Escape lo cierra y devuelve el foco
- * al botón, Tab lo cierra.
+ * Bloque del usuario al pie de la sidebar: foto, nombre y rol. Abre hacia
+ * arriba un menú con "Mi perfil" y "Cerrar sesión". Teclado: al abrir, el foco
+ * pasa al primer ítem; flechas e Inicio/Fin lo recorren; Escape lo cierra y
+ * devuelve el foco al botón; Tab lo cierra. Con la sidebar contraída solo se
+ * ve la foto (lo resuelve el CSS).
  */
 export function MenuUsuario({ sesion }: { sesion: SesionMenu }) {
   const pathname = usePathname();
@@ -44,14 +35,13 @@ export function MenuUsuario({ sesion }: { sesion: SesionMenu }) {
   const contenedorRef = useRef<HTMLDivElement>(null);
   const botonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  // Al abrir con el teclado, el foco pasa al primer ítem.
-  const enfocarAlAbrir = useRef(false);
 
-  const secciones = seccionesDeRol(sesion.rol);
-  const actual = seccionActual(secciones, pathname);
   const nombreCompleto = `${sesion.nombre} ${sesion.apellido}`.trim();
   const rol = etiquetaRol(sesion.rol);
-
+  const iniciales =
+    sesion.rol === "empresa"
+      ? inicialesDeEmpresa(sesion.nombre)
+      : inicialesDePersona(sesion.nombre, sesion.apellido);
 
   function cerrar(devolverFoco = false) {
     setAbiertoEn(null);
@@ -60,10 +50,7 @@ export function MenuUsuario({ sesion }: { sesion: SesionMenu }) {
 
   useEffect(() => {
     if (!abierto) return;
-    if (enfocarAlAbrir.current) {
-      enfocarAlAbrir.current = false;
-      menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
-    }
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
 
     function alClic(e: MouseEvent) {
       if (contenedorRef.current && !contenedorRef.current.contains(e.target as Node)) {
@@ -81,6 +68,8 @@ export function MenuUsuario({ sesion }: { sesion: SesionMenu }) {
     const i = lista.indexOf(document.activeElement as HTMLElement);
     if (e.key === "Escape") {
       e.preventDefault();
+      // Que no cierre también el panel del celular.
+      e.stopPropagation();
       cerrar(true);
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -100,17 +89,17 @@ export function MenuUsuario({ sesion }: { sesion: SesionMenu }) {
   }
 
   function alTeclearBoton(e: React.KeyboardEvent<HTMLButtonElement>) {
-    if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
       e.preventDefault();
-      enfocarAlAbrir.current = true;
       setAbiertoEn(pathname);
     } else if (e.key === "Escape" && abierto) {
+      e.stopPropagation();
       cerrar();
     }
   }
 
   return (
-    <div ref={contenedorRef} className="relative">
+    <div ref={contenedorRef} className="menu-usuario" data-tooltip={nombreCompleto}>
       <button
         ref={botonRef}
         type="button"
@@ -120,26 +109,23 @@ export function MenuUsuario({ sesion }: { sesion: SesionMenu }) {
         aria-expanded={abierto}
         aria-controls={abierto ? idMenu : undefined}
         aria-label={`Menú de ${nombreCompleto} (${rol})`}
-        className="flex min-h-11 items-center gap-2.5 rounded-lg px-1.5 transition hover:bg-surface-tinted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 lg:px-2"
+        className="menu-usuario-boton"
       >
         <AvatarAjustado
           src={sesion.avatarUrl}
           alt=""
           ajuste={sesion.ajuste ?? undefined}
-          size="sm"
+          iniciales={iniciales}
+          size="nav"
+          className="border-2 border-white"
         />
-        <span className="hidden text-left leading-tight lg:block">
-          <span className="block max-w-44 truncate text-sm font-medium text-foreground">
-            {nombreCompleto}
-          </span>
-          <span className="block text-xs text-muted-foreground">{rol}</span>
+        <span className="sidebar-texto min-w-0 flex-1 text-left leading-tight">
+          <span className="block truncate text-sm font-bold text-white">{nombreCompleto}</span>
+          <span className="block truncate text-xs text-sidebar-suave">{rol}</span>
         </span>
-        <ChevronDown
+        <ChevronUp
           aria-hidden="true"
-          className={cn(
-            "h-4 w-4 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none",
-            abierto && "rotate-180",
-          )}
+          className={`sidebar-texto h-4 w-4 shrink-0 text-sidebar-suave transition-transform duration-200 ${abierto ? "" : "rotate-180"}`}
         />
       </button>
 
@@ -148,52 +134,36 @@ export function MenuUsuario({ sesion }: { sesion: SesionMenu }) {
           ref={menuRef}
           id={idMenu}
           role="menu"
-          aria-label={`Secciones de ${rol}`}
+          aria-label={`Opciones de ${nombreCompleto}`}
           onKeyDown={alTeclearMenu}
-          className="fixed inset-x-4 top-16 z-50 mt-1 max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-xl border border-border bg-white py-1 shadow-md sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:w-64"
+          className="menu-usuario-popup"
         >
-          <div className="border-b border-border px-4 pb-2 pt-1.5 lg:hidden" role="none">
-            <p className="truncate text-sm font-semibold text-foreground">{nombreCompleto}</p>
-            <p className="text-xs text-muted-foreground">{rol}</p>
-          </div>
-
-          <div className="py-1" role="none">
-            {secciones.map(({ label, href, Icono }) => {
-              const esActual = href === actual;
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  role="menuitem"
-                  aria-current={esActual ? "page" : undefined}
-                  onClick={() => cerrar()}
-                  className={cn(
-                    CLASE_ITEM,
-                    esActual ? "bg-secondary font-semibold text-primary" : "text-foreground",
-                  )}
-                >
-                  <Icono className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  {label}
-                </Link>
-              );
-            })}
-          </div>
-
-          <div className="border-t border-border pt-1" role="none">
-            <form action={logout} role="none">
-              <BotonFormulario
-                rol="menuitem"
-                icono={<LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />}
-                textoPendiente="Cerrando sesión…"
-                className={cn(
-                  CLASE_ITEM,
-                  "w-[calc(100%-0.5rem)] text-red-600 hover:bg-red-50 hover:text-red-700 focus-visible:bg-red-50 focus-visible:text-red-700 focus-visible:ring-red-600 disabled:opacity-60",
-                )}
-              >
-                Cerrar sesión
-              </BotonFormulario>
-            </form>
-          </div>
+          <Link
+            href={rutaPerfil(sesion.rol)}
+            role="menuitem"
+            onClick={() => cerrar()}
+            className="menu-usuario-item menu-usuario-escalonado"
+            style={{ "--i": 0 } as React.CSSProperties}
+          >
+            <User aria-hidden="true" />
+            Mi perfil
+          </Link>
+          <div role="separator" className="my-1 h-px bg-border" />
+          <form
+            action={logout}
+            role="none"
+            className="menu-usuario-escalonado"
+            style={{ "--i": 1 } as React.CSSProperties}
+          >
+            <BotonFormulario
+              rol="menuitem"
+              icono={<LogOut aria-hidden="true" />}
+              textoPendiente="Cerrando sesión…"
+              className="menu-usuario-item menu-usuario-item--peligro"
+            >
+              Cerrar sesión
+            </BotonFormulario>
+          </form>
         </div>
       )}
     </div>

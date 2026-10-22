@@ -53,5 +53,5 @@ Todos los botones miden al menos 44 px de alto, con radio 10 px y texto de 15 px
 ## Consecuencias
 
 - No se usan clases de colores de Tailwind para estados (`bg-*-50`, `bg-*-100`, `text-amber-700`…). Un estado nuevo se agrega con su tono en el helper que corresponda.
-- Quedan para el PR 2 los colores de la barra superior, el menú del usuario, la campanita y el login, que todavía usan clases propias.
+- Quedan para el PR 2 los colores de la barra superior, el menú del usuario, la campanita y el login, que todavía usan clases propias. Resuelto en la decisión 031 (navegación lateral y login nuevo).
 - Quedan para el PR 3 las tarjetas y algunos formularios que escriben sus clases en cada pantalla; ya toman los colores nuevos por los tokens, pero no el radio de 16 px ni `.campo`.

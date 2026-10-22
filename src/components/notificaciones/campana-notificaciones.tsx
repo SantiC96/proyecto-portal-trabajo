@@ -29,7 +29,8 @@ function todasLeidas(r: ResumenNotificaciones): ResumenNotificaciones {
 }
 
 /**
- * Campanita de la navbar para los tres roles. Los layouts no se vuelven a
+ * Campanita de la navegación para los tres roles: al pie de la sidebar en
+ * escritorio y en la barra superior del celular (`variante`). Los layouts no se vuelven a
  * ejecutar al navegar, así que el contador no viene del layout: se pide con
  * una server action al montar, en cada cambio de ruta y cuando el listado
  * avisa que marcó notificaciones como leídas.
@@ -38,7 +39,17 @@ function todasLeidas(r: ResumenNotificaciones): ResumenNotificaciones {
  * marca todas como leídas. Mientras el panel sigue abierto, las que eran
  * nuevas se ven resaltadas; al cerrarlo quedan como leídas.
  */
-export function CampanaNotificaciones({ rutaListado }: { rutaListado: string }) {
+export function CampanaNotificaciones({
+  rutaListado,
+  variante,
+}: {
+  rutaListado: string;
+  /**
+   * "sidebar": el panel se abre al costado de la sidebar, pegado abajo.
+   * "barra": el panel se abre hacia abajo desde la barra del celular.
+   */
+  variante: "sidebar" | "barra";
+}) {
   const pathname = usePathname();
   // Ruta en la que se abrió: al navegar, el panel se cierra solo.
   const [abiertaEn, setAbiertaEn] = useState<string | null>(null);
@@ -130,13 +141,16 @@ export function CampanaNotificaciones({ rutaListado }: { rutaListado: string }) 
             ? `Notificaciones: ${noLeidas} sin leer`
             : "Notificaciones"
         }
-        className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-white text-foreground transition hover:bg-surface-tinted focus:outline-none focus:ring-2 focus:ring-primary/30"
+        className={cn(
+          "relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] text-white transition-colors duration-150 hover:bg-white/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
+          abierta && "bg-white/12",
+        )}
       >
         <Bell className="h-5 w-5" aria-hidden="true" />
         {noLeidas > 0 && (
           <span
             aria-hidden="true"
-            className="absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-xs font-semibold text-white"
+            className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-primary bg-accent px-1 text-[11px] font-extrabold leading-none text-accent-foreground"
           >
             {noLeidas > 99 ? "99+" : noLeidas}
           </span>
@@ -147,7 +161,12 @@ export function CampanaNotificaciones({ rutaListado }: { rutaListado: string }) 
         <div
           role="dialog"
           aria-label="Notificaciones"
-          className="fixed inset-x-4 top-16 z-50 mt-1 rounded-xl border border-border bg-white shadow-md sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:w-96"
+          className={cn(
+            "z-50 rounded-xl border border-border bg-white text-foreground shadow-[var(--sombra-dialogo)]",
+            variante === "sidebar"
+              ? "fixed bottom-4 left-[calc(var(--ancho-sidebar)+12px)] w-96"
+              : "fixed inset-x-4 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96",
+          )}
         >
           <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
             <p className="flex min-h-11 items-center gap-2 text-sm font-semibold text-foreground">
@@ -203,7 +222,7 @@ function ItemNotificacion({ notificacion: n }: { notificacion: Notificacion }) {
                 {nueva && <span className="sr-only"> (nueva)</span>}
               </span>
               {nueva && (
-                <span aria-hidden="true" className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+                <span aria-hidden="true" className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" />
               )}
             </span>
             <span className="block break-words text-sm text-muted-foreground-strong">

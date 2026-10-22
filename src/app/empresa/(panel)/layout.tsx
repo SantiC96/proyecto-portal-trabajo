@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { obtenerEmpresaActual, requerirRolPagina } from "@/lib/auth";
-import { PublicFooter } from "@/components/public/public-footer";
 import { Clock, XCircle } from "lucide-react";
 import { Aviso } from "@/components/ui/aviso";
 
@@ -62,7 +61,6 @@ export default async function EmpresaPanelLayout({
             </p>
           </div>
         </main>
-        <PublicFooter />
       </>
     );
   }
@@ -100,7 +98,6 @@ export default async function EmpresaPanelLayout({
             </p>
           </div>
         </main>
-        <PublicFooter />
       </>
     );
   }
@@ -109,7 +106,6 @@ export default async function EmpresaPanelLayout({
   return (
     <>
       <main className="flex-1">{children}</main>
-      <PublicFooter />
     </>
   );
 }

@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Building, MapPin, Clock, Briefcase, UserSearch } from "lucide-react";
-import { PublicFooter } from "@/components/public/public-footer";
 import { getOfertaById } from "@/lib/ofertas";
 import { formatFecha } from "@/lib/fechas";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
@@ -199,7 +198,6 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
         </div>
       </main>
 
-      <PublicFooter />
     </>
   );
 }

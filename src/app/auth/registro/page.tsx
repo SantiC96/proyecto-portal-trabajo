@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PublicFooter } from "@/components/public/public-footer";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { RegistroPostulanteForm } from "@/components/auth/registro-postulante-form";
 import { RegistroEmpresaForm } from "@/components/auth/registro-empresa-form";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
@@ -25,22 +25,15 @@ export default async function RegistroPage({ searchParams }: Props) {
       .order("nombre");
 
     return (
-      <>
-        <main className="flex flex-1 justify-center px-4 py-10 sm:px-6">
-          <RegistroEmpresaForm categorias={categorias ?? []} />
-        </main>
-        <PublicFooter />
-      </>
+      <AuthShell ancho="amplio">
+        <RegistroEmpresaForm categorias={categorias ?? []} />
+      </AuthShell>
     );
   }
 
   return (
-    <>
-      <main className="flex flex-1 justify-center px-4 py-10 sm:px-6">
-        <RegistroPostulanteForm />
-      </main>
-
-      <PublicFooter />
-    </>
+    <AuthShell ancho="amplio">
+      <RegistroPostulanteForm />
+    </AuthShell>
   );
 }

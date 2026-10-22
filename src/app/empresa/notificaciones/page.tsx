@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { requerirRolPagina } from "@/lib/auth";
 import { rutaNotificaciones } from "@/lib/notificaciones";
-import { PublicFooter } from "@/components/public/public-footer";
 import { PaginaNotificaciones } from "@/components/notificaciones/pagina-notificaciones";
 
 export const metadata: Metadata = {
@@ -29,7 +28,6 @@ export default async function NotificacionesEmpresaPage({
           searchParams={sp}
         />
       </main>
-      <PublicFooter />
     </>
   );
 }

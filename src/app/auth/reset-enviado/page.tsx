@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Mail } from "lucide-react";
-import { PublicFooter } from "@/components/public/public-footer";
+import { AuthShell } from "@/components/auth/auth-shell";
 
 export const metadata: Metadata = {
   title: "Email enviado | Portal de Empleo Funes",
@@ -10,9 +10,8 @@ export const metadata: Metadata = {
 
 export default function ResetEnviadoPage() {
   return (
-    <>
-      <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
-        <div className="w-full max-w-md rounded-2xl border border-border bg-white px-8 py-10 text-center shadow-sm">
+    <AuthShell>
+        <div className="text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Mail className="h-7 w-7" />
           </div>
@@ -33,9 +32,6 @@ export default function ResetEnviadoPage() {
             </Link>
           </p>
         </div>
-      </main>
-
-      <PublicFooter />
-    </>
+    </AuthShell>
   );
 }

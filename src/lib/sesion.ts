@@ -15,7 +15,7 @@ export type SesionData = {
   ajuste: { x: number; y: number; zoom: number } | null;
   profileHref: string;
   /**
-   * Listado de notificaciones del rol (campanita de la navbar). El contador
+   * Listado de notificaciones del rol (campanita de la navegación). El contador
    * no se carga acá: lo pide la campanita al navegar.
    */
   notificacionesHref: string | null;
