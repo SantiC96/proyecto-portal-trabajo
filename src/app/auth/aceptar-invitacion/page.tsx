@@ -30,7 +30,7 @@ export default async function AceptarInvitacionPage({
           <NuevaContrasenaForm tokenHash={tokenHash} variante="invitacion" />
         ) : (
           <div className="w-full max-w-md rounded-2xl border border-border bg-white px-5 py-8 text-center shadow-sm sm:px-8 sm:py-10">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-600">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-danger text-white">
               <AlertCircle className="h-7 w-7" aria-hidden="true" />
             </div>
             <h1 className="text-xl font-bold tracking-tight text-foreground">

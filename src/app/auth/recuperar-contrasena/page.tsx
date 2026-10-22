@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { Mail, AlertCircle } from "lucide-react";
+import { Mail } from "lucide-react";
 import { PublicFooter } from "@/components/public/public-footer";
 import { RecuperarContrasenaForm } from "./form";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { Aviso } from "@/components/ui/aviso";
 
 export const metadata: Metadata = {
   title: "Recuperar contraseña | Portal de Empleo Funes",
@@ -39,10 +40,9 @@ export default async function RecuperarContrasenaPage({
           </div>
 
           {linkVencido && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 mb-1">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>El enlace venció o ya fue usado. Pedí uno nuevo.</span>
-            </div>
+            <Aviso tono="danger" className="mb-1">
+              El enlace venció o ya fue usado. Pedí uno nuevo.
+            </Aviso>
           )}
 
           <RecuperarContrasenaForm />
