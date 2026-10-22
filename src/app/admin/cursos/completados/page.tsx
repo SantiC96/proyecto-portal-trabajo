@@ -29,7 +29,7 @@ export default async function CursosCompletadosPage({
   const pagina = leerPagina(sp.pagina);
 
   return (
-    <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
+    <section>
       <BotonVolver href="/admin/cursos">Volver a cursos</BotonVolver>
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">

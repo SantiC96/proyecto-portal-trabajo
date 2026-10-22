@@ -66,7 +66,7 @@ export default async function AdminDashboardPage() {
   const postulantesEsperando = Number(esperandoCursoRes.data ?? 0);
 
   return (
-    <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
+    <section>
       <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         Panel de la Oficina de Empleo
       </h1>

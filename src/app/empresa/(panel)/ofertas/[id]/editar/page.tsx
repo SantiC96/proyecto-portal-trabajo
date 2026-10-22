@@ -61,7 +61,7 @@ export default async function EditarOfertaPage({ params }: Props) {
   };
 
   return (
-    <section className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
+    <section className="contenido-lectura-ancho">
       {esBorrador ? (
         <BotonVolver href="/empresa/ofertas">Volver a mis ofertas</BotonVolver>
       ) : (

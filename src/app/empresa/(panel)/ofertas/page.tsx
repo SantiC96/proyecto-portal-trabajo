@@ -56,7 +56,7 @@ export default async function MisOfertasPage({
   const empresa = await requerirEmpresaPagina("/empresa");
 
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+    <section>
       <BotonVolver href="/empresa">Volver al panel</BotonVolver>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>

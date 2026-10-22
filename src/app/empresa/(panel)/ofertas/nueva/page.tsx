@@ -13,7 +13,7 @@ export default async function NuevaOfertaPage() {
   const categorias = await getCategoriasConId();
 
   return (
-    <section className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
+    <section className="contenido-lectura-ancho">
       <BotonVolver href="/empresa/ofertas">Volver a mis ofertas</BotonVolver>
 
       <div className="mt-6">

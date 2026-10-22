@@ -73,7 +73,7 @@ export default async function PerfilCandidatoPage({
   const nombreCompleto = `${candidato.nombre} ${candidato.apellido}`;
 
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+    <section className="contenido-lectura">
       <BotonVolver href="/empresa/candidatos-guardados">Volver a candidatos guardados</BotonVolver>
 
       {/* Cabecera */}

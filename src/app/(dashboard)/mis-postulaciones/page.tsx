@@ -39,8 +39,8 @@ export default async function MisPostulacionesPage({
   if (!postulante) redirect("/");
 
   return (
-    <section className="px-4 py-8 sm:px-6 sm:py-12">
-      <div className="mx-auto max-w-3xl space-y-10">
+    <section>
+      <div className="space-y-10">
         <BotonVolver href="/perfil">Volver a mi perfil</BotonVolver>
         {/* Postulaciones */}
         <div>

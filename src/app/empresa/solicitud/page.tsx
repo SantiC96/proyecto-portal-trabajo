@@ -25,9 +25,9 @@ export default async function SolicitudEmpresaPage() {
   return (
     <>
       <main className="flex-1">
-        <section className="flex justify-center px-4 py-10 sm:px-6">
-          <div className="w-full max-w-xl">
-            <div className="mb-6 text-center">
+        <section>
+          <div className="contenido-lectura-ancho">
+            <div className="mb-6">
               <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
                 Corregir solicitud
               </h1>
