@@ -1,3 +1,4 @@
+import type { TonoBadge } from "@/components/ui/badge";
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 import type { Enum } from "@/types/db";
 
@@ -22,42 +23,19 @@ export type EstadoVisiblePostulacion =
 
 export type BadgePostulacion = {
   label: string;
-  variant: "secondary" | "outline" | "default" | "destructive";
-  className?: string;
+  tono: TonoBadge;
 };
 
-// Colores alineados con los contadores de las pestañas de /admin/postulaciones.
+// Mismos tonos que Mis postulaciones del postulante.
 export const BADGE_ESTADO_VISIBLE: Record<EstadoVisiblePostulacion, BadgePostulacion> = {
-  recibida: { label: "Recibida", variant: "secondary" },
-  en_revision: {
-    label: "En revisión",
-    variant: "outline",
-    className: "text-blue-700",
-  },
-  derivada: { label: "Derivada", variant: "default" },
-  contratado: {
-    label: "Contratado",
-    variant: "outline",
-    className: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  },
-  no_seleccionado_empresa: {
-    label: "No seleccionado (por la empresa)",
-    variant: "destructive",
-  },
-  no_seleccionado_oficina: {
-    label: "No seleccionado (por la oficina)",
-    variant: "destructive",
-  },
-  oferta_retirada: {
-    label: "Cerrada (la empresa retiró la oferta)",
-    variant: "outline",
-    className: "text-gray-600",
-  },
-  retirada_postulante: {
-    label: "Retirada por el postulante",
-    variant: "outline",
-    className: "border-slate-200 bg-slate-50 text-slate-600",
-  },
+  recibida: { label: "Recibida", tono: "neutral" },
+  en_revision: { label: "En revisión", tono: "info" },
+  derivada: { label: "Derivada", tono: "teal" },
+  contratado: { label: "Contratado", tono: "success" },
+  no_seleccionado_empresa: { label: "No seleccionado (por la empresa)", tono: "neutral" },
+  no_seleccionado_oficina: { label: "No seleccionado (por la oficina)", tono: "neutral" },
+  oferta_retirada: { label: "Cerrada (la empresa retiró la oferta)", tono: "neutral" },
+  retirada_postulante: { label: "Retirada por el postulante", tono: "neutral" },
 };
 
 export function estadoVisiblePostulacion(
