@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 export function Esqueleto({ className }: { className?: string }) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-gray-200", className)}
+      className={cn("animate-pulse rounded-md bg-secondary-hover", className)}
       aria-hidden="true"
     />
   );
@@ -21,7 +21,7 @@ export function EsqueletoTarjeta({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-lg)] border border-border bg-white p-4 shadow-xs sm:p-5",
+        "tarjeta p-4 sm:p-5",
         className,
       )}
     >

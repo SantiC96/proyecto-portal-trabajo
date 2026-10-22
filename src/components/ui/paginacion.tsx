@@ -24,8 +24,8 @@ type Props = {
   className?: string;
 };
 
-const BOTON =
-  "inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg border px-3 text-sm font-medium sm:px-4";
+// Botón neutro de 44 × 44 como mínimo (en pantallas muy angostas queda solo la flecha).
+const BOTON = "btn-neutro min-w-11";
 
 export function Paginacion({
   ruta,
@@ -69,7 +69,7 @@ export function Paginacion({
             <Link
               href={href(pagina - 1)}
               rel="prev"
-              className={cn(BOTON, "btn-secundario")}
+              className={BOTON}
             >
               <ChevronLeft className="h-4 w-4" aria-hidden="true" />
               <span className="max-[359px]:sr-only">Anterior</span>
@@ -77,22 +77,29 @@ export function Paginacion({
           ) : (
             <span
               aria-disabled="true"
-              className={cn(BOTON, "border-border bg-white text-muted-icon")}
+              className={BOTON}
             >
               <ChevronLeft className="h-4 w-4" aria-hidden="true" />
               <span className="max-[359px]:sr-only">Anterior</span>
             </span>
           )}
 
-          <span className="whitespace-nowrap px-1 text-center text-muted-foreground-strong">
-            Página {pagina} de {totalPaginas}
+          <span className="flex items-center gap-1.5 whitespace-nowrap px-1 text-center text-muted-foreground-strong">
+            Página
+            <span
+              aria-current="page"
+              className="inline-flex size-11 items-center justify-center rounded-[var(--radius-md)] bg-primary font-bold text-primary-foreground"
+            >
+              {pagina}
+            </span>
+            de {totalPaginas}
           </span>
 
           {pagina < totalPaginas ? (
             <Link
               href={href(pagina + 1)}
               rel="next"
-              className={cn(BOTON, "btn-secundario")}
+              className={BOTON}
             >
               <span className="max-[359px]:sr-only">Siguiente</span>
               <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -100,7 +107,7 @@ export function Paginacion({
           ) : (
             <span
               aria-disabled="true"
-              className={cn(BOTON, "border-border bg-white text-muted-icon")}
+              className={BOTON}
             >
               <span className="max-[359px]:sr-only">Siguiente</span>
               <ChevronRight className="h-4 w-4" aria-hidden="true" />
