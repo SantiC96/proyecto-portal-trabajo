@@ -31,6 +31,23 @@ export function claseTono(tono: TonoBadge): string {
   return CLASE_TONO[tono]
 }
 
+// Color de texto de cada tono sobre blanco (AA). El amarillo no llega como
+// texto: "warning" usa --color-warning-text.
+const CLASE_TEXTO_TONO: Record<TonoBadge, string> = {
+  info: "text-info",
+  teal: "text-teal",
+  success: "text-success",
+  neutral: "text-neutral",
+  warning: "text-warning-text",
+  danger: "text-danger",
+  violet: "text-violet",
+}
+
+/** El tono como texto de color, para un estado escrito sin pastilla. */
+export function claseTextoTono(tono: TonoBadge): string {
+  return CLASE_TEXTO_TONO[tono]
+}
+
 type Props = ComponentProps<"span"> & {
   tono?: TonoBadge
   /** Variante "estado": un punto del color del texto antes de la etiqueta. */

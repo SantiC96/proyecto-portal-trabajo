@@ -15,7 +15,7 @@
   --color-border:          #dde5e0;
   --color-border-strong:   #c6d3cb; /* bordes de campos */
   --color-border-control:  #cbd6cf; /* botón neutro y paginación */
-  --color-border-tab:      #c6d8cd; /* pestañas inactivas */
+  --color-border-tab:      #c6d8cd; /* pestañas inactivas, pastillas de rubro y buscador del inicio */
 
   /* Texto */
   --color-foreground:              #17251d;
@@ -46,6 +46,18 @@
   /* Decorativo (sección "Para empresas" del inicio) */
   --color-brand-subtle: #b9dcc7;
 
+  /* Inicio, panel y listas (PR 3 del rediseño) */
+  --color-texto-bajada:       #2e4337; /* bajada del inicio, empresa en la tarjeta de oferta */
+  --color-invitacion-titulo:  #3a2a00; /* tarjeta y aviso de invitaciones */
+  --color-invitacion-texto:   #4a3700;
+  --color-invitacion-detalle: #5a4300;
+  --color-progreso-fondo:     #d3dcd6; /* barra de progreso */
+  --color-punto-carrusel:     #b9c8bf; /* indicadores de posición del carrusel */
+  --color-tabla-encabezado:   #f8faf9;
+  --color-tabla-borde:        #e6ece8;
+  --color-tabla-hover:        #f8fbf9;
+  --color-tabla-separador:    #e8ecea; /* separadores de prioridad */
+
   /* Navegación lateral y barra del celular (sobre --color-primary) */
   --color-sidebar-texto: #e3f0e8; /* secciones; bajada del login */
   --color-sidebar-suave: #cfe6d9; /* "Portal de empleo", rol, "Contraer menú" */
@@ -74,6 +86,7 @@
   --sombra-error-campo:   0 0 0 3px rgb(180 35 24 / 0.18);
   --sombra-dialogo:       0 24px 60px rgb(0 40 20 / 0.18);
   --sombra-tarjeta-hover: 0 8px 20px rgb(15 42 27 / 0.08);
+  --sombra-buscador:      0 8px 24px rgb(0 60 30 / 0.08);
 }
 
 @layer base {
@@ -105,7 +118,8 @@ h1, h2 { font-weight: 800; }
   .btn-secundario,
   .btn-neutro,
   .btn-peligro,
-  .btn-acento {
+  .btn-acento,
+  .btn-oscuro {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -113,11 +127,11 @@ h1, h2 { font-weight: 800; }
     text-decoration: none;
     transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
   }
-  :is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento):focus-visible {
+  :is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro):focus-visible {
     outline: none;
     box-shadow: var(--sombra-foco);
   }
-  :is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento):is(:disabled, [aria-disabled="true"]) {
+  :is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro):is(:disabled, [aria-disabled="true"]) {
     opacity: 0.6;
     cursor: not-allowed;
   }
@@ -137,6 +151,10 @@ h1, h2 { font-weight: 800; }
 
   .btn-acento { background: var(--color-accent); color: var(--color-accent-foreground); }
   .btn-acento:not(:disabled, [aria-disabled="true"]):hover { background: var(--color-accent-hover); }
+
+  /* Sobre un fondo o un borde amarillo (invitaciones): marrón oscuro con texto blanco. */
+  .btn-oscuro { background: var(--color-accent-foreground); color: #fff; }
+  .btn-oscuro:not(:disabled, [aria-disabled="true"]):hover { background: var(--color-invitacion-titulo); }
 
   /* Campos de texto, selects y textareas. .campo-grupo es un contenedor que
      se ve como campo (por ejemplo, el de chips de multi-combobox). */
@@ -195,7 +213,7 @@ h1, h2 { font-weight: 800; }
 /* Medidas comunes de todos los botones. Fuera de capa a propósito: ganan sobre
    las clases sueltas de cada pantalla (h-9, text-xs, sm:min-h-9, px-3) para
    que todos los botones midan lo mismo. */
-:is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento) {
+:is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro) {
   min-height: 44px;
   gap: 8px;
   padding-inline: 18px;
@@ -205,7 +223,7 @@ h1, h2 { font-weight: 800; }
   font-weight: 700;
   line-height: 1.25;
 }
-:is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento) svg {
+:is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro) svg {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
@@ -272,8 +290,15 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
   .app-contenido { flex: 1; min-height: 100vh; padding: 32px; }
 }
 
-/* Textos largos y formularios: cada página decide su ancho. */
+/* Textos largos, formularios y detalles: cada página decide su ancho, alineado
+   a la izquierda. Las listas y los paneles usan todo el ancho. */
 .contenido-lectura { width: 100%; max-width: 720px; }
+/* Formularios y detalles con dos columnas. */
+.contenido-lectura-ancho { width: 100%; max-width: 960px; }
+
+/* Listas que se desplazan de costado (carrusel): sin barra visible. */
+.sin-barra-scroll { scrollbar-width: none; }
+.sin-barra-scroll::-webkit-scrollbar { display: none; }
 
 /* ── Sidebar ─────────────────────────────────────────────────────────────── */
 .sidebar-escritorio { display: none; }
