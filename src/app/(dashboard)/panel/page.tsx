@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { obtenerPostulanteActual, requerirRolPagina } from "@/lib/auth";
+import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import {
+  AccionesPanel,
   AvisoInvitaciones,
   BloqueIndicadores,
   BloqueMovimientos,
@@ -10,8 +12,10 @@ import {
   BloquePerfil,
 } from "./bloques";
 import {
+  ColumnasPanel,
   EsqueletoIndicadores,
-  EsqueletoListaBloque,
+  EsqueletoMovimientos,
+  EsqueletoOfertas,
   EsqueletoPerfil,
 } from "./esqueletos";
 
@@ -28,39 +32,33 @@ export default async function PanelPostulantePage() {
   const nombre = usuario.perfil.nombre.trim();
 
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
-      <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-        {nombre ? `Hola, ${nombre}` : "Hola"}
-      </h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Mirá cómo van tus postulaciones y qué ofertas coinciden con tu perfil.
-      </p>
+    <div className="flex flex-col gap-7">
+      <EncabezadoPagina
+        titulo={nombre ? `Hola, ${nombre}` : "Hola"}
+        bajada="Este es el resumen de tus postulaciones."
+        acciones={<AccionesPanel />}
+      />
 
-      <div className="mt-8 flex flex-col gap-8">
-        <Suspense fallback={<EsqueletoIndicadores />}>
-          <BloqueIndicadores />
-        </Suspense>
+      <Suspense fallback={<EsqueletoIndicadores />}>
+        <BloqueIndicadores />
+      </Suspense>
 
-        <Suspense fallback={null}>
-          <AvisoInvitaciones />
-        </Suspense>
+      <Suspense fallback={null}>
+        <AvisoInvitaciones />
+      </Suspense>
 
-        <Suspense
-          fallback={<EsqueletoListaBloque filas={3} etiqueta="Cargando tus últimos movimientos" />}
-        >
+      <ColumnasPanel>
+        <Suspense fallback={<EsqueletoMovimientos />}>
           <BloqueMovimientos postulanteId={postulante.id} />
         </Suspense>
-
         <Suspense fallback={<EsqueletoPerfil />}>
-          <BloquePerfil usuario={usuario.perfil} />
+          <BloquePerfil />
         </Suspense>
+      </ColumnasPanel>
 
-        <Suspense
-          fallback={<EsqueletoListaBloque filas={3} etiqueta="Cargando ofertas para vos" />}
-        >
-          <BloqueOfertas />
-        </Suspense>
-      </div>
-    </section>
+      <Suspense fallback={<EsqueletoOfertas />}>
+        <BloqueOfertas />
+      </Suspense>
+    </div>
   );
 }
