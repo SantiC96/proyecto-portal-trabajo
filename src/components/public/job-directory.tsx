@@ -1,10 +1,11 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Briefcase, Filter } from "lucide-react";
+import { Briefcase } from "lucide-react";
 import { JobCard } from "@/components/public/job-card";
+import { EmptyJobResults } from "@/components/public/empty-job-results";
 import { Buscador } from "@/components/ui/buscador";
 import { Paginacion } from "@/components/ui/paginacion";
-import { ErrorListado } from "@/components/ui/estado-listado";
+import { EstadoVacio } from "@/components/ui/estado-listado";
 import { Esqueleto, EsqueletoTarjeta } from "@/components/ui/esqueleto";
 import {
   MODALIDADES,
@@ -33,8 +34,13 @@ export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDir
   const clave = JSON.stringify(filtros);
 
   const hasActiveFilters =
-    filtros.q !== "" || filtros.categoria !== null || filtros.modalidad !== null;
-  const hrefLimpiar = hrefConParams(ruta, {}, {}, ANCLA);
+    filtros.categoria !== null || filtros.modalidad !== null;
+  const hrefLimpiar = hrefConParams(
+    ruta,
+    searchParams,
+    { categoria: null, modalidad: null, pagina: null },
+    ANCLA,
+  );
   const hrefFiltro = (cambios: Record<string, string | null>) =>
     hrefConParams(ruta, searchParams, { ...cambios, pagina: null });
 
@@ -69,27 +75,27 @@ export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDir
       </div>
 
       {/* Search and Filters Bar */}
-      <div className="tarjeta mt-6 p-4">
+      <div className="tarjeta mt-6 rounded-[var(--radius-ofertas)] border-ofertas-border bg-white p-[clamp(1rem,2.5vw,2rem)]">
         {/* Main Search Input */}
         <Buscador
           placeholder="Buscar por puesto, empresa, palabra clave o conocimiento..."
-          inputClassName="rounded-xl bg-background/60 placeholder:text-muted-foreground/70 focus:border-primary focus:bg-white focus:ring-3 focus:ring-primary/15"
+          inputClassName="rounded-full border-ofertas-border-strong bg-ofertas-background placeholder:text-ofertas-secondary focus:border-ofertas-primary focus:bg-white focus:ring-3 focus:ring-ofertas-primary/15"
         />
 
-        {/* Categories / Rubros Pills (Mobile horizontal scroll) */}
+        {/* Categories / Rubros Pills */}
         <div className="mt-4">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-semibold text-foreground">Rubro o Sector:</span>
+            <span className="text-sm font-semibold text-ofertas-heading">Rubro o Sector:</span>
             {hasActiveFilters && (
               <Link
                 href={hrefLimpiar}
-                className="text-xs font-medium text-primary hover:underline"
+                className="inline-flex min-h-11 items-center px-2 text-sm font-medium text-ofertas-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ofertas-primary/40"
               >
                 Limpiar filtros
               </Link>
             )}
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 text-xs no-scrollbar">
+          <div className="flex flex-wrap gap-2 text-sm">
             {rubroOptions.map((rubro) => {
               const isSelected = filtros.categoria === rubro.valor;
               return (
@@ -98,10 +104,10 @@ export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDir
                   href={hrefFiltro({ categoria: rubro.valor })}
                   scroll={false}
                   aria-current={isSelected ? "true" : undefined}
-                  className={`shrink-0 rounded-lg px-3 py-1.5 font-medium transition-all ${
+                  className={`inline-flex min-h-11 items-center rounded-full px-4 py-2 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ofertas-primary/40 ${
                     isSelected
-                      ? "bg-primary text-white shadow-xs"
-                      : "border border-border bg-white text-muted-foreground-strong hover:border-primary hover:text-primary"
+                      ? "bg-ofertas-primary text-white shadow-xs"
+                      : "border border-ofertas-border bg-white text-ofertas-secondary hover:border-ofertas-primary hover:text-ofertas-primary"
                   }`}
                 >
                   {rubro.label}
@@ -112,8 +118,8 @@ export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDir
         </div>
 
         {/* Modality Filter Pills */}
-        <div className="mt-3 flex flex-wrap items-center gap-2 pt-3 border-t border-border/60 text-xs">
-          <span className="font-semibold text-foreground">Modalidad:</span>
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ofertas-border pt-3 text-sm">
+          <span className="mr-1 font-semibold text-ofertas-heading">Modalidad:</span>
           {modalidadOptions.map((mod) => {
             const isSelected = filtros.modalidad === mod.valor;
             return (
@@ -122,10 +128,10 @@ export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDir
                 href={hrefFiltro({ modalidad: mod.valor })}
                 scroll={false}
                 aria-current={isSelected ? "true" : undefined}
-                className={`rounded-md px-2.5 py-1 transition-all ${
+                className={`inline-flex min-h-11 items-center rounded-full px-4 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ofertas-primary/40 ${
                   isSelected
-                    ? "bg-foreground text-white font-medium"
-                    : "bg-surface-tinted text-muted-foreground-strong hover:bg-secondary-hover"
+                    ? "bg-ofertas-active font-medium text-white"
+                    : "border border-ofertas-border bg-white text-ofertas-secondary hover:border-ofertas-primary hover:text-ofertas-primary"
                 }`}
               >
                 {mod.label}
@@ -141,8 +147,7 @@ export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDir
           resultado={resultado}
           ruta={ruta}
           searchParams={searchParams}
-          hrefLimpiar={hrefLimpiar}
-          hayFiltros={hasActiveFilters}
+          filtros={filtros}
         />
       </Suspense>
     </section>
@@ -166,14 +171,12 @@ async function ResultadosOfertas({
   resultado,
   ruta,
   searchParams,
-  hrefLimpiar,
-  hayFiltros,
+  filtros,
 }: {
   resultado: Promise<ResultadoOfertasPublicas>;
   ruta: string;
   searchParams: ParamsUrl;
-  hrefLimpiar: string;
-  hayFiltros: boolean;
+  filtros: FiltrosOfertasPublicas;
 }) {
   const [datos, usuario] = await Promise.all([resultado, obtenerUsuarioActual()]);
   // buscar_ofertas_publicas solo devuelve ofertas activas y vigentes: la
@@ -184,46 +187,39 @@ async function ResultadosOfertas({
 
   if (!datos.ok) {
     return (
-      <ErrorListado
-        className="mt-8"
-        mensaje="No pudimos cargar las ofertas. Intentá de nuevo en unos minutos."
-        refError={datos.refError}
-      />
+      <EmptyJobResults variant="error" refError={datos.refError} />
     );
   }
 
   if (datos.ofertas.length === 0) {
+    const hayBusqueda = filtros.q !== "";
+    const hayFiltros = filtros.categoria !== null || filtros.modalidad !== null;
+
+    if (!hayBusqueda && !hayFiltros) {
+      return (
+        <EstadoVacio
+          tipo="sin-registros"
+          className="mt-8"
+          icono={Briefcase}
+          titulo="Todavía no hay ofertas publicadas"
+          descripcion="Cuando las empresas de la ciudad publiquen búsquedas, van a aparecer en este espacio."
+        />
+      );
+    }
+
     return (
-      <div className="mt-8 rounded-2xl border border-dashed border-border bg-white p-10 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-secondary text-muted-foreground">
-          {hayFiltros ? <Filter className="h-6 w-6" /> : <Briefcase className="h-6 w-6" />}
-        </div>
-        {hayFiltros ? (
-          <>
-            <h3 className="mt-3 text-base font-bold text-foreground">
-              No encontramos ofertas con esos criterios
-            </h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Probá quitando o modificando los filtros aplicados o buscando un término más general.
-            </p>
-            <Link
-              href={hrefLimpiar}
-              className="btn-primario mt-4"
-            >
-              Ver todas las ofertas
-            </Link>
-          </>
-        ) : (
-          <>
-            <h3 className="mt-3 text-base font-bold text-foreground">
-              Todavía no hay ofertas publicadas
-            </h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Cuando las empresas de la ciudad publiquen búsquedas, van a aparecer en este espacio.
-            </p>
-          </>
-        )}
-      </div>
+      <EmptyJobResults
+        variant={
+          hayBusqueda && hayFiltros
+            ? "busqueda-filtros"
+            : hayBusqueda
+              ? "busqueda"
+              : "filtros"
+        }
+        ruta={ruta}
+        searchParams={searchParams}
+        filtros={filtros}
+      />
     );
   }
 

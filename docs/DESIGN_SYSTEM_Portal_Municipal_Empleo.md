@@ -870,6 +870,26 @@ Características:
 -   loading state;
 -   paginación cuando corresponda.
 
+### Estado vacío del directorio público de ofertas
+
+En `/ofertas`, distinguir los resultados vacíos por búsqueda, filtros o
+ambos del error de carga. La tarjeta de estado vacío usa superficie
+blanca, borde sólido y mantiene el ancho disponible del listado, con su
+contenido centrado.
+El título es «Aún no hay empleos que coincidan con tu búsqueda» y el
+texto de apoyo es «Probá con otro rubro o modalidad, o quitá algún filtro
+para ver más ofertas laborales.».
+El texto de apoyo es de al menos 14 px y contraste AA. «Limpiar filtros» es la única acción principal y quita la búsqueda y los
+filtros activos. La acción mantiene su ancho natural también en mobile.
+Anunciar resultados vacíos con una región
+`aria-live="polite"`; los errores se presentan por separado y permiten
+reintentar.
+
+El buscador y los filtros forman una tarjeta de ancho completo; los chips
+de rubro y modalidad se envuelven en varias líneas, también en mobile.
+Esta superficie usa los tokens locales `ofertas-*` para la paleta solicitada
+por el módulo, sin cambiar los colores institucionales globales.
+
 En mobile no forzar tablas ilegibles: utilizar cards o una
 representación responsive definida.
 
