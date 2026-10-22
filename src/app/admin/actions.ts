@@ -4,9 +4,10 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirRol } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { err, errCampo, errConRef, fromSupabaseError, okMsg, type Resultado } from "@/lib/resultado";
+import { err, errCampo, errConRef, fromSupabaseError, ok, okMsg, type Resultado } from "@/lib/resultado";
 import { esUuid, LARGO_MAXIMO, MENSAJE_OBLIGATORIO, validarTextoOpcional } from "@/lib/validaciones";
 import { programarEnvioEmails } from "@/lib/emails/cola";
+import { contarPendientesOficina, type PendientesOficina } from "@/lib/admin/pendientes";
 
 // Aprobar y rechazar son updates condicionales: repetir la misma decisión
 // (doble envío, dos pestañas) no afecta filas, así que no sobrescribe
@@ -88,4 +89,18 @@ export async function rechazarEmpresa(
   revalidatePath("/admin/empresas");
   revalidatePath("/admin");
   return okMsg("Empresa rechazada.");
+}
+
+/**
+ * Contadores de la navegación lateral de la oficina. Los layouts no se vuelven
+ * a ejecutar al navegar, así que la navegación los pide al montarse y en cada
+ * cambio de ruta (igual que la campanita).
+ */
+export async function obtenerPendientesNavegacion(): Promise<Resultado<PendientesOficina>> {
+  const auth = await requerirRol("municipalidad");
+  if (!auth.ok) return auth;
+
+  const supabase = await createSupabaseServerClient();
+  const pendientes = await contarPendientesOficina(supabase);
+  return pendientes ? ok(pendientes) : err("ERROR_INTERNO");
 }

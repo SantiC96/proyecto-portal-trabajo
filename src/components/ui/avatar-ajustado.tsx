@@ -4,6 +4,7 @@ import { FotoPrivada } from "@/components/ui/foto-privada";
 
 const sizeMap = {
   sm: { wrapper: "h-8 w-8",   icon: "h-4 w-4",   texto: "text-xs",  px: 32 },
+  nav: { wrapper: "h-[38px] w-[38px]", icon: "h-5 w-5", texto: "text-sm", px: 38 },
   md: { wrapper: "h-14 w-14", icon: "h-7 w-7",   texto: "text-lg",  px: 56 },
   lg: { wrapper: "h-24 w-24", icon: "h-12 w-12", texto: "text-3xl", px: 96 },
 };
@@ -14,7 +15,7 @@ interface AvatarAjustadoProps {
   src?: string | null;
   alt?: string;
   ajuste?: { x: number; y: number; zoom: number };
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "nav" | "md" | "lg";
   className?: string;
   /** Sin foto (o si no carga) se muestran estas iniciales en lugar del ícono. */
   iniciales?: string;
