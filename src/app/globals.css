@@ -6,6 +6,16 @@
   --color-primary-hover:      #00532a;
   --color-primary-foreground: #ffffff;
 
+  /* Paleta específica del directorio público de ofertas. */
+  --color-ofertas-primary:   #0b6b38;
+  --color-ofertas-heading:   #0b2b1b;
+  --color-ofertas-background: #f3f6f4;
+  --color-ofertas-border:    #e1e8e4;
+  --color-ofertas-border-strong: #c5d0ca;
+  --color-ofertas-icon:      #eaf2ee;
+  --color-ofertas-secondary: #4a5a51;
+  --color-ofertas-active:    #12201a;
+
   /* Superficies y bordes */
   --color-background:      #f4f7f5;
   --color-surface:         #ffffff;
@@ -80,6 +90,7 @@
   --radius-md: 0.625rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
+  --radius-ofertas: 1.25rem;
 
   --sombra-foco:          0 0 0 3px rgb(0 104 51 / 0.25);
   --sombra-foco-campo:    0 0 0 3px rgb(0 104 51 / 0.18);

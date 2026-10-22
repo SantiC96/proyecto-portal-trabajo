@@ -167,13 +167,6 @@ git merge develop
 
 Git va a marcar los conflictos en los archivos afectados:
 
-```
-<<<<<<< HEAD
-tu versión del código
-=======
-versión de develop
->>>>>>> develop
-```
 
 Editar el archivo dejando la versión correcta (puede ser una, la otra, o una combinación), guardar, y:
 
