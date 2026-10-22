@@ -25,6 +25,7 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 
 - Panel de inicio: cómo están sus postulaciones, aviso de invitaciones para responder, últimos movimientos, qué le falta al perfil y ofertas que coinciden con su perfil (con el mismo puntaje que usa la oficina).
 - Buscar ofertas por texto, rubro y modalidad, sin necesidad de registrarse.
+- Inicio con buscador (puesto o palabra clave y rubro, lleva al listado de ofertas), accesos por rubro y un carrusel con las últimas 10 ofertas publicadas.
 - Postularse a una oferta eligiendo con cuál de sus CVs (el más reciente viene elegido) y retirarla en cualquier momento salvo si ya fue seleccionado; la retirada queda en el historial y se puede volver a postular mientras la oferta siga abierta.
 - Ver el estado de cada postulación, con qué CV se postuló, la pre-entrevista y la entrevista con la empresa.
 - Recibir invitaciones de la Oficina de Empleo a ofertas que coinciden con su perfil (aviso y email). En su pantalla de Invitaciones responder "Me interesa" (eligiendo el CV: queda una postulación normal pendiente de revisión) o "No me interesa" (con un motivo opcional); las anteriores quedan en un historial.

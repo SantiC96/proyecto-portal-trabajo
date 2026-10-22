@@ -108,6 +108,8 @@ La prioridad es un criterio de la oficina para ordenar su trabajo, no un dato de
 - Aprobar y rechazar usan la misma acción (`revisarComprobante`) y los mismos diálogos (`RevisarComprobante`) que la ficha. Al terminar se recarga la página: la fila sale de la lista y el número de la pestaña baja.
 - La sección "Procedencia" de la ficha no cambió. El aviso a la oficina por un comprobante nuevo sigue llevando a la ficha del postulante (no se tocó la migración).
 
+- **Rediseño (2026-10-22):** la lista es una tabla (tarjetas en pantallas angostas) y cada separador de nivel muestra el total de ese nivel con los filtros actuales, con un conteo `head: true` por nivel; ya no muestra la cantidad de postulaciones, los rechazos sueltos ni la fecha de registro (los rechazos siguen en "Necesita curso · N rechazos").
+
 ### Por qué el CV no entra en el orden
 
 La lista de postulantes es un directorio: sirve para encontrar a una persona, no para elegir candidatos. Donde el CV importa, en la búsqueda de postulantes para una oferta (decisión 028), ya suma puntaje. En la lista alcanza con el badge "Sin CV" para verlo de un vistazo.

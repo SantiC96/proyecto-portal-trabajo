@@ -236,7 +236,7 @@ Texto de estado suelto sobre blanco (sin fondo):
 
   Token             Valor       Uso
   ----------------- ----------- -----------------------------------------
-  `brand-subtle`    `#B9DCC7`   etiqueta de la sección "Para empresas" del inicio
+  `brand-subtle`    `#B9DCC7`   sin uso desde el rediseño del inicio
 
 ## Navegación y pantallas de /auth
 
@@ -250,6 +250,25 @@ Texto de estado suelto sobre blanco (sin fondo):
   `fondo-auth`          `#F3F5F4`   fondo del login y de las pantallas de /auth
   `texto-volver`        `#2E4337`   link "Volver al inicio" de /auth
   `login-suave`         `#D7EBDF`   volanta y nota del panel verde del login
+
+## Inicio, panel y listas
+
+  Token                  Valor       Uso
+  ---------------------- ----------- ---------------------------------------------
+  `texto-bajada`         `#2E4337`   bajada del inicio; empresa en la tarjeta de oferta
+  `invitacion-titulo`    `#3A2A00`   título de la tarjeta y del aviso de invitaciones
+  `invitacion-texto`     `#4A3700`   texto de la tarjeta de invitaciones del inicio
+  `invitacion-detalle`   `#5A4300`   detalle del aviso de invitaciones del panel
+  `progreso-fondo`       `#D3DCD6`   fondo de la barra de progreso
+  `punto-carrusel`       `#B9C8BF`   indicadores de posición del carrusel (decorativos)
+  `tabla-encabezado`     `#F8FAF9`   encabezado de tabla
+  `tabla-borde`          `#E6ECE8`   borde entre filas
+  `tabla-hover`          `#F8FBF9`   hover de fila
+  `tabla-separador`      `#E8ECEA`   separadores de prioridad
+
+`border-tab` (`#C6D8CD`) también es el borde de las pastillas de rubro y
+del buscador del inicio. Sombra del buscador: `--sombra-buscador`
+(`0 8px 24px rgb(0 60 30 / 0.08)`).
 
 ------------------------------------------------------------------------
 
@@ -402,8 +421,15 @@ Las rutas de `/auth/*` no llevan navegación: solo el contenido.
 -   Padding del área de contenido: 32 px en escritorio, 24 px en tablet
     y 16 px en celular.
 -   Sin `max-width` global: cada página decide su ancho.
--   Textos largos y formularios: clase `.contenido-lectura`
-    (`max-width: 720px`).
+-   Las páginas no agregan padding propio ni `mx-auto max-w-*`: el
+    margen lo pone `.app-contenido`.
+-   Listas y paneles: todo el ancho.
+-   Textos largos, formularios y detalles: clase `.contenido-lectura`
+    (`max-width: 720px`), o `.contenido-lectura-ancho` (`960px`) si el
+    formulario o el detalle tiene dos columnas. Alineados a la izquierda.
+-   Para pasar de una a varias columnas dentro del contenido se prefieren
+    container queries (`@container`, `@xl:`, `@4xl:`) a los breakpoints
+    de la ventana: la sidebar le quita ancho al contenido.
 
 Los formularios no deben expandirse innecesariamente a todo el viewport.
 
@@ -505,7 +531,11 @@ Todas se desactivan con `prefers-reduced-motion: reduce`.
 
 # 13. Header de página
 
-Componente compartido: `PageHeader`.
+Componente compartido: `EncabezadoPagina`
+(`src/components/ui/encabezado-pagina.tsx`): título de 32 px 800,
+letter-spacing `-.01em`, color `heading`; bajada de 16 px
+`muted-foreground` con 6 px de margen; acciones a la derecha, alineadas
+abajo.
 
 Puede contener:
 
@@ -664,6 +694,48 @@ Evitar llenar la card de información secundaria.
 
 ------------------------------------------------------------------------
 
+## Tarjeta de oferta (inicio y panel)
+
+`src/components/ofertas/tarjeta-oferta.tsx` (`TarjetaOferta`). `.tarjeta`
+clickeable, padding 24, gap 14:
+
+``` text
+┌──────────────────────────────────────┐
+│ [Gastronomía +1] [Presencial] [Te invitaron] │
+│ Ayudante de cocina                   │  20 px 700, hasta 2 renglones
+│ Restaurante El Molino                │  15 px 600 texto-bajada
+│ 📍 Funes    🕒 Jornada completa       │  14 px muted, íconos 16 px
+│ [ Ver oferta ]                       │  secundario (primario: "Postularme")
+└──────────────────────────────────────┘
+```
+
+-   Etiquetas: rubro (`EtiquetaRubro verde`, el primero y "+N"),
+    modalidad (`EtiquetaRubro`) y badges extra (`Te invitaron` warning,
+    coincidencia).
+-   El título es el link y cubre la tarjeta (un paso de teclado por
+    oferta); el botón de abajo es visual. Una acción extra con su propio
+    link (`Buscar postulantes` de la oficina) va por encima.
+-   El listado `/ofertas` sigue usando `JobCard`.
+
+## Carrusel
+
+`src/components/public/carrusel-ofertas.tsx`. Título de 26 px 800 y
+bajada; a la derecha el link "Ver todas las ofertas" y dos botones
+redondos de 44 px (anterior / siguiente, con `aria-label`, deshabilitados
+en los extremos).
+
+-   Scroll horizontal con `scroll-snap`; 3 tarjetas desde 896 px de ancho
+    disponible, 2 desde 576 px y una (85 %, mostrando el borde de la
+    siguiente) más angosto.
+-   Las flechas desplazan una página; con teclado se llega a cada
+    tarjeta. Desplazamiento suave, sin animación con
+    `prefers-reduced-motion`.
+-   Debajo, puntos de posición (`aria-hidden`): pastilla de 24 × 8 verde
+    para la página actual y puntos de 8 px `punto-carrusel`.
+-   Si todas las tarjetas entran, no hay flechas ni puntos.
+
+------------------------------------------------------------------------
+
 # 19. CandidateCard
 
 Para Empresa y Municipalidad.
@@ -801,6 +873,29 @@ Características:
 En mobile no forzar tablas ilegibles: utilizar cards o una
 representación responsive definida.
 
+## Tabla con separadores (lista de postulantes)
+
+Una sola marca para los dos formatos (`/admin/postulantes`):
+
+-   Desde 896 px de ancho disponible: tarjeta (radio 16, `overflow
+    hidden`) con encabezado de 12 px 700 en mayúsculas, letter-spacing
+    `.06em`, color `neutral`, fondo `tabla-encabezado`. Filas en grilla
+    (las mismas columnas que el encabezado), padding 12 × 20, gap 16,
+    borde superior `tabla-borde`, hover `tabla-hover`. La acción va a la
+    derecha (botón neutro de 40 px y 14 px).
+-   Separadores de grupo: fila con fondo `tabla-separador`, el badge del
+    grupo, el título en 14 px 700 y "· N" con el total del grupo según los
+    filtros.
+-   Más angosto: cada fila es una tarjeta (foto y nombre arriba, datos
+    debajo, badges que bajan de renglón y la acción a todo el ancho); los
+    separadores quedan como franjas redondeadas.
+-   El encabezado de columnas es visual (`aria-hidden`); cada celda lleva
+    su rótulo para lectores de pantalla.
+-   Paginación con números: `<Paginacion variante="numeros" />`
+    ("Página N de M" a la izquierda; Anterior, números y Siguiente de 44
+    px a la derecha; la actual en verde y "…" si son muchas). El total
+    ("Mostrando X–Y de N") va en la fila de filtros.
+
 ------------------------------------------------------------------------
 
 # 23. Filtros
@@ -877,6 +972,25 @@ Puede incluir:
 Las métricas no deben convertirse en grandes cards sin contexto
 únicamente para llenar espacio.
 
+## Tarjetas de indicadores (panel del postulante)
+
+Cada tarjeta es un link (`.tarjeta-clickeable`, padding 20, gap 10): el
+`Badge` del estado como etiqueta (con su tono) y el número debajo (36 px
+800, interlineado 1, `heading`). 2 columnas en celular, 3 en tablet y una
+fila en pantallas anchas. Al pasar el mouse se eleva.
+
+## Barra de progreso
+
+`src/components/ui/barra-progreso.tsx`: alto 10, radio 5, fondo
+`progreso-fondo`, relleno `primary`, `role="progressbar"` con
+`aria-label` ("Perfil completo al 70%") y `aria-valuenow`. El porcentaje
+visible va al lado, en 14 px 700.
+
+## Invitaciones
+
+Borde de 2 px `accent` sobre blanco, título `invitacion-titulo`, badge
+warning y botón `.btn-oscuro` (fondo `accent-foreground`, texto blanco).
+
 ------------------------------------------------------------------------
 
 # 26. Landing pública
@@ -896,13 +1010,17 @@ Estructura visual sugerida:
 
 ``` text
 Navegación lateral (sección 12)
-Hero
-Buscador de ofertas
-Categorías / accesos
-Ofertas destacadas o recientes
-Cómo funciona
-Bloque institucional
+Bloque principal: volanta, título, bajada, buscador y rubros
+Últimas ofertas (carrusel)
+Tu actividad (solo postulante con sesión)
+Cómo funciona (solo sin sesión)
+Contacto de la Oficina de Empleo
 ```
+
+Gap de 48 px entre secciones; títulos de sección de 26 px 800. El bloque
+principal es una tarjeta blanca de radio 24 (padding 56 / 56 / 48, 24 en
+celular). El buscador (`role="search"`, hasta 960 px) lleva a `/ofertas`
+con `q` y `categoria`.
 
 El objetivo visual principal debe ser facilitar el acceso a las ofertas
 laborales.
