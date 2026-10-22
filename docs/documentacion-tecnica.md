@@ -464,6 +464,7 @@ Detalle en la decisión [020](decisiones/020-notificaciones-por-email.md).
 - **Design system documentado:** [`docs/DESIGN_SYSTEM_Portal_Municipal_Empleo.md`](DESIGN_SYSTEM_Portal_Municipal_Empleo.md) define paleta, tipografía, espaciado, componentes y estados. Los colores son tokens en `src/app/globals.css` (Tailwind v4), no valores sueltos en los componentes.
 - **Paleta institucional:** la paleta parte del verde institucional de la Municipalidad de Funes, `#006833`.
 - **Componentes compartidos:** shadcn/ui sobre Base UI en `src/components/ui/` (botones, inputs, diálogos, badges, calendario, combobox) e íconos de `lucide-react`.
+- **Navegación lateral por rol:** `AppShell` (`src/components/layout/app-shell.tsx`) decide con `usePathname` qué rutas llevan navegación (todas menos `/auth/*`). Las secciones de cada rol están en `secciones-rol.ts`; la oficina ve contadores de ofertas, empresas y comprobantes pendientes. En escritorio la sidebar se contrae a íconos y recuerda la preferencia en `localStorage`; en el celular se abre como panel desde una barra superior (decisión [031](decisiones/031-navegacion-lateral.md)).
 - **Campos obligatorios con asterisco:** el componente `<Obligatorio />` es la única forma de marcarlos; incluye "(obligatorio)" para lectores de pantalla.
 - **Errores por campo:** las acciones devuelven el campo con error (`errCampo`) y el formulario lo muestra debajo con `ErrorCampo` y `useErroresCampo` (`src/lib/use-errores-campo.ts`).
 - **Feedback:** toasts con `sonner`, botones con estado de carga, esqueletos mientras carga y diálogos de confirmación para acciones que no se deshacen.
@@ -597,6 +598,7 @@ No hay tests automáticos configurados.
 | 028 | [Buscar postulantes para una oferta e invitarlos](decisiones/028-buscar-e-invitar-postulantes.md) |
 | 029 | [Panel del postulante](decisiones/029-dashboard-postulante.md) |
 | 030 | [Identidad visual: verde institucional, acento amarillo, Public Sans, colores sólidos y badges por tono](decisiones/030-identidad-visual.md) |
+| 031 | [Navegación lateral por rol](decisiones/031-navegacion-lateral.md) |
 
 ---
 

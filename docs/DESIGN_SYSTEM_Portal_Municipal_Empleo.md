@@ -236,7 +236,20 @@ Texto de estado suelto sobre blanco (sin fondo):
 
   Token             Valor       Uso
   ----------------- ----------- -----------------------------------------
-  `brand-subtle`    `#B9DCC7`   blobs y órbitas del panel login intro
+  `brand-subtle`    `#B9DCC7`   etiqueta de la sección "Para empresas" del inicio
+
+## Navegación y pantallas de /auth
+
+  Token                 Valor       Uso
+  --------------------- ----------- ---------------------------------------------
+  `sidebar-texto`       `#E3F0E8`   secciones de la sidebar; bajada del login
+  `sidebar-suave`       `#CFE6D9`   "Portal de empleo", rol del usuario, "Contraer menú"
+  `sidebar-grupo`       `#C2DECE`   títulos de grupo de la sidebar
+  `tooltip`             `#0F1D15`   tooltips de la sidebar contraída
+  `danger-fondo`        `#FDEDEC`   hover de "Cerrar sesión" en el menú del usuario
+  `fondo-auth`          `#F3F5F4`   fondo del login y de las pantallas de /auth
+  `texto-volver`        `#2E4337`   link "Volver al inicio" de /auth
+  `login-suave`         `#D7EBDF`   volanta y nota del panel verde del login
 
 ------------------------------------------------------------------------
 
@@ -367,25 +380,30 @@ No usar sombras fuertes en todas las cards.
 
 # 11. Layout
 
-## Desktop autenticado
+## Estructura (`AppShell`)
 
-Estructura recomendada:
+`src/components/layout/app-shell.tsx` arma todas las páginas, con o sin
+sesión (decisión 031):
 
 ``` text
-┌───────────────┬─────────────────────────────────────────┐
-│               │ Header / contexto / usuario             │
-│   Sidebar     ├─────────────────────────────────────────┤
-│               │                                         │
-│               │              Page content               │
-│               │                                         │
-└───────────────┴─────────────────────────────────────────┘
+Desde lg (1024 px)                    Menos de lg
+┌──────────┬────────────────────────┐ ┌──────────────────────────┐
+│          │                        │ │ ☰ [trébol] Portal  🔔    │ barra 60 px
+│ Sidebar  │      Contenido         │ ├──────────────────────────┤
+│ 260 px   │   (todo el ancho)      │ │       Contenido          │
+│ (72 px)  │                        │ │                          │
+└──────────┴────────────────────────┘ └──────────────────────────┘
 ```
+
+Las rutas de `/auth/*` no llevan navegación: solo el contenido.
 
 ## Contenido
 
-Ancho máximo recomendado para páginas de contenido:
-
-`max-w-7xl`
+-   Padding del área de contenido: 32 px en escritorio, 24 px en tablet
+    y 16 px en celular.
+-   Sin `max-width` global: cada página decide su ancho.
+-   Textos largos y formularios: clase `.contenido-lectura`
+    (`max-width: 720px`).
 
 Los formularios no deben expandirse innecesariamente a todo el viewport.
 
@@ -404,39 +422,84 @@ Responsabilidades:
 
 # 12. Sidebar
 
-## Apariencia
+Componentes: `src/components/layout/sidebar.tsx` (contenido),
+`secciones-rol.ts` (secciones por rol), `menu-usuario.tsx` (bloque del
+usuario) y las clases `.sidebar-*` de `globals.css`.
 
--   fondo `brand-900` o `brand-800`;
--   escudo blanco;
--   texto blanco o blanco atenuado;
--   íconos Lucide;
--   item activo claramente visible;
--   separadores mínimos.
+## Escritorio (desde lg)
 
-## Item normal
+-   Fija a la izquierda (sticky, 100vh), 260 px de ancho, fondo
+    `primary`, texto blanco, padding 20 px 12 px 14 px. Solo la lista de
+    secciones tiene scroll si no entra.
+-   **Marca:** logo blanco de 170 px y debajo "PORTAL DE EMPLEO" (12 px,
+    700, letter-spacing .08em, `sidebar-suave`). Línea
+    `rgba(255,255,255,.18)` y 12 px de margen.
+-   **Sección:** ícono Lucide de 20 px y texto 15 px 500, alto 44 px,
+    padding 0 12 px, radio 10, gap 12, color `sidebar-texto`.
+    -   Hover: fondo `rgba(255,255,255,.12)` y texto blanco (150 ms).
+    -   Actual: fondo blanco, texto `primary` 700, `aria-current="page"`.
+        Se calcula con la ruta: coincidencia exacta o por prefijo, la más
+        específica gana.
+    -   Destacada ("Publicar oferta" de la empresa): fondo `accent`,
+        texto `accent-foreground` 700, hover `accent-hover`, 4 px de
+        margen arriba y abajo.
+-   **Títulos de grupo** (solo oficina): 11 px, 700, mayúsculas,
+    letter-spacing .08em, `sidebar-grupo`, padding 12 px 12 px 4 px.
+    **Separador:** línea de 1 px `rgba(255,255,255,.2)` con 8 px de margen.
+-   **Contador** (solo pendientes de la oficina): pastilla de 22 px, radio
+    11, fondo `accent`, texto `accent-foreground` 12 px 800, a la derecha
+    del texto. En la sección actual va en `primary` con texto blanco.
+-   **Pie** (misma línea que arriba):
+    -   Con sesión: bloque del usuario (foto o iniciales de 38 px con
+        borde blanco, nombre 14 px 700, rol 12 px `sidebar-suave`,
+        chevron) y la campanita (44 px; número en pastilla `accent` con
+        borde `primary` de 2 px). El bloque abre hacia arriba un menú
+        blanco (radio 12, sombra `0 12px 32px rgba(0,30,15,.28)`,
+        padding 6): "Mi perfil" y, tras una línea, "Cerrar sesión" en
+        `danger` (hover `danger-fondo`). Ítems de 44 px, 15 px 600, ícono
+        de 18 px. La campanita abre su panel al costado de la sidebar.
+    -   Sin sesión: "Ingresar" (fondo blanco, texto verde) y
+        "Registrarme" (borde 1,5 px `rgba(255,255,255,.8)`), 44 px.
+    -   "Contraer menú" (14 px, `sidebar-suave`, PanelLeftClose /
+        PanelLeftOpen).
 
-Fondo transparente.
+## Contraída (72 px)
 
-## Hover
+-   Solo íconos centrados en botones de 48 × 44; arriba el trébol en un
+    cuadrado blanco de 44 px con radio 10.
+-   Los títulos de grupo pasan a ser una línea separadora.
+-   El contador pasa a una pastilla de 18 px con borde `primary` de 2 px
+    arriba a la derecha del ícono.
+-   El usuario muestra solo la foto, con la campanita arriba;
+    "Ingresar" y "Registrarme", solo el ícono.
+-   Tooltip a la derecha con el nombre al pasar el mouse o con el foco
+    del teclado (fondo `tooltip`, texto blanco 13 px 600, radio 6). Con
+    contador: "Comprobantes · 5 por revisar". Los links conservan su
+    `aria-label`.
+-   La preferencia se guarda en `localStorage` y se aplica antes de
+    pintar (atributo `data-sidebar` en `<html>`).
 
-Fondo blanco con baja opacidad.
+## Barra y panel del celular (menos de lg)
 
-## Item activo
+-   Barra fija de 60 px, fondo `primary`: botón de menú (44 × 44,
+    "Abrir menú", `aria-expanded`), el trébol en un cuadrado blanco de
+    36 px, "Portal de Empleo" (15 px 700, blanco) y a la derecha la
+    campanita o "Ingresar".
+-   El botón abre la sidebar completa (260 px) como panel desde la
+    izquierda (translateX de -100 % a 0 en 250 ms) sobre un fondo
+    `rgba(15,29,21,.5)`. Se cierra con la X, tocando el fondo, con Escape
+    o al elegir una sección. Mientras está abierto, la página no
+    scrollea y el foco queda dentro; al cerrar vuelve al botón de menú.
+    La campanita queda en la barra, no en el panel.
 
-Debe diferenciarse mediante fondo claro/translúcido y mayor contraste,
-no únicamente mediante cambio de color del texto.
+## Animaciones
 
-## Marca
+Todas se desactivan con `prefers-reduced-motion: reduce`.
 
-Parte superior:
-
-``` text
-[Escudo] MUNICIPALIDAD
-         DE FUNES
-         Portal de Empleo
-```
-
-En modo compacto puede quedar únicamente el escudo.
+-   Contraer o expandir: ancho en 250 ms ease; textos, logo y títulos de
+    grupo con fundido de 300 ms y 100 ms de demora.
+-   Menú del usuario: entra desde abajo (translateY 8 px y escala .97)
+    en 180 ms; los ítems con fundido escalonado de 60 ms.
 
 ------------------------------------------------------------------------
 
@@ -832,14 +895,13 @@ Debe mantener:
 Estructura visual sugerida:
 
 ``` text
-Navbar
+Navegación lateral (sección 12)
 Hero
 Buscador de ofertas
 Categorías / accesos
 Ofertas destacadas o recientes
 Cómo funciona
 Bloque institucional
-Footer
 ```
 
 El objetivo visual principal debe ser facilitar el acceso a las ofertas
@@ -851,18 +913,62 @@ laborales.
 
 El login debe sentirse parte del mismo producto.
 
-Desktop:
+Sin navegación. Página: `src/app/auth/login/page.tsx`; formulario:
+`src/components/auth/login-form.tsx`; clases `.login-*` y `.auth-*` de
+`globals.css`.
+
+Desktop (desde lg), dos columnas a pantalla completa (`100svh`):
 
 ``` text
 ┌────────────────────────┬──────────────────────────────┐
-│                        │                              │
-│ Identidad institucional│          Login              │
-│ / mensaje / gráfica    │                              │
-│                        │                              │
-└────────────────────────┴──────────────────────────────┘
+│ [logo blanco]          │   ← Volver al inicio         │
+│                 ▢      │  ┌────────────────────────┐  │
+│ TALENTO LOCAL, …    ▢  │  │ [logo verde]           │  │
+│ Un nuevo               │  │ TU ESPACIO PARA AVANZAR│  │
+│ camino            ▢    │  │ Tu próximo trabajo …   │  │
+│ empieza acá.           │  │ [correo] [contraseña]  │  │
+│ Conectamos a …   ▢     │  │ [ Iniciar sesión ]     │  │
+│ ↗ Tu talento puede …   │  │ ¿Nuevo? Registrate     │  │
+└────────────────────────┴──┴────────────────────────┴──┘
 ```
 
-En mobile se prioriza el formulario y la marca se simplifica.
+-   **Panel verde:** 640 px (42 %, mínimo 360 px, en pantallas más
+    chicas), `primary` con patrón de puntos (`rgba(255,255,255,.09)`
+    cada 28 px), padding 72 px 72 px 28 px. Volanta 12 px 700
+    letter-spacing .14em (`login-suave`); título en Georgia 400 hasta
+    92 px, interlineado .98; bajada 17 px, interlineado 1.6,
+    `sidebar-texto`, máximo 360 px. Abajo, ícono de gráfico ascendente y
+    "Tu talento puede llegar más lejos".
+-   **Decoración** (`aria-hidden`): brillo circular difuso que pulsa
+    (8 s), anillo grande abajo a la derecha y seis íconos flotantes
+    (48 px, radio 12, blanco al 10 %) que suben 10 px y bajan en 6 s.
+    Los dos que quedan al costado del título se ocultan por debajo de
+    1280 px.
+-   **Columna derecha:** fondo `fondo-auth`, contenido centrado de
+    460 px. Tarjeta blanca radio 24, padding 40, sombra
+    `0 24px 60px rgba(0,40,20,.10)`, gap 22: logo verde de 120 px,
+    volanta, título Georgia 42 px, campos de 52 px con ícono (Mail,
+    Lock; botón de mostrar contraseña de 44 × 44), botón primario de
+    52 px con radio 12 y sombra. Mensajes con `Aviso` (info para avisos
+    de sesión, danger para errores).
+-   **Registrate:** botón con `aria-expanded` que despliega dos opciones
+    (filas de 64 px, borde 1,5 px `border-strong`, radio 14, ícono en un
+    cuadrado verde de 44 px, hover borde verde) hacia
+    `/auth/registro` y `/auth/registro?tipo=empresa`.
+-   **Animaciones** (sin movimiento reducido): título y tarjeta suben
+    16 px con fundido en 700 ms (la tarjeta 150 ms después); las
+    opciones de registro aparecen en 250 ms.
+
+Celular: sin el panel verde, fondo `fondo-auth`, tarjeta a todo el ancho
+con padding 24 px y título de 34 px.
+
+## Demás pantallas de /auth
+
+Registro, recuperar y nueva contraseña, reset enviado, verificar email
+e invitación usan `AuthShell` (`src/components/auth/auth-shell.tsx`):
+fondo `fondo-auth`, "Volver al inicio", y el contenido en la misma
+tarjeta que el login con el logo verde arriba. Ancho 460 px; el registro,
+640 px.
 
 Evitar:
 
@@ -976,7 +1082,7 @@ Breakpoints según Tailwind.
 
 ## Mobile
 
--   sidebar → navegación móvil;
+-   sidebar → barra de 60 px y panel lateral (sección 12);
 -   grids → una columna;
 -   acciones de PageHeader → debajo del título;
 -   cards → ancho completo;
