@@ -62,7 +62,7 @@ export function SeccionContrasena() {
   };
 
   return (
-    <div className="rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6">
+    <div className="tarjeta px-4 py-5 sm:px-6">
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-foreground">Contraseña</p>

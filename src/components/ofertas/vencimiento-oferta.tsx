@@ -23,7 +23,7 @@ export function VencimientoOferta({
 
   if (vencida) {
     return (
-      <p className={cn("inline-flex items-center gap-1.5 text-xs font-medium text-red-700", className)}>
+      <p className={cn("inline-flex items-center gap-1.5 text-xs font-medium text-danger", className)}>
         <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         Venció el {formatFecha(venceEn)}: ya no se ve en el portal
       </p>
@@ -32,7 +32,7 @@ export function VencimientoOferta({
 
   if (porVencer && diasRestantes !== null) {
     return (
-      <p className={cn("inline-flex items-center gap-1.5 text-xs font-medium text-amber-700", className)}>
+      <p className={cn("inline-flex items-center gap-1.5 text-xs font-medium text-warning-text", className)}>
         <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         {textoDiasRestantes(diasRestantes)} (el {formatFecha(venceEn)})
       </p>

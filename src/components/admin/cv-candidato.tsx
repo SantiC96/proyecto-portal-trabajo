@@ -46,7 +46,7 @@ export function CvDePostulacionCard({ cvPostulacion }: { cvPostulacion: CvDePost
         : "Elegido al postularse.";
 
   return (
-    <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
+    <div className="tarjeta p-5">
       <h2 className="font-semibold text-foreground">Currículum vitae</h2>
       <div className="mt-3">
         {cvPostulacion ? (
@@ -62,7 +62,7 @@ export function CvDePostulacionCard({ cvPostulacion }: { cvPostulacion: CvDePost
 /** CVs disponibles del postulante en su ficha de la oficina. */
 export function CvsDelPostulante({ cvs }: { cvs: CvVista[] }) {
   return (
-    <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
+    <div className="tarjeta p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-semibold text-foreground">Currículum vitae</h2>
         {cvs.length > 0 && (

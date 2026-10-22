@@ -21,15 +21,17 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { claseTono } from "@/components/ui/badge";
 
 type EstiloTipo = { Icono: LucideIcon; className: string };
 
-const EXITO = "bg-emerald-100 text-emerald-800";
-const ADVERTENCIA = "bg-amber-100 text-amber-800";
-const INFO = "bg-blue-100 text-blue-800";
-const ERROR = "bg-red-100 text-red-700";
-const NEUTRO = "bg-gray-100 text-gray-600";
-const MARCA = "bg-secondary text-primary";
+// Mismos tonos sólidos que los badges de estado.
+const EXITO = claseTono("success");
+const ADVERTENCIA = claseTono("warning");
+const INFO = claseTono("info");
+const ERROR = claseTono("danger");
+const NEUTRO = claseTono("neutral");
+const MARCA = "bg-primary text-primary-foreground";
 
 // Tipos del CHECK notificaciones_tipo_check (migration_041, 043, 044, 051, 053, 055 y 056).
 const ESTILO_POR_TIPO: Record<string, EstiloTipo> = {

@@ -3,6 +3,7 @@ import { OfertaLaboral } from "@/types/oferta";
 import { MapPin, Building, Clock, Briefcase, ArrowRight, UserSearch } from "lucide-react";
 import { formatFechaDiaMes } from "@/lib/fechas";
 import { cn } from "@/lib/utils";
+import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
 
 interface JobCardProps {
   oferta: OfertaLaboral;
@@ -11,7 +12,7 @@ interface JobCardProps {
 }
 
 const CLASE_TARJETA =
-  "flex h-full flex-col rounded-2xl border border-border bg-white p-5 shadow-xs transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md";
+  "tarjeta tarjeta-clickeable flex h-full cursor-pointer flex-col p-5";
 
 const CLASE_TITULO =
   "mt-3 line-clamp-2 text-lg font-bold text-foreground transition-colors group-hover:text-primary";
@@ -128,12 +129,8 @@ function CuerpoTarjeta({ oferta }: { oferta: OfertaLaboral }) {
           <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
           <span className="truncate">{oferta.ubicacion}</span>
         </span>
-        <span className="shrink-0 whitespace-nowrap rounded-md bg-gray-100 px-2.5 py-1 font-medium text-muted-foreground-strong">
-          {oferta.modalidad}
-        </span>
-        <span className="shrink-0 whitespace-nowrap rounded-md bg-gray-100 px-2.5 py-1 font-medium text-muted-foreground-strong">
-          {oferta.jornada}
-        </span>
+        <EtiquetaRubro className="shrink-0 whitespace-nowrap">{oferta.modalidad}</EtiquetaRubro>
+        <EtiquetaRubro className="shrink-0 whitespace-nowrap">{oferta.jornada}</EtiquetaRubro>
       </div>
 
       {/* Descripción */}
