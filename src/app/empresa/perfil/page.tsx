@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { requerirRolPagina, obtenerEmpresaActual } from "@/lib/auth";
 import { fotoDePerfil } from "@/lib/fotos-perfil";
 import { formatearCUIT } from "@/lib/cuit";
-import { PublicFooter } from "@/components/public/public-footer";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { EncabezadoPerfil } from "@/components/perfil/encabezado-perfil";
 import { inicialesDeEmpresa, inicialesDePersona } from "@/lib/iniciales";
@@ -100,7 +99,6 @@ export default async function EmpresaPerfilPage() {
           </div>
         </section>
       </main>
-      <PublicFooter />
     </>
   );
 }

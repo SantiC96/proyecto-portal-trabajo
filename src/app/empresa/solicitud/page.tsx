@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { obtenerEmpresaActual, requerirRolPagina } from "@/lib/auth";
-import { PublicFooter } from "@/components/public/public-footer";
 import { CorregirSolicitudForm } from "./_components/corregir-form";
 
 export const metadata: Metadata = {
@@ -53,7 +52,6 @@ export default async function SolicitudEmpresaPage() {
           </div>
         </section>
       </main>
-      <PublicFooter />
     </>
   );
 }

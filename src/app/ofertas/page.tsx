@@ -1,5 +1,4 @@
 import { JobDirectory } from "@/components/public/job-directory";
-import { PublicFooter } from "@/components/public/public-footer";
 import { getCategorias, leerFiltrosOfertasPublicas } from "@/lib/ofertas";
 
 export const metadata = {
@@ -33,7 +32,6 @@ export default async function OfertasPage({
         />
       </main>
 
-      <PublicFooter />
     </>
   );
 }
