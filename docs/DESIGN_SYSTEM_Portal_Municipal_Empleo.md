@@ -162,19 +162,19 @@ de esta sección son la fuente de verdad.
 
   Token                    Valor       Uso
   ------------------------ ----------- --------------------------------
-  `primary`                `#0F5B53`   botones, íconos, texto activo
-  `primary-hover`          `#093E39`   hover de botones y CTA
+  `primary`                `#006833`   botones, íconos, texto activo
+  `primary-hover`          `#00522A`   hover de botones y CTA
   `primary-foreground`     `#FFFFFF`   texto sobre fondo primary
 
 ## Superficies y neutrales
 
   Token                         Valor       Uso
   ----------------------------- ----------- --------------------------------
-  `background`                  `#F8F8F4`   fondo general de página
+  `background`                  `#F6F8F6`   fondo general de página
   `surface`                     `#FFFFFF`   cards, formularios, paneles
-  `border`                      `#D8DDD7`   bordes y separadores
-  `foreground`                  `#1B2926`   texto principal
-  `muted-foreground`            `#6E7772`   texto secundario estándar
+  `border`                      `#D9E2DC`   bordes y separadores
+  `foreground`                  `#17241D`   texto principal
+  `muted-foreground`            `#666F6A`   texto secundario estándar
   `muted-foreground-strong`     `#4F5A54`   labels, nav links inactivos
   `muted-icon`                  `#9CA3A0`   íconos en inputs, indicadores
   `placeholder`                 `#B0B8B4`   placeholder de inputs
@@ -183,15 +183,15 @@ de esta sección son la fuente de verdad.
 
   Token                Valor       Uso
   -------------------- ----------- ----------------------------------------
-  `secondary`          `#E8F0E9`   fondo suave tintado principal
-  `secondary-hover`    `#E4ECE5`   hover discreto sobre fondos secondary
-  `surface-tinted`     `#F0F4F1`   superficies muy claras (badges, selects)
+  `secondary`          `#E6F2EB`   fondo suave tintado principal
+  `secondary-hover`    `#D9EBE0`   hover discreto sobre fondos secondary
+  `surface-tinted`     `#EEF5F0`   superficies muy claras (badges, selects)
 
 ## Decorativo
 
   Token             Valor       Uso
   ----------------- ----------- -----------------------------------------
-  `brand-subtle`    `#C7E1CD`   blobs y órbitas del panel login intro
+  `brand-subtle`    `#B9DCC7`   blobs y órbitas del panel login intro
 
 ## Colores semánticos
 
@@ -219,29 +219,29 @@ utilidad: `bg-primary`, `text-foreground`, `border-border`, etc.
 ``` css
 @theme {
   /* Acción principal */
-  --color-primary:            #0f5b53;
-  --color-primary-hover:      #093e39;
+  --color-primary:            #006833;
+  --color-primary-hover:      #00522a;
   --color-primary-foreground: #ffffff;
 
   /* Superficies y neutrales */
-  --color-background: #f8f8f4;
+  --color-background: #f6f8f6;
   --color-surface:    #ffffff;
-  --color-border:     #d8ddd7;
-  --color-foreground: #1b2926;
+  --color-border:     #d9e2dc;
+  --color-foreground: #17241d;
 
   /* Texto atenuado — 4 niveles */
-  --color-muted-foreground:        #6e7772;
+  --color-muted-foreground:        #666f6a;
   --color-muted-foreground-strong: #4f5a54;
   --color-muted-icon:              #9ca3a0;
   --color-placeholder:             #b0b8b4;
 
   /* Superficies tintadas verde */
-  --color-secondary:       #e8f0e9;
-  --color-secondary-hover: #e4ece5;
-  --color-surface-tinted:  #f0f4f1;
+  --color-secondary:       #e6f2eb;
+  --color-secondary-hover: #d9ebe0;
+  --color-surface-tinted:  #eef5f0;
 
   /* Decorativo (solo login intro) */
-  --color-brand-subtle: #c7e1cd;
+  --color-brand-subtle: #b9dcc7;
 
   /* Tipografía */
   --font-sans:    "Trebuchet MS", "Segoe UI", sans-serif;

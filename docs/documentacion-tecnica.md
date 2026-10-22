@@ -462,6 +462,7 @@ Detalle en la decisión [020](decisiones/020-notificaciones-por-email.md).
 ## 8. Diseño y experiencia de usuario
 
 - **Design system documentado:** [`docs/DESIGN_SYSTEM_Portal_Municipal_Empleo.md`](DESIGN_SYSTEM_Portal_Municipal_Empleo.md) define paleta, tipografía, espaciado, componentes y estados. Los colores son tokens en `src/app/globals.css` (Tailwind v4), no valores sueltos en los componentes.
+- **Paleta institucional:** la paleta parte del verde institucional de la Municipalidad de Funes, `#006833`.
 - **Componentes compartidos:** shadcn/ui sobre Base UI en `src/components/ui/` (botones, inputs, diálogos, badges, calendario, combobox) e íconos de `lucide-react`.
 - **Campos obligatorios con asterisco:** el componente `<Obligatorio />` es la única forma de marcarlos; incluye "(obligatorio)" para lectores de pantalla.
 - **Errores por campo:** las acciones devuelven el campo con error (`errCampo`) y el formulario lo muestra debajo con `ErrorCampo` y `useErroresCampo` (`src/lib/use-errores-campo.ts`).
