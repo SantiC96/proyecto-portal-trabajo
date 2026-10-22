@@ -6,6 +6,7 @@ import { logError } from "@/lib/logger";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
 import {
+  TAMANO_PAGINA,
   consultarPagina,
   hrefConParams,
   leerPagina,
@@ -14,12 +15,12 @@ import {
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { Esqueleto } from "@/components/ui/esqueleto";
+import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { FiltrosPostulantes } from "./filtros-postulantes";
 import { AsignarCursoDialog } from "./asignar-curso-dialog";
 import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
 import {
-  VENTANA_RECHAZOS_DIAS,
   aEstadoCursos,
   textoCursosPendientes,
   textoRechazos,
@@ -27,33 +28,68 @@ import {
 } from "@/lib/cursos";
 import type { Tabla } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
-import { formatFechaCorta } from "@/lib/fechas";
-import { BotonVolver } from "@/components/ui/boton-volver";
 import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
-import { Badge } from "@/components/ui/badge";
-import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
+import { Badge, type TonoBadge } from "@/components/ui/badge";
 import { estadosDeComprobantes } from "@/lib/comprobantes";
-import { nivelDe, type NivelPrioridad } from "@/lib/procedencia";
+import { inicialesDePersona } from "@/lib/iniciales";
+import { nivelDe, type EstadoComprobante, type NivelPrioridad } from "@/lib/procedencia";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Postulantes | Panel municipal | Portal de Empleo Funes",
 };
 
 const RUTA = "/admin/postulantes";
+const NIVELES: NivelPrioridad[] = [1, 2, 3];
 
 // La lista se ordena por nivel de prioridad (decisión 027): cada grupo de la
-// página lleva este título arriba de su primera tarjeta.
-const TITULO_NIVEL: Record<NivelPrioridad, string> = {
-  1: "De Funes, domicilio verificado",
-  2: "De Funes, sin verificar",
-  3: "Otra localidad o sin informar",
+// página lleva este separador arriba de su primera fila.
+const NIVEL: Record<NivelPrioridad, { titulo: string; tono: TonoBadge }> = {
+  1: { titulo: "De Funes, domicilio verificado", tono: "success" },
+  2: { titulo: "De Funes, sin verificar", tono: "warning" },
+  3: { titulo: "Otra localidad o sin informar", tono: "neutral" },
 };
+
+// Tabla desde 896 px de ancho disponible (la sidebar le quita ancho al
+// contenido); más angosto, cada postulante es una tarjeta. Encabezado y filas
+// comparten las columnas.
+const COLUMNAS =
+  "@4xl:grid @4xl:grid-cols-[minmax(0,2.2fr)_7rem_minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1.5fr)_minmax(0,1.4fr)_auto] @4xl:items-center @4xl:gap-4";
 
 type FiltrosListado = {
   q: string;
   rubroIds: string[];
   pagina: number;
 };
+
+type FilaPostulante = {
+  id: string;
+  nombre: string;
+  iniciales: string | undefined;
+  telefono: string | null;
+  dni: string | null;
+  localidad: string | null;
+  nivel: NivelPrioridad;
+  avatar: { url: string | null; ajuste: { x: number; y: number; zoom: number } } | undefined;
+  rubros: string[];
+  tieneCv: boolean;
+  comprobante: EstadoComprobante | null;
+  cursos: EstadoCursosPostulante | undefined;
+  cursosPendientesIds: string[];
+};
+
+type DatosListado =
+  | { tipo: "error"; refError: string }
+  | { tipo: "vacio"; hayFiltros: boolean }
+  | {
+      tipo: "ok";
+      filas: FilaPostulante[];
+      total: number;
+      pagina: number;
+      /** Total de cada nivel con los filtros actuales; null si el conteo falló. */
+      totalesNivel: Record<NivelPrioridad, number | null>;
+      cursosActivos: Pick<Tabla<"cursos">, "id" | "nombre" | "descripcion">[];
+    };
 
 export default async function PostulantesPage({
   searchParams,
@@ -89,42 +125,42 @@ export default async function PostulantesPage({
     .order("nombre");
   const opciones = categoriasRes.data ?? [];
 
+  // Una sola carga compartida por el contador de los filtros y la lista. La
+  // clave cambia con cada búsqueda o página: los Suspense se vuelven a montar
+  // y muestran el esqueleto mientras llega el resultado nuevo.
+  const datos = cargarListado(filtros);
+  const clave = JSON.stringify(filtros);
+
   return (
-    <PostulantesShell
-      opciones={opciones}
-      rubroIds={filtros.rubroIds}
-      hayBusqueda={filtros.q.length > 0}
-    >
-      <Suspense
-        key={JSON.stringify(filtros)}
-        fallback={<EsqueletoLista filas={5} />}
-      >
-        <ListadoPostulantes filtros={filtros} searchParams={sp} />
+    <div className="flex flex-col gap-6">
+      <EncabezadoPagina
+        titulo="Postulantes"
+        bajada="Ordenados por prioridad: primero los vecinos de Funes con domicilio verificado."
+      />
+
+      <FiltrosPostulantes
+        opciones={opciones}
+        rubros={filtros.rubroIds}
+        hayBusqueda={filtros.q.length > 0}
+        contador={
+          <Suspense key={clave} fallback={<Esqueleto className="h-4 w-48" />}>
+            <ContadorPostulantes datos={datos} />
+          </Suspense>
+        }
+      />
+
+      <Suspense key={clave} fallback={<EsqueletoListado />}>
+        <ListadoPostulantes datos={datos} searchParams={sp} />
       </Suspense>
-    </PostulantesShell>
+    </div>
   );
 }
 
-async function ListadoPostulantes({
-  filtros,
-  searchParams,
-}: {
-  filtros: FiltrosListado;
-  searchParams: ParamsUrl;
-}) {
+async function cargarListado(filtros: FiltrosListado): Promise<DatosListado> {
   const { q, rubroIds, pagina } = filtros;
   const hayFiltros = rubroIds.length > 0 || q.length > 0;
 
   const supabase = await createSupabaseServerClient();
-
-  // Cursos activos para el dialog de asignación
-  const cursosRes = await supabase
-    .from("cursos")
-    .select("id, nombre, descripcion")
-    .eq("activo", true)
-    .order("nombre");
-
-  const cursosActivos = cursosRes.data ?? [];
 
   const rubroPreResult =
     rubroIds.length > 0
@@ -158,8 +194,7 @@ async function ListadoPostulantes({
 
     const errorTexto = usersRes.error ?? dniRes.error;
     if (errorTexto) {
-      const ref = logError("admin_postulantes_busqueda", errorTexto);
-      return <ErrorListado refError={ref} />;
+      return { tipo: "error", refError: logError("admin_postulantes_busqueda", errorTexto) };
     }
 
     const usuarioIds = (usersRes.data ?? []).map((r) => r.id);
@@ -177,56 +212,65 @@ async function ListadoPostulantes({
     textFilterIds = [...new Set([...idsByName, ...idsByDni])];
   }
 
-  const vacio = hayFiltros ? (
-    <EstadoVacio
-      tipo="sin-resultados"
-      titulo="No hay postulantes con esos filtros"
-      hrefLimpiar={RUTA}
-    />
-  ) : (
-    <EstadoVacio
-      tipo="sin-registros"
-      icono={Users}
-      titulo="Todavía no hay postulantes registrados"
-    />
-  );
-
   // Short-circuit si algún filtro no tiene resultados
   const emptyFilter =
     (rubroPrefilterId !== undefined && rubroPrefilterId.length === 0) ||
     (textFilterIds !== undefined && textFilterIds.length === 0);
 
-  if (emptyFilter) return vacio;
+  if (emptyFilter) return { tipo: "vacio", hayFiltros };
 
-  const resultado = await consultarPagina(pagina, (desde, hasta) => {
+  // Totales por nivel para los separadores: un conteo por nivel (head: true,
+  // sin traer filas) con los mismos filtros que la lista.
+  const contarNivel = async (nivel: NivelPrioridad): Promise<number | null> => {
     let query = supabase
       .from("postulantes")
-      .select(
-        "id, usuario_id, dni, created_at, localidad, nivel_prioridad, usuarios!usuario_id(nombre, apellido, telefono)",
-        { count: "exact" }
-      );
-
-    if (rubroPrefilterId !== undefined)
-      query = query.in("id", rubroPrefilterId);
+      .select("id", { count: "exact", head: true })
+      .eq("nivel_prioridad", nivel);
+    if (rubroPrefilterId !== undefined) query = query.in("id", rubroPrefilterId);
     if (textFilterIds !== undefined) query = query.in("id", textFilterIds);
+    const { count, error } = await query;
+    if (error) {
+      logError("admin_postulantes_total_nivel", error);
+      return null;
+    }
+    return count ?? 0;
+  };
 
-    // Mismo orden que postulantes_nivel_prioridad_idx (migration_055).
-    return query
-      .order("nivel_prioridad", { ascending: true })
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false })
-      .range(desde, hasta);
-  });
+  const [resultado, cursosRes, ...conteos] = await Promise.all([
+    consultarPagina(pagina, (desde, hasta) => {
+      let query = supabase
+        .from("postulantes")
+        .select(
+          "id, usuario_id, dni, created_at, localidad, nivel_prioridad, usuarios!usuario_id(nombre, apellido, telefono)",
+          { count: "exact" }
+        );
+
+      if (rubroPrefilterId !== undefined)
+        query = query.in("id", rubroPrefilterId);
+      if (textFilterIds !== undefined) query = query.in("id", textFilterIds);
+
+      // Mismo orden que postulantes_nivel_prioridad_idx (migration_055).
+      return query
+        .order("nivel_prioridad", { ascending: true })
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(desde, hasta);
+    }),
+    // Cursos activos para el dialog de asignación
+    supabase
+      .from("cursos")
+      .select("id, nombre, descripcion")
+      .eq("activo", true)
+      .order("nombre"),
+    ...NIVELES.map(contarNivel),
+  ]);
 
   if (!resultado.ok) {
-    const ref = logError("admin_postulantes_listado", resultado.error);
-    return <ErrorListado refError={ref} />;
+    return { tipo: "error", refError: logError("admin_postulantes_listado", resultado.error) };
   }
 
   const postulantes = resultado.filas;
-  const totalCount = resultado.total;
-
-  if (postulantes.length === 0) return vacio;
+  if (postulantes.length === 0) return { tipo: "vacio", hayFiltros };
 
   const postulanteIds = postulantes.map((p) => p.id);
   const usuarioIds = postulantes.map((p) => p.usuario_id);
@@ -235,7 +279,6 @@ async function ListadoPostulantes({
     avatarRes,
     catRes,
     cvStatusRes,
-    postulacionesRes,
     estadoCursosRes,
     cursosPendientesRes,
     comprobantes,
@@ -256,10 +299,6 @@ async function ListadoPostulantes({
       .in("usuario_id", usuarioIds)
       .eq("tipo", "cv")
       .is("eliminado_en", null),
-    supabase
-      .from("postulaciones")
-      .select("postulante_id")
-      .in("postulante_id", postulanteIds),
     supabase.rpc("estado_cursos_postulantes", {
       p_postulante_ids: postulanteIds,
     }),
@@ -282,10 +321,7 @@ async function ListadoPostulantes({
   }
 
   const avatarByRuta = new Map(signedUrls.map((u) => [u.path, u.signedUrl]));
-  const avatarMap = new Map<
-    string,
-    { url: string | null; ajuste?: { x: number; y: number; zoom: number } }
-  >();
+  const avatarMap = new Map<string, NonNullable<FilaPostulante["avatar"]>>();
   for (const row of avatarRows) {
     avatarMap.set(row.usuario_id, {
       url: avatarByRuta.get(row.ruta) ?? null,
@@ -297,24 +333,15 @@ async function ListadoPostulantes({
     });
   }
 
-  const catRows = catRes.data ?? [];
-  const rubrosPorPostulante = new Map<string, Pick<Tabla<"categorias">, "id" | "nombre">[]>();
-  for (const row of catRows) {
+  const rubrosPorPostulante = new Map<string, string[]>();
+  for (const row of catRes.data ?? []) {
     if (!row.categorias) continue;
     const existing = rubrosPorPostulante.get(row.postulante_id) ?? [];
-    existing.push(row.categorias);
+    existing.push(row.categorias.nombre);
     rubrosPorPostulante.set(row.postulante_id, existing);
   }
 
   const usuariosConCv = new Set((cvStatusRes.data ?? []).map((r) => r.usuario_id));
-
-  const conteosMap = new Map<string, number>();
-  for (const row of postulacionesRes.data ?? []) {
-    conteosMap.set(
-      row.postulante_id,
-      (conteosMap.get(row.postulante_id) ?? 0) + 1
-    );
-  }
 
   if (estadoCursosRes.error) logError("estado_cursos_postulantes", estadoCursosRes.error);
   const cursosMap = new Map<string, EstadoCursosPostulante>();
@@ -338,47 +365,117 @@ async function ListadoPostulantes({
     cursosPendientesMap.set(row.postulante_id, ids);
   }
 
-  // Las filas llegan ordenadas por nivel: se agrupan las consecutivas.
-  const grupos: { nivel: NivelPrioridad; filas: typeof postulantes }[] = [];
-  for (const p of postulantes) {
-    const nivel = nivelDe(p.nivel_prioridad);
-    const ultimo = grupos.at(-1);
-    if (ultimo?.nivel === nivel) ultimo.filas.push(p);
-    else grupos.push({ nivel, filas: [p] });
+  return {
+    tipo: "ok",
+    total: resultado.total,
+    pagina: resultado.pagina,
+    totalesNivel: { 1: conteos[0], 2: conteos[1], 3: conteos[2] },
+    cursosActivos: cursosRes.data ?? [],
+    filas: postulantes.map((p) => {
+      const usuario = p.usuarios;
+      return {
+        id: p.id,
+        nombre: usuario ? `${usuario.nombre} ${usuario.apellido}` : "—",
+        iniciales: usuario ? inicialesDePersona(usuario.nombre, usuario.apellido) : undefined,
+        telefono: usuario?.telefono || null,
+        dni: p.dni,
+        localidad: p.localidad,
+        nivel: nivelDe(p.nivel_prioridad),
+        avatar: avatarMap.get(p.usuario_id),
+        rubros: rubrosPorPostulante.get(p.id) ?? [],
+        tieneCv: usuariosConCv.has(p.usuario_id),
+        comprobante: comprobantes.get(p.usuario_id) ?? null,
+        cursos: cursosMap.get(p.id),
+        cursosPendientesIds: cursosPendientesMap.get(p.id) ?? [],
+      };
+    }),
+  };
+}
+
+async function ContadorPostulantes({ datos }: { datos: Promise<DatosListado> }) {
+  const d = await datos;
+  if (d.tipo !== "ok") return null;
+  const desde = (d.pagina - 1) * TAMANO_PAGINA + 1;
+  const hasta = Math.min(d.pagina * TAMANO_PAGINA, d.total);
+  return (
+    <p className="text-sm whitespace-nowrap text-muted-foreground-strong" aria-live="polite">
+      Mostrando {desde}–{hasta} de {d.total} {d.total === 1 ? "postulante" : "postulantes"}
+    </p>
+  );
+}
+
+async function ListadoPostulantes({
+  datos,
+  searchParams,
+}: {
+  datos: Promise<DatosListado>;
+  searchParams: ParamsUrl;
+}) {
+  const d = await datos;
+
+  if (d.tipo === "error") return <ErrorListado refError={d.refError} />;
+  if (d.tipo === "vacio") {
+    return d.hayFiltros ? (
+      <EstadoVacio
+        tipo="sin-resultados"
+        titulo="No hay postulantes con esos filtros"
+        hrefLimpiar={RUTA}
+      />
+    ) : (
+      <EstadoVacio
+        tipo="sin-registros"
+        icono={Users}
+        titulo="Todavía no hay postulantes registrados"
+      />
+    );
   }
 
-  const volverUrl = hrefConParams(RUTA, searchParams, {
-    pagina: resultado.pagina,
-  });
+  // Las filas llegan ordenadas por nivel: se agrupan las consecutivas.
+  const grupos: { nivel: NivelPrioridad; filas: FilaPostulante[] }[] = [];
+  for (const p of d.filas) {
+    const ultimo = grupos.at(-1);
+    if (ultimo?.nivel === p.nivel) ultimo.filas.push(p);
+    else grupos.push({ nivel: p.nivel, filas: [p] });
+  }
+
+  const volverUrl = hrefConParams(RUTA, searchParams, { pagina: d.pagina });
 
   return (
-    <>
-      <p className="text-sm text-muted-foreground">
-        {totalCount === 1
-          ? "1 postulante encontrado"
-          : `${totalCount} postulantes encontrados`}
-      </p>
+    <div className="@container flex flex-col gap-6">
+      <div className="flex flex-col gap-3 @4xl:gap-0 @4xl:overflow-hidden @4xl:rounded-[var(--radius-xl)] @4xl:border @4xl:border-border @4xl:bg-surface">
+        <div
+          aria-hidden="true"
+          className={cn(
+            "hidden bg-tabla-encabezado px-5 py-3 text-xs font-bold tracking-[0.06em] text-neutral uppercase",
+            COLUMNAS,
+          )}
+        >
+          <span>Postulante</span>
+          <span>DNI</span>
+          <span>Localidad</span>
+          <span>Rubros</span>
+          <span>Prioridad</span>
+          <span>CV y curso</span>
+          <span />
+        </div>
 
-      {/*
-        Una sola lista para todos los anchos: en celular cada postulante es una
-        tarjeta apilada y desde lg los datos, los números y los botones se
-        acomodan en tres columnas. Los textos largos pasan de línea, así que
-        nunca hace falta desplazarse hacia los costados.
-      */}
-      <div className="space-y-6">
         {grupos.map((grupo) => (
           <section
             key={grupo.nivel}
             aria-labelledby={`nivel-${grupo.nivel}`}
-            className="space-y-3"
+            className="flex flex-col gap-3 @4xl:gap-0"
           >
-            <h2
-              id={`nivel-${grupo.nivel}`}
-              className="text-sm font-semibold text-muted-foreground-strong"
-            >
-              {TITULO_NIVEL[grupo.nivel]}
-            </h2>
-            <ul className="space-y-3">{grupo.filas.map(tarjeta)}</ul>
+            <SeparadorNivel nivel={grupo.nivel} total={d.totalesNivel[grupo.nivel]} />
+            <ul className="flex flex-col gap-3 @4xl:gap-0">
+              {grupo.filas.map((p) => (
+                <FilaListado
+                  key={p.id}
+                  p={p}
+                  fichaUrl={`${RUTA}/${p.id}?volver=${encodeURIComponent(volverUrl)}`}
+                  cursosActivos={d.cursosActivos}
+                />
+              ))}
+            </ul>
           </section>
         ))}
       </div>
@@ -386,203 +483,180 @@ async function ListadoPostulantes({
       <Paginacion
         ruta={RUTA}
         searchParams={searchParams}
-        pagina={resultado.pagina}
-        total={totalCount}
+        pagina={d.pagina}
+        total={d.total}
+        variante="numeros"
       />
-    </>
+    </div>
   );
-
-  function tarjeta(p: (typeof postulantes)[number]) {
-    const usuario = p.usuarios;
-    const avatar = avatarMap.get(p.usuario_id);
-    const rubros = rubrosPorPostulante.get(p.id) ?? [];
-    const tieneCv = usuariosConCv.has(p.usuario_id);
-    const comprobante = comprobantes.get(p.usuario_id) ?? null;
-    const numPostulaciones = conteosMap.get(p.id) ?? 0;
-    const cursos = cursosMap.get(p.id);
-    const rechazos = cursos?.rechazos_ventana ?? 0;
-    const puedeRecibirCurso = cursos?.puede_recibir_curso ?? false;
-    const cursosPendientesIds = cursosPendientesMap.get(p.id) ?? [];
-    const pendientes = cursosPendientesIds.length;
-    const nombreCompleto = usuario
-      ? `${usuario.nombre} ${usuario.apellido}`
-      : "—";
-    const fichaUrl = `/admin/postulantes/${p.id}?volver=${encodeURIComponent(
-      volverUrl
-    )}`;
-
-    return (
-      <li
-        key={p.id}
-        className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-border bg-surface p-4 transition-colors hover:bg-surface-tinted lg:flex-row lg:items-center lg:gap-6"
-      >
-        {/* Identidad y datos de contacto */}
-        <div className="flex min-w-0 flex-1 items-start gap-3">
-          <AvatarAjustado
-            src={avatar?.url ?? null}
-            alt={nombreCompleto}
-            ajuste={avatar?.ajuste}
-            size="sm"
-          />
-          <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="break-words font-medium text-foreground">
-                {nombreCompleto}
-              </span>
-              <EtiquetaCurso cursos={cursos} />
-            </div>
-            {pendientes > 0 && (
-              <p className="text-xs font-medium text-warning-text">
-                {textoCursosPendientes(pendientes)}
-              </p>
-            )}
-            <p className="text-sm text-muted-foreground">
-              <span className="whitespace-nowrap">
-                DNI <span className="font-mono text-foreground">{p.dni ?? "—"}</span>
-              </span>
-              <span aria-hidden="true"> · </span>
-              <span className="whitespace-nowrap">
-                Tel. <span className="text-foreground">{usuario?.telefono || "—"}</span>
-              </span>
-              <span aria-hidden="true"> · </span>
-              <span className="whitespace-nowrap">
-                Registrado el {formatFechaCorta(p.created_at)}
-              </span>
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <BadgeProcedencia
-                nivel={nivelDe(p.nivel_prioridad)}
-                localidad={p.localidad}
-                comprobante={comprobante}
-              />
-              {!tieneCv && (
-                <Badge tono="warning">Sin CV</Badge>
-              )}
-            </div>
-            <RubrosPills rubros={rubros} />
-          </div>
-        </div>
-
-        {/* Números */}
-        <dl className="grid grid-cols-2 gap-2 text-sm lg:w-60 lg:flex-none">
-          <div>
-            <dt className="text-xs text-muted-foreground">Postulaciones</dt>
-            <dd className="text-foreground">{numPostulaciones}</dd>
-          </div>
-          <div>
-            <dt
-              className="text-xs text-muted-foreground"
-              title={`Rechazos de empresas en los últimos ${VENTANA_RECHAZOS_DIAS} días, posteriores al último curso completado`}
-            >
-              Rechazos ({VENTANA_RECHAZOS_DIAS} días)
-            </dt>
-            <dd className="text-foreground">{rechazos}</dd>
-          </div>
-        </dl>
-
-        {/* Acciones */}
-        <div className="flex flex-wrap gap-2 lg:w-36 lg:flex-none lg:flex-col lg:items-stretch">
-          {puedeRecibirCurso && (
-            <AsignarCursoDialog
-              postulanteId={p.id}
-              postulanteNombre={nombreCompleto}
-              cursosActivos={cursosActivos}
-              cursosPendientesIds={cursosPendientesIds}
-              claseBoton="min-h-11 px-4 text-sm lg:min-h-9 lg:px-3"
-            />
-          )}
-          <Link
-            href={fichaUrl}
-            className="btn-secundario inline-flex min-h-11 items-center justify-center whitespace-nowrap px-4 text-sm lg:min-h-9 lg:px-3"
-          >
-            Ver ficha
-          </Link>
-        </div>
-      </li>
-    );
-  }
 }
 
-function EtiquetaCurso({
-  cursos,
-  className,
+function SeparadorNivel({ nivel, total }: { nivel: NivelPrioridad; total: number | null }) {
+  return (
+    <h2
+      id={`nivel-${nivel}`}
+      className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[var(--radius-lg)] bg-tabla-separador px-4 py-2.5 text-sm leading-normal @4xl:rounded-none @4xl:border-t @4xl:border-tabla-borde @4xl:px-5"
+    >
+      <Badge tono={NIVEL[nivel].tono}>{NIVEL[nivel].titulo}</Badge>
+      <span>
+        <span className="font-bold text-heading">Prioridad {nivel}</span>
+        {total !== null && (
+          <span className="font-normal text-muted-foreground-strong">
+            {" "}
+            · {total} {total === 1 ? "postulante" : "postulantes"}
+          </span>
+        )}
+      </span>
+    </h2>
+  );
+}
+
+function FilaListado({
+  p,
+  fichaUrl,
+  cursosActivos,
 }: {
-  cursos: EstadoCursosPostulante | undefined;
-  className?: string;
+  p: FilaPostulante;
+  fichaUrl: string;
+  cursosActivos: Pick<Tabla<"cursos">, "id" | "nombre" | "descripcion">[];
 }) {
+  const pendientes = p.cursosPendientesIds.length;
+  const puedeRecibirCurso = p.cursos?.puede_recibir_curso ?? false;
+  const etiquetaCurso = <EtiquetaCurso cursos={p.cursos} />;
+  const conBadgeCurso = Boolean(
+    p.cursos && (p.cursos.necesita_curso || p.cursos.asignacion_activa_estado),
+  );
+
+  return (
+    <li
+      className={cn(
+        "flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[var(--radius-xl)] border border-border bg-surface p-4 text-sm text-foreground transition-colors",
+        "@4xl:rounded-none @4xl:border-x-0 @4xl:border-b-0 @4xl:border-tabla-borde @4xl:px-5 @4xl:py-3 @4xl:hover:bg-tabla-hover",
+        COLUMNAS,
+      )}
+    >
+      {/* Postulante */}
+      <div className="flex min-w-0 basis-full items-center gap-3 @4xl:basis-auto">
+        <AvatarAjustado
+          src={p.avatar?.url ?? null}
+          alt=""
+          ajuste={p.avatar?.ajuste}
+          iniciales={p.iniciales}
+          size="lista"
+        />
+        <div className="min-w-0">
+          <Link
+            href={fichaUrl}
+            className="block rounded-[var(--radius-sm)] text-[15px] font-bold break-words text-heading no-underline outline-none hover:text-primary focus-visible:shadow-[var(--sombra-foco)]"
+          >
+            {p.nombre}
+          </Link>
+          {p.telefono && (
+            <p className="text-[13px] text-muted-foreground">
+              <span className="sr-only">Teléfono: </span>
+              {p.telefono}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* DNI */}
+      <p className="tabular-nums">
+        <span className="text-muted-foreground @4xl:sr-only">DNI </span>
+        {p.dni ?? "—"}
+      </p>
+
+      {/* Localidad */}
+      <p className="min-w-0 break-words">
+        <span className="sr-only">Localidad: </span>
+        {p.localidad ?? <span className="text-muted-foreground">Sin informar</span>}
+      </p>
+
+      {/* Rubros */}
+      <p
+        className="line-clamp-2 basis-full text-muted-foreground-strong @4xl:basis-auto"
+        title={p.rubros.join(", ")}
+      >
+        <span className="sr-only">Rubros: </span>
+        {p.rubros.length > 0 ? p.rubros.join(", ") : <span className="text-muted-foreground">—</span>}
+      </p>
+
+      {/* Prioridad */}
+      <div className="min-w-0">
+        <span className="sr-only">Prioridad: </span>
+        <BadgeProcedencia nivel={p.nivel} localidad={p.localidad} comprobante={p.comprobante} />
+      </div>
+
+      {/* CV y curso */}
+      <div className="flex min-w-0 flex-col gap-1">
+        <span className="sr-only">CV y curso: </span>
+        {!p.tieneCv || conBadgeCurso ? (
+          <div className="flex flex-wrap gap-1.5">
+            {!p.tieneCv && <Badge tono="warning">Sin CV</Badge>}
+            {etiquetaCurso}
+          </div>
+        ) : (
+          <span className="text-muted-foreground-strong">CV cargado</span>
+        )}
+        {pendientes > 0 && (
+          <p className="text-xs font-medium text-warning-text">
+            {textoCursosPendientes(pendientes)}
+          </p>
+        )}
+      </div>
+
+      {/* Acciones */}
+      <div className="flex basis-full flex-wrap gap-2 @4xl:basis-auto @4xl:flex-nowrap @4xl:justify-end">
+        {puedeRecibirCurso && (
+          <AsignarCursoDialog
+            postulanteId={p.id}
+            postulanteNombre={p.nombre}
+            cursosActivos={cursosActivos}
+            cursosPendientesIds={p.cursosPendientesIds}
+            claseBoton="flex-1 @4xl:flex-none @4xl:min-h-10! @4xl:px-3.5! @4xl:text-sm!"
+          />
+        )}
+        <Link
+          href={fichaUrl}
+          className="btn-neutro flex-1 whitespace-nowrap @4xl:flex-none @4xl:min-h-10! @4xl:px-3.5! @4xl:text-sm!"
+        >
+          Ver perfil
+          <span className="sr-only">: {p.nombre}</span>
+        </Link>
+      </div>
+    </li>
+  );
+}
+
+function EtiquetaCurso({ cursos }: { cursos: EstadoCursosPostulante | undefined }) {
   if (!cursos) return null;
   if (cursos.necesita_curso) {
     return (
-      <Badge tono="warning" estado className={className}>
+      <Badge tono="warning" estado>
         Necesita curso · {textoRechazos(cursos.rechazos_ventana)}
       </Badge>
     );
   }
   if (cursos.asignacion_activa_estado) {
-    return (
-      <EstadoCursoBadge
-        estado={cursos.asignacion_activa_estado}
-        className={className}
-      />
-    );
+    return <EstadoCursoBadge estado={cursos.asignacion_activa_estado} />;
   }
   return null;
 }
 
-function RubrosPills({
-  rubros,
-}: {
-  rubros: Tabla<"categorias">[];
-}) {
-  if (rubros.length === 0)
-    return <span className="text-muted-foreground text-xs">—</span>;
-
-  const visible = rubros.slice(0, 3);
-  const extra = rubros.length - visible.length;
-
+function EsqueletoListado() {
   return (
-    <div className="flex flex-wrap gap-1">
-      {visible.map((r) => (
-        <EtiquetaRubro key={r.id}>{r.nombre}</EtiquetaRubro>
+    <div aria-busy="true" aria-label="Cargando postulantes" className="flex flex-col gap-3">
+      <Esqueleto className="h-11 w-full rounded-[var(--radius-lg)]" />
+      {Array.from({ length: 6 }, (_, i) => (
+        <div key={i} className="tarjeta flex items-center gap-3 p-4">
+          <Esqueleto className="size-10 shrink-0 rounded-full" />
+          <div className="flex flex-1 flex-col gap-2">
+            <Esqueleto className="h-4 w-1/3" />
+            <Esqueleto className="h-3 w-1/4" />
+          </div>
+          <Esqueleto className="hidden h-10 w-24 sm:block" />
+        </div>
       ))}
-      {extra > 0 && (
-        <EtiquetaRubro>+{extra}</EtiquetaRubro>
-      )}
     </div>
-  );
-}
-
-function PostulantesShell({
-  opciones,
-  rubroIds,
-  hayBusqueda,
-  children,
-}: {
-  opciones: Tabla<"categorias">[];
-  rubroIds: string[];
-  hayBusqueda: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-      <BotonVolver href="/admin">Volver al panel</BotonVolver>
-
-      <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-        Postulantes
-      </h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Explorá el padrón completo de candidatos registrados.
-      </p>
-
-      <div className="mt-6">
-        <FiltrosPostulantes
-          opciones={opciones}
-          rubros={rubroIds}
-          hayBusqueda={hayBusqueda}
-        />
-      </div>
-
-      <div className="mt-6 space-y-4">{children}</div>
-    </section>
   );
 }
