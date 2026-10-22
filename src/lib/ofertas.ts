@@ -164,6 +164,26 @@ export async function buscarOfertasPublicas(
   };
 }
 
+export const OFERTAS_CARRUSEL = 10;
+
+/**
+ * Las últimas ofertas activas y vigentes para el carrusel del inicio, con la
+ * misma función y la misma visibilidad que el listado público (sin filtros,
+ * primera página). buscar_ofertas_publicas las ordena por fecha de creación.
+ */
+export async function ultimasOfertasPublicas(
+  limite = OFERTAS_CARRUSEL,
+): Promise<{ ok: true; ofertas: OfertaLaboral[] } | { ok: false; refError: string }> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("buscar_ofertas_publicas", {
+    p_limite: limite,
+    p_desplazamiento: 0,
+  });
+  if (error) return { ok: false, refError: logError("ultimas_ofertas_publicas", error) };
+  const filas: FilaOfertaPublica[] = data ?? [];
+  return { ok: true, ofertas: filas.flatMap(mapFilaPublica) };
+}
+
 export async function getCategorias(): Promise<string[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase

@@ -16,8 +16,8 @@ export default async function InvitacionesPage() {
   if (!postulante) redirect("/");
 
   return (
-    <section className="px-4 py-8 sm:px-6 sm:py-12">
-      <div className="mx-auto max-w-3xl space-y-6">
+    <section>
+      <div className="space-y-6">
         <BotonVolver href="/perfil">Volver a mi perfil</BotonVolver>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">

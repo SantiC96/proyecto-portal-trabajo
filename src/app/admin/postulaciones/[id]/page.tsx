@@ -134,7 +134,7 @@ export default async function PostulacionFichaPage({
       : null;
 
   return (
-    <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+    <section className="contenido-lectura-ancho">
       {postulacion.estado === "recibida" && <MarcarFichaAbierta postulacionId={postulacionId} />}
       <BotonVolver href="/admin/postulaciones">Volver a postulaciones</BotonVolver>
 

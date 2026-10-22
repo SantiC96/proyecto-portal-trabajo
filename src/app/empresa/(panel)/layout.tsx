@@ -27,7 +27,7 @@ export default async function EmpresaPanelLayout({
 
     return (
       <>
-        <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
+        <main className="flex flex-1 items-center justify-center py-12">
           <div className="w-full max-w-md rounded-2xl border border-border bg-white px-8 py-10 text-center shadow-sm">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-secondary text-primary">
               <Clock className="h-7 w-7" />
@@ -69,7 +69,7 @@ export default async function EmpresaPanelLayout({
   if (empresa.estado_aprobacion === "rechazada") {
     return (
       <>
-        <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
+        <main className="flex flex-1 items-center justify-center py-12">
           <div className="w-full max-w-md rounded-2xl border border-border bg-white px-8 py-10 text-center shadow-sm">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-danger text-white">
               <XCircle className="h-7 w-7" />

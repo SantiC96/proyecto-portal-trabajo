@@ -1,17 +1,31 @@
-import { Esqueleto, EsqueletoTitulo } from "@/components/ui/esqueleto";
-import { EsqueletoIndicadores, EsqueletoListaBloque, EsqueletoPerfil } from "./esqueletos";
+import { Esqueleto } from "@/components/ui/esqueleto";
+import { AccionesPanel } from "./bloques";
+import {
+  ColumnasPanel,
+  EsqueletoIndicadores,
+  EsqueletoMovimientos,
+  EsqueletoOfertas,
+  EsqueletoPerfil,
+} from "./esqueletos";
 
 export default function Loading() {
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
-      <EsqueletoTitulo />
-      <Esqueleto className="mt-3 h-4 w-3/4 sm:w-96" />
-      <div className="mt-8 flex flex-col gap-8">
-        <EsqueletoIndicadores />
-        <EsqueletoListaBloque filas={3} etiqueta="Cargando tus últimos movimientos" />
-        <EsqueletoPerfil />
-        <EsqueletoListaBloque filas={3} etiqueta="Cargando ofertas para vos" />
+    <div className="flex flex-col gap-7">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <Esqueleto className="h-9 w-56" />
+          <Esqueleto className="mt-3 h-4 w-72 max-w-full" />
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <AccionesPanel />
+        </div>
       </div>
-    </section>
+      <EsqueletoIndicadores />
+      <ColumnasPanel>
+        <EsqueletoMovimientos />
+        <EsqueletoPerfil />
+      </ColumnasPanel>
+      <EsqueletoOfertas />
+    </div>
   );
 }

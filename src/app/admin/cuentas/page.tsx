@@ -117,7 +117,7 @@ export default async function AdminCuentasPage() {
   }
 
   return (
-    <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
+    <section>
       <BotonVolver href="/admin">Volver al panel</BotonVolver>
 
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

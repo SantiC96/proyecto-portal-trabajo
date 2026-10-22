@@ -55,7 +55,7 @@ export default async function PerfilPage() {
 
   if (!postulante) {
     return (
-      <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+      <section className="contenido-lectura-ancho">
         <h1 className="mb-8 text-2xl font-bold tracking-tight text-foreground">Mi perfil</h1>
         <Aviso tono="danger" titulo="No pudimos cargar tu perfil">
           Intentá de nuevo más tarde. Si el problema persiste, comunicate con la oficina de empleo.
@@ -90,7 +90,7 @@ export default async function PerfilPage() {
     : null;
 
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+    <section className="contenido-lectura-ancho">
       <BotonVolver href="/">Volver al inicio</BotonVolver>
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-foreground">
         Mi perfil

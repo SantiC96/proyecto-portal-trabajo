@@ -67,6 +67,8 @@ La empresa y la oficina miran períodos porque comparan actividad en el tiempo. 
 - `panelDeRol("postulante")` devuelve `/panel`: lo usan `/inicio` y el link "Ir a mi panel" / "Ir a mi perfil" del aviso de sesión activa. El login vuelve a la página pedida o al inicio público, y el registro termina en la confirmación del email: ninguno de los dos pasa por `panelDeRol`, así que el flujo de un postulante nuevo no cambia.
 - "Panel" en el menú del postulante, después de "Mi perfil", como en los otros roles.
 
+- **Rediseño (2026-10-22):** los indicadores son seis tarjetas (sin "Invitaciones", que queda en el aviso), el aviso muestra la invitación más reciente (`mis_invitaciones`), movimientos y perfil van en dos columnas, "Completá tu perfil" muestra los siete ítems con un porcentaje (completos sobre el total) y queda visible también con el perfil completo, y las ofertas usan la tarjeta del inicio sin los motivos ni el vencimiento; el inicio reutiliza estas funciones en "Tu actividad".
+
 ---
 
 ## Consecuencias

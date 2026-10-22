@@ -62,7 +62,7 @@ export default async function OfertaDetallePage({
   const contratados = contratadosResult.data ?? 0;
 
   return (
-    <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
+    <section className="contenido-lectura-ancho">
       <BotonVolver href="/empresa/ofertas">Volver a mis ofertas</BotonVolver>
 
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

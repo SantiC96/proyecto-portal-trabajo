@@ -1,108 +1,93 @@
-import { UserCheck, FileText, MessagesSquare, CheckCircle, Building2, ArrowRight } from "lucide-react";
+import { Building2, UserRound, type LucideIcon } from "lucide-react";
 import { AuthLink } from "@/components/auth/auth-link";
-import { EmpresaPanelLink } from "@/components/public/empresa-panel-link";
 
+type Paso = { destacado: string; resto: string };
+
+type Columna = {
+  titulo: string;
+  icono: LucideIcon;
+  pasos: Paso[];
+  accion: { texto: string; href: string };
+};
+
+const COLUMNAS: Columna[] = [
+  {
+    titulo: "Para postulantes",
+    icono: UserRound,
+    pasos: [
+      {
+        destacado: "Registrate y cargá tu CV.",
+        resto: "Creá tu cuenta completando tus datos personales, experiencia, formación y habilidades.",
+      },
+      {
+        destacado: "Postulate a búsquedas.",
+        resto: "Explorá las ofertas vigentes y postulate a las que coincidan con tu perfil e intereses laborales.",
+      },
+      {
+        destacado: "Pre-entrevista municipal.",
+        resto: "El equipo municipal revisa tu postulación y coordina una pre-entrevista para conocer mejor tus fortalezas.",
+      },
+      {
+        destacado: "Preselección y contacto.",
+        resto: "Tu perfil preseleccionado se envía a la empresa para la entrevista final y la contratación.",
+      },
+    ],
+    accion: { texto: "Crear mi cuenta", href: "/auth/registro" },
+  },
+  {
+    titulo: "Para empresas",
+    icono: Building2,
+    pasos: [
+      { destacado: "Registrá tu razón social", resto: "en el portal." },
+      {
+        destacado: "La Oficina de Empleo valida tu registro",
+        resto: "y publica tus avisos.",
+      },
+      {
+        destacado: "Recibís una preselección",
+        resto: "de postulantes calificados, sin costo de intermediación.",
+      },
+    ],
+    accion: { texto: "Registrar mi empresa", href: "/auth/registro?tipo=empresa" },
+  },
+];
+
+/** Cómo funciona el portal, para quien todavía no tiene cuenta. */
 export function HowItWorks() {
   return (
-    <section id="como-funciona" className="border-t border-border bg-background py-14 sm:py-20 scroll-mt-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        {/* Title */}
-        <div className="mx-auto max-w-2xl text-center">
-          <span className="text-xs font-bold tracking-wider text-primary uppercase">
-            Transparencia y cercanía
-          </span>
-          <h2 className="mt-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            ¿Cómo funciona la intermediación municipal?
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground-strong sm:text-base">
-            El Portal de Empleo conecta a quienes buscan trabajo con las empresas locales a través de un
-            proceso asistido por el equipo de empleo de la Municipalidad de Funes.
-          </p>
-        </div>
-
-        {/* 4 Steps Timeline/Grid */}
-        <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Step 1 */}
-          <div className="tarjeta relative flex flex-col p-6">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <FileText className="h-6 w-6" />
+    <section id="como-funciona" aria-labelledby="como-funciona-titulo" className="scroll-mt-20">
+      <h2 id="como-funciona-titulo" className="text-[26px] leading-tight font-extrabold">
+        Cómo funciona
+      </h2>
+      <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+        {COLUMNAS.map(({ titulo, icono: Icono, pasos, accion }) => (
+          <article key={titulo} className="tarjeta flex flex-col gap-[22px] p-6 sm:p-8">
+            <div className="flex items-center gap-3">
+              <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary text-white">
+                <Icono className="size-6" aria-hidden="true" />
+              </span>
+              <h3 className="text-[21px] leading-tight font-extrabold">{titulo}</h3>
             </div>
-            <span className="text-xs font-bold text-primary">Paso 01</span>
-            <h3 className="mt-1 text-base font-bold text-foreground">Registrate y cargá tu CV</h3>
-            <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-              Creá tu cuenta de postulante completando tus datos personales, experiencia, formación y habilidades.
-            </p>
-          </div>
-
-          {/* Step 2 */}
-          <div className="tarjeta relative flex flex-col p-6">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <UserCheck className="h-6 w-6" />
-            </div>
-            <span className="text-xs font-bold text-primary">Paso 02</span>
-            <h3 className="mt-1 text-base font-bold text-foreground">Postulate a búsquedas</h3>
-            <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-              Explorá las ofertas vigentes y postuláte a las que coincidan con tu perfil e intereses laborales.
-            </p>
-          </div>
-
-          {/* Step 3 */}
-          <div className="tarjeta relative flex flex-col p-6">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <MessagesSquare className="h-6 w-6" />
-            </div>
-            <span className="text-xs font-bold text-primary">Paso 03</span>
-            <h3 className="mt-1 text-base font-bold text-foreground">Pre-entrevista municipal</h3>
-            <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-              El equipo municipal revisa tu postulación y coordina una pre-entrevista para conocer mejor tus fortalezas.
-            </p>
-          </div>
-
-          {/* Step 4 */}
-          <div className="tarjeta relative flex flex-col p-6">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <CheckCircle className="h-6 w-6" />
-            </div>
-            <span className="text-xs font-bold text-primary">Paso 04</span>
-            <h3 className="mt-1 text-base font-bold text-foreground">Preselección y contacto</h3>
-            <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-              Tu perfil preseleccionado se envía a la empresa correspondiente para la entrevista final y contratación.
-            </p>
-          </div>
-        </div>
-
-        {/* Section for Empresas */}
-        <div
-          id="empresas"
-          className="mt-14 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary-hover to-primary p-8 text-white sm:p-10 scroll-mt-24"
-        >
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-brand-subtle backdrop-blur-xs">
-                <Building2 className="h-3.5 w-3.5" />
-                <span>Espacio para Empresas y Comercios</span>
-              </div>
-              <h3 className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                ¿Buscás personal para tu empresa en Funes?
-              </h3>
-              <p className="mt-2 text-sm text-white/85 leading-relaxed sm:text-base">
-                Registrá tu razón social en el portal. Nuestro equipo municipal valida tu registro, publica
-                tus avisos y te envía una preselección de postulantes calificados sin costo de intermediación.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row lg:flex-col shrink-0">
-              <AuthLink
-                href="/auth/registro?tipo=empresa"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-primary-hover shadow-sm transition hover:bg-secondary"
-              >
-                <span>Registrar empresa</span>
-                <ArrowRight className="h-4 w-4" />
-              </AuthLink>
-              <EmpresaPanelLink className="inline-flex h-12 items-center justify-center rounded-xl border border-white/30 px-5 text-sm font-semibold text-white transition hover:bg-white/10" />
-            </div>
-          </div>
-        </div>
+            <ol className="flex flex-col gap-4">
+              {pasos.map((paso, i) => (
+                <li key={paso.destacado} className="flex items-start gap-3">
+                  <span
+                    aria-hidden="true"
+                    className="grid size-[30px] shrink-0 place-items-center rounded-full bg-primary text-sm font-extrabold text-white"
+                  >
+                    {i + 1}
+                  </span>
+                  <p className="pt-0.5 text-base leading-normal text-foreground">
+                    <strong className="font-bold">{paso.destacado}</strong> {paso.resto}
+                  </p>
+                </li>
+              ))}
+            </ol>
+            <AuthLink href={accion.href} className="btn-primario mt-auto self-start">
+              {accion.texto}
+            </AuthLink>
+          </article>
+        ))}
       </div>
     </section>
   );

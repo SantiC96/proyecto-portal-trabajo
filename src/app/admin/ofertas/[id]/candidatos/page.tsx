@@ -72,7 +72,7 @@ export default async function CandidatosOfertaPage({
 
   if (!abierta) {
     return (
-      <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+      <section>
         {volver}
         <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           Buscar postulantes
@@ -91,7 +91,7 @@ export default async function CandidatosOfertaPage({
   const pagina = leerPagina(sp.pagina);
 
   return (
-    <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+    <section>
       {volver}
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">

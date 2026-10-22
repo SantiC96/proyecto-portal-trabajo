@@ -95,7 +95,7 @@ export default async function CandidatoFichaPage({
   const estadoTono = DERIVACION_ESTADO_TONO[derivacion.estado_empresa] ?? "neutral";
 
   return (
-    <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
+    <section className="contenido-lectura-ancho">
       <BotonVolver href={`/empresa/ofertas/${ofertaId}`}>Volver a la oferta</BotonVolver>
 
       {/* Cabecera */}

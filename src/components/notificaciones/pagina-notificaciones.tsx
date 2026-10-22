@@ -49,7 +49,7 @@ export async function PaginaNotificaciones({
   const masNueva = nuevas?.[0]?.created_at ?? null;
 
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+    <section>
       <BotonVolver href={panel.href}>{panel.label}</BotonVolver>
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-3">

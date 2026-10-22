@@ -2,7 +2,7 @@ import { Esqueleto, EsqueletoTexto } from "@/components/ui/esqueleto";
 
 export default function Loading() {
   return (
-    <section className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
+    <section className="contenido-lectura-ancho">
       <div className="flex items-center gap-4 mb-8">
         <Esqueleto className="h-20 w-20 rounded-full" />
         <div className="flex-1 space-y-2">

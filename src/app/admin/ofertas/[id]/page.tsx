@@ -91,7 +91,7 @@ export default async function AdminOfertaDetallePage({
     .filter((n): n is string => Boolean(n));
 
   return (
-    <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+    <section className="contenido-lectura-ancho">
       <BotonVolver href="/admin/ofertas">Volver a ofertas</BotonVolver>
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
