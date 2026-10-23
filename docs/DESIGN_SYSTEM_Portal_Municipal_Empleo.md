@@ -867,7 +867,8 @@ dominio y cada helper los mapea a un tono en un único lugar.
                     Rechazada                                 danger
                     Vencida                                   danger
                     Cerrada                                   neutral
-                    Modificada                                info
+                    Modificada / Corregida (por revisar)      info
+                    Nueva (por revisar)                       teal
   Empresa           Pendiente / Reenviada                     warning     `/admin/empresas`
                     Aprobada                                  success
                     Rechazada                                 danger
@@ -1216,6 +1217,83 @@ candidato (iniciales, nombre de 16 px 700, "[oferta] · derivado el
 
 ------------------------------------------------------------------------
 
+## Indicadores (oficina y empresa)
+
+`/admin/indicadores` y `/empresa/indicadores`: `EncabezadoPagina` con el
+control segmentado del período a la derecha (debajo hasta xl), una fila de
+tarjetas de número y los gráficos, cada uno en su `TarjetaGrafico`. Los
+números salen de las funciones de la base (decisiones 019 y 021); la
+página los pide en el servidor y los pasa a los gráficos por props.
+
+### Control segmentado (`SelectorPeriodo`)
+
+`src/components/indicadores/selector-periodo.tsx`. Fondo
+`secondary-hover`, padding 4, radio 12. Cada opción es un link de 40 px
+(44 en el celular), 14 px 700; la elegida en `surface` con texto `primary`
+y una sombra suave, marcada con `aria-current` (en un link no vale
+`aria-pressed`). "Últimos 30 días", "Últimos 90 días", "Este año" y
+"Todo", con el mismo `?periodo=` de siempre. En el celular ocupa todo el
+ancho, en dos filas.
+
+### Tarjeta de número (`TarjetaNumero`)
+
+`src/components/indicadores/tarjeta-numero.tsx`. `.tarjeta` con padding
+20: un ícono blanco en un cuadrado `primary` de 48 px con radio 12, el
+número en 36 px 800 (28 en el celular), la etiqueta en 15 px 700 y un
+subtítulo de 13 px. Con `href`, toda la tarjeta es el link (chevron arriba
+a la derecha). `GrillaNumeros`: 4 columnas, 2 en el celular.
+
+### Tarjeta de gráfico (`TarjetaGrafico`)
+
+`src/components/indicadores/tarjeta-grafico.tsx`. Padding 24 (18 × 16 en
+el celular); título de 18 px 800 y descripción de 14 px `muted`; un valor
+destacado opcional arriba a la derecha (30 px 800 con su etiqueta de 13
+px). Debajo, **la conclusión**: una línea de 15 px 700 `primary-hover` con
+un ícono, calculada con los datos ("Octubre fue el mes con más
+postulaciones: 34", "La mayoría de tus candidatos están en proceso"). Al
+final, **"Ver datos"** (`details`/`summary`, 44 px) despliega una tabla
+con los mismos números: es la alternativa al gráfico para quien no lo ve.
+`IndicadorChico` (ícono en un cuadrado `secondary` de 40 px, número de 22
+px 800 y texto de 13 px) arma las tarjetas de resumen como "Proceso de la
+Oficina".
+
+### Gráficos
+
+Componentes de cliente en `src/components/indicadores/`, sobre el chart
+de shadcn/ui (`src/components/ui/chart.tsx`, Recharts) con los colores
+ajustados a los tokens: tooltip en `surface` con anillo `border`, texto de
+13 px, grilla `tabla-borde` y cursor `border-strong`. Todos llevan
+`accessibilityLayer` y un `role="img"` con un `aria-label` que resume el
+gráfico; no animan con `prefers-reduced-motion` (ni antes de conocer la
+preferencia).
+
+-   **Paleta**, siempre en este orden (`PALETA_GRAFICOS`): `primary`
+    #006833, `accent` #F2B705, `info` #1D4E9E, `muted-icon` #8A988F,
+    `violet` #5B3A9E y `teal` #0B5D57. Cada parte toma el color de su
+    posición, nunca de su tamaño. El amarillo y el gris no llegan a 3:1
+    contra el blanco: por eso cada parte lleva su nombre y su número en la
+    leyenda, y está la tabla de "Ver datos".
+-   **Área** (`GraficoArea`): una serie en el tiempo. Degradé `primary`
+    de .35 a 0, línea de 2 px, curva suave, grilla horizontal tenue, eje X
+    con el mes abreviado y sin eje Y; el tooltip muestra el mes completo y
+    el valor.
+-   **Dona** (`GraficoDona`): partes de un mismo total, **hasta seis**.
+    200 px, con el total (32 px 800) y la unidad (13 px `muted`) en el
+    centro, 2 px de separación blanca entre partes y la leyenda al costado
+    (debajo cuando la tarjeta mide menos de 448 px): color, nombre,
+    cantidad y porcentaje. La parte más grande sobresale 6 px y se marca
+    también en la leyenda (fondo `secondary` y texto 800). Con total 0,
+    un estado vacío corto en lugar de la dona.
+-   **Barras** (`BarrasOferta`): para comparar cantidades. Barras
+    horizontales de 16 px por oferta (derivados `primary`, entrevistas
+    `info`, seleccionados `accent`), con el valor al final de cada una y la
+    misma escala en todas las ofertas; la leyenda (`LeyendaMedidasOferta`)
+    va arriba de las tarjetas.
+
+Ver `docs/decisiones/032-graficos-de-indicadores.md`.
+
+------------------------------------------------------------------------
+
 # 26. Landing pública
 
 La landing puede tener mayor libertad compositiva que el panel
@@ -1309,7 +1387,25 @@ Registro, recuperar y nueva contraseña, reset enviado, verificar email
 e invitación usan `AuthShell` (`src/components/auth/auth-shell.tsx`):
 fondo `fondo-auth`, "Volver al inicio", y el contenido en la misma
 tarjeta que el login con el logo verde arriba. Ancho 460 px; el registro,
-640 px.
+720 px.
+
+### Registro
+
+Título en Georgia (`.login-titulo`, como el login): "Registro de
+postulante" o "Registro de empresa", con "Completá tus datos. Te vamos a
+mandar un email para confirmar la cuenta." Los campos van en secciones
+numeradas planas (`SeccionNumerada variante="plana"`) separadas por una
+línea: el postulante tiene "Datos personales" y "Datos de acceso"; la
+empresa, "Datos de la empresa", "Persona responsable" y "Datos de acceso".
+Desde sm, dos columnas por sección (domicilio, localidad, descripción y la
+zona del comprobante a todo el ancho); en el celular, una. El comprobante
+de domicilio es una zona de carga con borde punteado. "Mínimo 8
+caracteres." va como ayuda de la contraseña, con un botón de 44 px para
+mostrarla u ocultarla; debajo de "Repetir contraseña", "Las contraseñas
+coinciden" en verde o "Las contraseñas no coinciden." en rojo. El CUIT
+muestra "CUIT válido" en vivo. "Crear cuenta" es primario a todo el ancho
+(52 px) y abajo va "¿Ya tenés cuenta? Iniciá sesión acá". Las piezas
+comunes están en `src/components/auth/partes-registro.tsx`.
 
 Evitar:
 
@@ -1434,6 +1530,33 @@ de la ficha de una postulación.
 radio 12; ícono en un cuadrado `secondary` de 40 px, nombre (15 px 700),
 detalle ("Cargado el …") y "Ver CV" neutro a la derecha (a todo el ancho
 en el celular), que abre la URL firmada en otra pestaña.
+
+## Formulario en secciones numeradas
+
+`src/components/ui/seccion-numerada.tsx` (`SeccionNumerada`): el número en
+un círculo `primary` de 28 px (14 px 800 blanco) y el título de 18 px 800;
+los campos debajo. Variante "tarjeta" (cada sección en su `.tarjeta`,
+padding 24; 20 × 16 en el celular) para el formulario de oferta y "plana"
+para el registro. Los campos usan `.campo` y `.etiqueta-campo`; las
+opciones cortas (modalidad, jornada, duración) son radios con forma de
+pastilla (`clasePastilla`). Si el envío tiene errores, arriba aparece un
+`Aviso` de error enfocado ("Faltan datos para enviar la oferta. Revisá los
+N campos marcados.") y cada campo muestra el suyo en rojo.
+
+El formulario de oferta tiene seis secciones (El puesto, Rubros,
+Condiciones, Requisitos, Beneficios y Publicación) y un pie a todo el
+ancho con Cancelar, "Guardar borrador" (neutro) y "Enviar a revisión"
+(primario). Arriba, según el caso, una `Franja` de error con el motivo del
+rechazo o una de aviso al editar una oferta publicada.
+
+### Vista previa
+
+En pantallas anchas (desde xl), una columna lateral sticky de 360 px con
+"Vista previa": la `TarjetaOferta` con lo que se va cargando (título,
+empresa, rubros, modalidad, jornada y ubicación), inerte (`inert`: no se
+enfoca ni se lee, es una copia del formulario), y la nota "La Oficina de
+Empleo revisa cada oferta antes de publicarla." En el celular y en tablet
+no se muestra.
 
 ## Formularios dentro de una tarjeta angosta
 
