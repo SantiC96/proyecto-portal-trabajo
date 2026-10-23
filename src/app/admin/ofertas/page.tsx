@@ -16,14 +16,20 @@ import {
   type ParamsUrl,
 } from "@/lib/paginacion";
 import { Buscador } from "@/components/ui/buscador";
-import { ContadoresEstado, PestanasEstado } from "@/components/ui/pestanas-estado";
+import { PestanasEstado } from "@/components/ui/pestanas-estado";
 import { Badge, type TonoBadge } from "@/components/ui/badge";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
+import {
+  CLASE_ACCION_FILA,
+  CeldaTabla,
+  FilaTabla,
+  Tabla as TablaListado,
+} from "@/components/ui/tabla";
 import type { Enum, Tabla } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
-import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Ofertas | Panel municipal | Portal de Empleo Funes",
@@ -42,11 +48,19 @@ const ESTADOS_FILTRO: EstadoFiltro[] = [
 ];
 
 const LABEL_FILTRO: Record<EstadoFiltro, string> = {
-  pendiente_aprobacion: "Pendientes",
+  pendiente_aprobacion: "Por revisar",
   activa: "Activas",
   vencida: "Vencidas",
   rechazada: "Rechazadas",
   cerrada: "Cerradas",
+};
+
+const TEXTO_VACIO: Record<EstadoFiltro, string> = {
+  pendiente_aprobacion: "No hay ofertas por revisar en este momento.",
+  activa: "No hay ofertas activas en este momento.",
+  vencida: "No hay ofertas vencidas en este momento.",
+  rechazada: "No hay ofertas rechazadas en este momento.",
+  cerrada: "No hay ofertas cerradas en este momento.",
 };
 
 type EstadoVisible = Enum<"estado_oferta"> | "vencida";
@@ -112,48 +126,65 @@ export default async function AdminOfertasPage({
       .eq("estado", "cerrada"),
   ]);
 
+  const cantidades: Record<EstadoFiltro, number> = {
+    pendiente_aprobacion: cPendientes ?? 0,
+    activa: cActivas ?? 0,
+    vencida: cVencidas ?? 0,
+    rechazada: cRechazadas ?? 0,
+    cerrada: cCerradas ?? 0,
+  };
+
   return (
-    <section>
-      <BotonVolver href="/admin" />
-
-      <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-        Ofertas
-      </h1>
-
-      <ContadoresEstado
-        className="mt-6"
-        contadores={[
-          { label: "Pendientes", valor: cPendientes ?? 0, tono: "warning" },
-          { label: "Activas", valor: cActivas ?? 0, tono: "success" },
-          { label: "Vencidas", valor: cVencidas ?? 0, tono: "danger" },
-          { label: "Rechazadas", valor: cRechazadas ?? 0, tono: "danger" },
-          { label: "Cerradas", valor: cCerradas ?? 0, tono: "neutral" },
-        ]}
+    <section className="flex flex-col gap-6">
+      <EncabezadoPagina
+        titulo="Ofertas"
+        bajada="Revisá las ofertas que cargan las empresas antes de publicarlas."
       />
 
       <PestanasEstado
-        className="mt-6"
         etiqueta="Estado de las ofertas"
         pestanas={ESTADOS_FILTRO.map((tab) => ({
           href: hrefConParams(RUTA, {}, { estado: tab, q: sp.q ?? null }),
           label: LABEL_FILTRO[tab],
           activa: tab === estado,
+          cantidad: cantidades[tab],
         }))}
       />
 
-      {/* Búsqueda */}
-      <Buscador className="mt-4" placeholder="Buscar por título…" />
+      <Buscador
+        className="min-w-0 lg:max-w-xl"
+        inputClassName="rounded-xl"
+        placeholder="Buscar por título…"
+      />
 
-      {/* Resultados */}
-      <Suspense
-        key={JSON.stringify({ estado, q, pagina })}
-        fallback={<EsqueletoLista filas={5} className="mt-4" />}
-      >
+      <Suspense key={JSON.stringify({ estado, q, pagina })} fallback={<EsqueletoLista filas={5} />}>
         <ListadoOfertas estado={estado} q={q} pagina={pagina} searchParams={sp} />
       </Suspense>
     </section>
   );
 }
+
+type EtiquetaRevision = { texto: string; tono: TonoBadge };
+
+/**
+ * Qué tipo de envío es una oferta por revisar, deducido de sus columnas:
+ * - contenido_editado_en vacío: nunca se editó después de enviarla (los
+ *   cambios de un borrador no cuentan, migration_051) → "Nueva".
+ * - editada y con publicado_en: ya estuvo publicada → "Modificada".
+ * - editada y nunca publicada: una oferta pendiente no se puede editar
+ *   (migration_024), así que solo pudo editarse después de un rechazo → "Corregida".
+ */
+function etiquetaRevision(row: {
+  contenido_editado_en: string | null;
+  publicado_en: string | null;
+}): EtiquetaRevision {
+  if (!row.contenido_editado_en) return { texto: "Nueva", tono: "teal" };
+  if (row.publicado_en) return { texto: "Modificada", tono: "info" };
+  return { texto: "Corregida", tono: "info" };
+}
+
+// Oferta | Empresa | Fecha | Estado | acción.
+const COLUMNAS = "minmax(0,2.2fr) minmax(0,1.4fr) 7.5rem minmax(0,1.3fr) auto";
 
 async function ListadoOfertas({
   estado,
@@ -174,7 +205,7 @@ async function ListadoOfertas({
     let query = supabase
       .from("ofertas")
       .select(
-        "id, titulo, empresa_nombre, created_at, estado, contenido_editado_en, vence_en",
+        "id, titulo, empresa_nombre, created_at, estado, contenido_editado_en, publicado_en, vence_en",
         { count: "exact" }
       );
     if (estado === "activa") {
@@ -193,7 +224,7 @@ async function ListadoOfertas({
 
   if (!resultado.ok) {
     const ref = logError("admin_ofertas_listado", resultado.error, { estado });
-    return <ErrorListado className="mt-4" refError={ref} />;
+    return <ErrorListado refError={ref} />;
   }
 
   const rows = resultado.filas;
@@ -202,146 +233,74 @@ async function ListadoOfertas({
     return q ? (
       <EstadoVacio
         tipo="sin-resultados"
-        className="mt-4"
         titulo="No se encontraron ofertas con ese título"
         hrefLimpiar={hrefConParams(RUTA, {}, { estado })}
         textoLimpiar="Limpiar búsqueda"
       />
     ) : (
-      <EstadoVacio
-        tipo="sin-registros"
-        className="mt-4"
-        icono={Briefcase}
-        titulo={`No hay ofertas ${LABEL_FILTRO[estado].toLowerCase()} en este momento.`}
-      />
+      <EstadoVacio tipo="sin-registros" icono={Briefcase} titulo={TEXTO_VACIO[estado]} />
     );
   }
 
+  const porRevisar = estado === "pendiente_aprobacion";
+
   return (
-    <>
-          {/* Tabla desktop */}
-          <div className="mt-4 hidden overflow-x-auto md:block">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="py-3 pr-4 font-medium text-muted-foreground">
-                    Título
-                  </th>
-                  <th className="py-3 pr-4 font-medium text-muted-foreground">
-                    Empresa
-                  </th>
-                  <th className="py-3 pr-4 font-medium text-muted-foreground">
-                    Enviada
-                  </th>
-                  <th className="py-3 pr-4 font-medium text-muted-foreground">
-                    Estado
-                  </th>
-                  <th className="py-3 font-medium text-muted-foreground" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="border-b border-border last:border-0"
-                  >
-                    <td className="py-4 pr-4 font-medium text-foreground">
-                      <div className="flex items-center gap-2">
-                        {row.titulo}
-                        {row.contenido_editado_en && (
-                          <Badge tono="info">Modificada</Badge>
-                        )}
-                      </div>
-                      <VencimientoOferta
-                        className="mt-1 font-normal"
-                        estado={row.estado}
-                        venceEn={row.vence_en}
-                      />
-                    </td>
-                    <td className="py-4 pr-4 text-muted-foreground">
-                      {row.empresa_nombre}
-                    </td>
-                    <td className="py-4 pr-4 text-muted-foreground">
-                      {formatFechaCorta(row.created_at)}
-                    </td>
-                    <td className="py-4 pr-4">
-                      <Badge tono={ESTADO_TONO[estadoVisible(row)] ?? "neutral"} estado>
-                        {etiquetaEstado(row)}
-                      </Badge>
-                    </td>
-                    <td className="py-4">
-                      <Link
-                        href={`/admin/ofertas/${row.id}`}
-                        className="btn-neutro whitespace-nowrap"
-                      >
-                        Ver oferta
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-muted-foreground-strong" aria-live="polite">
+        Mostrando {rows.length} de {resultado.total} {resultado.total === 1 ? "oferta" : "ofertas"}
+      </p>
 
-          {/* Cards mobile */}
-          <div className="mt-4 space-y-3 md:hidden">
-            {rows.map((row) => (
-              <div
-                key={row.id}
-                className="rounded-[var(--radius-lg)] border border-border bg-surface p-4"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-semibold text-foreground">{row.titulo}</p>
-                    {row.contenido_editado_en && (
-                      <Badge tono="info" className="mt-1">Modificada</Badge>
-                    )}
-                    <VencimientoOferta
-                      className="mt-1"
-                      estado={row.estado}
-                      venceEn={row.vence_en}
-                    />
-                  </div>
-                  <Badge tono={ESTADO_TONO[estadoVisible(row)] ?? "neutral"} estado>
-                    {etiquetaEstado(row)}
-                  </Badge>
-                </div>
-                <dl className="mt-3 space-y-1.5 text-sm">
-                  <div className="flex gap-2">
-                    <dt className="w-20 flex-shrink-0 text-muted-foreground">
-                      Empresa
-                    </dt>
-                    <dd className="text-foreground">{row.empresa_nombre}</dd>
-                  </div>
-                  <div className="flex gap-2">
-                    <dt className="w-20 flex-shrink-0 text-muted-foreground">
-                      Enviada
-                    </dt>
-                    <dd className="text-muted-foreground">
-                      {formatFechaCorta(row.created_at)}
-                    </dd>
-                  </div>
-                </dl>
-                <div className="mt-4">
+      <TablaListado
+        columnas={COLUMNAS}
+        etiqueta="Ofertas"
+        encabezados={["Oferta", "Empresa", "Fecha", "Estado", ""]}
+      >
+        {rows.map((row) => {
+          const href = `/admin/ofertas/${row.id}`;
+          const etiqueta = porRevisar ? etiquetaRevision(row) : null;
+          return (
+            <FilaTabla key={row.id}>
+              <div className="flex min-w-0 flex-col items-start gap-1.5">
+                <div className="flex flex-wrap items-center gap-2">
                   <Link
-                    href={`/admin/ofertas/${row.id}`}
-                    className="inline-flex h-9 items-center rounded-lg border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-tinted"
+                    href={href}
+                    className="rounded-[var(--radius-sm)] text-[15px] leading-snug font-bold break-words text-heading no-underline outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
                   >
-                    Ver oferta
+                    {row.titulo}
                   </Link>
+                  {etiqueta && <Badge tono={etiqueta.tono}>{etiqueta.texto}</Badge>}
                 </div>
+                <VencimientoOferta estado={row.estado} venceEn={row.vence_en} />
               </div>
-            ))}
-          </div>
+              <CeldaTabla etiqueta="Empresa" rotuloVisible>
+                {row.empresa_nombre}
+              </CeldaTabla>
+              <CeldaTabla etiqueta="Fecha" rotuloVisible className="tabular-nums">
+                {formatFechaCorta(row.created_at)}
+              </CeldaTabla>
+              <CeldaTabla etiqueta="Estado">
+                <Badge tono={ESTADO_TONO[estadoVisible(row)] ?? "neutral"} estado>
+                  {etiquetaEstado(row)}
+                </Badge>
+              </CeldaTabla>
+              <Link href={href} className={`btn-neutro ${CLASE_ACCION_FILA}`}>
+                Revisar
+                <span className="sr-only">: {row.titulo}</span>
+              </Link>
+            </FilaTabla>
+          );
+        })}
+      </TablaListado>
 
-          <Paginacion
-            className="mt-6"
-            ruta={RUTA}
-            searchParams={searchParams}
-            pagina={resultado.pagina}
-            total={resultado.total}
-          />
-    </>
+      <Paginacion
+        className="mt-2"
+        ruta={RUTA}
+        searchParams={searchParams}
+        pagina={resultado.pagina}
+        total={resultado.total}
+        variante="numeros"
+      />
+    </div>
   );
 }
 

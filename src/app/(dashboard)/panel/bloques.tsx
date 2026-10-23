@@ -18,7 +18,7 @@ import {
   obtenerUltimosMovimientos,
   type Movimiento,
 } from "@/lib/postulante/panel";
-import { formatNumero } from "@/components/indicadores/grupo-indicadores";
+import { formatNumero } from "@/components/indicadores/formato";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { Badge, type TonoBadge } from "@/components/ui/badge";
 import { BarraProgreso } from "@/components/ui/barra-progreso";

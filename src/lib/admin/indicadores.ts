@@ -11,7 +11,7 @@ export type PostulacionesMes = FilaRpc<"postulaciones_por_mes">;
 export type PostulacionesRubro = FilaRpc<"postulaciones_por_rubro">;
 
 /** Cantidad de rubros que se muestran antes de agrupar el resto en "Otros rubros". */
-export const TOPE_RUBROS = 8;
+export const TOPE_RUBROS = 5;
 
 export async function obtenerIndicadores(periodo: Periodo) {
   const supabase = await createSupabaseServerClient();

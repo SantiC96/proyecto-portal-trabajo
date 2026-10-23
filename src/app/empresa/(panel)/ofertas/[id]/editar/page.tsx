@@ -7,6 +7,7 @@ import { DURACION_OFERTA_POR_DEFECTO } from "@/lib/ofertas-vencimiento";
 import type { OfertaData } from "@/lib/validaciones";
 import { OfertaForm } from "@/app/empresa/(panel)/ofertas/_components/oferta-form";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 
 export const metadata: Metadata = {
   title: "Editar oferta | Portal de Empleo Funes",
@@ -24,7 +25,7 @@ export default async function EditarOfertaPage({ params }: Props) {
   const { data: oferta } = await supabase
     .from("ofertas")
     .select(
-      "id, titulo, descripcion, ubicacion, modalidad, jornada, requisitos, beneficios, estado, empresa_id, duracion_dias, oferta_categorias(categoria_id)"
+      "id, titulo, descripcion, ubicacion, modalidad, jornada, requisitos, beneficios, estado, empresa_id, duracion_dias, motivo_rechazo, oferta_categorias(categoria_id)"
     )
     .eq("id", id)
     .eq("empresa_id", empresa.id)
@@ -61,34 +62,29 @@ export default async function EditarOfertaPage({ params }: Props) {
   };
 
   return (
-    <section className="contenido-lectura-ancho">
-      {esBorrador ? (
-        <BotonVolver href="/empresa/ofertas" />
-      ) : (
-        <BotonVolver href={`/empresa/ofertas/${id}`} />
-      )}
-
-      <div className="mt-6">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          {esBorrador ? "Completar borrador" : "Editar oferta"}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {esBorrador
-            ? "Podés guardarlo como borrador las veces que quieras. Para enviarlo a revisión tienen que estar todos los datos obligatorios."
-            : "Modificá los datos del puesto. Al guardar, la oferta vuelve a revisión."}
-        </p>
-      </div>
-
-      <div className="mt-8 rounded-[var(--radius-lg)] border border-border bg-white p-6 shadow-xs">
-        <OfertaForm
-          categorias={categorias}
-          ofertaId={id}
-          valorInicial={valorInicial}
-          estaPublicada={oferta.estado === "activa"}
-          esBorrador={esBorrador}
-          minimoVacantes={minimoVacantes}
+    <section className="flex w-full max-w-[1200px] flex-col gap-6">
+      <div className="flex flex-col gap-4">
+        <BotonVolver href={esBorrador ? "/empresa/ofertas" : `/empresa/ofertas/${id}`} />
+        <EncabezadoPagina
+          titulo={esBorrador ? "Completar borrador" : "Editar oferta"}
+          bajada={
+            esBorrador
+              ? "Podés guardarlo como borrador las veces que quieras. Para enviarlo a revisión tienen que estar todos los datos obligatorios."
+              : "Modificá los datos del puesto. Al guardar, la oferta vuelve a revisión."
+          }
         />
       </div>
+
+      <OfertaForm
+        categorias={categorias}
+        empresaNombre={empresa.razon_social}
+        ofertaId={id}
+        valorInicial={valorInicial}
+        estaPublicada={oferta.estado === "activa"}
+        esBorrador={esBorrador}
+        motivoRechazo={oferta.estado === "rechazada" ? oferta.motivo_rechazo : null}
+        minimoVacantes={minimoVacantes}
+      />
     </section>
   );
 }

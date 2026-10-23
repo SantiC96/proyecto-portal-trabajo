@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Building, MapPin, Clock, Briefcase, UserSearch } from "lucide-react";
+import { ArrowRight, UserSearch } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { getOfertaEstadoLabel } from "@/lib/oferta-estados";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
+import { formatearCUIT } from "@/lib/cuit";
+import { inicialesDeEmpresa } from "@/lib/iniciales";
 import { VencimientoOferta } from "@/components/ofertas/vencimiento-oferta";
 import { OfertaAcciones } from "./oferta-acciones";
 import { RequisitosList, BeneficiosList } from "@/components/ofertas/requisitos-beneficios";
@@ -13,13 +15,28 @@ import { requerirRolPagina } from "@/lib/auth";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { fotoDePerfil } from "@/lib/fotos-perfil";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type TonoBadge } from "@/components/ui/badge";
 import { Aviso } from "@/components/ui/aviso";
-import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
+import { Franja } from "@/components/ui/franja";
+import { DatosClave } from "@/components/ui/datos-clave";
 
 export const metadata: Metadata = {
   title: "Oferta | Panel municipal | Portal de Empleo Funes",
 };
+
+type EstadoVisible = "pendiente_aprobacion" | "activa" | "vencida" | "rechazada" | "cerrada" | "borrador";
+
+const ESTADO_TONO: Record<EstadoVisible, TonoBadge> = {
+  borrador: "neutral",
+  pendiente_aprobacion: "warning",
+  activa: "success",
+  vencida: "danger",
+  rechazada: "danger",
+  cerrada: "neutral",
+};
+
+const TARJETA = "tarjeta px-4 py-5 sm:p-6";
+const TITULO_TARJETA = "text-lg leading-snug font-extrabold text-heading";
 
 export default async function AdminOfertaDetallePage({
   params,
@@ -51,7 +68,7 @@ export default async function AdminOfertaDetallePage({
     oferta.empresa_id
       ? supabase
           .from("empresas")
-          .select("razon_social, rubro, descripcion, usuario_id")
+          .select("razon_social, cuit, rubro, usuario_id")
           .eq("id", oferta.empresa_id)
           .single()
       : Promise.resolve({ data: null }),
@@ -82,211 +99,215 @@ export default async function AdminOfertaDetallePage({
   const totalPostulaciones = postulacionesResult.count ?? 0;
   const vacantes = vacantesResult.data?.cantidad ?? null;
   const contratados = contratadosResult.data ?? 0;
+  const vencida = estadoVencimiento(oferta.estado, oferta.vence_en).vencida;
+  const estado: EstadoVisible = vencida ? "vencida" : oferta.estado;
   // Buscar e invitar postulantes: solo ofertas activas y no vencidas (migration_056).
-  const puedeBuscarPostulantes =
-    oferta.estado === "activa" && !estadoVencimiento(oferta.estado, oferta.vence_en).vencida;
+  const puedeBuscarPostulantes = oferta.estado === "activa" && !vencida;
+  const pendiente = oferta.estado === "pendiente_aprobacion";
+  // Una oferta pendiente no se puede editar (migration_024): si tiene
+  // contenido_editado_en la empresa la editó estando publicada (publicado_en)
+  // o después de un rechazo.
+  const editadaPublicada = pendiente && Boolean(oferta.contenido_editado_en && oferta.publicado_en);
+  const corregida = pendiente && Boolean(oferta.contenido_editado_en && !oferta.publicado_en);
 
   const categorias = oferta.oferta_categorias
     .map((oc) => oc.categorias?.nombre)
     .filter((n): n is string => Boolean(n));
 
+  const queOcurrio = editadaPublicada
+    ? `Modificada el ${formatFecha(oferta.contenido_editado_en)}`
+    : corregida
+      ? `Corregida el ${formatFecha(oferta.contenido_editado_en)}`
+      : oferta.estado === "rechazada" && oferta.revisado_en
+        ? `Rechazada el ${formatFecha(oferta.revisado_en)}`
+        : oferta.estado === "activa" && oferta.publicado_en
+          ? `Publicada el ${formatFecha(oferta.publicado_en)}`
+          : `Enviada el ${formatFecha(oferta.created_at)}`;
+
   return (
-    <section className="contenido-lectura-ancho">
-      <BotonVolver href="/admin/ofertas" />
-
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Columna principal */}
-        <div className="space-y-6 lg:col-span-2">
-          {/* Encabezado de la oferta */}
-          <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-6">
-            <div className="flex flex-wrap items-center gap-2">
-              {categorias.map((cat) => (
-                <span
-                  key={cat}
-                  className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"
-                >
-                  <Briefcase className="h-3 w-3" />
-                  {cat}
-                </span>
-              ))}
-              <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
-                <Clock className="h-3.5 w-3.5" />
-                Enviada el {formatFecha(oferta.created_at)}
-              </span>
-            </div>
-
-            <h1 className="mt-3 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+    <section className="flex w-full max-w-[1200px] flex-col gap-6">
+      <div className="flex flex-col gap-4">
+        <BotonVolver href="/admin/ofertas" />
+        <header className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <h1 className="min-w-0 text-[26px] leading-[1.15] font-extrabold tracking-[-0.01em] break-words text-heading sm:text-[32px]">
               {oferta.titulo}
             </h1>
-
-            {oferta.contenido_editado_en && (
-              <Badge tono="info" className="mt-2">
-                Modificada el {formatFecha(oferta.contenido_editado_en)}
-              </Badge>
-            )}
-
-            <div className="mt-3 flex flex-wrap gap-3 text-sm text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5 font-medium">
-                <Building className="h-4 w-4 shrink-0" />
-                {oferta.empresa_nombre}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <MapPin className="h-4 w-4 shrink-0 text-primary" />
-                {oferta.ubicacion}
-              </span>
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-2 text-xs">
-              <EtiquetaRubro>{oferta.modalidad}</EtiquetaRubro>
-              <EtiquetaRubro>{oferta.jornada}</EtiquetaRubro>
-            </div>
+            <Badge tono={ESTADO_TONO[estado]} estado>
+              {vencida ? "Vencida" : getOfertaEstadoLabel(oferta.estado)}
+            </Badge>
           </div>
+          <p className="text-base text-muted-foreground">
+            {oferta.empresa_nombre} · {queOcurrio}
+          </p>
+          <VencimientoOferta className="text-sm" estado={oferta.estado} venceEn={oferta.vence_en} />
+        </header>
+      </div>
 
-          {/* Contenido */}
-          <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-6">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-primary">
-              Descripción del puesto
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground-strong">
-              {oferta.descripcion}
-            </p>
+      {editadaPublicada && (
+        <Franja tono="aviso" titulo={`Oferta modificada por la empresa el ${formatFecha(oferta.contenido_editado_en)}.`}>
+          Mientras la revisás, no se ve en el portal ni recibe postulaciones nuevas.
+        </Franja>
+      )}
+      {corregida && (
+        <Franja tono="aviso" titulo={`Oferta corregida por la empresa el ${formatFecha(oferta.contenido_editado_en)}.`}>
+          La empresa la volvió a enviar después de un rechazo.
+        </Franja>
+      )}
 
-            <RequisitosList items={oferta.requisitos} headingTag="h3" />
-            <BeneficiosList items={oferta.beneficios ?? []} headingTag="h3" />
-          </div>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_400px] xl:items-start">
+        <article aria-labelledby="titulo-contenido" className={TARJETA}>
+          <h2 id="titulo-contenido" className={TITULO_TARJETA}>
+            Contenido de la oferta
+          </h2>
+          <DatosClave
+            className="mt-5"
+            datos={[
+              { etiqueta: categorias.length === 1 ? "Rubro" : "Rubros", valor: categorias.join(", ") },
+              { etiqueta: "Modalidad", valor: oferta.modalidad },
+              { etiqueta: "Jornada", valor: oferta.jornada },
+              { etiqueta: "Ubicación", valor: oferta.ubicacion },
+              {
+                etiqueta: "Vacantes",
+                valor:
+                  vacantes === null
+                    ? null
+                    : `${vacantes} (${contratados} ${contratados === 1 ? "cubierta" : "cubiertas"})`,
+              },
+              { etiqueta: "Duración", valor: `${oferta.duracion_dias} días` },
+            ]}
+          />
 
-          {/* Empresa */}
+          <hr className="my-6 border-tabla-borde" />
+
+          <h3 className="text-sm font-bold tracking-wider text-primary uppercase">Descripción</h3>
+          <p className="mt-3 text-[15px] leading-relaxed whitespace-pre-line text-texto-parrafo">
+            {oferta.descripcion}
+          </p>
+          <RequisitosList items={oferta.requisitos} headingTag="h3" />
+          <BeneficiosList items={oferta.beneficios ?? []} headingTag="h3" />
+        </article>
+
+        <div className="flex flex-col gap-6 xl:sticky xl:top-6">
           {empresa && (
-            <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
+            <section aria-labelledby="titulo-empresa" className={TARJETA}>
+              <h2 id="titulo-empresa" className="sr-only">
+                Empresa
+              </h2>
               <div className="flex items-center gap-3">
                 <AvatarAjustado
                   src={logoEmpresa?.url}
                   ajuste={logoEmpresa?.ajuste}
+                  iniciales={inicialesDeEmpresa(empresa.razon_social)}
                   alt={`Logo de ${empresa.razon_social}`}
                   size="md"
                 />
-                <h2 className="font-semibold text-foreground">Empresa</h2>
+                <p className="min-w-0 text-[17px] leading-snug font-extrabold break-words text-heading">
+                  {oferta.empresa_nombre}
+                </p>
               </div>
-              <dl className="mt-4 grid grid-cols-1 gap-y-3 text-sm sm:grid-cols-2">
-                <div>
-                  <dt className="text-muted-foreground">Razón social</dt>
-                  <dd className="mt-0.5 font-medium text-foreground">
-                    {empresa.razon_social}
-                  </dd>
+              <DatosClave
+                className="mt-5"
+                datos={[
+                  { etiqueta: "Razón social", valor: empresa.razon_social },
+                  {
+                    etiqueta: "CUIT",
+                    valor: <span className="tabular-nums">{formatearCUIT(empresa.cuit)}</span>,
+                  },
+                  { etiqueta: "Rubro", valor: empresa.rubro },
+                ]}
+              />
+              {oferta.empresa_id && (
+                <Link
+                  href={`/admin/empresas/${oferta.empresa_id}`}
+                  className="mt-5 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--radius-sm)] text-[15px] font-bold text-primary outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+                >
+                  Ver empresa
+                  <ArrowRight className="size-4" aria-hidden="true" />
+                </Link>
+              )}
+            </section>
+          )}
+
+          {pendiente ? (
+            <section aria-labelledby="titulo-decision" className={TARJETA}>
+              <h2 id="titulo-decision" className={TITULO_TARJETA}>
+                Decisión
+              </h2>
+              <p className="mt-2 text-[15px] text-muted-foreground-strong">
+                Si la publicás, los postulantes la ven en el listado de ofertas.
+              </p>
+              <div className="mt-5">
+                <OfertaAcciones ofertaId={ofertaId} estado={oferta.estado} />
+              </div>
+            </section>
+          ) : (
+            <>
+              {oferta.estado === "activa" && (
+                <section aria-labelledby="titulo-postulaciones" className={TARJETA}>
+                  <h2 id="titulo-postulaciones" className={TITULO_TARJETA}>
+                    Postulaciones
+                  </h2>
+                  <p className="mt-3 flex flex-col">
+                    <span className="text-[40px] leading-none font-extrabold text-heading tabular-nums">
+                      {totalPostulaciones}
+                    </span>
+                    <span className="mt-1.5 text-sm text-muted-foreground">
+                      {totalPostulaciones === 1 ? "postulación recibida" : "postulaciones recibidas"}
+                    </span>
+                  </p>
+                  {puedeBuscarPostulantes && (
+                    <Link
+                      href={`/admin/ofertas/${ofertaId}/candidatos`}
+                      className="btn-primario mt-5 w-full text-center"
+                    >
+                      <UserSearch aria-hidden="true" />
+                      Buscar postulantes para esta oferta
+                    </Link>
+                  )}
+                </section>
+              )}
+
+              <section aria-labelledby="titulo-revision" className={TARJETA}>
+                <h2 id="titulo-revision" className={TITULO_TARJETA}>
+                  Revisión
+                </h2>
+                <div className="mt-2">
+                  <OfertaAcciones ofertaId={ofertaId} estado={oferta.estado} />
                 </div>
-                <div>
-                  <dt className="text-muted-foreground">Rubro</dt>
-                  <dd className="mt-0.5 text-foreground">{empresa.rubro}</dd>
-                </div>
-                {empresa.descripcion && (
-                  <div className="sm:col-span-2">
-                    <dt className="text-muted-foreground">Descripción</dt>
-                    <dd className="mt-0.5 text-foreground">
-                      {empresa.descripcion}
-                    </dd>
-                  </div>
+                {oferta.motivo_rechazo && (
+                  <Aviso tono="danger" titulo="Motivo del rechazo" role="none" className="mt-4">
+                    {oferta.motivo_rechazo}
+                  </Aviso>
                 )}
-              </dl>
-            </div>
+                <DatosClave
+                  className="mt-5"
+                  datos={[
+                    { etiqueta: "Enviada", valor: formatFecha(oferta.created_at) },
+                    {
+                      etiqueta: "Fecha de revisión",
+                      valor: oferta.revisado_en ? formatFechaHora(oferta.revisado_en) : null,
+                    },
+                    {
+                      etiqueta: "Revisada por",
+                      valor: revisor ? `${revisor.nombre} ${revisor.apellido}` : null,
+                    },
+                    {
+                      etiqueta: "Publicada",
+                      valor: oferta.publicado_en ? formatFecha(oferta.publicado_en) : null,
+                    },
+                    {
+                      etiqueta: "Postulaciones",
+                      valor:
+                        oferta.estado !== "activa" && totalPostulaciones > 0
+                          ? String(totalPostulaciones)
+                          : null,
+                    },
+                  ]}
+                />
+              </section>
+            </>
           )}
-
-          {/* Historial */}
-          <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
-            <h2 className="font-semibold text-foreground">Historial</h2>
-            <dl className="mt-4 space-y-3 text-sm">
-              <div>
-                <dt className="text-muted-foreground">Enviada</dt>
-                <dd className="mt-0.5 text-foreground">
-                  {formatFecha(oferta.created_at)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Estado</dt>
-                <dd className="mt-0.5 font-medium text-foreground">
-                  {estadoVencimiento(oferta.estado, oferta.vence_en).vencida
-                    ? "Vencida"
-                    : getOfertaEstadoLabel(oferta.estado)}
-                </dd>
-                <dd>
-                  <VencimientoOferta
-                    className="mt-1"
-                    estado={oferta.estado}
-                    venceEn={oferta.vence_en}
-                  />
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Duración de la publicación</dt>
-                <dd className="mt-0.5 text-foreground">{oferta.duracion_dias} días</dd>
-              </div>
-              {totalPostulaciones > 0 && (
-                <div>
-                  <dt className="text-muted-foreground">Postulaciones</dt>
-                  <dd className="mt-0.5 text-foreground">
-                    {totalPostulaciones}
-                  </dd>
-                </div>
-              )}
-              {vacantes !== null && (
-                <div>
-                  <dt className="text-muted-foreground">Vacantes</dt>
-                  <dd className="mt-0.5 text-foreground">
-                    {contratados} de {vacantes} {vacantes === 1 ? "cubierta" : "cubiertas"}
-                  </dd>
-                </div>
-              )}
-              {oferta.revisado_en && (
-                <div>
-                  <dt className="text-muted-foreground">Fecha de revisión</dt>
-                  <dd className="mt-0.5 text-foreground">
-                    {formatFechaHora(oferta.revisado_en)}
-                  </dd>
-                </div>
-              )}
-              {revisor && (
-                <div>
-                  <dt className="text-muted-foreground">Revisada por</dt>
-                  <dd className="mt-0.5 text-foreground">
-                    {revisor.nombre} {revisor.apellido}
-                  </dd>
-                </div>
-              )}
-              {oferta.publicado_en && (
-                <div>
-                  <dt className="text-muted-foreground">Publicada</dt>
-                  <dd className="mt-0.5 text-foreground">
-                    {formatFecha(oferta.publicado_en)}
-                  </dd>
-                </div>
-              )}
-            </dl>
-          </div>
-
-          {/* Motivo de rechazo */}
-          {oferta.motivo_rechazo && (
-            <Aviso tono="danger" titulo="Motivo del rechazo" role="none">
-              {oferta.motivo_rechazo}
-            </Aviso>
-          )}
-        </div>
-
-        {/* Columna lateral: acciones */}
-        <div className="lg:col-span-1">
-          <div className="sticky top-6 rounded-[var(--radius-lg)] border border-border bg-surface p-5">
-            <h2 className="font-semibold text-foreground">Acciones</h2>
-            <div className="mt-4">
-              <OfertaAcciones ofertaId={ofertaId} estado={oferta.estado} />
-            </div>
-            {puedeBuscarPostulantes && (
-              <Link
-                href={`/admin/ofertas/${ofertaId}/candidatos`}
-                className="btn-primario mt-4 min-h-11 w-full justify-center text-center"
-              >
-                <UserSearch className="h-4 w-4 shrink-0" aria-hidden="true" />
-                Buscar postulantes para esta oferta
-              </Link>
-            )}
-          </div>
         </div>
       </div>
     </section>

@@ -1,12 +1,10 @@
-import { Esqueleto, EsqueletoTitulo } from "@/components/ui/esqueleto";
+import { EsqueletoEncabezadoIndicadores } from "@/components/indicadores/esqueletos";
 import { EsqueletoIndicadores } from "./esqueleto-indicadores";
 
 export default function Loading() {
   return (
-    <section>
-      <Esqueleto className="h-4 w-32" />
-      <EsqueletoTitulo className="mt-4" />
-      <Esqueleto className="mt-6 h-12 w-full" />
+    <section className="flex flex-col gap-6">
+      <EsqueletoEncabezadoIndicadores />
       <EsqueletoIndicadores />
     </section>
   );
