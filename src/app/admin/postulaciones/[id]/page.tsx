@@ -1,30 +1,40 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ExternalLink } from "lucide-react";
+import { ArrowRight, ExternalLink } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { Badge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
-import { DatosCandidato } from "@/components/admin/datos-candidato";
 import { obtenerCandidato, obtenerCvDePostulacion } from "@/lib/admin/candidato";
-import { CvDePostulacionCard } from "@/components/admin/cv-candidato";
 import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
 import { BadgePorInvitacion } from "@/components/admin/badge-por-invitacion";
 import {
   BADGE_ESTADO_VISIBLE,
   estadoVisiblePostulacion,
 } from "@/lib/admin/postulacion-estados";
-import { getOfertaEstadoLabel } from "@/lib/oferta-estados";
+import {
+  ESTADO_OFERTA_EMPRESA_LABEL,
+  ESTADO_OFERTA_EMPRESA_TONO,
+  type EstadoOfertaEmpresa,
+} from "@/lib/oferta-estados";
+import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 import { FichaAcciones } from "./ficha-acciones";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { logError } from "@/lib/logger";
 import { aEstadoCursos, avisoCursoAlDerivar } from "@/lib/cursos";
-import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_TONO } from "@/lib/derivacion-estados";
 import { requerirRolPagina } from "@/lib/auth";
 import { preEntrevistaYaPaso } from "@/lib/pre-entrevistas";
 import { PreEntrevistaSeccion } from "./pre-entrevista-seccion";
 import { MarcarFichaAbierta } from "./marcar-ficha-abierta";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { DatosClave } from "@/components/ui/datos-clave";
+import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
+import { FilaArchivo } from "@/components/ui/fila-archivo";
+import { Franja } from "@/components/ui/franja";
+import { LineaDeTiempo, type EventoLinea } from "@/components/ui/linea-de-tiempo";
+import { InicialesEmpresa } from "@/components/ofertas/iniciales-empresa";
+import { inicialesDePersona } from "@/lib/iniciales";
+import { textoTamanoArchivo } from "@/lib/archivos";
 
 export const metadata: Metadata = {
   title: "Ficha | Postulaciones | Panel municipal | Portal de Empleo Funes",
@@ -56,7 +66,7 @@ export default async function PostulacionFichaPage({
       cv_archivo_id,
       origen,
       postulantes!postulante_id(id, usuario_id),
-      ofertas!oferta_id(id, titulo, empresa_nombre, modalidad, jornada, estado, contenido_editado_en)
+      ofertas!oferta_id(id, titulo, empresa_nombre, modalidad, jornada, estado, vence_en, contenido_editado_en, oferta_categorias(categorias(nombre)))
     `
     )
     .eq("id", postulacionId)
@@ -133,235 +143,268 @@ export default async function PostulacionFichaPage({
       ? derivacion.fecha_respuesta ?? derivacion.updated_at
       : null;
 
+  const nombre = candidato
+    ? `${candidato.usuario.nombre} ${candidato.usuario.apellido}`
+    : "Candidato desconocido";
+  const ofertaModificada =
+    oferta?.contenido_editado_en != null &&
+    oferta.contenido_editado_en > postulacion.created_at;
+  const estadoOferta: EstadoOfertaEmpresa | null = oferta
+    ? estadoVencimiento(oferta.estado, oferta.vence_en).vencida
+      ? "vencida"
+      : oferta.estado
+    : null;
+  const rubrosOferta = (oferta?.oferta_categorias ?? [])
+    .map((oc) => oc.categorias?.nombre)
+    .filter((n): n is string => Boolean(n));
+
+  // Los mismos datos que mostraba el historial: recepción, revisión, retiro y
+  // última actualización. Sin eventos que la ficha no registra.
+  const eventos: EventoLinea[] = [
+    {
+      clave: "recibida",
+      titulo: "Postulación recibida",
+      detalle: formatFechaHora(postulacion.created_at),
+    },
+  ];
+  if (postulacion.revisado_por) {
+    eventos.push({
+      clave: "revisada",
+      titulo: "Revisada por la Oficina de Empleo",
+      detalle: revisor ? `Por ${revisor.nombre} ${revisor.apellido}` : "Por un usuario eliminado",
+    });
+  }
+  if (postulacion.retirada_en) {
+    eventos.push({
+      clave: "retirada",
+      titulo: "Retirada por el postulante",
+      detalle: formatFechaHora(postulacion.retirada_en),
+    });
+  }
+  if (postulacion.updated_at && postulacion.updated_at !== postulacion.created_at) {
+    eventos.push({
+      clave: "actualizada",
+      titulo: "Última actualización",
+      detalle: formatFechaHora(postulacion.updated_at),
+    });
+  }
+
+  const notaCv = !cvPostulacion
+    ? undefined
+    : !cvPostulacion.elegido
+      ? "Esta postulación es anterior a la elección de CV: se muestra el más reciente del perfil."
+      : cvPostulacion.eliminado
+        ? "El postulante lo eliminó después de su perfil."
+        : undefined;
+
+  const tituloDecision =
+    postulacion.estado === "derivada"
+      ? "Derivación a la empresa"
+      : postulacion.estado === "retirada_postulante"
+        ? "Postulación retirada"
+        : puedeDerivarse || postulacion.estado === "rechazada_municipalidad"
+          ? "Decisión"
+          : null;
+
   return (
     <section className="contenido-lectura-ancho">
       {postulacion.estado === "recibida" && <MarcarFichaAbierta postulacionId={postulacionId} />}
-      <BotonVolver href="/admin/postulaciones">Volver a postulaciones</BotonVolver>
+      <BotonVolver href="/admin/postulaciones" destacado>
+        Volver a Postulaciones
+      </BotonVolver>
 
       {/* Cabecera */}
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <AvatarAjustado
-          src={candidato?.avatar.url ?? null}
-          alt={
-            candidato
-              ? `${candidato.usuario.nombre} ${candidato.usuario.apellido}`
-              : "Candidato"
-          }
-          ajuste={candidato?.avatar.ajuste}
-          size="lg"
-        />
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            {candidato
-              ? `${candidato.usuario.nombre} ${candidato.usuario.apellido}`
-              : "Candidato desconocido"}
+      <header className="mt-4">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <h1 className="text-[26px] leading-[1.15] font-extrabold tracking-[-0.01em] break-words text-heading sm:text-[32px]">
+            Postulación de {nombre}
           </h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <Badge tono={badge.tono} estado>
-              {badge.label}
-            </Badge>
-            {postulacion.origen === "invitacion" && <BadgePorInvitacion />}
-            {candidato && (
-              <BadgeProcedencia
-                nivel={candidato.nivel}
-                localidad={candidato.postulante.localidad}
-                comprobante={candidato.comprobante?.estado ?? null}
-              />
-            )}
-          </div>
-          {fechaContratacion && (
-            <p className="mt-1 text-sm text-muted-foreground">
-              Contratado por{" "}
-              <span className="font-medium text-foreground">
-                {oferta?.empresa_nombre ?? "la empresa"}
-              </span>{" "}
-              el {formatFecha(fechaContratacion)}
-            </p>
-          )}
+          <Badge tono={badge.tono} estado>
+            {badge.label}
+          </Badge>
+          {postulacion.origen === "invitacion" && <BadgePorInvitacion />}
         </div>
-      </div>
+        <p className="mt-1.5 text-base break-words text-muted-foreground">
+          {oferta ? `${oferta.titulo} · ${oferta.empresa_nombre} · ` : ""}
+          recibida el {formatFecha(postulacion.created_at)}
+        </p>
+        {fechaContratacion && (
+          <p className="mt-1 text-[15px] text-muted-foreground">
+            Contratado por{" "}
+            <span className="font-semibold text-foreground">
+              {oferta?.empresa_nombre ?? "la empresa"}
+            </span>{" "}
+            el {formatFecha(fechaContratacion)}
+          </p>
+        )}
+      </header>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Columna principal */}
-        <div className="space-y-6 lg:col-span-2">
-          {candidato ? (
-            <>
-              <DatosCandidato
-                email={candidato.email}
-                dni={candidato.postulante.dni}
-                domicilio={candidato.postulante.domicilio}
-                telefono={candidato.usuario.telefono}
-                categorias={candidato.categorias}
-              />
-              <CvDePostulacionCard cvPostulacion={cvPostulacion} />
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Candidato no encontrado.
-            </p>
-          )}
-
-          {/* Oferta */}
-          <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
-            <h2 className="font-semibold text-foreground">Oferta laboral</h2>
-            {oferta ? (
-              <dl className="mt-4 grid grid-cols-1 gap-y-3 text-sm sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <dt className="text-muted-foreground">Título</dt>
-                  <dd className="mt-0.5 font-medium text-foreground">
-                    {oferta.titulo}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Empresa</dt>
-                  <dd className="mt-0.5 text-foreground">
-                    {oferta.empresa_nombre}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Modalidad</dt>
-                  <dd className="mt-0.5 text-foreground">{oferta.modalidad}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Jornada</dt>
-                  <dd className="mt-0.5 text-foreground">{oferta.jornada}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Estado de la oferta</dt>
-                  <dd className="mt-0.5 text-foreground">
-                    {getOfertaEstadoLabel(oferta.estado)}
-                  </dd>
-                </div>
-                {oferta.contenido_editado_en != null &&
-                  oferta.contenido_editado_en > postulacion.created_at && (
-                  <div className="sm:col-span-2">
-                    <dt className="text-muted-foreground">Modificada tras la postulación</dt>
-                    <dd className="mt-0.5 text-warning-text font-medium">
-                      {formatFecha(oferta.contenido_editado_en)}
-                    </dd>
+      <div className="@container mt-8">
+        <div className="grid grid-cols-1 gap-6 @4xl:grid-cols-[minmax(0,1fr)_400px] @4xl:items-start">
+          {/* Columna principal */}
+          <div className="flex min-w-0 flex-col gap-6">
+            <section aria-labelledby="candidato-titulo" className="tarjeta flex flex-col gap-5 p-5 sm:p-6">
+              {candidato ? (
+                <>
+                  <div className="flex min-w-0 items-center gap-4">
+                    <AvatarAjustado
+                      src={candidato.avatar.url}
+                      alt=""
+                      ajuste={candidato.avatar.ajuste}
+                      iniciales={inicialesDePersona(candidato.usuario.nombre, candidato.usuario.apellido)}
+                      size="ficha"
+                    />
+                    <div className="flex min-w-0 flex-col items-start gap-1.5">
+                      <h2 id="candidato-titulo" className="text-xl leading-tight font-extrabold break-words text-heading">
+                        {nombre}
+                      </h2>
+                      <BadgeProcedencia
+                        nivel={candidato.nivel}
+                        localidad={candidato.postulante.localidad}
+                        comprobante={candidato.comprobante?.estado ?? null}
+                      />
+                    </div>
                   </div>
-                )}
-                <div className="sm:col-span-2">
-                  <Link
-                    href={`/ofertas/${oferta.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm text-primary underline-offset-2 hover:underline"
-                  >
-                    Ver detalle público
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-              </dl>
-            ) : (
-              <p className="mt-2 text-sm text-muted-foreground">
-                La oferta ya no está disponible.
-              </p>
-            )}
-          </div>
 
-          {/* Historial */}
-          <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
-            <h2 className="font-semibold text-foreground">Historial</h2>
-            <dl className="mt-4 space-y-3 text-sm">
-              <div>
-                <dt className="text-muted-foreground">Fecha de postulación</dt>
-                <dd className="mt-0.5 text-foreground">
-                  {formatFecha(postulacion.created_at)}
-                </dd>
+                  <DatosClave
+                    datos={[
+                      {
+                        etiqueta: "DNI",
+                        valor: <span className="tabular-nums">{candidato.postulante.dni ?? "—"}</span>,
+                      },
+                      { etiqueta: "Teléfono", valor: candidato.usuario.telefono || "—" },
+                      {
+                        etiqueta: "Email",
+                        valor: candidato.email ? <span className="break-all">{candidato.email}</span> : "—",
+                      },
+                      { etiqueta: "Domicilio", valor: candidato.postulante.domicilio || "—" },
+                      {
+                        etiqueta: "Rubros de interés",
+                        valor:
+                          candidato.categorias.length > 0 ? (
+                            <span className="flex flex-wrap gap-1.5">
+                              {candidato.categorias.map((c) => (
+                                <EtiquetaRubro key={c.id}>{c.nombre}</EtiquetaRubro>
+                              ))}
+                            </span>
+                          ) : (
+                            "—"
+                          ),
+                      },
+                    ]}
+                  />
+
+                  <div className="flex flex-col gap-2.5">
+                    <h3 className="text-[15px] font-bold text-control-foreground">
+                      CV elegido para esta postulación
+                    </h3>
+                    {cvPostulacion ? (
+                      <FilaArchivo
+                        nombre={cvPostulacion.cv.nombreOriginal}
+                        detalle={`${
+                          cvPostulacion.cv.tamano > 0
+                            ? `${textoTamanoArchivo(cvPostulacion.cv.tamano)} · `
+                            : ""
+                        }Cargado el ${formatFecha(cvPostulacion.cv.subidoEn)}`}
+                        nota={notaCv}
+                        url={cvPostulacion.cv.url}
+                        textoBoton="Ver CV"
+                      />
+                    ) : (
+                      <p className="text-[15px] text-muted-foreground">
+                        El candidato retiró o eliminó su CV.
+                      </p>
+                    )}
+                  </div>
+
+                  {postulanteId && (
+                    <Link
+                      href={`/admin/postulantes/${postulanteId}`}
+                      className="inline-flex min-h-11 w-fit items-center gap-1.5 rounded-[var(--radius-sm)] text-[15px] font-bold text-primary underline-offset-2 outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+                    >
+                      Ver ficha completa del postulante
+                      <ArrowRight aria-hidden="true" className="size-[18px]" />
+                    </Link>
+                  )}
+                </>
+              ) : (
+                <p id="candidato-titulo" className="text-[15px] text-muted-foreground">
+                  Candidato no encontrado.
+                </p>
+              )}
+            </section>
+
+            {/* Oferta */}
+            <section aria-labelledby="oferta-titulo" className="tarjeta flex flex-col gap-4 p-5 sm:p-6">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 id="oferta-titulo" className="text-xl font-extrabold text-heading">
+                  Oferta
+                </h2>
+                {estadoOferta && (
+                  <Badge tono={ESTADO_OFERTA_EMPRESA_TONO[estadoOferta] ?? "neutral"} estado>
+                    {ESTADO_OFERTA_EMPRESA_LABEL[estadoOferta] ?? estadoOferta}
+                  </Badge>
+                )}
               </div>
-              {postulacion.updated_at &&
-                postulacion.updated_at !== postulacion.created_at && (
-                  <div>
-                    <dt className="text-muted-foreground">
-                      Última actualización
-                    </dt>
-                    <dd className="mt-0.5 text-foreground">
-                      {formatFechaHora(postulacion.updated_at)}
-                    </dd>
+              {oferta ? (
+                <>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <InicialesEmpresa empresa={oferta.empresa_nombre} tamano={44} />
+                    <div className="min-w-0">
+                      <p className="text-base leading-snug font-bold break-words text-heading">
+                        {oferta.titulo}
+                      </p>
+                      <p className="text-sm break-words text-texto-bajada">{oferta.empresa_nombre}</p>
+                    </div>
                   </div>
-                )}
-              {postulacion.retirada_en && (
-                <div>
-                  <dt className="text-muted-foreground">Retirada por el postulante</dt>
-                  <dd className="mt-0.5 text-foreground">
-                    {formatFechaHora(postulacion.retirada_en)}
-                  </dd>
-                </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {rubrosOferta.map((r) => (
+                      <EtiquetaRubro key={r} verde>
+                        {r}
+                      </EtiquetaRubro>
+                    ))}
+                    <EtiquetaRubro>{oferta.modalidad}</EtiquetaRubro>
+                    <EtiquetaRubro>{oferta.jornada}</EtiquetaRubro>
+                  </div>
+                  {ofertaModificada && oferta.contenido_editado_en && (
+                    <Franja tono="aviso" titulo="Modificada tras la postulación:">
+                      la empresa cambió la oferta el {formatFecha(oferta.contenido_editado_en)}.
+                    </Franja>
+                  )}
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      {oferta.vence_en
+                        ? `${estadoOferta === "vencida" ? "Venció" : "Vence"} el ${formatFecha(oferta.vence_en)}`
+                        : "Sin fecha de vencimiento"}
+                    </p>
+                    <Link
+                      href={`/ofertas/${oferta.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--radius-sm)] text-[15px] font-bold text-primary underline-offset-2 outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+                    >
+                      Ver oferta
+                      <ExternalLink aria-hidden="true" className="size-4" />
+                      <span className="sr-only">(se abre en otra pestaña)</span>
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <p className="text-[15px] text-muted-foreground">La oferta ya no está disponible.</p>
               )}
-              {postulacion.revisado_por && (
-                <div>
-                  <dt className="text-muted-foreground">Revisada por</dt>
-                  <dd className="mt-0.5 text-foreground">
-                    {revisor
-                      ? `${revisor.nombre} ${revisor.apellido}`
-                      : "Usuario eliminado"}
-                  </dd>
-                </div>
-              )}
-            </dl>
+            </section>
+
+            {/* Historial */}
+            <section aria-labelledby="historial-titulo" className="tarjeta p-5 sm:p-6">
+              <h2 id="historial-titulo" className="mb-4 text-xl font-extrabold text-heading">
+                Historial de estados
+              </h2>
+              <LineaDeTiempo eventos={eventos} />
+            </section>
           </div>
 
-          {/* Nota interna */}
-          {postulacion.nota_oficina && (
-            <div className="rounded-[var(--radius-lg)] border border-border bg-surface-tinted p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Nota interna (no la ve el postulante)
-              </p>
-              <p className="mt-2 text-sm text-foreground">
-                {postulacion.nota_oficina}
-              </p>
-            </div>
-          )}
-
-          {/* Derivación: estado de la empresa */}
-          {derivacion && (
-            <div className="rounded-[var(--radius-lg)] border border-border bg-white p-5 shadow-xs">
-              <h2 className="font-semibold text-foreground">Estado de la empresa</h2>
-              <dl className="mt-4 space-y-3 text-sm">
-                <div>
-                  <dt className="text-muted-foreground">Estado</dt>
-                  <dd className="mt-0.5">
-                    <Badge tono={DERIVACION_ESTADO_TONO[derivacion.estado_empresa] ?? "neutral"} estado>
-                      {DERIVACION_ESTADO_LABEL[derivacion.estado_empresa] ?? derivacion.estado_empresa}
-                    </Badge>
-                  </dd>
-                </div>
-                {derivacion.fecha_entrevista && (
-                  <div>
-                    <dt className="text-muted-foreground">Fecha de entrevista</dt>
-                    <dd className="mt-0.5 text-foreground">
-                      {formatFechaHora(derivacion.fecha_entrevista)}
-                      {derivacion.lugar_entrevista && (
-                        <span className="ml-1 text-muted-foreground">
-                          · {derivacion.lugar_entrevista}
-                        </span>
-                      )}
-                    </dd>
-                  </div>
-                )}
-                {derivacion.fecha_respuesta && (
-                  <div>
-                    <dt className="text-muted-foreground">Fecha de respuesta</dt>
-                    <dd className="mt-0.5 text-foreground">
-                      {formatFechaHora(derivacion.fecha_respuesta)}
-                    </dd>
-                  </div>
-                )}
-                {derivacion.estado_empresa === "rechazado" && derivacion.nota_empresa && (
-                  <div>
-                    <dt className="text-muted-foreground">Motivo (empresa)</dt>
-                    <dd className="mt-0.5 text-foreground">{derivacion.nota_empresa}</dd>
-                  </div>
-                )}
-              </dl>
-            </div>
-          )}
-        </div>
-
-        {/* Columna lateral: pre-entrevista y acciones */}
-        <div className="lg:col-span-1">
-          <div className="space-y-6 lg:sticky lg:top-6">
+          {/* Columna lateral: pre-entrevista, nota y decisión */}
+          <div className="flex min-w-0 flex-col gap-6">
             {(puedeDerivarse || preEntrevista) && (
               <PreEntrevistaSeccion
                 key={preEntrevista?.updated_at ?? "sin-pre-entrevista"}
@@ -371,9 +414,25 @@ export default async function PostulacionFichaPage({
                 fechaPasada={preEntrevistaFechaPasada}
               />
             )}
-            <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
-              <h2 className="font-semibold text-foreground">Acciones</h2>
-              <div className="mt-4">
+
+            {/* La nota interna se carga al no seleccionar la postulación. */}
+            {postulacion.nota_oficina && (
+              <section aria-labelledby="nota-titulo" className="tarjeta p-5 sm:p-6">
+                <h2 id="nota-titulo" className="text-xl font-extrabold text-heading">
+                  Nota interna
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">Solo la ve la Oficina de Empleo.</p>
+                <p className="mt-3 text-[15px] leading-[1.5] whitespace-pre-line break-words text-texto-parrafo">
+                  {postulacion.nota_oficina}
+                </p>
+              </section>
+            )}
+
+            {tituloDecision && (
+              <section aria-labelledby="decision-titulo" className="tarjeta p-5 sm:p-6">
+                <h2 id="decision-titulo" className="mb-4 text-xl font-extrabold text-heading">
+                  {tituloDecision}
+                </h2>
                 <FichaAcciones
                   postulacionId={postulacion.id}
                   estado={postulacion.estado}
@@ -383,8 +442,8 @@ export default async function PostulacionFichaPage({
                   derivacion={derivacion}
                   avisoCurso={avisoCurso}
                 />
-              </div>
-            </div>
+              </section>
+            )}
           </div>
         </div>
       </div>

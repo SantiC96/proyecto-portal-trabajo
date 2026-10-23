@@ -22,6 +22,7 @@ import {
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import {
   DERIVACION_ESTADO_LABEL,
+  DERIVACION_ESTADO_TONO,
   type EstadoDerivacionEmpresa,
 } from "@/lib/derivacion-estados";
 import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
@@ -31,14 +32,16 @@ import { esValorEnum, type Enum, type Tabla } from "@/types/db";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
 import {
-  CLASE_CONTROL_INVALIDO,
   ErrorCampo,
   Obligatorio,
   ariaErrorCampo,
 } from "@/components/ui/obligatorio";
 import { useErroresCampo } from "@/lib/use-errores-campo";
-import { cn } from "@/lib/utils";
 import { Aviso } from "@/components/ui/aviso";
+import { Badge } from "@/components/ui/badge";
+import { Cita } from "@/components/ui/cita";
+import { DatosClave } from "@/components/ui/datos-clave";
+import { Franja } from "@/components/ui/franja";
 
 type Props = {
   postulacionId: string;
@@ -136,18 +139,13 @@ export function FichaAcciones({
   if (estado === "retirada_postulante") {
     const empresa = empresaNombre?.trim() || "la empresa";
     return (
-      <div className="rounded-[var(--radius-lg)] border border-border bg-surface-tinted p-4">
-        <p className="text-sm font-medium text-foreground">Retirada por el postulante</p>
-        <p className="mt-1 text-sm text-muted-foreground">
+      <div className="flex flex-col gap-4">
+        <Franja tono="neutra" titulo="Retirada por el postulante.">
           {derivacion
             ? `Ya estaba derivada a ${empresa}: el proceso con la empresa quedó cerrado.`
             : "El postulante retiró la postulación y ya no se puede derivar ni descartar."}
-        </p>
-        {derivacion?.created_at && (
-          <p className="mt-1 text-sm text-muted-foreground">
-            Derivada el {formatFechaHora(derivacion.created_at)}
-          </p>
-        )}
+        </Franja>
+        {derivacion && <DatosDerivacion derivacion={derivacion} />}
       </div>
     );
   }
@@ -158,41 +156,24 @@ export function FichaAcciones({
   if (estado === "derivada") {
     const empresa = empresaNombre?.trim() || "la empresa";
     return (
-      <div className="space-y-3">
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface-tinted p-4">
-          {estadoVisible === "contratado" ? (
-            <p className="text-sm font-medium text-success">
-              Contratado por {empresa}
-              {derivacion?.fecha_respuesta &&
-                ` el ${formatFecha(derivacion.fecha_respuesta)}`}
-            </p>
-          ) : estadoVisible === "no_seleccionado_empresa" ? (
-            <p className="text-sm font-medium text-danger">
-              No seleccionado por {empresa}
-              {derivacion?.fecha_respuesta &&
-                ` el ${formatFecha(derivacion.fecha_respuesta)}`}
-            </p>
-          ) : (
-            <p className="text-sm font-medium text-primary">Derivada a la empresa</p>
-          )}
-          {derivacion?.created_at && (
-            <p className="mt-1 text-sm text-muted-foreground">
-              Derivada el {formatFechaHora(derivacion.created_at)}
-            </p>
-          )}
-          {derivacion?.nota_municipalidad && (
-            <p className="mt-2 text-sm text-foreground">
-              <span className="font-medium">Nota de derivación: </span>
-              {derivacion.nota_municipalidad}
-            </p>
-          )}
-        </div>
-
-        {derivacion?.estado_empresa === "oferta_retirada" && (
-          <p className="text-sm text-muted-foreground">
+      <div className="flex flex-col gap-4">
+        {estadoVisible === "contratado" ? (
+          <Franja tono="ok" titulo={`Contratado por ${empresa}`}>
+            {derivacion?.fecha_respuesta && `el ${formatFecha(derivacion.fecha_respuesta)}.`}
+          </Franja>
+        ) : estadoVisible === "no_seleccionado_empresa" ? (
+          <Franja tono="neutra" titulo={`No seleccionado por ${empresa}`}>
+            {derivacion?.fecha_respuesta && `el ${formatFecha(derivacion.fecha_respuesta)}.`}
+          </Franja>
+        ) : derivacion?.estado_empresa === "oferta_retirada" ? (
+          <Franja tono="neutra">
             El proceso quedó cerrado porque la empresa retiró la oferta.
-          </p>
+          </Franja>
+        ) : (
+          <Franja tono="info" titulo="Derivada a la empresa." />
         )}
+
+        {derivacion && <DatosDerivacion derivacion={derivacion} />}
 
         {derivacion && derivacion.estado_empresa !== "oferta_retirada" && (
           <button
@@ -202,7 +183,7 @@ export function FichaAcciones({
               camposCorregir.limpiarTodos();
               setAbrirCorregir(true);
             }}
-            className="btn-secundario inline-flex min-h-11 w-full items-center justify-center gap-2 px-4 text-sm font-medium"
+            className="btn-secundario w-full"
           >
             Corregir estado de la empresa
           </button>
@@ -236,10 +217,7 @@ export function FichaAcciones({
                   camposCorregir.limpiar("estado");
                 }}
                 {...ariaErrorCampo("corregir-estado", camposCorregir.errores.estado)}
-                className={cn(
-                  "w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring",
-                  CLASE_CONTROL_INVALIDO
-                )}
+                className="campo"
                 disabled={isPending}
               >
                 {ESTADOS_CORREGUIBLES.map((e) => (
@@ -264,7 +242,7 @@ export function FichaAcciones({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-4">
       {ofertaEnRevision && (
         <Aviso tono="warning">
           La oferta está en revisión: no se puede derivar ni rechazar hasta que se vuelva a aprobar.
@@ -272,14 +250,14 @@ export function FichaAcciones({
       )}
 
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-3">
         {(estado === "recibida" || estado === "en_revision") && (
           <>
             <button
               type="button"
               onClick={() => setAbrirDerivar(true)}
               disabled={isPending || ofertaEnRevision}
-              className="btn-primario min-h-11 justify-center"
+              className="btn-primario w-full"
             >
               Derivar a la empresa
             </button>
@@ -287,7 +265,7 @@ export function FichaAcciones({
               type="button"
               onClick={() => setAbrirDescartar(true)}
               disabled={isPending || ofertaEnRevision}
-              className="btn-peligro inline-flex min-h-11 items-center justify-center whitespace-nowrap px-4 text-sm font-medium"
+              className="btn-peligro-borde w-full"
             >
               No seleccionar
             </button>
@@ -295,14 +273,17 @@ export function FichaAcciones({
         )}
 
         {estado === "rechazada_municipalidad" && (
-          <button
-            type="button"
-            onClick={() => setAbrirReconsiderar(true)}
-            disabled={isPending}
-            className="btn-secundario inline-flex items-center justify-center whitespace-nowrap min-h-11 px-4 text-sm font-medium"
-          >
-            Reconsiderar
-          </button>
+          <>
+            <Franja tono="neutra">La oficina no seleccionó esta postulación.</Franja>
+            <button
+              type="button"
+              onClick={() => setAbrirReconsiderar(true)}
+              disabled={isPending}
+              className="btn-secundario w-full"
+            >
+              Reconsiderar
+            </button>
+          </>
         )}
       </div>
 
@@ -437,5 +418,53 @@ export function FichaAcciones({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+type Derivacion = NonNullable<Props["derivacion"]>;
+
+/** Lo que registró la empresa sobre la derivación, y la nota de la oficina. */
+function DatosDerivacion({ derivacion }: { derivacion: Derivacion }) {
+  return (
+    <>
+      <DatosClave
+        datos={[
+          {
+            etiqueta: "Estado de la empresa",
+            valor: (
+              <Badge tono={DERIVACION_ESTADO_TONO[derivacion.estado_empresa] ?? "neutral"} estado>
+                {DERIVACION_ESTADO_LABEL[derivacion.estado_empresa] ?? derivacion.estado_empresa}
+              </Badge>
+            ),
+          },
+          { etiqueta: "Derivada el", valor: formatFechaHora(derivacion.created_at) },
+          {
+            etiqueta: "Entrevista",
+            valor: derivacion.fecha_entrevista
+              ? `${formatFechaHora(derivacion.fecha_entrevista)}${
+                  derivacion.lugar_entrevista ? ` · ${derivacion.lugar_entrevista}` : ""
+                }`
+              : null,
+          },
+          {
+            etiqueta: "Respuesta",
+            valor: derivacion.fecha_respuesta ? formatFechaHora(derivacion.fecha_respuesta) : null,
+          },
+          {
+            etiqueta: "Motivo (empresa)",
+            valor:
+              derivacion.estado_empresa === "rechazado" && derivacion.nota_empresa ? (
+                <span className="whitespace-pre-line">{derivacion.nota_empresa}</span>
+              ) : null,
+          },
+        ]}
+      />
+      {derivacion.nota_municipalidad && (
+        <div className="flex flex-col gap-2">
+          <h3 className="text-[15px] font-bold text-control-foreground">Nota de derivación</h3>
+          <Cita>{derivacion.nota_municipalidad}</Cita>
+        </div>
+      )}
+    </>
   );
 }
