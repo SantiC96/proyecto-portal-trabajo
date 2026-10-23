@@ -219,8 +219,10 @@ export default async function PostulacionesPage({
       />
 
       <div className="flex flex-col gap-4">
+        {/* Mide lo mismo que los desplegables de abajo: Oferta (w-80) y, si
+            se muestra, Orden (w-64) con la separación entre ellos (gap-3). */}
         <Buscador
-          className="min-w-0 lg:max-w-xl"
+          className={cn("w-full min-w-0", ordenDisponible ? "sm:w-[36.75rem]" : "sm:w-80")}
           inputClassName="rounded-xl"
           placeholder="Buscar por nombre, apellido o DNI"
         />
