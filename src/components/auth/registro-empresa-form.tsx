@@ -6,31 +6,22 @@ import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { formatearCUIT } from "@/lib/cuit";
 import { LARGO_MAXIMO, validarCuitConMensaje } from "@/lib/validaciones";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
-import Link from "next/link";
-import {
-  Building2,
-  Hash,
-  Briefcase,
-  User,
-  Phone,
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  CheckCircle2,
-  AlertCircle,
-} from "lucide-react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import type { Tabla } from "@/types/db";
-import {
-  CLASE_CONTROL_INVALIDO,
-  ErrorCampo,
-  Obligatorio,
-  ariaErrorCampo,
-} from "@/components/ui/obligatorio";
 import { useErroresCampo } from "@/lib/use-errores-campo";
 import { useAccion } from "@/lib/use-accion";
-import { Spinner } from "@/components/ui/spinner";
 import { Aviso } from "@/components/ui/aviso";
+import { SeccionNumerada } from "@/components/ui/seccion-numerada";
+import { cn } from "@/lib/utils";
+import {
+  CampoRegistro,
+  EncabezadoRegistro,
+  GrillaCampos,
+  PieRegistro,
+  SeccionAcceso,
+  ariaCampo,
+  idAyudaCampo,
+} from "@/components/auth/partes-registro";
 
 const CAMPOS = [
   "razonSocial",
@@ -46,70 +37,32 @@ const CAMPOS = [
 ] as const;
 type Campo = (typeof CAMPOS)[number];
 
-// ─── helpers ────────────────────────────────────────────────────────────────
-
-function InputWrapper({ children }: { children: React.ReactNode }) {
-  return <div className="relative">{children}</div>;
-}
-
-function FieldIcon({ icon: Icon }: { icon: React.ElementType }) {
-  return (
-    <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-icon" />
-  );
-}
-
-const inputClass =
-  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 " +
-  CLASE_CONTROL_INVALIDO;
-
-const selectClass =
-  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-8 text-sm text-foreground outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 appearance-none cursor-pointer " +
-  CLASE_CONTROL_INVALIDO;
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="mb-4 text-xs font-bold uppercase tracking-wider text-primary">
-      {children}
-    </h2>
-  );
-}
-
-// ─── component ──────────────────────────────────────────────────────────────
-
 interface Props {
   categorias: Tabla<"categorias">[];
 }
 
 export function RegistroEmpresaForm({ categorias }: Props) {
-  // Empresa data
   const [razonSocial, setRazonSocial] = useState("");
   const [cuit, setCuit] = useState(""); // raw 11 digits
   const [rubro, setRubro] = useState("");
   const [descripcion, setDescripcion] = useState("");
 
-  // Responsible person
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
   const [telefono, setTelefono] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordRepeat, setPasswordRepeat] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordRepeat, setShowPasswordRepeat] = useState(false);
 
-  // Submit state
   const { pendiente: isLoading, ejecutar } = useAccion();
   const [submitError, setSubmitError] = useState<ErrorAccion | null>(null);
   const campos = useErroresCampo<Campo>();
 
-  // ── derived ────────────────────────────────────────────────────────────────
-  const passwordRepeatError =
-    passwordRepeat !== "" && password !== passwordRepeat;
+  const passwordRepeatError = passwordRepeat !== "" && password !== passwordRepeat;
   const cuitCompleto = cuit.length === 11;
   const cuitError = cuitCompleto && validarCuitConMensaje(cuit) !== null;
   const cuitValido = cuitCompleto && validarCuitConMensaje(cuit) === null;
 
-  // ── handlers ───────────────────────────────────────────────────────────────
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitError(null);
@@ -143,154 +96,108 @@ export function RegistroEmpresaForm({ categorias }: Props) {
         telefono,
         email,
         password,
-    });
+      });
       if (result && !result.ok && !campos.tomarDelServidor(result, CAMPOS)) {
         setSubmitError(toErrorAccion(result));
       }
     });
   };
 
-  // ── render ─────────────────────────────────────────────────────────────────
   return (
     <div className="w-full">
-      {/* Header */}
-      <div className="mb-6 text-center">
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <Building2 className="h-6 w-6" />
-        </div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-          Registro de Empresa
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Portal de Empleo · Municipalidad de Funes
-        </p>
-      </div>
+      <EncabezadoRegistro titulo="Registro de empresa" />
 
-      <form
-        onSubmit={handleSubmit}
-        noValidate
-        className="flex flex-col gap-6"
-      >
-        {/* ── 1. Datos de la empresa ────────────────────────────────────── */}
-        <section>
-          <SectionTitle>Datos de la empresa</SectionTitle>
-          <div className="flex flex-col gap-4">
-            {/* Razón social */}
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="reg-razon-social"
-                className="text-sm font-medium text-foreground"
-              >
-                Razón social <Obligatorio />
-              </label>
-              <InputWrapper>
-                <FieldIcon icon={Building2} />
-                <input
-                  id="reg-razon-social"
-                  type="text"
-                  autoComplete="organization"
-                  required
-                  value={razonSocial}
-                  onChange={(e) => {
-                    setRazonSocial(e.target.value);
-                    campos.limpiar("razonSocial");
-                  }}
-                  placeholder="Ej: Construcciones del Sur S.R.L."
-                  className={inputClass}
-                  {...ariaErrorCampo("reg-razon-social", campos.errores.razonSocial)}
-                />
-              </InputWrapper>
-              <ErrorCampo idCampo="reg-razon-social" mensaje={campos.errores.razonSocial} />
-            </div>
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-8">
+        <SeccionNumerada numero={1} id="seccion-empresa" titulo="Datos de la empresa" variante="plana">
+          <GrillaCampos>
+            <CampoRegistro
+              id="reg-razon-social"
+              etiqueta="Razón social"
+              obligatorio
+              error={campos.errores.razonSocial}
+            >
+              <input
+                id="reg-razon-social"
+                type="text"
+                autoComplete="organization"
+                required
+                value={razonSocial}
+                onChange={(e) => {
+                  setRazonSocial(e.target.value);
+                  campos.limpiar("razonSocial");
+                }}
+                placeholder="Ej: Construcciones del Sur S.R.L."
+                className="campo"
+                {...ariaCampo("reg-razon-social", campos.errores.razonSocial)}
+              />
+            </CampoRegistro>
 
-            {/* CUIT */}
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="reg-cuit"
-                className="text-sm font-medium text-foreground"
-              >
-                CUIT <Obligatorio />
-              </label>
-              <InputWrapper>
-                <FieldIcon icon={Hash} />
-                <input
-                  id="reg-cuit"
-                  type="text"
-                  inputMode="numeric"
-                  required
-                  value={formatearCUIT(cuit)}
-                  onChange={(e) => {
-                    setCuit(e.target.value.replace(/\D/g, "").slice(0, 11));
-                    campos.limpiar("cuit");
-                  }}
-                  placeholder="30-12345678-9"
-                  className={`${inputClass} ${
-                    cuitError
-                      ? "border-danger focus:border-danger focus:ring-danger/20"
-                      : ""
-                  }`}
-                  {...ariaErrorCampo("reg-cuit", campos.errores.cuit)}
-                />
-              </InputWrapper>
-              <ErrorCampo idCampo="reg-cuit" mensaje={campos.errores.cuit} />
-              {cuitError && (
-                <p className="flex items-center gap-1.5 text-xs text-danger">
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  CUIT inválido. Verificá el dígito verificador.
-                </p>
-              )}
-              {cuitValido && (
-                <p className="flex items-center gap-1.5 text-xs text-primary">
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                  CUIT válido.
-                </p>
-              )}
-            </div>
+            <CampoRegistro id="reg-cuit" etiqueta="CUIT" obligatorio error={campos.errores.cuit}>
+              <input
+                id="reg-cuit"
+                type="text"
+                inputMode="numeric"
+                required
+                value={formatearCUIT(cuit)}
+                onChange={(e) => {
+                  setCuit(e.target.value.replace(/\D/g, "").slice(0, 11));
+                  campos.limpiar("cuit");
+                }}
+                placeholder="30-12345678-9"
+                className={cn(
+                  "campo tabular-nums",
+                  cuitError && "border-danger! shadow-[var(--sombra-error-campo)]!",
+                )}
+                {...ariaCampo("reg-cuit", campos.errores.cuit)}
+              />
+              <div aria-live="polite">
+                {cuitError && (
+                  <p className="flex items-center gap-1.5 text-sm text-danger">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    CUIT inválido. Verificá el dígito verificador.
+                  </p>
+                )}
+                {cuitValido && (
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-primary">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    CUIT válido
+                  </p>
+                )}
+              </div>
+            </CampoRegistro>
 
-            {/* Rubro */}
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="reg-rubro"
-                className="text-sm font-medium text-foreground"
+            <CampoRegistro
+              id="reg-rubro"
+              etiqueta="Rubro"
+              obligatorio
+              error={campos.errores.rubro}
+            >
+              <select
+                id="reg-rubro"
+                required
+                value={rubro}
+                onChange={(e) => {
+                  setRubro(e.target.value);
+                  campos.limpiar("rubro");
+                }}
+                className="campo cursor-pointer"
+                {...ariaCampo("reg-rubro", campos.errores.rubro)}
               >
-                Rubro <Obligatorio />
-              </label>
-              <InputWrapper>
-                <FieldIcon icon={Briefcase} />
-                <select
-                  id="reg-rubro"
-                  required
-                  value={rubro}
-                  onChange={(e) => {
-                    setRubro(e.target.value);
-                    campos.limpiar("rubro");
-                  }}
-                  {...ariaErrorCampo("reg-rubro", campos.errores.rubro)}
-                  className={selectClass}
-                >
-                  <option value="" disabled>
-                    Seleccioná un rubro…
+                <option value="" disabled>
+                  Seleccioná un rubro…
+                </option>
+                {categorias.map((c) => (
+                  <option key={c.id} value={c.nombre}>
+                    {c.nombre}
                   </option>
-                  {categorias.map((c) => (
-                    <option key={c.id} value={c.nombre}>
-                      {c.nombre}
-                    </option>
-                  ))}
-                </select>
-              </InputWrapper>
-              <ErrorCampo idCampo="reg-rubro" mensaje={campos.errores.rubro} />
-            </div>
+                ))}
+              </select>
+            </CampoRegistro>
 
-            {/* Descripción */}
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="reg-descripcion"
-                className="text-sm font-medium text-foreground"
-              >
+            <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-2">
+              <label htmlFor="reg-descripcion" className="etiqueta-campo">
                 Descripción breve{" "}
-                <span className="text-xs font-normal text-muted-icon">
-                  (opcional)
-                </span>
+                <span className="text-sm font-normal text-muted-foreground">(opcional)</span>
               </label>
               <textarea
                 id="reg-descripcion"
@@ -302,239 +209,119 @@ export function RegistroEmpresaForm({ categorias }: Props) {
                 }}
                 placeholder="Contanos brevemente a qué se dedica tu empresa…"
                 maxLength={LARGO_MAXIMO.descripcion}
-                className={`w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 ${CLASE_CONTROL_INVALIDO}`}
-                {...ariaErrorCampo("reg-descripcion", campos.errores.descripcion)}
+                className="campo resize-y"
+                {...ariaCampo("reg-descripcion", campos.errores.descripcion, true)}
               />
-              <ErrorCampo idCampo="reg-descripcion" mensaje={campos.errores.descripcion} />
-              <ContadorCaracteres actual={descripcion.length} maximo={LARGO_MAXIMO.descripcion} />
-            </div>
-          </div>
-        </section>
-
-        <div className="h-px bg-border" />
-
-        {/* ── 2. Persona responsable ────────────────────────────────────── */}
-        <section>
-          <SectionTitle>Persona responsable</SectionTitle>
-          <div className="flex flex-col gap-4">
-            {/* Nombre + Apellido */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <label
-                  htmlFor="reg-nombre"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Nombre <Obligatorio />
-                </label>
-                <InputWrapper>
-                  <FieldIcon icon={User} />
-                  <input
-                    id="reg-nombre"
-                    type="text"
-                    autoComplete="given-name"
-                    required
-                    value={nombre}
-                    onChange={(e) => {
-                      setNombre(e.target.value);
-                      campos.limpiar("nombre");
-                    }}
-                    placeholder="Ej: Carlos"
-                    className={inputClass}
-                    {...ariaErrorCampo("reg-nombre", campos.errores.nombre)}
-                  />
-                </InputWrapper>
-                <ErrorCampo idCampo="reg-nombre" mensaje={campos.errores.nombre} />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label
-                  htmlFor="reg-apellido"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Apellido <Obligatorio />
-                </label>
-                <InputWrapper>
-                  <FieldIcon icon={User} />
-                  <input
-                    id="reg-apellido"
-                    type="text"
-                    autoComplete="family-name"
-                    required
-                    value={apellido}
-                    onChange={(e) => {
-                      setApellido(e.target.value);
-                      campos.limpiar("apellido");
-                    }}
-                    placeholder="Ej: Ramírez"
-                    className={inputClass}
-                    {...ariaErrorCampo("reg-apellido", campos.errores.apellido)}
-                  />
-                </InputWrapper>
-                <ErrorCampo idCampo="reg-apellido" mensaje={campos.errores.apellido} />
-              </div>
-            </div>
-
-            {/* Teléfono */}
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="reg-telefono"
-                className="text-sm font-medium text-foreground"
-              >
-                Teléfono / Celular <Obligatorio />
-              </label>
-              <InputWrapper>
-                <FieldIcon icon={Phone} />
-                <input
-                  id="reg-telefono"
-                  type="tel"
-                  autoComplete="tel"
-                  required
-                  value={telefono}
-                  onChange={(e) => {
-                    setTelefono(e.target.value);
-                    campos.limpiar("telefono");
-                  }}
-                  placeholder="Ej: 341 5678901"
-                  className={inputClass}
-                  {...ariaErrorCampo("reg-telefono", campos.errores.telefono)}
-                />
-              </InputWrapper>
-              <ErrorCampo idCampo="reg-telefono" mensaje={campos.errores.telefono} />
-            </div>
-
-            {/* Email */}
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="reg-email"
-                className="text-sm font-medium text-foreground"
-              >
-                Correo electrónico <Obligatorio />
-              </label>
-              <InputWrapper>
-                <FieldIcon icon={Mail} />
-                <input
-                  id="reg-email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    campos.limpiar("email");
-                  }}
-                  placeholder="empresa@ejemplo.com"
-                  className={inputClass}
-                  {...ariaErrorCampo("reg-email", campos.errores.email)}
-                />
-              </InputWrapper>
-              <ErrorCampo idCampo="reg-email" mensaje={campos.errores.email} />
-            </div>
-
-            {/* Contraseña */}
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="reg-password"
-                className="text-sm font-medium text-foreground"
-              >
-                Contraseña <Obligatorio />
-              </label>
-              <InputWrapper>
-                <FieldIcon icon={Lock} />
-                <input
-                  id="reg-password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="new-password"
-                  required
-                  minLength={6}
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    campos.limpiar("password");
-                  }}
-                  placeholder="Mínimo 8 caracteres"
-                  className={`${inputClass} pr-10`}
-                  {...ariaErrorCampo("reg-password", campos.errores.password)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={
-                    showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
-                  }
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-icon transition hover:text-muted-foreground-strong"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              </InputWrapper>
-              <ErrorCampo idCampo="reg-password" mensaje={campos.errores.password} />
-            </div>
-
-            {/* Repetir contraseña */}
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="reg-password-repeat"
-                className="text-sm font-medium text-foreground"
-              >
-                Repetir contraseña <Obligatorio />
-              </label>
-              <InputWrapper>
-                <FieldIcon icon={Lock} />
-                <input
-                  id="reg-password-repeat"
-                  type={showPasswordRepeat ? "text" : "password"}
-                  autoComplete="new-password"
-                  required
-                  value={passwordRepeat}
-                  onChange={(e) => {
-                    setPasswordRepeat(e.target.value);
-                    campos.limpiar("passwordRepeat");
-                  }}
-                  placeholder="Repetí tu contraseña"
-                  className={`${inputClass} pr-10 ${
-                    passwordRepeatError
-                      ? "border-danger focus:border-danger focus:ring-danger/20"
-                      : ""
-                  }`}
-                  {...ariaErrorCampo("reg-password-repeat", campos.errores.passwordRepeat)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPasswordRepeat(!showPasswordRepeat)}
-                  aria-label={
-                    showPasswordRepeat
-                      ? "Ocultar contraseña"
-                      : "Mostrar contraseña"
-                  }
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-icon transition hover:text-muted-foreground-strong"
-                >
-                  {showPasswordRepeat ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              </InputWrapper>
-              <ErrorCampo idCampo="reg-password-repeat" mensaje={campos.errores.passwordRepeat} />
-              {passwordRepeatError && (
-                <p className="flex items-center gap-1.5 text-xs text-danger">
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  Las contraseñas no coinciden.
+              <div className="flex items-start justify-between gap-3">
+                <p id={idAyudaCampo("reg-descripcion")} className="text-sm text-muted-foreground">
+                  Contá a qué se dedica la empresa. Lo ven los postulantes en tus ofertas.
                 </p>
-              )}
-              {!passwordRepeatError && passwordRepeat !== "" && (
-                <p className="flex items-center gap-1.5 text-xs text-primary">
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                  Las contraseñas coinciden.
+                <ContadorCaracteres
+                  className="shrink-0 text-[13px]"
+                  actual={descripcion.length}
+                  maximo={LARGO_MAXIMO.descripcion}
+                />
+              </div>
+              {campos.errores.descripcion && (
+                <p id="reg-descripcion-error" className="flex items-start gap-1.5 text-sm text-danger">
+                  <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  {campos.errores.descripcion}
                 </p>
               )}
             </div>
-          </div>
-        </section>
+          </GrillaCampos>
+        </SeccionNumerada>
 
-        {/* ── Error global ───────────────────────────────────────────────── */}
+        <hr className="border-tabla-borde" />
+
+        <SeccionNumerada
+          numero={2}
+          id="seccion-responsable"
+          titulo="Persona responsable"
+          variante="plana"
+        >
+          <GrillaCampos>
+            <CampoRegistro id="reg-nombre" etiqueta="Nombre" obligatorio error={campos.errores.nombre}>
+              <input
+                id="reg-nombre"
+                type="text"
+                autoComplete="given-name"
+                required
+                value={nombre}
+                onChange={(e) => {
+                  setNombre(e.target.value);
+                  campos.limpiar("nombre");
+                }}
+                placeholder="Ej: Carlos"
+                className="campo"
+                {...ariaCampo("reg-nombre", campos.errores.nombre)}
+              />
+            </CampoRegistro>
+
+            <CampoRegistro id="reg-apellido" etiqueta="Apellido" obligatorio error={campos.errores.apellido}>
+              <input
+                id="reg-apellido"
+                type="text"
+                autoComplete="family-name"
+                required
+                value={apellido}
+                onChange={(e) => {
+                  setApellido(e.target.value);
+                  campos.limpiar("apellido");
+                }}
+                placeholder="Ej: Ramírez"
+                className="campo"
+                {...ariaCampo("reg-apellido", campos.errores.apellido)}
+              />
+            </CampoRegistro>
+
+            <CampoRegistro
+              id="reg-telefono"
+              etiqueta="Teléfono / Celular"
+              obligatorio
+              error={campos.errores.telefono}
+            >
+              <input
+                id="reg-telefono"
+                type="tel"
+                autoComplete="tel"
+                required
+                value={telefono}
+                onChange={(e) => {
+                  setTelefono(e.target.value);
+                  campos.limpiar("telefono");
+                }}
+                placeholder="Ej: 341 5678901"
+                className="campo"
+                {...ariaCampo("reg-telefono", campos.errores.telefono)}
+              />
+            </CampoRegistro>
+          </GrillaCampos>
+        </SeccionNumerada>
+
+        <hr className="border-tabla-borde" />
+
+        <SeccionAcceso
+          numero={3}
+          email={email}
+          password={password}
+          passwordRepeat={passwordRepeat}
+          onEmail={(v) => {
+            setEmail(v);
+            campos.limpiar("email");
+          }}
+          onPassword={(v) => {
+            setPassword(v);
+            campos.limpiar("password");
+          }}
+          onPasswordRepeat={(v) => {
+            setPasswordRepeat(v);
+            campos.limpiar("passwordRepeat");
+          }}
+          errores={campos.errores}
+          placeholderEmail="empresa@ejemplo.com"
+        />
+
         {submitError && (
           <Aviso tono="danger">
             <p>{submitError.mensaje}</p>
@@ -546,32 +333,11 @@ export function RegistroEmpresaForm({ categorias }: Props) {
           </Aviso>
         )}
 
-        {/* ── Submit ─────────────────────────────────────────────────────── */}
-        <button
-          type="submit"
+        <PieRegistro
           id="reg-empresa-submit"
-          disabled={isLoading || passwordRepeatError || cuitError}
-          aria-busy={isLoading}
-          className="btn-primario w-full"
-        >
-          {isLoading ? (
-            <Spinner />
-          ) : (
-            <Building2 className="h-4 w-4" />
-          )}
-          {isLoading ? "Registrando…" : "Registrar empresa"}
-        </button>
-
-        {/* ── Footer del form ────────────────────────────────────────────── */}
-        <p className="text-center text-xs text-muted-icon">
-          ¿Ya tenés una cuenta?{" "}
-          <Link
-            href="/auth/login"
-            className="font-semibold text-primary hover:underline"
-          >
-            Iniciá sesión acá
-          </Link>
-        </p>
+          pendiente={isLoading}
+          deshabilitado={passwordRepeatError || cuitError}
+        />
       </form>
     </div>
   );

@@ -30,13 +30,13 @@ export function AuthShell({
   volver,
 }: {
   children: React.ReactNode;
-  /** "amplio" (640 px) para el registro, que tiene más campos. */
+  /** "amplio" (720 px) para el registro, que tiene más campos. */
   ancho?: "normal" | "amplio";
   volver?: { href: string; texto: string };
 }) {
   return (
     <main className="auth-fondo">
-      <div className={cn("w-full", ancho === "amplio" ? "max-w-[640px]" : "max-w-[460px]")}>
+      <div className={cn("w-full", ancho === "amplio" ? "max-w-[720px]" : "max-w-[460px]")}>
         <LinkVolverAuth href={volver?.href}>{volver?.texto}</LinkVolverAuth>
         <div className="auth-tarjeta">
           <Image
