@@ -88,3 +88,60 @@ export function TarjetaPerfil({
     </div>
   );
 }
+
+// ─── Rediseño del perfil del postulante (PR 4) ─────────────────────────────
+
+/** Campo del perfil: alto 48, borde 1,5 px border-campo y radio 10. */
+export const CLASE_CAMPO_PERFIL = "campo min-h-12 rounded-[var(--radius-md)] border-border-campo";
+/** El mismo campo con un ícono a la izquierda (FieldIcon). */
+export const CLASE_CAMPO_CON_ICONO = `${CLASE_CAMPO_PERFIL} pl-10`;
+export const CLASE_ETIQUETA_PERFIL = "text-[15px] font-bold text-control-foreground";
+export const CLASE_AYUDA_PERFIL = "text-[13px] leading-snug text-muted-foreground";
+/** Para ErrorCampo: 13 px 600 en rojo. */
+export const CLASE_ERROR_PERFIL = "text-[13px] font-semibold";
+
+/**
+ * Tarjeta de una sección de "Mi perfil": título, una línea de ayuda opcional
+ * y el contenido. El id es el ancla del índice "En esta página".
+ */
+export function SeccionPerfil({
+  id,
+  titulo,
+  ayuda,
+  acciones,
+  children,
+}: {
+  id: string;
+  titulo: string;
+  ayuda?: React.ReactNode;
+  /** A la derecha del título (por ejemplo "Cambiar contraseña"). */
+  acciones?: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  const idTitulo = `${id}-titulo`;
+  return (
+    <section
+      id={id}
+      aria-labelledby={idTitulo}
+      className="tarjeta flex scroll-mt-20 flex-col gap-5 px-4 py-[18px] sm:p-6"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h2 id={idTitulo} className="text-lg font-extrabold text-heading sm:text-xl">
+            {titulo}
+          </h2>
+          {ayuda && <p className="mt-1 text-sm text-muted-foreground">{ayuda}</p>}
+        </div>
+        {acciones}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** Botones al pie de una sección: a la derecha; en el celular, a todo el ancho. */
+export function PieSeccion({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">{children}</div>
+  );
+}

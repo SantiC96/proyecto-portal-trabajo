@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, FileText, Info, Upload, X } from "lucide-react";
+import { ExternalLink, FileText, Upload, X } from "lucide-react";
 import { subirCV, eliminarCV } from "./actions";
 import type { CvVista } from "@/lib/cvs";
 import type { ErrorAccion } from "@/lib/resultado";
@@ -10,7 +10,9 @@ import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
 import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
-import { MensajeError, SectionTitle } from "@/components/perfil/piezas";
+import { MensajeError, SeccionPerfil } from "@/components/perfil/piezas";
+import { Franja } from "@/components/ui/franja";
+import { cn } from "@/lib/utils";
 import { formatFecha } from "@/lib/fechas";
 import { SECCION_PERFIL } from "@/lib/perfil-secciones";
 import {
@@ -22,10 +24,9 @@ import {
   textoTamanoArchivo,
   validarTipoCV,
 } from "@/lib/archivos";
-import { Aviso } from "@/components/ui/aviso";
 
 /**
- * Sección "Curriculum Vitae" del perfil del postulante: hasta CV_MAXIMOS CVs
+ * Sección "CVs" del perfil del postulante: hasta CV_MAXIMOS CVs
  * disponibles (migration_054), del más nuevo al más viejo.
  */
 export function SeccionCvs({ cvs }: { cvs: CvVista[] }) {
@@ -74,143 +75,118 @@ export function SeccionCvs({ cvs }: { cvs: CvVista[] }) {
   }
 
   const indicadorSubida = subiendo && (
-    <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-surface-tinted px-4 py-3">
+    <div className="flex items-center gap-3 rounded-[var(--radius-lg)] border border-primary bg-opcion-elegida px-4 py-3">
       <Spinner className="text-primary" />
       <div className="min-w-0 flex-1">
-        <p className="break-all text-sm font-medium text-foreground">{archivo?.name}</p>
-        <p className="text-xs text-muted-foreground">
+        <p className="break-all text-[15px] font-bold text-heading">{archivo?.name}</p>
+        <p className="text-[13px] text-muted-foreground">
           {archivo ? `${textoTamanoArchivo(archivo.size)} · PDF` : ""}
         </p>
       </div>
-      <span className="shrink-0 text-sm text-primary">Subiendo CV…</span>
+      <span className="shrink-0 text-sm font-semibold text-primary">Subiendo CV…</span>
     </div>
   );
 
   return (
-    <div
+    <SeccionPerfil
       id={SECCION_PERFIL.cvs}
-      className="scroll-mt-20 rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6"
+      titulo="CVs"
+      ayuda={`Podés tener hasta ${CV_MAXIMOS} CVs y elegir cuál usar en cada postulación.`}
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <SectionTitle>Curriculum Vitae</SectionTitle>
-        {cvs.length > 0 && (
-          <span className="text-sm text-muted-foreground" aria-live="polite">
-            {cvs.length} de {CV_MAXIMOS} CVs
-          </span>
-        )}
-      </div>
-
       {cvs.length === 0 ? (
-        <div className="mt-4 flex flex-col gap-4">
-          <div className="rounded-lg border border-border bg-secondary px-4 py-4">
-            <p className="text-sm font-semibold text-foreground">Todavía no subiste tu CV</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Subí tu currículum en PDF para que las empresas y la oficina de empleo puedan conocer tu experiencia. Es un paso clave para postularte a las ofertas disponibles. Podés tener hasta {CV_MAXIMOS} CVs y elegir cuál usar en cada postulación.
-            </p>
-          </div>
-
-          {indicadorSubida || (
-            <button
-              type="button"
-              onClick={abrirSelector}
-              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-background px-6 py-8 text-center transition hover:border-primary/50 hover:bg-surface-tinted"
-            >
-              <Upload className="h-8 w-8 text-muted-icon" />
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  Hacé clic para seleccionar tu CV. Se sube automáticamente.
-                </p>
-                <p className="mt-1 text-xs text-muted-icon">{CV_HELP_TEXT}</p>
-              </div>
-            </button>
-          )}
+        <div className="rounded-[var(--radius-lg)] border border-border bg-surface-tinted px-4 py-4">
+          <p className="text-[15px] font-bold text-heading">Todavía no subiste tu CV</p>
+          <p className="mt-1 text-[15px] text-muted-foreground">
+            Subí tu currículum en PDF para que las empresas y la oficina de empleo puedan conocer tu experiencia. Es un paso clave para postularte a las ofertas disponibles.
+          </p>
         </div>
       ) : (
-        <div className="mt-4 flex flex-col gap-4">
-          <ul className="flex flex-col gap-3">
-            {cvs.map((cv) => (
-              <li
-                key={cv.id}
-                className="flex flex-col gap-3 rounded-xl border border-border bg-surface-tinted px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <FileText className="h-8 w-8 shrink-0 text-primary" aria-hidden="true" />
-                  <div className="min-w-0">
-                    <p className="break-all text-sm font-medium text-foreground">
-                      {cv.nombreOriginal}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {cv.tamano > 0 ? `${textoTamanoArchivo(cv.tamano)} · ` : ""}
-                      PDF · Subido el {formatFecha(cv.subidoEn)}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {cv.url && (
-                    <a
-                      href={subiendo ? undefined : cv.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-disabled={subiendo}
-                      tabIndex={subiendo ? -1 : undefined}
-                      className={`btn-secundario inline-flex min-h-11 items-center gap-1.5 px-3 text-sm font-medium sm:min-h-9${subiendo ? " pointer-events-none opacity-60" : ""}`}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Ver
-                    </a>
-                  )}
-                  <DialogoConfirmacion
-                    textoBoton={
-                      <>
-                        <X className="h-4 w-4" />
-                        Eliminar
-                      </>
-                    }
-                    estiloBoton="peligro"
-                    claseBoton="px-3 sm:min-h-9"
-                    deshabilitado={subiendo}
-                    titulo="¿Eliminar este CV?"
-                    descripcion="Las postulaciones que ya hiciste con este CV no cambian."
-                    textoConfirmar="Sí, eliminar"
-                    textoPendiente="Eliminando…"
-                    destructivo
-                    accion={() => eliminarCV(cv.id)}
-                    onExito={() => {
-                      setAvisoLimite(false);
-                      router.refresh();
-                    }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          {indicadorSubida}
-
-          <div className="flex flex-col gap-1">
-            <button
-              type="button"
-              onClick={abrirSelector}
-              disabled={subiendo}
-              aria-busy={subiendo}
-              aria-describedby={avisoLimite ? "aviso-limite-cvs" : undefined}
-              className="btn-secundario inline-flex min-h-11 w-fit items-center gap-1.5 px-4 text-sm font-medium sm:min-h-9"
+        <ul className="flex flex-col gap-2">
+          {cvs.map((cv) => (
+            <li
+              key={cv.id}
+              className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border bg-surface px-4 py-3 sm:flex-row sm:items-center"
             >
-              {subiendo ? <Spinner /> : <Upload className="h-4 w-4" />}
-              {subiendo ? "Subiendo…" : "Subir CV"}
-            </button>
-            <p className="text-xs text-muted-icon">{CV_HELP_TEXT}</p>
-          </div>
-        </div>
+              <div className="flex min-w-0 flex-1 items-start gap-3">
+                <FileText className="mt-0.5 size-6 shrink-0 text-primary" aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="break-all text-[15px] font-bold text-heading">
+                    {cv.nombreOriginal}
+                  </p>
+                  <p className="text-[13px] text-muted-foreground">
+                    {cv.tamano > 0 ? `${textoTamanoArchivo(cv.tamano)} · ` : ""}
+                    PDF · Cargado el {formatFecha(cv.subidoEn)}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                {cv.url && (
+                  <a
+                    href={subiendo ? undefined : cv.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-disabled={subiendo}
+                    tabIndex={subiendo ? -1 : undefined}
+                    className={cn("btn-neutro sm:min-h-10!", subiendo && "pointer-events-none")}
+                  >
+                    <ExternalLink aria-hidden="true" />
+                    Ver
+                  </a>
+                )}
+                <DialogoConfirmacion
+                  textoBoton={
+                    <>
+                      <X aria-hidden="true" />
+                      Eliminar
+                    </>
+                  }
+                  estiloBoton="peligroBorde"
+                  claseBoton="sm:min-h-10!"
+                  deshabilitado={subiendo}
+                  titulo="¿Eliminar este CV?"
+                  descripcion="Las postulaciones que ya hiciste con este CV no cambian."
+                  textoConfirmar="Sí, eliminar"
+                  textoPendiente="Eliminando…"
+                  destructivo
+                  accion={() => eliminarCV(cv.id)}
+                  onExito={() => {
+                    setAvisoLimite(false);
+                    router.refresh();
+                  }}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
 
-      <div aria-live="polite" className="mt-4 empty:hidden">
+      {indicadorSubida}
+
+      <div aria-live="polite" className="flex flex-col gap-3 empty:hidden">
         {avisoLimite && enLimite && (
-          <Aviso id="aviso-limite-cvs" tono="warning" icono={Info} role="none">
+          <Franja id="aviso-limite-cvs" tono="aviso">
             {ERRORES_ARCHIVO.cvLimite}
-          </Aviso>
+          </Franja>
         )}
         {error && <MensajeError error={error} />}
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-[15px] text-muted-foreground-strong" aria-live="polite">
+          Tenés {cvs.length} de {CV_MAXIMOS} CVs cargados.
+          <span className="block text-[13px] text-muted-foreground">{CV_HELP_TEXT}</span>
+        </p>
+        <button
+          type="button"
+          onClick={abrirSelector}
+          disabled={subiendo}
+          aria-busy={subiendo}
+          aria-describedby={avisoLimite ? "aviso-limite-cvs" : undefined}
+          className="btn-secundario"
+        >
+          {subiendo ? <Spinner /> : <Upload aria-hidden="true" />}
+          {subiendo ? "Subiendo…" : "Subir CV"}
+        </button>
       </div>
 
       <input
@@ -224,6 +200,6 @@ export function SeccionCvs({ cvs }: { cvs: CvVista[] }) {
           e.target.value = "";
         }}
       />
-    </div>
+    </SeccionPerfil>
   );
 }
