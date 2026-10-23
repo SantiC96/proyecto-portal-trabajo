@@ -28,6 +28,7 @@ export const CLASE_ACCION_DIALOGO = {
 export const CLASE_BOTON = {
   primario: "btn-primario",
   secundario: "btn-secundario",
+  neutro: "btn-neutro",
   peligro: "btn-peligro",
   /** Destructiva de menor peso: blanco con borde y texto rojos (retirar una postulación). */
   peligroBorde: "btn-peligro-borde",

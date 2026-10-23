@@ -63,7 +63,25 @@ type Props = {
   /** Mensajes de error debajo del día y del horario. */
   errorDia?: string;
   errorHora?: string;
+  /**
+   * Fecha (campo de fecha del navegador) y horario lado a lado, para un
+   * formulario dentro de una tarjeta angosta. Sin esto, el día se elige en un
+   * calendario.
+   */
+  compacto?: boolean;
 };
+
+function aValorFecha(dia: Date): string {
+  const mm = String(dia.getMonth() + 1).padStart(2, "0");
+  const dd = String(dia.getDate()).padStart(2, "0");
+  return `${dia.getFullYear()}-${mm}-${dd}`;
+}
+
+function deValorFecha(valor: string): Date | undefined {
+  const [y, m, d] = valor.split("-").map(Number);
+  if (!y || !m || !d) return undefined;
+  return new Date(y, m - 1, d);
+}
 
 /** Día (calendario, desde hoy) y horario (select), ambos obligatorios. */
 export function CampoFechaHora({
@@ -75,10 +93,62 @@ export function CampoFechaHora({
   deshabilitado = false,
   errorDia,
   errorHora,
+  compacto = false,
 }: Props) {
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
   const idDia = `${idHorario}-dia`;
+
+  const selectHorario = (
+    <select
+      id={idHorario}
+      value={hora}
+      onChange={(e) => onHoraChange(e.target.value)}
+      disabled={!dia || deshabilitado}
+      {...ariaErrorCampo(idHorario, errorHora)}
+      className="campo"
+    >
+      <option value="">{compacto ? "Elegí…" : "Elegí un horario…"}</option>
+      {HORARIOS.map((slot) => (
+        <option key={slot} value={slot} disabled={horarioYaPaso(dia, slot)}>
+          {slot}
+        </option>
+      ))}
+    </select>
+  );
+
+  if (compacto) {
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        <div className="min-w-0">
+          <label htmlFor={idDia} className="etiqueta-campo mb-1.5 block">
+            Fecha <Obligatorio />
+          </label>
+          <input
+            id={idDia}
+            type="date"
+            min={aValorFecha(hoy)}
+            value={dia ? aValorFecha(dia) : ""}
+            onChange={(e) => {
+              const nuevo = deValorFecha(e.target.value);
+              onDiaChange(nuevo && nuevo >= hoy ? nuevo : undefined);
+            }}
+            disabled={deshabilitado}
+            {...ariaErrorCampo(idDia, errorDia)}
+            className="campo"
+          />
+          <ErrorCampo idCampo={idDia} mensaje={errorDia} className="mt-1.5" />
+        </div>
+        <div className="min-w-0">
+          <label htmlFor={idHorario} className="etiqueta-campo mb-1.5 block">
+            Hora <Obligatorio />
+          </label>
+          {selectHorario}
+          <ErrorCampo idCampo={idHorario} mensaje={errorHora} className="mt-1.5" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -115,21 +185,7 @@ export function CampoFechaHora({
         <label htmlFor={idHorario} className="etiqueta-campo mb-1.5 block">
           Horario <Obligatorio />
         </label>
-        <select
-          id={idHorario}
-          value={hora}
-          onChange={(e) => onHoraChange(e.target.value)}
-          disabled={!dia || deshabilitado}
-          {...ariaErrorCampo(idHorario, errorHora)}
-          className="campo"
-        >
-          <option value="">Elegí un horario…</option>
-          {HORARIOS.map((slot) => (
-            <option key={slot} value={slot} disabled={horarioYaPaso(dia, slot)}>
-              {slot}
-            </option>
-          ))}
-        </select>
+        {selectHorario}
         <ErrorCampo idCampo={idHorario} mensaje={errorHora} className="mt-1.5" />
       </div>
     </>
