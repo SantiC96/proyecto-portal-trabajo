@@ -33,7 +33,7 @@ export default async function MisCursosPage({
   return (
     <section>
       <div className="space-y-6">
-        <BotonVolver href="/perfil">Volver a mi perfil</BotonVolver>
+        <BotonVolver href="/perfil" />
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             Mis cursos

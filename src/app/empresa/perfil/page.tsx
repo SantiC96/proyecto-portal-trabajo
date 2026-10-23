@@ -40,7 +40,7 @@ export default async function EmpresaPerfilPage() {
     <>
       <main className="flex-1">
         <section className="contenido-lectura-ancho">
-          <BotonVolver href="/empresa">Volver al panel</BotonVolver>
+          <BotonVolver href="/empresa" />
           <h1 className="mb-6 mt-4 text-2xl font-bold tracking-tight text-foreground">
             Mi perfil
           </h1>

@@ -92,7 +92,7 @@ export default async function AdminOfertaDetallePage({
 
   return (
     <section className="contenido-lectura-ancho">
-      <BotonVolver href="/admin/ofertas">Volver a ofertas</BotonVolver>
+      <BotonVolver href="/admin/ofertas" />
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Columna principal */}

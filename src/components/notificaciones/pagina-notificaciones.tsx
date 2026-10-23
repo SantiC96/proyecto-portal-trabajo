@@ -23,15 +23,15 @@ import { BotonVolver } from "@/components/ui/boton-volver";
 export async function PaginaNotificaciones({
   usuarioId,
   ruta,
-  panel,
+  volverA,
   textoVacio,
   searchParams,
 }: {
   usuarioId: string;
   /** Ruta de esta página (para la paginación). */
   ruta: string;
-  /** Página a la que vuelve el botón "Volver" (el panel del rol). */
-  panel: { href: string; label: string };
+  /** Destino de respaldo de "Volver" (el panel del rol). */
+  volverA: string;
   textoVacio: string;
   searchParams: ParamsUrl;
 }) {
@@ -50,7 +50,7 @@ export async function PaginaNotificaciones({
 
   return (
     <section>
-      <BotonVolver href={panel.href}>{panel.label}</BotonVolver>
+      <BotonVolver href={volverA} />
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
         <div>

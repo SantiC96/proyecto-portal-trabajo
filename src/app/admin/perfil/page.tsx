@@ -18,7 +18,7 @@ export default async function AdminPerfilPage() {
 
   return (
     <section className="contenido-lectura-ancho">
-      <BotonVolver href="/admin">Volver al panel</BotonVolver>
+      <BotonVolver href="/admin" />
       <h1 className="mb-6 mt-4 text-2xl font-bold tracking-tight text-foreground">Mi perfil</h1>
 
       <div className="flex flex-col gap-6">

@@ -114,7 +114,7 @@ export default async function AdminOfertasPage({
 
   return (
     <section>
-      <BotonVolver href="/admin">Volver al panel</BotonVolver>
+      <BotonVolver href="/admin" />
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         Ofertas

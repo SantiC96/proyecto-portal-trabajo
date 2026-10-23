@@ -43,7 +43,7 @@ export default async function CursosPage({
       <Suspense>
         <AvisoUrl />
       </Suspense>
-      <BotonVolver href="/admin">Volver al panel</BotonVolver>
+      <BotonVolver href="/admin" />
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div>

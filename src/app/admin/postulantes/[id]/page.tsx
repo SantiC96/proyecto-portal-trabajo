@@ -240,9 +240,7 @@ export default async function PostulanteFichaPage({
 
   return (
     <section className="contenido-lectura-ancho">
-      <BotonVolver href={volverHref}>
-        {volverACandidatos ? "Volver a la búsqueda de la oferta" : "Volver a postulantes"}
-      </BotonVolver>
+      <BotonVolver href={volverHref} />
 
       {/* Cabecera */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">

@@ -100,9 +100,7 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
 
   return (
     <main className="flex-1">
-      <BotonVolver href="/ofertas" destacado>
-        Volver al listado
-      </BotonVolver>
+      <BotonVolver href="/ofertas" destacado />
 
       <div className="@container mt-4">
         <div className="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_360px] @4xl:gap-7">
