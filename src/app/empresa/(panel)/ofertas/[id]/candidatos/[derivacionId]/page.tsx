@@ -1,26 +1,35 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarClock, Mail, Phone, FileText, ExternalLink, User } from "lucide-react";
+import { User } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirEmpresaPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_TONO } from "@/lib/derivacion-estados";
 import { Badge } from "@/components/ui/badge";
-import { Aviso } from "@/components/ui/aviso";
+import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
+import { DatosClave } from "@/components/ui/datos-clave";
+import { Cita } from "@/components/ui/cita";
+import { FilaArchivo } from "@/components/ui/fila-archivo";
 import type {
   FilaCandidatoParaEmpresa,
   FilaCvParaEmpresa,
   FilaDerivacionDeOfertaEmpresa,
 } from "@/types/db";
 import { InformacionLaboralResumen } from "@/components/postulantes/informacion-laboral-resumen";
+import { inicialesDePersona } from "@/lib/iniciales";
 import { AccionesDerivacion } from "./_components/acciones-derivacion";
+import { BookmarkBtn } from "./_components/bookmark-btn";
 import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Ficha de candidato | Portal de Empleo Funes",
 };
+
+const LINK_DATO =
+  "font-semibold break-all text-primary underline-offset-2 hover:underline focus-visible:rounded-sm focus-visible:shadow-[var(--sombra-foco)] focus-visible:outline-none";
 
 export default async function CandidatoFichaPage({
   params,
@@ -90,163 +99,157 @@ export default async function CandidatoFichaPage({
     cvUrl = signed?.signedUrl ?? null;
   }
 
+  const nombre = candidato ? `${candidato.nombre} ${candidato.apellido}` : "Candidato";
   const estadoLabel =
     DERIVACION_ESTADO_LABEL[derivacion.estado_empresa] ?? derivacion.estado_empresa;
   const estadoTono = DERIVACION_ESTADO_TONO[derivacion.estado_empresa] ?? "neutral";
 
   return (
     <section className="contenido-lectura-ancho">
-      <BotonVolver href={`/empresa/ofertas/${ofertaId}`}>Volver a la oferta</BotonVolver>
+      <BotonVolver href={`/empresa/ofertas/${ofertaId}`} destacado>
+        Volver a {oferta.titulo}
+      </BotonVolver>
 
       {/* Cabecera */}
-      <div className="mt-4 flex items-center gap-3">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            {candidato
-              ? `${candidato.nombre} ${candidato.apellido}`
-              : "Candidato"}
-          </h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <Badge tono={estadoTono} estado>
-              {estadoLabel}
-            </Badge>
+      <header className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-4">
+          <AvatarAjustado
+            alt=""
+            size="ficha"
+            iniciales={candidato ? inicialesDePersona(candidato.nombre, candidato.apellido) : undefined}
+          />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <h1 className="text-[26px] leading-[1.15] font-extrabold tracking-[-0.01em] break-words text-heading sm:text-[32px]">
+                {nombre}
+              </h1>
+              <Badge tono={estadoTono} estado>
+                {estadoLabel}
+              </Badge>
+            </div>
+            <p className="mt-1.5 text-base break-words text-muted-foreground">
+              Candidato para {oferta.titulo} · derivado el{" "}
+              {formatFecha(derivacion.derivacion_created_at)}
+            </p>
             {derivacion.fecha_respuesta && (
-              <span className="text-xs text-muted-foreground">
+              <p className="mt-0.5 text-sm text-muted-foreground">
                 Respuesta: {formatFechaHora(derivacion.fecha_respuesta)}
-              </span>
+              </p>
             )}
           </div>
         </div>
-      </div>
+        <BookmarkBtn
+          postulanteId={derivacion.postulante_id}
+          ofertaOrigenId={ofertaId}
+          guardadoId={guardado?.id ?? null}
+          className="w-full shrink-0 sm:w-auto"
+        />
+      </header>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Columna principal */}
-        <div className="space-y-6 lg:col-span-2">
-          {/* Datos de contacto */}
-          <div className="rounded-[var(--radius-lg)] border border-border bg-white p-5 shadow-xs">
-            <h2 className="font-semibold text-foreground">Datos de contacto</h2>
-            {candidato ? (
-              <dl className="mt-4 space-y-3 text-sm">
-                <div className="flex items-start gap-3">
-                  <Mail className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Email</dt>
-                    <dd className="font-medium text-foreground">{candidato.email}</dd>
-                  </div>
-                </div>
-                {candidato.telefono && (
-                  <div className="flex items-start gap-3">
-                    <Phone className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                    <div>
-                      <dt className="text-xs text-muted-foreground">Teléfono</dt>
-                      <dd className="font-medium text-foreground">{candidato.telefono}</dd>
-                    </div>
-                  </div>
-                )}
-                {cv && cvUrl ? (
-                  <div className="flex items-start gap-3">
-                    <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                    <div className="min-w-0">
-                      <dt className="text-xs text-muted-foreground">Currículum</dt>
-                      <dd className="break-all font-medium text-foreground">{cv.nombre_original}</dd>
-                      <dd className="text-xs text-muted-foreground">
-                        Subido el {formatFecha(cv.subido_en)}
-                      </dd>
-                      <dd className="mt-1">
-                        <a
-                          href={cvUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 font-medium text-primary underline-offset-2 hover:underline"
-                        >
-                          Ver / descargar CV
-                          <ExternalLink className="h-3.5 w-3.5" />
+      <div className="@container mt-8">
+        <div className="grid grid-cols-1 gap-6 @4xl:grid-cols-[minmax(0,1fr)_400px] @4xl:items-start">
+          {/* Columna principal */}
+          <div className="flex min-w-0 flex-col gap-6">
+            <Tarjeta titulo="Contacto">
+              {candidato ? (
+                <DatosClave
+                  datos={[
+                    {
+                      etiqueta: "Email",
+                      valor: (
+                        <a href={`mailto:${candidato.email}`} className={LINK_DATO}>
+                          {candidato.email}
                         </a>
-                      </dd>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-start gap-3">
-                    <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                    <div>
-                      <dt className="text-xs text-muted-foreground">Currículum</dt>
-                      <dd className="text-muted-foreground">Sin CV disponible</dd>
-                    </div>
-                  </div>
-                )}
-              </dl>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">
-                Datos no disponibles.
-              </p>
-            )}
-          </div>
-
-          {candidato && (
-            <InformacionLaboralResumen info={candidato} className="bg-white shadow-xs" />
-          )}
-
-          {/* Nota de la municipalidad */}
-          {derivacion.nota_municipalidad && (
-            <div className="rounded-[var(--radius-lg)] border border-border bg-surface-tinted p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Nota de la Oficina de Empleo
-              </p>
-              <p className="mt-2 text-sm text-foreground">
-                {derivacion.nota_municipalidad}
-              </p>
-            </div>
-          )}
-
-          {/* Entrevista (si está coordinada) */}
-          {derivacion.estado_empresa === "en_proceso" && derivacion.fecha_entrevista && (
-            <Aviso tono="info" icono={CalendarClock} titulo="Entrevista coordinada">
-              <p>{formatFechaHora(derivacion.fecha_entrevista)}</p>
-              {derivacion.lugar_entrevista && (
-                <p className="mt-1">{derivacion.lugar_entrevista}</p>
+                      ),
+                    },
+                    {
+                      etiqueta: "Teléfono",
+                      valor: candidato.telefono ? (
+                        <a href={`tel:${candidato.telefono.replace(/[^\d+]/g, "")}`} className={LINK_DATO}>
+                          {candidato.telefono}
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground">Sin informar</span>
+                      ),
+                    },
+                  ]}
+                />
+              ) : (
+                <p className="text-[15px] text-muted-foreground">Datos no disponibles.</p>
               )}
-            </Aviso>
-          )}
+            </Tarjeta>
 
-          {/* Nota del candidato guardado */}
-          {guardado?.nota && (
-            <div className="rounded-[var(--radius-lg)] border border-border bg-white p-5 shadow-xs">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Tu nota privada
-              </p>
-              <p className="mt-2 text-sm text-foreground">{guardado.nota}</p>
-            </div>
-          )}
+            <Tarjeta titulo="CV con el que se postuló">
+              {cv ? (
+                <FilaArchivo
+                  nombre={cv.nombre_original}
+                  detalle={`Cargado el ${formatFecha(cv.subido_en)}`}
+                  url={cvUrl}
+                  textoBoton="Ver CV"
+                />
+              ) : (
+                <p className="text-[15px] text-muted-foreground">Sin CV disponible</p>
+              )}
+            </Tarjeta>
 
-          {/* Ver perfil completo */}
-          <Link
-            href={`/empresa/candidatos/${derivacion.postulante_id}`}
-            className="btn-secundario inline-flex h-9 items-center gap-2 px-4 text-sm font-medium"
-          >
-            <User className="h-4 w-4" />
-            Ver perfil completo
-          </Link>
-        </div>
+            {derivacion.nota_municipalidad && (
+              <Tarjeta titulo="Nota de la Oficina de Empleo">
+                <Cita
+                  firma={`Oficina de Empleo · ${formatFecha(derivacion.derivacion_created_at)}`}
+                >
+                  {derivacion.nota_municipalidad}
+                </Cita>
+              </Tarjeta>
+            )}
 
-        {/* Columna de acciones */}
-        <div className="lg:col-span-1">
-          <div className="sticky top-6 rounded-[var(--radius-lg)] border border-border bg-white p-5 shadow-xs">
-            <h2 className="font-semibold text-foreground">Acciones</h2>
-            <div className="mt-4">
-              <AccionesDerivacion
-                derivacionId={derivacionId}
-                ofertaId={ofertaId}
-                estado={derivacion.estado_empresa}
-                fechaEntrevista={derivacion.fecha_entrevista}
-                lugarEntrevista={derivacion.lugar_entrevista}
-                postulanteId={derivacion.postulante_id}
-                guardadoId={guardado?.id ?? null}
-                vacantesCubiertas={vacantesCubiertas}
-              />
-            </div>
+            {candidato && <InformacionLaboralResumen info={candidato} className="bg-surface" />}
+
+            {/* Nota del candidato guardado */}
+            {guardado?.nota && (
+              <Tarjeta titulo="Tu nota privada">
+                <p className="text-[15px] whitespace-pre-line break-words text-texto-parrafo">
+                  {guardado.nota}
+                </p>
+              </Tarjeta>
+            )}
+
+            <Link
+              href={`/empresa/candidatos/${derivacion.postulante_id}`}
+              className="btn-neutro w-full sm:w-fit"
+            >
+              <User aria-hidden="true" />
+              Ver perfil completo
+            </Link>
           </div>
+
+          {/* Gestión */}
+          <section
+            aria-labelledby="gestion-titulo"
+            className="tarjeta p-5 sm:p-6 @4xl:sticky @4xl:top-6"
+          >
+            <h2 id="gestion-titulo" className="mb-4 text-xl font-extrabold text-heading">
+              Gestión
+            </h2>
+            <AccionesDerivacion
+              derivacionId={derivacionId}
+              ofertaId={ofertaId}
+              estado={derivacion.estado_empresa}
+              fechaEntrevista={derivacion.fecha_entrevista}
+              lugarEntrevista={derivacion.lugar_entrevista}
+              vacantesCubiertas={vacantesCubiertas}
+            />
+          </section>
         </div>
       </div>
+    </section>
+  );
+}
+
+function Tarjeta({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <section className="tarjeta p-5 sm:p-6">
+      <h2 className="mb-4 text-xl font-extrabold text-heading">{titulo}</h2>
+      {children}
     </section>
   );
 }

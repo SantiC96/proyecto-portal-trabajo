@@ -275,7 +275,19 @@ Texto de estado suelto sobre blanco (sin fondo):
   `texto-parrafo`     `#22332A`   párrafos y listas del detalle de una oferta
   `texto-vence`       `#8A1A12`   "Vence el …" de las invitaciones (9,9:1 sobre blanco)
 
-`border-tab` (`#C6D8CD`) también es el borde de las pastillas de rubro y
+## Pantallas de la empresa y de la oficina
+
+  Token               Valor       Uso
+  ------------------- ----------- ---------------------------------------------
+  `tabla-cabecera`    `#F3F5F4`   encabezado del componente `Tabla`
+  `tabla-fila-hover`  `#FAFBFA`   hover de fila del componente `Tabla`
+  `texto-pestana`     `#3D4A43`   pestañas inactivas; cantidad en cero de la tarjeta de pendiente (9,3:1 sobre blanco)
+  `pastilla-gris`     `#DDE3DF`   fondo de la cantidad de las pestañas y de la tarjeta de pendiente en cero
+
+Las etiquetas de `DatosClave` y el encabezado de la tabla usan `neutral`
+(`#4F5E55`); los valores, `control-foreground` (`#22332A`).
+
+`border-tab` (`#C6D8CD`) es el borde de las pastillas de rubro y
 del buscador del inicio. Sombra del buscador: `--sombra-buscador`
 (`0 8px 24px rgb(0 60 30 / 0.08)`).
 
@@ -887,7 +899,8 @@ dominio y cada helper los mapea a un tono en un único lugar.
                     Media                                     warning
                     Baja                                      neutral
   Cuenta oficina    Activa / Desactivada                      success / neutral
-  Contadores        Pendientes (pestañas, tarjetas)           warning     `ContadoresEstado`, `PestanasEstado`
+  Contadores        Pendientes (tarjetas de pendiente)        warning     `TarjetaPendiente` (gris si es 0)
+                    Cantidad de una pestaña                   ---         `PestanasEstado`: gris; verde en la activa
 
 Contraste de cada tono: ver la sección 5 (todos superan 6,5:1).
 
@@ -961,6 +974,45 @@ Una sola marca para los dos formatos (`/admin/postulantes`):
     px a la derecha; la actual en verde y "…" si son muchas). El total
     ("Mostrando X–Y de N") va en la fila de filtros.
 
+## Componente Tabla (empresa y oficina)
+
+`src/components/ui/tabla.tsx` (`Tabla`, `FilaTabla`, `CeldaTabla`,
+`CeldaPersona`, `CLASE_ACCION_FILA`). Mismo criterio que la lista de
+postulantes, con un componente para no repetir las clases:
+
+-   Desde 896 px de ancho disponible (`@4xl`): contenedor con borde 1 px
+    `border`, radio 16, `overflow hidden` y fondo blanco. Encabezado de 12
+    px 700 en mayúsculas, letter-spacing `.06em`, color `neutral`, fondo
+    `tabla-cabecera`, padding 12 × 16. Filas de 15 px con padding 14 × 16,
+    borde inferior `tabla-borde` y hover `tabla-fila-hover`.
+-   Las columnas son un `grid-template-columns` (`columnas`) que comparten
+    el encabezado y las filas.
+-   La celda "quién" (`CeldaPersona`): foto o iniciales en un círculo de 40
+    px y el nombre en 15 px 700 como link; debajo, un badge o un dato.
+-   Más angosto: cada fila es una tarjeta (radio 16, padding 16) con los
+    mismos datos uno debajo del otro y la acción a todo el ancho
+    (`CLASE_ACCION_FILA`: a todo el ancho en la tarjeta, 40 px y 14 px en
+    la tabla). Una celda puede mostrar su rótulo en la tarjeta
+    (`rotuloVisible`: "Derivado el 3 de octubre").
+-   Si la tarjeta ordena los datos distinto que la tabla (Comprobantes:
+    nombre, DNI y fecha arriba; localidad y domicilio en `DatosClave`), las
+    celdas de cada formato se ocultan con `hidden @4xl:block` y
+    `@4xl:hidden`.
+-   El encabezado es visual (`aria-hidden`); cada celda lleva su rótulo para
+    los lectores de pantalla y la lista tiene `aria-label`.
+
+La usan el detalle de una oferta de la empresa (candidatos derivados),
+Postulaciones y Comprobantes de la oficina.
+
+## Lista de datos (`DatosClave`)
+
+`src/components/ui/datos-clave.tsx`: un `dl` en dos columnas, la etiqueta
+(14 px 700 `neutral`, 160 px) y el valor (15 px `control-foreground`).
+Cuando la lista mide menos de 384 px (una columna angosta o el celular),
+la etiqueta va arriba del valor. Los datos sin valor se omiten. La usan los
+datos de una oferta, el contacto del candidato, la tarjeta del candidato de
+la oficina y los datos de una derivación.
+
 ------------------------------------------------------------------------
 
 # 23. Filtros
@@ -1003,6 +1055,28 @@ es válido en un link). En una pastilla que es un botón, `aria-pressed`.
 Una pastilla que solo admite un valor opcional (Modalidad) se desactiva al
 tocarla de nuevo.
 
+## Pestañas de estado
+
+`PestanasEstado` (`src/components/ui/pestanas-estado.tsx`), con subrayado.
+Es compartido: cambia en todas las pantallas que lo usan (Mis ofertas de la
+empresa; Postulaciones, Ofertas, Empresas y Comprobantes de la oficina).
+
+-   contenedor con una línea inferior de 2 px `border` (sombra interna:
+    un borde quedaría fuera del área de scroll y recortaría el subrayado);
+    en el celular se desplaza de costado (sin barra);
+-   cada pestaña es un link de 48 px de alto, padding `0 14px`, 15 px 600,
+    color `texto-pestana`, con un subrayado de 3 px transparente que tapa
+    el borde del contenedor;
+-   la activa: verde, 800, subrayado `primary` y `aria-current="page"`; en
+    hover, el texto se pone verde y el subrayado `border-strong`;
+-   la cantidad (opcional, también en 0) en una pastilla de 22 px, fondo
+    `pastilla-gris` y texto `control-foreground`; en la activa, fondo verde
+    y texto blanco.
+
+Filtros con label arriba (Postulaciones de la oficina): cada select con su
+`.etiqueta-campo` y `.campo` de 48 px, el botón "Filtrar" neutro de 48 px y
+"Mostrando X de N" a la derecha.
+
 ------------------------------------------------------------------------
 
 # 24. Modal / Dialog
@@ -1043,8 +1117,9 @@ en el celular, a todo el ancho y apiladas, con la principal abajo.
 -   `extra` deja algo fuera del label a la derecha (el link "Ver" de un
     CV).
 
-La usan "Elegí con qué CV postularte" (`DialogoElegirCv`) y el motivo de
-"No me interesa" (la opción "Otro motivo" muestra un campo de texto).
+La usan "Elegí con qué CV postularte" (`DialogoElegirCv`), el motivo de
+"No me interesa" y el motivo de "No seleccionado" de la empresa (la opción
+"Otro motivo" muestra un campo de texto).
 
 Las acciones destructivas requieren confirmación explícita.
 
@@ -1103,6 +1178,41 @@ visible va al lado, en 14 px 700.
 
 Borde de 2 px `accent` sobre blanco, título `invitacion-titulo`, badge
 warning y botón `.btn-oscuro` (fondo `accent-foreground`, texto blanco).
+
+## Tarjeta de pendiente (panel de la oficina)
+
+`src/components/ui/tarjeta-pendiente.tsx` (`TarjetaPendiente`). Toda la
+tarjeta es un link (`.tarjeta`, padding 20, gap 14); en hover, el borde se
+pone `primary`.
+
+-   arriba: ícono blanco en un cuadrado `primary` de 44 px con radio 12 y,
+    a la derecha, la cantidad en una pastilla de 36 px de alto, 20 px 800
+    (`aria-label` "N pendientes"): `accent` con `accent-foreground` si es
+    mayor a 0; `pastilla-gris` con `texto-pestana` si es 0;
+-   el título en 17 px 800;
+-   abajo, la acción en 15 px 700 verde con flecha.
+
+Grilla de 3 columnas, 2 en tablet y 1 en el celular (según el ancho del
+contenido).
+
+## Tarjeta de acceso
+
+`src/components/ui/tarjeta-acceso.tsx` (`TarjetaAcceso`): link con un ícono
+en un cuadrado verde de 44 px, título de 17 px 800, descripción de 14 px,
+un dato opcional (13 px 600, "3 cursos activos") y chevron. En hover, el
+borde verde. Accesos del panel de la oficina y "Más herramientas" del panel
+de la empresa, en 2 columnas (1 en el celular).
+
+## Panel de la empresa
+
+`EncabezadoPagina` "Hola, [razón social]" con "Mis ofertas" (neutro) y
+"Publicar oferta" (primario). Si hay ofertas vencidas o por vencer, una
+`Franja` de aviso con el link a Mis ofertas. Los indicadores de ofertas
+usan las mismas tarjetas que el panel del postulante (badge del estado y
+número de 36 px 800; 2 columnas en el celular, 3 en tablet y 5 en
+pantallas anchas). "Candidatos por contactar": una tarjeta con una fila por
+candidato (iniciales, nombre de 16 px 700, "[oferta] · derivado el
+[fecha]", badge y "Ver candidato" neutro, a todo el ancho en el celular).
 
 ------------------------------------------------------------------------
 
@@ -1294,6 +1404,44 @@ principio, en la misma línea que el texto.
 En Mis postulaciones: pre-entrevista y entrevista coordinada en `info`,
 "¡Fuiste seleccionado…!" en `ok`, "No fuiste seleccionado…" y "La
 empresa retiró la oferta…" en `neutra`.
+
+En las fichas de la empresa y de la oficina: "Entrevista coordinada:" y
+"Coordinada:" (pre-entrevista) en `info`; el resultado final del proceso
+en `ok` (seleccionado o contratado) o `neutra` (no seleccionado, proceso
+cerrado, retirada); "Modificada tras la postulación" y las ofertas
+vencidas del panel de la empresa en `aviso`.
+
+## Cita
+
+`src/components/ui/cita.tsx` (`Cita`): la nota de la Oficina de Empleo.
+`blockquote` de 16 px con interlineado 1,6, borde izquierdo de 3 px
+`primary` y padding 4 × 16; la firma debajo (`figcaption`, 13 px
+`muted-foreground`): quién y cuándo, si se sabe ("Oficina de Empleo · 3 de
+octubre de 2026").
+
+## Línea de tiempo
+
+`src/components/ui/linea-de-tiempo.tsx` (`LineaDeTiempo`): lista ordenada
+(`ol`) con un punto de 12 px `muted-icon` por evento y una línea vertical
+de 2 px `border` que los une. El último (el más reciente) va en `primary`
+con un anillo verde translúcido de 4 px. Título del evento en 15 px 700 y
+detalle (quién y cuándo) en 14 px `muted-foreground`. Historial de estados
+de la ficha de una postulación.
+
+## Archivo en una tarjeta
+
+`src/components/ui/fila-archivo.tsx` (`FilaArchivo`): fila con borde y
+radio 12; ícono en un cuadrado `secondary` de 40 px, nombre (15 px 700),
+detalle ("Cargado el …") y "Ver CV" neutro a la derecha (a todo el ancho
+en el celular), que abre la URL firmada en otra pestaña.
+
+## Formularios dentro de una tarjeta angosta
+
+Coordinar una entrevista (empresa) o una pre-entrevista (oficina) va en la
+tarjeta de gestión, no en un diálogo: `<CampoFechaHora compacto />` pone
+fecha (campo de fecha del navegador, desde hoy) y hora lado a lado, el
+lugar debajo a todo el ancho y el botón secundario "Guardar …" a todo el
+ancho. Mismas validaciones y mensajes que el diálogo con calendario.
 
 ## Toasts
 

@@ -19,9 +19,22 @@ import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
 import { useErroresCampo } from "@/lib/use-errores-campo";
 import { MOTIVO_RECHAZO_COMPROBANTE_MAXIMO } from "@/lib/procedencia";
+import { cn } from "@/lib/utils";
 
 /** Botones "Aprobar" y "Rechazar" de un comprobante pendiente (solo la oficina). */
-export function RevisarComprobante({ archivoId }: { archivoId: string }) {
+export function RevisarComprobante({
+  archivoId,
+  className,
+  claseBoton,
+  rechazarConBorde = false,
+}: {
+  archivoId: string;
+  /** Contenedor de los dos botones; por defecto, uno al lado del otro con wrap. */
+  className?: string;
+  claseBoton?: string;
+  /** "Rechazar" blanco con borde rojo en lugar del rojo lleno (listado de comprobantes). */
+  rechazarConBorde?: boolean;
+}) {
   const router = useRouter();
   const [abrirRechazar, setAbrirRechazar] = useState(false);
   const [motivo, setMotivo] = useState("");
@@ -50,7 +63,7 @@ export function RevisarComprobante({ archivoId }: { archivoId: string }) {
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className={cn("flex flex-wrap gap-2", className)}>
       <DialogoConfirmacion
         textoBoton={
           <>
@@ -59,6 +72,7 @@ export function RevisarComprobante({ archivoId }: { archivoId: string }) {
           </>
         }
         estiloBoton="primario"
+        claseBoton={claseBoton}
         deshabilitado={pendiente}
         titulo="¿Aprobar el comprobante?"
         descripcion="El domicilio en Funes queda verificado y el postulante pasa a la máxima prioridad. Le avisamos por el portal y por email."
@@ -72,7 +86,12 @@ export function RevisarComprobante({ archivoId }: { archivoId: string }) {
         type="button"
         onClick={() => cambiarRechazar(true)}
         disabled={pendiente}
-        className="btn-peligro inline-flex min-h-11 items-center justify-center gap-2 px-4 text-sm font-medium"
+        className={cn(
+          rechazarConBorde
+            ? "btn-peligro-borde"
+            : "btn-peligro inline-flex min-h-11 items-center justify-center gap-2 px-4 text-sm font-medium",
+          claseBoton,
+        )}
       >
         <XCircle className="h-4 w-4" aria-hidden="true" />
         Rechazar

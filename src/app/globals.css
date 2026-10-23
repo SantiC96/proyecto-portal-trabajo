@@ -25,7 +25,7 @@
   --color-border:          #dde5e0;
   --color-border-strong:   #c6d3cb; /* bordes de campos */
   --color-border-control:  #cbd6cf; /* botón neutro y paginación */
-  --color-border-tab:      #c6d8cd; /* pestañas inactivas, pastillas de rubro y buscador del inicio */
+  --color-border-tab:      #c6d8cd; /* pastillas de rubro y buscador del inicio */
 
   /* Texto */
   --color-foreground:              #17251d;
@@ -73,6 +73,12 @@
   --color-opcion-elegida:   #f3f8f5; /* fondo de la opción tipo radio elegida */
   --color-texto-parrafo:    #22332a; /* párrafos del detalle de la oferta */
   --color-texto-vence:      #8a1a12; /* "Vence el …" de las invitaciones */
+
+  /* Pantallas de la empresa y de la oficina (PR 5 del rediseño) */
+  --color-tabla-cabecera:   #f3f5f4; /* encabezado del componente Tabla */
+  --color-tabla-fila-hover: #fafbfa; /* hover de fila del componente Tabla */
+  --color-texto-pestana:    #3d4a43; /* pestañas inactivas; cantidad en cero */
+  --color-pastilla-gris:    #dde3df; /* cantidad de pestañas y tarjetas de pendiente */
 
   /* Navegación lateral y barra del celular (sobre --color-primary) */
   --color-sidebar-texto: #e3f0e8; /* secciones; bajada del login */

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bookmark, BookmarkCheck } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
@@ -12,14 +12,16 @@ import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
+import { cn } from "@/lib/utils";
 
 type Props = {
   postulanteId: string;
   ofertaOrigenId: string;
   guardadoId: string | null;
+  className?: string;
 };
 
-export function BookmarkBtn({ postulanteId, ofertaOrigenId, guardadoId }: Props) {
+export function BookmarkBtn({ postulanteId, ofertaOrigenId, guardadoId, className }: Props) {
   const router = useRouter();
   const { pendiente: isPending, ejecutar } = useAccion();
   const [openGuardar, setOpenGuardar] = useState(false);
@@ -46,6 +48,7 @@ export function BookmarkBtn({ postulanteId, ofertaOrigenId, guardadoId }: Props)
     });
   }
 
+  // Botón que se alterna: guardado (aria-pressed) se quita con otro clic.
   if (guardadoId) {
     return (
       <button
@@ -53,10 +56,16 @@ export function BookmarkBtn({ postulanteId, ofertaOrigenId, guardadoId }: Props)
         onClick={handleQuitar}
         disabled={isPending}
         aria-busy={isPending}
-        className="btn-secundario inline-flex min-h-11 items-center justify-center gap-2 px-4 text-sm font-medium"
+        aria-pressed={true}
+        title="Quitar de candidatos guardados"
+        className={cn("btn-neutro", className)}
       >
-        {isPending ? <Spinner /> : <BookmarkCheck className="h-4 w-4 text-primary" />}
-        {isPending ? "Quitando…" : "Guardado — Quitar"}
+        {isPending ? (
+          <Spinner />
+        ) : (
+          <Bookmark aria-hidden="true" fill="currentColor" className="text-primary" />
+        )}
+        {isPending ? "Quitando…" : "Candidato guardado"}
       </button>
     );
   }
@@ -67,10 +76,12 @@ export function BookmarkBtn({ postulanteId, ofertaOrigenId, guardadoId }: Props)
         type="button"
         onClick={() => setOpenGuardar(true)}
         disabled={isPending}
-        className="btn-secundario inline-flex min-h-11 items-center justify-center gap-2 px-4 text-sm font-medium"
+        aria-pressed={false}
+        title="Guardar para futuras búsquedas"
+        className={cn("btn-neutro", className)}
       >
-        <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
-        Guardar para futuras búsquedas
+        <Bookmark aria-hidden="true" />
+        Guardar candidato
       </button>
 
       <Dialog

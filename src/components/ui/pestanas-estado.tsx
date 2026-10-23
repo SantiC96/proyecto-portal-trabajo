@@ -72,7 +72,11 @@ export type Pestana = {
   cantidad?: number;
 };
 
-/** Barra de pestañas de estado de un listado del panel (filtro por URL). */
+/**
+ * Barra de pestañas de estado de un listado del panel (filtro por URL), con
+ * subrayado: la activa en verde con aria-current. En el celular se desplaza de
+ * costado.
+ */
 export function PestanasEstado({
   pestanas,
   etiqueta,
@@ -87,7 +91,9 @@ export function PestanasEstado({
     <nav
       aria-label={etiqueta}
       className={cn(
-        "flex gap-2 overflow-x-auto pb-1",
+        // La línea de 2 px es una sombra interna: con el scroll horizontal, un
+        // borde recortaría el subrayado de la pestaña activa.
+        "sin-barra-scroll flex overflow-x-auto shadow-[inset_0_-2px_0_var(--color-border)]",
         className,
       )}
     >
@@ -97,17 +103,22 @@ export function PestanasEstado({
           href={p.href}
           aria-current={p.activa ? "page" : undefined}
           className={cn(
-            "flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full border-[1.5px] px-4 py-2 text-center text-[15px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:shadow-[var(--sombra-foco)]",
+            // El subrayado de 3 px tapa la línea de 2 px de la barra.
+            "flex h-12 shrink-0 items-center gap-2 border-b-[3px] px-3.5 text-[15px] whitespace-nowrap no-underline transition-colors duration-150 outline-none",
+            "focus-visible:rounded-t-[var(--radius-sm)] focus-visible:shadow-[inset_0_0_0_3px_rgb(0_104_51/0.25)]",
             p.activa
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border-tab bg-surface text-muted-foreground-strong hover:border-primary hover:text-primary",
+              ? "border-primary font-extrabold text-primary"
+              : "border-transparent font-semibold text-texto-pestana hover:border-border-strong hover:text-primary",
           )}
         >
           {p.label}
-          {(p.cantidad ?? 0) > 0 && (
+          {p.cantidad !== undefined && (
             <span
               className={cn(
-                "ml-2 inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-accent px-1.5 text-[13px] font-bold text-accent-foreground",
+                "inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full px-1.5 text-[13px] leading-none font-bold tabular-nums",
+                p.activa
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-pastilla-gris text-control-foreground",
               )}
             >
               {p.cantidad}

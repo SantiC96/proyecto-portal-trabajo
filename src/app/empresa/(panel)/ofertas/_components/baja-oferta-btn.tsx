@@ -1,4 +1,5 @@
 import type { BajaOferta } from "@/lib/empresa/bajas-oferta";
+import type { EstiloBoton } from "@/components/ui/dialogo-confirmacion";
 import { EliminarEnvioBtn } from "./eliminar-envio-btn";
 import { RetirarOfertaBtn } from "./retirar-oferta-btn";
 
@@ -7,10 +8,13 @@ interface Props {
   baja: BajaOferta;
   /** Adónde ir después de la baja; sin valor, se refresca la página actual. */
   volverA?: string;
+  /** Estilo del botón; por defecto, el rojo chico de Mis ofertas. */
+  estiloBoton?: EstiloBoton;
+  claseBoton?: string;
 }
 
 /** El único botón de baja de una oferta ("Eliminar" o "Retirar oferta"), según bajasDeOfertas. */
-export function BajaOfertaBtn({ oferta, baja, volverA }: Props) {
+export function BajaOfertaBtn({ oferta, baja, volverA, estiloBoton, claseBoton }: Props) {
   if (baja.acciones.mostrarEliminar) {
     return (
       <EliminarEnvioBtn
@@ -18,6 +22,8 @@ export function BajaOfertaBtn({ oferta, baja, volverA }: Props) {
         ofertaTitulo={oferta.titulo}
         esBorrador={oferta.estado === "borrador"}
         volverA={volverA}
+        estiloBoton={estiloBoton}
+        claseBoton={claseBoton}
       />
     );
   }
@@ -29,6 +35,8 @@ export function BajaOfertaBtn({ oferta, baja, volverA }: Props) {
         postulacionesOficina={baja.procesos.oficina}
         candidatosDerivados={baja.procesos.derivados}
         volverA={volverA}
+        estiloBoton={estiloBoton}
+        claseBoton={claseBoton}
       />
     );
   }
