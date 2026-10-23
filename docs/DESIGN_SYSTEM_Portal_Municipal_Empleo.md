@@ -266,6 +266,15 @@ Texto de estado suelto sobre blanco (sin fondo):
   `tabla-hover`          `#F8FBF9`   hover de fila
   `tabla-separador`      `#E8ECEA`   separadores de prioridad
 
+## Pantallas públicas y del postulante
+
+  Token               Valor       Uso
+  ------------------- ----------- ---------------------------------------------
+  `border-campo`      `#B8C7BE`   buscador del listado, pastillas de filtro, opciones tipo radio y campos de Mi perfil
+  `opcion-elegida`    `#F3F8F5`   fondo de la opción tipo radio elegida
+  `texto-parrafo`     `#22332A`   párrafos y listas del detalle de una oferta
+  `texto-vence`       `#8A1A12`   "Vence el …" de las invitaciones (9,9:1 sobre blanco)
+
 `border-tab` (`#C6D8CD`) también es el borde de las pastillas de rubro y
 del buscador del inicio. Sombra del buscador: `--sombra-buscador`
 (`0 8px 24px rgb(0 60 30 / 0.08)`).
@@ -293,7 +302,7 @@ En `:root` están los radios (`--radius-sm` 8 px, `--radius-md` 10 px,
   `--sombra-tarjeta-hover`   `0 8px 20px rgb(15 42 27 / .08)`
 
 Clases de componente en `globals.css`: `.btn-primario`, `.btn-secundario`,
-`.btn-neutro`, `.btn-peligro`, `.btn-acento`, `.campo`, `.campo-grupo`,
+`.btn-neutro`, `.btn-peligro`, `.btn-peligro-borde`, `.btn-acento`, `.campo`, `.campo-grupo`,
 `.etiqueta-campo`, `.tarjeta` y `.tarjeta-clickeable`.
 
 ------------------------------------------------------------------------
@@ -433,6 +442,31 @@ Las rutas de `/auth/*` no llevan navegación: solo el contenido.
 
 Los formularios no deben expandirse innecesariamente a todo el viewport.
 
+## Columna lateral sticky (detalle de una oferta)
+
+Desde 896 px de ancho disponible (`@4xl:`): dos columnas, el contenido
+(flexible) y una lateral de 360 px, con gap de 28. La lateral ocupa las
+dos filas y queda fija a 24 px del borde superior (`sticky top-6`). Más
+angosto: una sola columna y la tarjeta lateral va entre el encabezado y
+la descripción (es el orden del HTML).
+
+## Índice de secciones (Mi perfil)
+
+`src/components/perfil/indice-secciones.tsx`: desde 768 px de ancho
+disponible (`@3xl:`), una columna de 220 px a la izquierda, sticky, con
+el título "En esta página" (13 px 700 en mayúsculas) y un link de 44 px
+por sección. Marca la sección visible con `IntersectionObserver` y
+`aria-current`: la activa va en verde, sobre blanco y con un borde
+izquierdo de 3 px. Las secciones, a la derecha, con un ancho máximo de
+760 px. En el celular el índice no se muestra.
+
+Cada sección del perfil es una tarjeta (`SeccionPerfil` en
+`components/perfil/piezas.tsx`) con su título de 20 px 800 (18 en el
+celular), una línea de ayuda opcional, los campos en una grilla de 2
+columnas (1 en el celular) y su botón "Guardar" abajo a la derecha.
+Campos del perfil: alto 48, borde 1,5 px `border-campo`, radio 10; label
+15 px 700, ayuda 13 px, error 13 px 600 en `danger`.
+
 ## PageContainer
 
 Todas las páginas internas deben utilizar un contenedor compartido.
@@ -532,7 +566,8 @@ Todas se desactivan con `prefers-reduced-motion: reduce`.
 # 13. Header de página
 
 Componente compartido: `EncabezadoPagina`
-(`src/components/ui/encabezado-pagina.tsx`): título de 32 px 800,
+(`src/components/ui/encabezado-pagina.tsx`): título de 32 px 800 (26 px
+en el celular),
 letter-spacing `-.01em`, color `heading`; bajada de 16 px
 `muted-foreground` con 6 px de margen; acciones a la derecha, alineadas
 abajo.
@@ -583,6 +618,7 @@ clases sueltas de cada pantalla.
   `.btn-secundario`  `secondary`        blanco          1,5 px `primary`        `primary`             fondo `secondary`
   `.btn-neutro`      `outline`          blanco          1,5 px `border-control` `control-foreground`  `surface-tinted`
   `.btn-peligro`     `destructive`      `danger`        ---                     blanco                `danger-hover`
+  `.btn-peligro-borde` ---              blanco          1,5 px `danger`         `danger`              `danger-fondo`
   `.btn-acento`      `accent`           `accent`        ---                     `accent-foreground`   `accent-hover`
 
 `ghost` y `link` quedan para acciones de baja jerarquía y botones de
@@ -594,6 +630,9 @@ clases sueltas de cada pantalla.
     jerarquía salvo que representen acciones equivalentes.
 -   "Cancelar" en los diálogos usa el botón neutro.
 -   "Cerrar sesión" y toda acción destructiva usan el botón de peligro.
+    Una destructiva de menor peso que convive con otras acciones
+    ("Retirar postulación", "Eliminar" un CV) usa `.btn-peligro-borde`
+    (`estiloBoton="peligroBorde"` en `DialogoConfirmacion`).
 -   El botón de acento se reserva para la navegación (rediseño, PR 2).
 -   Dentro de un aviso rojo, la acción usa el botón neutro (el verde no
     contrasta sobre el rojo).
@@ -715,7 +754,16 @@ clickeable, padding 24, gap 14:
 -   El título es el link y cubre la tarjeta (un paso de teclado por
     oferta); el botón de abajo es visual. Una acción extra con su propio
     link (`Buscar postulantes` de la oficina) va por encima.
--   El listado `/ofertas` sigue usando `JobCard`.
+-   El listado `/ofertas` también usa `TarjetaOferta` (`JobCard` se
+    borró): grilla de 3, 2 o 1 columnas según el ancho del contenido
+    (`@4xl:` y `@xl:`), "Te invitaron" para el postulante y "Buscar
+    postulantes" para la oficina.
+-   El estado vacío del listado está aislado en
+    `src/components/ofertas/ofertas-sin-resultados.tsx`
+    (`hayFiltros`, `hrefLimpiar`) para rediseñarlo por separado.
+-   Sin logo de la empresa (está en el bucket privado de avatares): el
+    detalle y las invitaciones muestran sus iniciales en un círculo verde
+    (`InicialesEmpresa`, 64 o 44 px).
 
 ## Carrusel
 
@@ -912,6 +960,32 @@ Los filtros activos deben ser visibles y fáciles de limpiar.
 
 No esconder filtros básicos detrás de un modal en desktop.
 
+## Buscador con botón (listado de ofertas)
+
+`<Buscador boton="Buscar" />`: campo de 52 px, radio 12, borde 1,5 px
+`border-campo`, ícono a la izquierda y label oculto (`sr-only`); al lado,
+el botón primario "Buscar" de 52 px y padding `0 28px`. En el celular el
+botón pasa debajo, a todo el ancho. Sigue buscando sola mientras se
+escribe.
+
+## Pastillas de filtro
+
+`src/components/ui/pastilla-filtro.tsx` (`PastillaFiltro`,
+`GrupoPastillas`, `clasePastilla()`):
+
+-   40 px de alto (44 px en el celular), radio 20, borde 1,5 px
+    `border-campo`, 15 px 600, texto `control-foreground`;
+-   la activa: fondo `primary`, texto blanco;
+-   cada grupo lleva su título de 13 px 700 y `role="group"`;
+-   en el celular, una sola fila con scroll horizontal (sin barra); desde
+    sm bajan de renglón.
+
+Cuando el filtro vive en la URL, cada pastilla es un link que mantiene los
+demás filtros y la activa se marca con `aria-current` (`aria-pressed` no
+es válido en un link). En una pastilla que es un botón, `aria-pressed`.
+Una pastilla que solo admite un valor opcional (Modalidad) se desactiva al
+tocarla de nuevo.
+
 ------------------------------------------------------------------------
 
 # 24. Modal / Dialog
@@ -932,6 +1006,28 @@ Cancelar                Acción
 ```
 
 No utilizar modales para procesos largos que deberían ser una página.
+
+## Diálogo amplio
+
+`<DialogContent tamano="amplio">` (pantallas del postulante): ancho 540
+px, radio 20, padding 28 (22 × 18 en el celular), título de 22 px 800 y
+botón X de 44 px. Sin franja gris al pie: las acciones van a la derecha;
+en el celular, a todo el ancho y apiladas, con la principal abajo.
+
+## Opciones tipo radio
+
+`src/components/ui/opcion-radio.tsx` (`OpcionRadio`), dentro de un
+`fieldset` con su `legend`:
+
+-   fila con borde 1,5 px `border-campo` y radio 12; toda la fila es el
+    label (mínimo 44 px);
+-   la elegida: borde `primary` y fondo `opcion-elegida`; el foco se ve
+    en toda la fila;
+-   `extra` deja algo fuera del label a la derecha (el link "Ver" de un
+    CV).
+
+La usan "Elegí con qué CV postularte" (`DialogoElegirCv`) y el motivo de
+"No me interesa" (la opción "Otro motivo" muestra un campo de texto).
 
 Las acciones destructivas requieren confirmación explícita.
 
@@ -1160,8 +1256,27 @@ Componente `src/components/ui/aviso.tsx`, tonos `info`, `success`,
     danger.
 
 Las notas neutras (por ejemplo "No fuiste seleccionado") no son avisos:
-van sobre `surface-tinted` con borde `border` y texto
-`muted-foreground-strong`.
+dentro de una tarjeta van como franja neutra.
+
+## Franja
+
+`src/components/ui/franja.tsx`: información dentro de una tarjeta (el
+estado de una postulación, un aviso sobre la oferta, el motivo de un
+rechazo). No se anuncia sola (sin `role`). Padding 12 × 14, radio 12,
+15 px con interlineado 1,45, ícono de 20 px y `titulo` en negrita al
+principio, en la misma línea que el texto.
+
+  Tono       Fondo                                       Texto
+  ---------- ------------------------------------------- ----------------------
+  `info`     `info`                                      blanco
+  `ok`       `success`                                   blanco
+  `neutra`   blanco, borde interno 1,5 px `muted-icon`   `foreground`
+  `aviso`    blanco, borde interno 2 px `accent`         `invitacion-titulo`
+  `error`    `danger`                                    blanco
+
+En Mis postulaciones: pre-entrevista y entrevista coordinada en `info`,
+"¡Fuiste seleccionado…!" en `ok`, "No fuiste seleccionado…" y "La
+empresa retiró la oferta…" en `neutra`.
 
 ## Toasts
 
