@@ -19,6 +19,7 @@ import { fotosDeCandidatosEmpresa } from "@/lib/fotos-perfil";
 import { inicialesDePersona } from "@/lib/iniciales";
 import { InformacionLaboralResumen } from "@/components/postulantes/informacion-laboral-resumen";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { DetalleConLateral } from "@/components/ui/detalle-con-lateral";
 
 export const metadata: Metadata = {
   title: "Perfil de candidato | Portal de Empleo Funes",
@@ -68,19 +69,20 @@ export default async function PerfilCandidatoPage({
   const nombreCompleto = `${candidato.nombre} ${candidato.apellido}`;
 
   return (
-    <section className="contenido-lectura-ancho">
+    <section className="w-full">
       <BotonVolver href="/empresa/candidatos-guardados" />
 
       <h1 className="mt-4 text-xl font-bold tracking-tight break-words text-foreground sm:text-2xl">
         {nombreCompleto}
       </h1>
 
-      {/* Dos columnas como la ficha del candidato derivado. En una sola
-          columna, primero la foto y el contacto. */}
-      <div className="@container mt-8">
-        <div className="grid grid-cols-1 gap-6 @4xl:grid-cols-[minmax(0,1fr)_400px] @4xl:items-start">
-          {/* Datos personales e información laboral */}
-          <div className="flex min-w-0 flex-col gap-6">
+      {/* Dos columnas parejas, como la ficha del candidato derivado. En una
+          sola columna, primero la foto y el contacto. */}
+      <DetalleConLateral
+        className="mt-8"
+        lateralEnCelular="primero"
+        principal={
+          <>
             {candidato.rubros_interes.length > 0 && (
               <div className="rounded-[var(--radius-lg)] border border-border bg-white p-5 shadow-xs">
                 <h2 className="font-semibold text-foreground">Rubros de interés</h2>
@@ -127,10 +129,10 @@ export default async function PerfilCandidatoPage({
                 </ul>
               </div>
             )}
-          </div>
-
-          {/* Foto, contacto, CV y nota privada */}
-          <div className="order-first flex min-w-0 flex-col gap-6 @4xl:order-none">
+          </>
+        }
+        lateral={
+          <>
             <div className="rounded-[var(--radius-lg)] border border-border bg-white p-5 shadow-xs">
               <AvatarAjustado
                 src={foto?.url}
@@ -195,9 +197,9 @@ export default async function PerfilCandidatoPage({
                 <NotaGuardadoEditor guardadoId={guardado.id} notaInicial={guardado.nota} />
               </div>
             )}
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
     </section>
   );
 }

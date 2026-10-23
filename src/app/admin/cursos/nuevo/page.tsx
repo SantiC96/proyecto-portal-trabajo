@@ -10,14 +10,14 @@ export const metadata: Metadata = {
 export default async function NuevoCursoPage() {
   await requerirRolPagina("municipalidad");
   return (
-    <section className="contenido-lectura">
+    <section className="w-full">
       <BotonVolver href="/admin/cursos" />
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         Crear curso
       </h1>
 
-      <div className="mt-8 rounded-[var(--radius-lg)] border border-border bg-surface p-6">
+      <div className="mt-8 rounded-[var(--radius-lg)] border border-border bg-surface p-4 sm:p-6">
         <CursoForm modo="crear" />
       </div>
     </section>

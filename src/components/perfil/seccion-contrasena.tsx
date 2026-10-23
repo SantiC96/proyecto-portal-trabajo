@@ -93,101 +93,103 @@ export function SeccionContrasena({ id = "contrasena" }: { id?: string }) {
       }
     >
       {mostrarFormContrasena && (
-        <form onSubmit={handleCambiarContrasena} noValidate className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="p-contrasena-actual" className={CLASE_ETIQUETA_PERFIL}>
-              Contraseña actual <Obligatorio />
-            </label>
-            <InputWrapper>
-              <FieldIcon icon={KeyRound} />
-              <input
-                id="p-contrasena-actual"
-                type={mostrarActual ? "text" : "password"}
-                autoComplete="current-password"
-                required
-                value={contrasenaActual}
-                onChange={(e) => {
-                  setContrasenaActual(e.target.value);
-                  camposContrasena.limpiar("contrasenaActual");
-                }}
-                placeholder="Tu contraseña actual"
-                className={CLASE_CAMPO_CONTRASENA}
-                {...ariaErrorCampo("p-contrasena-actual", camposContrasena.errores.contrasenaActual)}
-              />
-              <button
-                type="button"
-                onClick={() => setMostrarActual((v) => !v)}
-                className={CLASE_VER_CONTRASENA}
-                aria-label={mostrarActual ? "Ocultar contraseña" : "Mostrar contraseña"}
-              >
-                {mostrarActual ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </InputWrapper>
-            <ErrorCampo idCampo="p-contrasena-actual" mensaje={camposContrasena.errores.contrasenaActual} className={CLASE_ERROR_PERFIL} />
-          </div>
+        <form onSubmit={handleCambiarContrasena} noValidate className="@container flex flex-col gap-4">
+          <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2 @4xl:grid-cols-3">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="p-contrasena-actual" className={CLASE_ETIQUETA_PERFIL}>
+                Contraseña actual <Obligatorio />
+              </label>
+              <InputWrapper>
+                <FieldIcon icon={KeyRound} />
+                <input
+                  id="p-contrasena-actual"
+                  type={mostrarActual ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  value={contrasenaActual}
+                  onChange={(e) => {
+                    setContrasenaActual(e.target.value);
+                    camposContrasena.limpiar("contrasenaActual");
+                  }}
+                  placeholder="Tu contraseña actual"
+                  className={CLASE_CAMPO_CONTRASENA}
+                  {...ariaErrorCampo("p-contrasena-actual", camposContrasena.errores.contrasenaActual)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarActual((v) => !v)}
+                  className={CLASE_VER_CONTRASENA}
+                  aria-label={mostrarActual ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {mostrarActual ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </InputWrapper>
+              <ErrorCampo idCampo="p-contrasena-actual" mensaje={camposContrasena.errores.contrasenaActual} className={CLASE_ERROR_PERFIL} />
+            </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="p-contrasena-nueva" className={CLASE_ETIQUETA_PERFIL}>
-              Contraseña nueva <Obligatorio />
-            </label>
-            <InputWrapper>
-              <FieldIcon icon={KeyRound} />
-              <input
-                id="p-contrasena-nueva"
-                type={mostrarNueva ? "text" : "password"}
-                autoComplete="new-password"
-                required
-                value={contrasenaNueva}
-                onChange={(e) => {
-                  setContrasenaNueva(e.target.value);
-                  camposContrasena.limpiar("contrasenaNueva");
-                }}
-                placeholder="Mínimo 6 caracteres"
-                className={CLASE_CAMPO_CONTRASENA}
-                {...ariaErrorCampo("p-contrasena-nueva", camposContrasena.errores.contrasenaNueva)}
-              />
-              <button
-                type="button"
-                onClick={() => setMostrarNueva((v) => !v)}
-                className={CLASE_VER_CONTRASENA}
-                aria-label={mostrarNueva ? "Ocultar contraseña" : "Mostrar contraseña"}
-              >
-                {mostrarNueva ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </InputWrapper>
-            <ErrorCampo idCampo="p-contrasena-nueva" mensaje={camposContrasena.errores.contrasenaNueva} className={CLASE_ERROR_PERFIL} />
-          </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="p-contrasena-nueva" className={CLASE_ETIQUETA_PERFIL}>
+                Contraseña nueva <Obligatorio />
+              </label>
+              <InputWrapper>
+                <FieldIcon icon={KeyRound} />
+                <input
+                  id="p-contrasena-nueva"
+                  type={mostrarNueva ? "text" : "password"}
+                  autoComplete="new-password"
+                  required
+                  value={contrasenaNueva}
+                  onChange={(e) => {
+                    setContrasenaNueva(e.target.value);
+                    camposContrasena.limpiar("contrasenaNueva");
+                  }}
+                  placeholder="Mínimo 6 caracteres"
+                  className={CLASE_CAMPO_CONTRASENA}
+                  {...ariaErrorCampo("p-contrasena-nueva", camposContrasena.errores.contrasenaNueva)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarNueva((v) => !v)}
+                  className={CLASE_VER_CONTRASENA}
+                  aria-label={mostrarNueva ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {mostrarNueva ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </InputWrapper>
+              <ErrorCampo idCampo="p-contrasena-nueva" mensaje={camposContrasena.errores.contrasenaNueva} className={CLASE_ERROR_PERFIL} />
+            </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="p-repetir-contrasena" className={CLASE_ETIQUETA_PERFIL}>
-              Repetir contraseña nueva <Obligatorio />
-            </label>
-            <InputWrapper>
-              <FieldIcon icon={KeyRound} />
-              <input
-                id="p-repetir-contrasena"
-                type={mostrarRepetir ? "text" : "password"}
-                autoComplete="new-password"
-                required
-                value={repetirContrasena}
-                onChange={(e) => {
-                  setRepetirContrasena(e.target.value);
-                  camposContrasena.limpiar("repetirContrasena");
-                }}
-                placeholder="Repetí la contraseña nueva"
-                className={CLASE_CAMPO_CONTRASENA}
-                {...ariaErrorCampo("p-repetir-contrasena", camposContrasena.errores.repetirContrasena)}
-              />
-              <button
-                type="button"
-                onClick={() => setMostrarRepetir((v) => !v)}
-                className={CLASE_VER_CONTRASENA}
-                aria-label={mostrarRepetir ? "Ocultar contraseña" : "Mostrar contraseña"}
-              >
-                {mostrarRepetir ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </InputWrapper>
-            <ErrorCampo idCampo="p-repetir-contrasena" mensaje={camposContrasena.errores.repetirContrasena} className={CLASE_ERROR_PERFIL} />
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="p-repetir-contrasena" className={CLASE_ETIQUETA_PERFIL}>
+                Repetir contraseña nueva <Obligatorio />
+              </label>
+              <InputWrapper>
+                <FieldIcon icon={KeyRound} />
+                <input
+                  id="p-repetir-contrasena"
+                  type={mostrarRepetir ? "text" : "password"}
+                  autoComplete="new-password"
+                  required
+                  value={repetirContrasena}
+                  onChange={(e) => {
+                    setRepetirContrasena(e.target.value);
+                    camposContrasena.limpiar("repetirContrasena");
+                  }}
+                  placeholder="Repetí la contraseña nueva"
+                  className={CLASE_CAMPO_CONTRASENA}
+                  {...ariaErrorCampo("p-repetir-contrasena", camposContrasena.errores.repetirContrasena)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarRepetir((v) => !v)}
+                  className={CLASE_VER_CONTRASENA}
+                  aria-label={mostrarRepetir ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {mostrarRepetir ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </InputWrapper>
+              <ErrorCampo idCampo="p-repetir-contrasena" mensaje={camposContrasena.errores.repetirContrasena} className={CLASE_ERROR_PERFIL} />
+            </div>
           </div>
 
           <PieSeccion>

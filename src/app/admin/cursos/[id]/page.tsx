@@ -23,6 +23,7 @@ import {
 import type { Tabla } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { DetalleConLateral } from "@/components/ui/detalle-con-lateral";
 import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = {
@@ -86,7 +87,7 @@ export default async function CursoDetallePage({
   const rutaCurso = `/admin/cursos/${curso.id}`;
 
   return (
-    <section className="contenido-lectura-ancho">
+    <section className="w-full">
       <Suspense>
         <AvisoUrl />
       </Suspense>
@@ -96,95 +97,98 @@ export default async function CursoDetallePage({
         {curso.nombre}
       </h1>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Editar */}
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
-          <h2 className="mb-4 font-semibold text-foreground">Editar</h2>
-          <CursoForm
-            modo="editar"
-            cursoId={curso.id}
-            inicial={{
-              nombre: curso.nombre,
-              descripcion: curso.descripcion,
-              link: curso.link,
-              indicaciones: curso.indicaciones,
-            }}
-          />
-        </div>
-
-        {/* Estado y acciones */}
-        <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5 space-y-4">
-          <div>
-            <h2 className="font-semibold text-foreground">Estado</h2>
-            <div className="mt-2">
-              <Badge tono={curso.activo ? "success" : "neutral"} estado>
-                {curso.activo ? "Activo" : "Inactivo"}
-              </Badge>
-            </div>
+      <DetalleConLateral
+        className="mt-8"
+        desde="lg"
+        principal={
+          <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
+            <h2 className="mb-4 font-semibold text-foreground">Editar</h2>
+            <CursoForm
+              modo="editar"
+              cursoId={curso.id}
+              inicial={{
+                nombre: curso.nombre,
+                descripcion: curso.descripcion,
+                link: curso.link,
+                indicaciones: curso.indicaciones,
+              }}
+            />
           </div>
+        }
+        lateral={
+          <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5 space-y-4">
+            <div>
+              <h2 className="font-semibold text-foreground">Estado</h2>
+              <div className="mt-2">
+                <Badge tono={curso.activo ? "success" : "neutral"} estado>
+                  {curso.activo ? "Activo" : "Inactivo"}
+                </Badge>
+              </div>
+            </div>
 
-          <CursoAcciones
-            cursoId={curso.id}
-            activo={curso.activo}
-            tieneAsignaciones={tieneAsignaciones}
-          />
+            <CursoAcciones
+              cursoId={curso.id}
+              activo={curso.activo}
+              tieneAsignaciones={tieneAsignaciones}
+            />
 
-          {tieneAsignaciones && (
-            <p className="text-xs text-muted-foreground">
-              No se puede eliminar un curso con asignaciones.
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Postulantes asignados */}
-      <div
-        id="asignados"
-        className="mt-8 scroll-mt-20 rounded-[var(--radius-lg)] border border-border bg-surface p-5"
-      >
-        <h2 className="font-semibold text-foreground">
-          Postulantes asignados ({totalAsignaciones})
-        </h2>
-
-        {tieneAsignaciones && (
-          <nav aria-label="Filtrar por estado" className="mt-4 flex flex-wrap gap-2">
-            {estadosFiltro.map(
-              (estado) => {
-                const activo = estado === estadoFiltro;
-                const cantidad = estado ? conteoPorEstado[estado] : totalAsignaciones;
-                return (
-                  <Link
-                    key={estado ?? "todos"}
-                    href={hrefConParams(rutaCurso, sp, { estado, pagina: null }, "asignados")}
-                    scroll={false}
-                    aria-current={activo ? "page" : undefined}
-                    className={
-                      activo
-                        ? "inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-3 text-sm font-medium text-primary-foreground sm:min-h-9"
-                        : "inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-white px-3 text-sm text-muted-foreground-strong transition-colors hover:text-foreground sm:min-h-9"
-                    }
-                  >
-                    {estado ? ESTADO_CURSO_LABEL[estado] : "Todos"}
-                    <span className="text-xs opacity-80">{cantidad}</span>
-                  </Link>
-                );
-              }
+            {tieneAsignaciones && (
+              <p className="text-xs text-muted-foreground">
+                No se puede eliminar un curso con asignaciones.
+              </p>
             )}
-          </nav>
-        )}
+          </div>
+        }
+        debajo={
+          <div
+            id="asignados"
+            className="scroll-mt-20 rounded-[var(--radius-lg)] border border-border bg-surface p-5"
+          >
+            <h2 className="font-semibold text-foreground">
+              Postulantes asignados ({totalAsignaciones})
+            </h2>
 
-        <Suspense
-          key={JSON.stringify({ pagina, estadoFiltro })}
-          fallback={<EsqueletoLista filas={3} className="mt-4" />}
-        >
-          <ListadoAsignados
-            cursoId={curso.id}
-            estado={estadoFiltro}
-            pagina={pagina}
-            searchParams={sp}
-          />
-        </Suspense>
-      </div>
+            {tieneAsignaciones && (
+              <nav aria-label="Filtrar por estado" className="mt-4 flex flex-wrap gap-2">
+                {estadosFiltro.map(
+                  (estado) => {
+                    const activo = estado === estadoFiltro;
+                    const cantidad = estado ? conteoPorEstado[estado] : totalAsignaciones;
+                    return (
+                      <Link
+                        key={estado ?? "todos"}
+                        href={hrefConParams(rutaCurso, sp, { estado, pagina: null }, "asignados")}
+                        scroll={false}
+                        aria-current={activo ? "page" : undefined}
+                        className={
+                          activo
+                            ? "inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-3 text-sm font-medium text-primary-foreground sm:min-h-9"
+                            : "inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-white px-3 text-sm text-muted-foreground-strong transition-colors hover:text-foreground sm:min-h-9"
+                        }
+                      >
+                        {estado ? ESTADO_CURSO_LABEL[estado] : "Todos"}
+                        <span className="text-xs opacity-80">{cantidad}</span>
+                      </Link>
+                    );
+                  }
+                )}
+              </nav>
+            )}
+
+            <Suspense
+              key={JSON.stringify({ pagina, estadoFiltro })}
+              fallback={<EsqueletoLista filas={3} className="mt-4" />}
+            >
+              <ListadoAsignados
+                cursoId={curso.id}
+                estado={estadoFiltro}
+                pagina={pagina}
+                searchParams={sp}
+              />
+            </Suspense>
+          </div>
+        }
+      />
     </section>
   );
 }

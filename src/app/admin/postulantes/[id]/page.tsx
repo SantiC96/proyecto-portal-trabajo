@@ -239,7 +239,7 @@ export default async function PostulanteFichaPage({
   const nombreCompleto = `${candidato.usuario.nombre} ${candidato.usuario.apellido}`;
 
   return (
-    <section className="contenido-lectura-ancho">
+    <section className="w-full">
       <BotonVolver href={volverHref} />
 
       {/* Cabecera */}

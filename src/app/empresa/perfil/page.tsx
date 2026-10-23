@@ -39,7 +39,7 @@ export default async function EmpresaPerfilPage() {
   return (
     <>
       <main className="flex-1">
-        <section className="contenido-lectura-ancho">
+        <section className="w-full">
           <BotonVolver href="/empresa" />
           <h1 className="mb-6 mt-4 text-2xl font-bold tracking-tight text-foreground">
             Mi perfil
@@ -67,7 +67,7 @@ export default async function EmpresaPerfilPage() {
 
             <div className="rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6">
               <SectionTitle>Datos de la empresa</SectionTitle>
-              <div className="mt-4 grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
+              <div className="mt-4 grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 xl:grid-cols-4">
                 <CampoLectura label="Razón social" valor={empresa.razon_social} />
                 <CampoLectura label="CUIT" valor={formatearCUIT(empresa.cuit)} />
                 <CampoLectura label="Rubro" valor={empresa.rubro} />
@@ -78,7 +78,7 @@ export default async function EmpresaPerfilPage() {
                 <CampoLectura
                   label="Descripción"
                   valor={empresa.descripcion ?? ""}
-                  className="sm:col-span-2"
+                  className="sm:col-span-2 xl:col-span-4"
                 />
               </div>
               {empresa.estado_aprobacion === "rechazada" ? (

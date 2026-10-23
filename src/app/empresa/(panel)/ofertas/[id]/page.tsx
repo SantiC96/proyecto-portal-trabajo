@@ -99,7 +99,7 @@ export default async function OfertaDetallePage({
   const mostrarEditar = baja.acciones.mostrarEditar && oferta.estado !== "rechazada";
 
   return (
-    <section className="contenido-lectura-ancho">
+    <section className="w-full">
       <BotonVolver href="/empresa/ofertas" destacado />
 
       <header className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

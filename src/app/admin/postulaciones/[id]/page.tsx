@@ -27,6 +27,7 @@ import { preEntrevistaYaPaso } from "@/lib/pre-entrevistas";
 import { PreEntrevistaSeccion } from "./pre-entrevista-seccion";
 import { MarcarFichaAbierta } from "./marcar-ficha-abierta";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { DetalleConLateral } from "@/components/ui/detalle-con-lateral";
 import { DatosClave } from "@/components/ui/datos-clave";
 import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
 import { FilaArchivo } from "@/components/ui/fila-archivo";
@@ -206,8 +207,226 @@ export default async function PostulacionFichaPage({
           ? "Decisión"
           : null;
 
+  const tarjetaCandidato = (
+    <section key="candidato" aria-labelledby="candidato-titulo" className="tarjeta flex flex-col gap-5 p-5 sm:p-6">
+      {candidato ? (
+        <>
+          <div className="flex min-w-0 items-center gap-4">
+            <AvatarAjustado
+              src={candidato.avatar.url}
+              alt=""
+              ajuste={candidato.avatar.ajuste}
+              iniciales={inicialesDePersona(candidato.usuario.nombre, candidato.usuario.apellido)}
+              size="ficha"
+            />
+            <div className="flex min-w-0 flex-col items-start gap-1.5">
+              <h2 id="candidato-titulo" className="text-xl leading-tight font-extrabold break-words text-heading">
+                {nombre}
+              </h2>
+              <BadgeProcedencia
+                nivel={candidato.nivel}
+                localidad={candidato.postulante.localidad}
+                comprobante={candidato.comprobante?.estado ?? null}
+              />
+            </div>
+          </div>
+
+          <DatosClave
+            datos={[
+              {
+                etiqueta: "DNI",
+                valor: <span className="tabular-nums">{candidato.postulante.dni ?? "—"}</span>,
+              },
+              { etiqueta: "Teléfono", valor: candidato.usuario.telefono || "—" },
+              {
+                etiqueta: "Email",
+                valor: candidato.email ? <span className="break-all">{candidato.email}</span> : "—",
+              },
+              { etiqueta: "Domicilio", valor: candidato.postulante.domicilio || "—" },
+              {
+                etiqueta: "Rubros de interés",
+                valor:
+                  candidato.categorias.length > 0 ? (
+                    <span className="flex flex-wrap gap-1.5">
+                      {candidato.categorias.map((c) => (
+                        <EtiquetaRubro key={c.id}>{c.nombre}</EtiquetaRubro>
+                      ))}
+                    </span>
+                  ) : (
+                    "—"
+                  ),
+              },
+            ]}
+          />
+
+          <div className="flex flex-col gap-2.5">
+            <h3 className="text-[15px] font-bold text-control-foreground">
+              CV elegido para esta postulación
+            </h3>
+            {cvPostulacion ? (
+              <FilaArchivo
+                nombre={cvPostulacion.cv.nombreOriginal}
+                detalle={`${
+                  cvPostulacion.cv.tamano > 0
+                    ? `${textoTamanoArchivo(cvPostulacion.cv.tamano)} · `
+                    : ""
+                }Cargado el ${formatFecha(cvPostulacion.cv.subidoEn)}`}
+                nota={notaCv}
+                url={cvPostulacion.cv.url}
+                textoBoton="Ver CV"
+              />
+            ) : (
+              <p className="text-[15px] text-muted-foreground">
+                El candidato retiró o eliminó su CV.
+              </p>
+            )}
+          </div>
+
+          {postulanteId && (
+            <Link
+              href={`/admin/postulantes/${postulanteId}`}
+              className="inline-flex min-h-11 w-fit items-center gap-1.5 rounded-[var(--radius-sm)] text-[15px] font-bold text-primary underline-offset-2 outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+            >
+              Ver ficha completa del postulante
+              <ArrowRight aria-hidden="true" className="size-[18px]" />
+            </Link>
+          )}
+        </>
+      ) : (
+        <p id="candidato-titulo" className="text-[15px] text-muted-foreground">
+          Candidato no encontrado.
+        </p>
+      )}
+    </section>
+  );
+
+  const tarjetaOferta = (
+    <section key="oferta" aria-labelledby="oferta-titulo" className="tarjeta flex flex-col gap-4 p-5 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="oferta-titulo" className="text-xl font-extrabold text-heading">
+          Oferta
+        </h2>
+        {estadoOferta && (
+          <Badge tono={ESTADO_OFERTA_EMPRESA_TONO[estadoOferta] ?? "neutral"} estado>
+            {ESTADO_OFERTA_EMPRESA_LABEL[estadoOferta] ?? estadoOferta}
+          </Badge>
+        )}
+      </div>
+      {oferta ? (
+        <>
+          <div className="flex min-w-0 items-center gap-3">
+            <InicialesEmpresa empresa={oferta.empresa_nombre} tamano={44} />
+            <div className="min-w-0">
+              <p className="text-base leading-snug font-bold break-words text-heading">
+                {oferta.titulo}
+              </p>
+              <p className="text-sm break-words text-texto-bajada">{oferta.empresa_nombre}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {rubrosOferta.map((r) => (
+              <EtiquetaRubro key={r} verde>
+                {r}
+              </EtiquetaRubro>
+            ))}
+            <EtiquetaRubro>{oferta.modalidad}</EtiquetaRubro>
+            <EtiquetaRubro>{oferta.jornada}</EtiquetaRubro>
+          </div>
+          {ofertaModificada && oferta.contenido_editado_en && (
+            <Franja tono="aviso" titulo="Modificada tras la postulación:">
+              la empresa cambió la oferta el {formatFecha(oferta.contenido_editado_en)}.
+            </Franja>
+          )}
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <p className="text-sm text-muted-foreground">
+              {oferta.vence_en
+                ? `${estadoOferta === "vencida" ? "Venció" : "Vence"} el ${formatFecha(oferta.vence_en)}`
+                : "Sin fecha de vencimiento"}
+            </p>
+            <Link
+              href={`/ofertas/${oferta.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--radius-sm)] text-[15px] font-bold text-primary underline-offset-2 outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+            >
+              Ver oferta
+              <ExternalLink aria-hidden="true" className="size-4" />
+              <span className="sr-only">(se abre en otra pestaña)</span>
+            </Link>
+          </div>
+        </>
+      ) : (
+        <p className="text-[15px] text-muted-foreground">La oferta ya no está disponible.</p>
+      )}
+    </section>
+  );
+
+  const tarjetaHistorial = (
+    <section key="historial" aria-labelledby="historial-titulo" className="tarjeta p-5 sm:p-6">
+      <h2 id="historial-titulo" className="mb-4 text-xl font-extrabold text-heading">
+        Historial de estados
+      </h2>
+      <LineaDeTiempo eventos={eventos} />
+    </section>
+  );
+
+  // Pre-entrevista, nota interna y decisión.
+  const hayLateral = Boolean(puedeDerivarse || preEntrevista || postulacion.nota_oficina || tituloDecision);
+  const tarjetasLaterales = (
+    <>
+      {(puedeDerivarse || preEntrevista) && (
+        <PreEntrevistaSeccion
+          key={preEntrevista?.updated_at ?? "sin-pre-entrevista"}
+          postulacionId={postulacion.id}
+          preEntrevista={preEntrevista}
+          gestionable={puedeDerivarse}
+          fechaPasada={preEntrevistaFechaPasada}
+        />
+      )}
+
+      {/* La nota interna se carga al no seleccionar la postulación. */}
+      {postulacion.nota_oficina && (
+        <section aria-labelledby="nota-titulo" className="tarjeta p-5 sm:p-6">
+          <h2 id="nota-titulo" className="text-xl font-extrabold text-heading">
+            Nota interna
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">Solo la ve la Oficina de Empleo.</p>
+          <p className="mt-3 text-[15px] leading-[1.5] whitespace-pre-line break-words text-texto-parrafo">
+            {postulacion.nota_oficina}
+          </p>
+        </section>
+      )}
+
+      {tituloDecision && (
+        <section aria-labelledby="decision-titulo" className="tarjeta p-5 sm:p-6">
+          <h2 id="decision-titulo" className="mb-4 text-xl font-extrabold text-heading">
+            {tituloDecision}
+          </h2>
+          <FichaAcciones
+            postulacionId={postulacion.id}
+            estado={postulacion.estado}
+            estadoVisible={estadoVisible}
+            empresaNombre={oferta?.empresa_nombre ?? null}
+            ofertaEstado={oferta?.estado}
+            derivacion={derivacion}
+            avisoCurso={avisoCurso}
+          />
+        </section>
+      )}
+    </>
+  );
+
+  // Las tarjetas de la izquierda que acompañan a la lateral con el mismo alto;
+  // el resto va debajo, a todo el ancho. Pendiente: las tres. No seleccionado
+  // por la oficina (nota interna y decisión a la derecha): datos y oferta. El
+  // resto (derivada, contratado, retirada…): solo los datos del postulante.
+  const izquierdaArriba = puedeDerivarse ? 3 : postulacion.estado === "rechazada_municipalidad" ? 2 : 1;
+  const tarjetasIzquierda = [tarjetaCandidato, tarjetaOferta, tarjetaHistorial];
+  const arriba = tarjetasIzquierda.slice(0, izquierdaArriba);
+  const debajo = tarjetasIzquierda.slice(izquierdaArriba);
+
   return (
-    <section className="contenido-lectura-ancho">
+    <section className="w-full">
       {postulacion.estado === "recibida" && <MarcarFichaAbierta postulacionId={postulacionId} />}
       <BotonVolver href="/admin/postulaciones" destacado />
 
@@ -237,214 +456,17 @@ export default async function PostulacionFichaPage({
         )}
       </header>
 
-      <div className="@container mt-8">
-        <div className="grid grid-cols-1 gap-6 @4xl:grid-cols-[minmax(0,1fr)_400px] @4xl:items-start">
-          {/* Columna principal */}
-          <div className="flex min-w-0 flex-col gap-6">
-            <section aria-labelledby="candidato-titulo" className="tarjeta flex flex-col gap-5 p-5 sm:p-6">
-              {candidato ? (
-                <>
-                  <div className="flex min-w-0 items-center gap-4">
-                    <AvatarAjustado
-                      src={candidato.avatar.url}
-                      alt=""
-                      ajuste={candidato.avatar.ajuste}
-                      iniciales={inicialesDePersona(candidato.usuario.nombre, candidato.usuario.apellido)}
-                      size="ficha"
-                    />
-                    <div className="flex min-w-0 flex-col items-start gap-1.5">
-                      <h2 id="candidato-titulo" className="text-xl leading-tight font-extrabold break-words text-heading">
-                        {nombre}
-                      </h2>
-                      <BadgeProcedencia
-                        nivel={candidato.nivel}
-                        localidad={candidato.postulante.localidad}
-                        comprobante={candidato.comprobante?.estado ?? null}
-                      />
-                    </div>
-                  </div>
-
-                  <DatosClave
-                    datos={[
-                      {
-                        etiqueta: "DNI",
-                        valor: <span className="tabular-nums">{candidato.postulante.dni ?? "—"}</span>,
-                      },
-                      { etiqueta: "Teléfono", valor: candidato.usuario.telefono || "—" },
-                      {
-                        etiqueta: "Email",
-                        valor: candidato.email ? <span className="break-all">{candidato.email}</span> : "—",
-                      },
-                      { etiqueta: "Domicilio", valor: candidato.postulante.domicilio || "—" },
-                      {
-                        etiqueta: "Rubros de interés",
-                        valor:
-                          candidato.categorias.length > 0 ? (
-                            <span className="flex flex-wrap gap-1.5">
-                              {candidato.categorias.map((c) => (
-                                <EtiquetaRubro key={c.id}>{c.nombre}</EtiquetaRubro>
-                              ))}
-                            </span>
-                          ) : (
-                            "—"
-                          ),
-                      },
-                    ]}
-                  />
-
-                  <div className="flex flex-col gap-2.5">
-                    <h3 className="text-[15px] font-bold text-control-foreground">
-                      CV elegido para esta postulación
-                    </h3>
-                    {cvPostulacion ? (
-                      <FilaArchivo
-                        nombre={cvPostulacion.cv.nombreOriginal}
-                        detalle={`${
-                          cvPostulacion.cv.tamano > 0
-                            ? `${textoTamanoArchivo(cvPostulacion.cv.tamano)} · `
-                            : ""
-                        }Cargado el ${formatFecha(cvPostulacion.cv.subidoEn)}`}
-                        nota={notaCv}
-                        url={cvPostulacion.cv.url}
-                        textoBoton="Ver CV"
-                      />
-                    ) : (
-                      <p className="text-[15px] text-muted-foreground">
-                        El candidato retiró o eliminó su CV.
-                      </p>
-                    )}
-                  </div>
-
-                  {postulanteId && (
-                    <Link
-                      href={`/admin/postulantes/${postulanteId}`}
-                      className="inline-flex min-h-11 w-fit items-center gap-1.5 rounded-[var(--radius-sm)] text-[15px] font-bold text-primary underline-offset-2 outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
-                    >
-                      Ver ficha completa del postulante
-                      <ArrowRight aria-hidden="true" className="size-[18px]" />
-                    </Link>
-                  )}
-                </>
-              ) : (
-                <p id="candidato-titulo" className="text-[15px] text-muted-foreground">
-                  Candidato no encontrado.
-                </p>
-              )}
-            </section>
-
-            {/* Oferta */}
-            <section aria-labelledby="oferta-titulo" className="tarjeta flex flex-col gap-4 p-5 sm:p-6">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 id="oferta-titulo" className="text-xl font-extrabold text-heading">
-                  Oferta
-                </h2>
-                {estadoOferta && (
-                  <Badge tono={ESTADO_OFERTA_EMPRESA_TONO[estadoOferta] ?? "neutral"} estado>
-                    {ESTADO_OFERTA_EMPRESA_LABEL[estadoOferta] ?? estadoOferta}
-                  </Badge>
-                )}
-              </div>
-              {oferta ? (
-                <>
-                  <div className="flex min-w-0 items-center gap-3">
-                    <InicialesEmpresa empresa={oferta.empresa_nombre} tamano={44} />
-                    <div className="min-w-0">
-                      <p className="text-base leading-snug font-bold break-words text-heading">
-                        {oferta.titulo}
-                      </p>
-                      <p className="text-sm break-words text-texto-bajada">{oferta.empresa_nombre}</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {rubrosOferta.map((r) => (
-                      <EtiquetaRubro key={r} verde>
-                        {r}
-                      </EtiquetaRubro>
-                    ))}
-                    <EtiquetaRubro>{oferta.modalidad}</EtiquetaRubro>
-                    <EtiquetaRubro>{oferta.jornada}</EtiquetaRubro>
-                  </div>
-                  {ofertaModificada && oferta.contenido_editado_en && (
-                    <Franja tono="aviso" titulo="Modificada tras la postulación:">
-                      la empresa cambió la oferta el {formatFecha(oferta.contenido_editado_en)}.
-                    </Franja>
-                  )}
-                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                    <p className="text-sm text-muted-foreground">
-                      {oferta.vence_en
-                        ? `${estadoOferta === "vencida" ? "Venció" : "Vence"} el ${formatFecha(oferta.vence_en)}`
-                        : "Sin fecha de vencimiento"}
-                    </p>
-                    <Link
-                      href={`/ofertas/${oferta.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--radius-sm)] text-[15px] font-bold text-primary underline-offset-2 outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
-                    >
-                      Ver oferta
-                      <ExternalLink aria-hidden="true" className="size-4" />
-                      <span className="sr-only">(se abre en otra pestaña)</span>
-                    </Link>
-                  </div>
-                </>
-              ) : (
-                <p className="text-[15px] text-muted-foreground">La oferta ya no está disponible.</p>
-              )}
-            </section>
-
-            {/* Historial */}
-            <section aria-labelledby="historial-titulo" className="tarjeta p-5 sm:p-6">
-              <h2 id="historial-titulo" className="mb-4 text-xl font-extrabold text-heading">
-                Historial de estados
-              </h2>
-              <LineaDeTiempo eventos={eventos} />
-            </section>
-          </div>
-
-          {/* Columna lateral: pre-entrevista, nota y decisión */}
-          <div className="flex min-w-0 flex-col gap-6">
-            {(puedeDerivarse || preEntrevista) && (
-              <PreEntrevistaSeccion
-                key={preEntrevista?.updated_at ?? "sin-pre-entrevista"}
-                postulacionId={postulacion.id}
-                preEntrevista={preEntrevista}
-                gestionable={puedeDerivarse}
-                fechaPasada={preEntrevistaFechaPasada}
-              />
-            )}
-
-            {/* La nota interna se carga al no seleccionar la postulación. */}
-            {postulacion.nota_oficina && (
-              <section aria-labelledby="nota-titulo" className="tarjeta p-5 sm:p-6">
-                <h2 id="nota-titulo" className="text-xl font-extrabold text-heading">
-                  Nota interna
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">Solo la ve la Oficina de Empleo.</p>
-                <p className="mt-3 text-[15px] leading-[1.5] whitespace-pre-line break-words text-texto-parrafo">
-                  {postulacion.nota_oficina}
-                </p>
-              </section>
-            )}
-
-            {tituloDecision && (
-              <section aria-labelledby="decision-titulo" className="tarjeta p-5 sm:p-6">
-                <h2 id="decision-titulo" className="mb-4 text-xl font-extrabold text-heading">
-                  {tituloDecision}
-                </h2>
-                <FichaAcciones
-                  postulacionId={postulacion.id}
-                  estado={postulacion.estado}
-                  estadoVisible={estadoVisible}
-                  empresaNombre={oferta?.empresa_nombre ?? null}
-                  ofertaEstado={oferta?.estado}
-                  derivacion={derivacion}
-                  avisoCurso={avisoCurso}
-                />
-              </section>
-            )}
-          </div>
-        </div>
-      </div>
+      {hayLateral ? (
+        <DetalleConLateral
+          className="mt-8"
+          lateralEnCelular="al-final"
+          principal={<>{arriba}</>}
+          lateral={tarjetasLaterales}
+          debajo={debajo.length > 0 ? <>{debajo}</> : undefined}
+        />
+      ) : (
+        <div className="mt-8 flex flex-col gap-6">{tarjetasIzquierda}</div>
+      )}
     </section>
   );
 }

@@ -318,11 +318,8 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
   .app-contenido { flex: 1; min-height: 100vh; padding: 32px; }
 }
 
-/* Textos largos, formularios y detalles: cada página decide su ancho, alineado
-   a la izquierda. Las listas y los paneles usan todo el ancho. */
-.contenido-lectura { width: 100%; max-width: 720px; }
-/* Formularios y detalles con dos columnas. */
-.contenido-lectura-ancho { width: 100%; max-width: 960px; }
+/* Las páginas ocupan todo el ancho al lado de la sidebar, sin max-width
+   (decisión 033): los formularios reparten sus campos en grillas. */
 
 /* Listas que se desplazan de costado (carrusel): sin barra visible. */
 .sin-barra-scroll { scrollbar-width: none; }
@@ -740,6 +737,9 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
 }
 .auth-volver:hover { color: var(--color-primary); }
 .auth-volver:focus-visible { box-shadow: var(--sombra-foco); }
+.auth-volver--claro { margin-bottom: 0; color: #fff; }
+.auth-volver--claro:hover { color: var(--color-login-suave); }
+.auth-volver--claro:focus-visible { box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 4px #fff; }
 .auth-volver svg { width: 18px; height: 18px; }
 .auth-tarjeta {
   padding: 24px;
@@ -839,6 +839,46 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
   gap: 10px;
   font-size: 14px;
   color: var(--color-login-suave);
+}
+
+/* Registro: el mismo panel (PanelMarca). En el celular va arriba y más corto,
+   con "Volver", la marca, la volanta y el título; desde lg queda fijo a la
+   altura de la ventana mientras el formulario se desplaza. */
+.login-pantalla--registro { flex-direction: column; }
+.login-panel-volver { display: none; }
+@media (max-width: 1023px) {
+  .login-panel--celular {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 8px 16px 28px;
+    background-color: var(--color-primary);
+    background-image: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color: #fff;
+  }
+  .login-panel--celular .login-panel-volver { display: block; }
+  .login-panel--celular :is(.login-iconos, .login-panel-bajada, .login-panel-nota) { display: none; }
+  .login-panel--celular .login-panel-logo { width: 148px; }
+  .login-panel--celular .login-panel-texto { gap: 10px; margin: 0; padding: 6px 0 0; }
+  .login-panel--celular .login-panel-titulo { font-size: 34px; line-height: 1.05; }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .login-panel--celular { padding: 16px 24px 36px; }
+  .login-panel--celular .login-panel-titulo { font-size: 42px; }
+}
+@media (min-width: 1024px) {
+  .login-pantalla--registro { flex-direction: row; }
+  .login-panel--fijo {
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    height: 100svh;
+  }
 }
 
 .login-columna {

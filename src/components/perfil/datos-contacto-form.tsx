@@ -148,46 +148,46 @@ export function DatosContactoForm({
                 </InputWrapper>
                 <ErrorCampo idCampo="dc-apellido" mensaje={campos.errores.apellido} />
               </div>
-            </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="dc-telefono" className="text-sm font-medium text-foreground">
-                Teléfono / Celular
-              </label>
-              <InputWrapper>
-                <FieldIcon icon={Phone} />
-                <input
-                  id="dc-telefono"
-                  type="tel"
-                  autoComplete="tel"
-                  value={telefono}
-                  onChange={(e) => {
-                    setTelefono(e.target.value);
-                    campos.limpiar("telefono");
-                  }}
-                  placeholder="Ej: 341 5678901"
-                  className={inputClass}
-                  {...ariaErrorCampo("dc-telefono", campos.errores.telefono)}
-                />
-              </InputWrapper>
-              <ErrorCampo idCampo="dc-telefono" mensaje={campos.errores.telefono} />
-            </div>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="dc-telefono" className="text-sm font-medium text-foreground">
+                  Teléfono / Celular
+                </label>
+                <InputWrapper>
+                  <FieldIcon icon={Phone} />
+                  <input
+                    id="dc-telefono"
+                    type="tel"
+                    autoComplete="tel"
+                    value={telefono}
+                    onChange={(e) => {
+                      setTelefono(e.target.value);
+                      campos.limpiar("telefono");
+                    }}
+                    placeholder="Ej: 341 5678901"
+                    className={inputClass}
+                    {...ariaErrorCampo("dc-telefono", campos.errores.telefono)}
+                  />
+                </InputWrapper>
+                <ErrorCampo idCampo="dc-telefono" mensaje={campos.errores.telefono} />
+              </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="dc-email" className="text-sm font-medium text-foreground">
-                Email <span className="ml-1 text-xs font-normal text-muted-icon">(no editable)</span>
-              </label>
-              <InputWrapper>
-                <FieldIcon icon={Mail} />
-                <input
-                  id="dc-email"
-                  type="email"
-                  readOnly
-                  value={email}
-                  className={inputReadonlyClass}
-                  tabIndex={-1}
-                />
-              </InputWrapper>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="dc-email" className="text-sm font-medium text-foreground">
+                  Email <span className="ml-1 text-xs font-normal text-muted-icon">(no editable)</span>
+                </label>
+                <InputWrapper>
+                  <FieldIcon icon={Mail} />
+                  <input
+                    id="dc-email"
+                    type="email"
+                    readOnly
+                    value={email}
+                    className={inputReadonlyClass}
+                    tabIndex={-1}
+                  />
+                </InputWrapper>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-3">
