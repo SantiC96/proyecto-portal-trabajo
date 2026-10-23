@@ -63,9 +63,9 @@ export default async function EditarOfertaPage({ params }: Props) {
   return (
     <section className="contenido-lectura-ancho">
       {esBorrador ? (
-        <BotonVolver href="/empresa/ofertas">Volver a mis ofertas</BotonVolver>
+        <BotonVolver href="/empresa/ofertas" />
       ) : (
-        <BotonVolver href={`/empresa/ofertas/${id}`}>Volver a la oferta</BotonVolver>
+        <BotonVolver href={`/empresa/ofertas/${id}`} />
       )}
 
       <div className="mt-6">

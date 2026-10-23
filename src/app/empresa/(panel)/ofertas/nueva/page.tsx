@@ -14,7 +14,7 @@ export default async function NuevaOfertaPage() {
 
   return (
     <section className="contenido-lectura-ancho">
-      <BotonVolver href="/empresa/ofertas">Volver a mis ofertas</BotonVolver>
+      <BotonVolver href="/empresa/ofertas" />
 
       <div className="mt-6">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Publicar oferta</h1>

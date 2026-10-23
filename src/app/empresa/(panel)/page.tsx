@@ -18,6 +18,7 @@ import { DIAS_AVISO_VENCIMIENTO } from "@/lib/ofertas-vencimiento";
 import { generarAvisosVencimientoEmpresa } from "@/lib/notificaciones";
 import { dentroDeDiasISO, formatFecha } from "@/lib/fechas";
 import { inicialesDePersona } from "@/lib/iniciales";
+import { fotosDeCandidatosEmpresa } from "@/lib/fotos-perfil";
 import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_TONO } from "@/lib/derivacion-estados";
 import type { FilaDerivacionDeOfertaEmpresa } from "@/types/db";
 
@@ -250,9 +251,12 @@ async function CandidatosPorContactar({ empresaId }: { empresaId: string }) {
   }
 
   const postulanteIds = [...new Set(visibles.map((d) => d.postulante_id))];
-  const candidatos = await Promise.all(
-    postulanteIds.map((pid) => supabase.rpc("candidato_para_empresa", { p_postulante_id: pid })),
-  );
+  const [candidatos, fotos] = await Promise.all([
+    Promise.all(
+      postulanteIds.map((pid) => supabase.rpc("candidato_para_empresa", { p_postulante_id: pid })),
+    ),
+    fotosDeCandidatosEmpresa(postulanteIds),
+  ]);
   const nombres = new Map<string, { nombre: string; apellido: string }>();
   postulanteIds.forEach((pid, i) => {
     const fila = candidatos[i].data?.[0];
@@ -265,6 +269,7 @@ async function CandidatosPorContactar({ empresaId }: { empresaId: string }) {
         {visibles.map((d) => {
           const persona = nombres.get(d.postulante_id);
           const nombre = persona ? `${persona.nombre} ${persona.apellido}` : "Candidato";
+          const foto = fotos.get(d.postulante_id);
           return (
             <li
               key={d.derivacion_id}
@@ -272,6 +277,8 @@ async function CandidatosPorContactar({ empresaId }: { empresaId: string }) {
             >
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 <AvatarAjustado
+                  src={foto?.url}
+                  ajuste={foto?.ajuste}
                   alt=""
                   size="lista"
                   iniciales={persona ? inicialesDePersona(persona.nombre, persona.apellido) : undefined}

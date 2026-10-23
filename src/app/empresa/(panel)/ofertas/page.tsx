@@ -57,7 +57,7 @@ export default async function MisOfertasPage({
 
   return (
     <section>
-      <BotonVolver href="/empresa">Volver al panel</BotonVolver>
+      <BotonVolver href="/empresa" />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Mis ofertas</h1>

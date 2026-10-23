@@ -32,7 +32,7 @@ export default async function CandidatosGuardadosPage({
 
   return (
     <section>
-      <BotonVolver href="/empresa">Volver al panel</BotonVolver>
+      <BotonVolver href="/empresa" />
       <div className="flex items-center gap-3">
         <BookmarkCheck className="h-6 w-6 text-primary" />
         <div>
