@@ -62,7 +62,7 @@ export default async function EditarOfertaPage({ params }: Props) {
   };
 
   return (
-    <section className="flex w-full max-w-[1200px] flex-col gap-6">
+    <section className="flex w-full flex-col gap-6">
       <div className="flex flex-col gap-4">
         <BotonVolver href={esBorrador ? "/empresa/ofertas" : `/empresa/ofertas/${id}`} />
         <EncabezadoPagina

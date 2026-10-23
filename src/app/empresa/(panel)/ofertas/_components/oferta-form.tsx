@@ -26,6 +26,7 @@ import { SeccionNumerada } from "@/components/ui/seccion-numerada";
 import { clasePastilla } from "@/components/ui/pastilla-filtro";
 import { TarjetaOferta } from "@/components/ofertas/tarjeta-oferta";
 import { cn } from "@/lib/utils";
+import { marcarNavegacionDelUsuario } from "@/lib/navegacion-interna";
 
 type Categoria = Pick<Tabla<"categorias">, "id" | "nombre">;
 
@@ -276,7 +277,7 @@ export function OfertaForm({
       )}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
-        <div className="flex min-w-0 flex-col gap-6">
+        <div className="@container flex min-w-0 flex-col gap-6">
           <SeccionNumerada numero={1} id="seccion-puesto" titulo="El puesto">
             <div className="flex flex-col gap-5">
               <div className="flex flex-col gap-1.5">
@@ -354,7 +355,7 @@ export function OfertaForm({
           </SeccionNumerada>
 
           <SeccionNumerada numero={3} id="seccion-condiciones" titulo="Condiciones">
-            <div className="flex flex-col gap-5">
+            <div className="grid grid-cols-1 gap-5 @3xl:grid-cols-2">
               <GrupoOpciones
                 id="modalidad"
                 titulo="Modalidad"
@@ -377,7 +378,7 @@ export function OfertaForm({
                 }}
                 error={campos.errores.jornada}
               />
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 @3xl:col-span-2">
                 <p className="etiqueta-campo">Ubicación</p>
                 <div className="flex min-h-12 items-center gap-2 rounded-[var(--radius-lg)] border-[1.5px] border-border-strong bg-surface-tinted px-3.5 text-[15px] text-muted-foreground-strong">
                   <MapPin className="size-[18px] shrink-0 text-primary" aria-hidden="true" />
@@ -387,49 +388,51 @@ export function OfertaForm({
             </div>
           </SeccionNumerada>
 
-          <SeccionNumerada numero={4} id="seccion-requisitos" titulo="Requisitos">
-            <ListaItems
-              id="requisitos"
-              etiqueta="Requisito"
-              obligatorio
-              items={requisitos}
-              nuevo={nuevoRequisito}
-              onNuevo={(v) => {
-                setNuevoRequisito(v);
-                campos.limpiar("requisitos");
-              }}
-              onAgregar={agregarRequisito}
-              onQuitar={(i) => setRequisitos(requisitos.filter((_, j) => j !== i))}
-              placeholder="Ej: Secundario completo, experiencia en ventas…"
-              textoAgregar="Agregar requisito"
-              textoQuitar="Quitar requisito"
-              ayuda="Escribí un requisito y tocá Agregar o presioná Enter. Podés cargar varios."
-              error={campos.errores.requisitos}
-            />
-          </SeccionNumerada>
+          <div className="grid grid-cols-1 gap-6 @4xl:grid-cols-2">
+            <SeccionNumerada numero={4} id="seccion-requisitos" titulo="Requisitos">
+              <ListaItems
+                id="requisitos"
+                etiqueta="Requisito"
+                obligatorio
+                items={requisitos}
+                nuevo={nuevoRequisito}
+                onNuevo={(v) => {
+                  setNuevoRequisito(v);
+                  campos.limpiar("requisitos");
+                }}
+                onAgregar={agregarRequisito}
+                onQuitar={(i) => setRequisitos(requisitos.filter((_, j) => j !== i))}
+                placeholder="Ej: Secundario completo, experiencia en ventas…"
+                textoAgregar="Agregar requisito"
+                textoQuitar="Quitar requisito"
+                ayuda="Escribí un requisito y tocá Agregar o presioná Enter. Podés cargar varios."
+                error={campos.errores.requisitos}
+              />
+            </SeccionNumerada>
 
-          <SeccionNumerada numero={5} id="seccion-beneficios" titulo="Beneficios (opcional)">
-            <ListaItems
-              id="beneficios"
-              etiqueta="Beneficio"
-              items={beneficios}
-              nuevo={nuevoBeneficio}
-              onNuevo={(v) => {
-                setNuevoBeneficio(v);
-                campos.limpiar("beneficios");
-              }}
-              onAgregar={agregarBeneficio}
-              onQuitar={(i) => setBeneficios(beneficios.filter((_, j) => j !== i))}
-              placeholder="Ej: Obra social, flexibilidad horaria, comedor…"
-              textoAgregar="Agregar beneficio"
-              textoQuitar="Quitar beneficio"
-              ayuda="Escribí un beneficio y tocá Agregar o presioná Enter. Podés cargar varios."
-              error={campos.errores.beneficios}
-            />
-          </SeccionNumerada>
+            <SeccionNumerada numero={5} id="seccion-beneficios" titulo="Beneficios (opcional)">
+              <ListaItems
+                id="beneficios"
+                etiqueta="Beneficio"
+                items={beneficios}
+                nuevo={nuevoBeneficio}
+                onNuevo={(v) => {
+                  setNuevoBeneficio(v);
+                  campos.limpiar("beneficios");
+                }}
+                onAgregar={agregarBeneficio}
+                onQuitar={(i) => setBeneficios(beneficios.filter((_, j) => j !== i))}
+                placeholder="Ej: Obra social, flexibilidad horaria, comedor…"
+                textoAgregar="Agregar beneficio"
+                textoQuitar="Quitar beneficio"
+                ayuda="Escribí un beneficio y tocá Agregar o presioná Enter. Podés cargar varios."
+                error={campos.errores.beneficios}
+              />
+            </SeccionNumerada>
+          </div>
 
           <SeccionNumerada numero={6} id="seccion-publicacion" titulo="Publicación">
-            <div className="flex flex-col gap-5">
+            <div className="grid grid-cols-1 gap-5 @3xl:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="vacantes" className="etiqueta-campo">
                   Cantidad de personas a contratar <Obligatorio />
@@ -530,7 +533,10 @@ export function OfertaForm({
       <div className="tarjeta flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
         <button
           type="button"
-          onClick={() => router.push("/empresa/ofertas")}
+          onClick={() => {
+            marcarNavegacionDelUsuario();
+            router.push("/empresa/ofertas");
+          }}
           disabled={isPending}
           className="btn-neutro sm:mr-auto"
         >

@@ -15,6 +15,7 @@ import { BotonVolver } from "@/components/ui/boton-volver";
 import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
 import { Badge } from "@/components/ui/badge";
 import { Franja } from "@/components/ui/franja";
+import { DetalleConLateral } from "@/components/ui/detalle-con-lateral";
 import { InicialesEmpresa } from "@/components/ofertas/iniciales-empresa";
 import type { ClienteSupabase } from "@/types/db";
 import { TarjetaLateral, type VarianteLateral } from "./tarjeta-lateral";
@@ -102,12 +103,14 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
     <main className="flex-1">
       <BotonVolver href="/ofertas" destacado />
 
-      <div className="@container mt-4">
-        <div className="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_360px] @4xl:gap-7">
-          {/* Encabezado */}
+      <DetalleConLateral
+        className="mt-4"
+        separacion="gap-4 @4xl:gap-7"
+        lateralComoAside
+        principal={
           <article
             aria-labelledby="oferta-titulo"
-            className="tarjeta flex flex-col gap-4 px-4 py-[18px] sm:p-6 @4xl:col-start-1"
+            className="tarjeta flex flex-col gap-4 px-4 py-[18px] sm:p-6"
           >
             {modificadaEn && (
               <Franja tono="aviso" titulo="La empresa modificó esta oferta después de tu postulación.">
@@ -154,22 +157,20 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
               )}
             </ul>
           </article>
-
-          {/* Lateral: en el celular va entre el encabezado y la descripción */}
-          <aside className="@4xl:sticky @4xl:top-6 @4xl:col-start-2 @4xl:row-span-2 @4xl:row-start-1">
-            <TarjetaLateral
-              variante={variante}
-              oferta={{
-                id: oferta.id,
-                titulo: oferta.titulo,
-                empresa: oferta.empresa,
-                venceEn: oferta.venceEn ?? null,
-              }}
-            />
-          </aside>
-
-          {/* Contenido */}
-          <div className="tarjeta flex flex-col gap-6 px-4 py-[18px] sm:p-6 @4xl:col-start-1">
+        }
+        lateral={
+          <TarjetaLateral
+            variante={variante}
+            oferta={{
+              id: oferta.id,
+              titulo: oferta.titulo,
+              empresa: oferta.empresa,
+              venceEn: oferta.venceEn ?? null,
+            }}
+          />
+        }
+        debajo={
+          <div className="tarjeta flex flex-col gap-6 px-4 py-[18px] sm:p-6">
             <SeccionContenido titulo="Descripción">
               <p className="whitespace-pre-line text-base leading-[1.6] text-texto-parrafo">
                 {oferta.descripcion}
@@ -189,8 +190,8 @@ export default async function OfertaDetallePage({ params, searchParams }: Props)
               </SeccionContenido>
             )}
           </div>
-        </div>
-      </div>
+        }
+      />
     </main>
   );
 }

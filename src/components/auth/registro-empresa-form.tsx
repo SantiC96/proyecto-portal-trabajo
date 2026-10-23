@@ -105,7 +105,7 @@ export function RegistroEmpresaForm({ categorias }: Props) {
 
   return (
     <div className="w-full">
-      <EncabezadoRegistro titulo="Registro de empresa" />
+      <EncabezadoRegistro titulo="Registrar tu empresa" />
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-8">
         <SeccionNumerada numero={1} id="seccion-empresa" titulo="Datos de la empresa" variante="plana">

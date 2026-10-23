@@ -77,7 +77,7 @@ export function LoginForm({
   return (
     <div className="auth-tarjeta login-tarjeta login-entrada login-entrada--demorada">
       <Image
-        src="/images/logo-funes-color.png"
+        src="/images/logo-funes-verde.png"
         alt="Municipalidad de Funes"
         width={120}
         height={34}

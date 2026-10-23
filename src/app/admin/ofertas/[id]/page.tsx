@@ -13,6 +13,7 @@ import { OfertaAcciones } from "./oferta-acciones";
 import { RequisitosList, BeneficiosList } from "@/components/ofertas/requisitos-beneficios";
 import { requerirRolPagina } from "@/lib/auth";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { DetalleConLateral } from "@/components/ui/detalle-con-lateral";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { fotoDePerfil } from "@/lib/fotos-perfil";
 import { Badge, type TonoBadge } from "@/components/ui/badge";
@@ -125,7 +126,7 @@ export default async function AdminOfertaDetallePage({
           : `Enviada el ${formatFecha(oferta.created_at)}`;
 
   return (
-    <section className="flex w-full max-w-[1200px] flex-col gap-6">
+    <section className="flex w-full flex-col gap-6">
       <div className="flex flex-col gap-4">
         <BotonVolver href="/admin/ofertas" />
         <header className="flex flex-col gap-2">
@@ -155,161 +156,165 @@ export default async function AdminOfertaDetallePage({
         </Franja>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_400px] xl:items-start">
-        <article aria-labelledby="titulo-contenido" className={TARJETA}>
-          <h2 id="titulo-contenido" className={TITULO_TARJETA}>
-            Contenido de la oferta
-          </h2>
-          <DatosClave
-            className="mt-5"
-            datos={[
-              { etiqueta: categorias.length === 1 ? "Rubro" : "Rubros", valor: categorias.join(", ") },
-              { etiqueta: "Modalidad", valor: oferta.modalidad },
-              { etiqueta: "Jornada", valor: oferta.jornada },
-              { etiqueta: "Ubicación", valor: oferta.ubicacion },
-              {
-                etiqueta: "Vacantes",
-                valor:
-                  vacantes === null
-                    ? null
-                    : `${vacantes} (${contratados} ${contratados === 1 ? "cubierta" : "cubiertas"})`,
-              },
-              { etiqueta: "Duración", valor: `${oferta.duracion_dias} días` },
-            ]}
-          />
+      <DetalleConLateral
+        desde="xl"
+        principal={
+          <article aria-labelledby="titulo-contenido" className={TARJETA}>
+            <h2 id="titulo-contenido" className={TITULO_TARJETA}>
+              Contenido de la oferta
+            </h2>
+            <DatosClave
+              className="mt-5"
+              datos={[
+                { etiqueta: categorias.length === 1 ? "Rubro" : "Rubros", valor: categorias.join(", ") },
+                { etiqueta: "Modalidad", valor: oferta.modalidad },
+                { etiqueta: "Jornada", valor: oferta.jornada },
+                { etiqueta: "Ubicación", valor: oferta.ubicacion },
+                {
+                  etiqueta: "Vacantes",
+                  valor:
+                    vacantes === null
+                      ? null
+                      : `${vacantes} (${contratados} ${contratados === 1 ? "cubierta" : "cubiertas"})`,
+                },
+                { etiqueta: "Duración", valor: `${oferta.duracion_dias} días` },
+              ]}
+            />
 
-          <hr className="my-6 border-tabla-borde" />
+            <hr className="my-6 border-tabla-borde" />
 
-          <h3 className="text-sm font-bold tracking-wider text-primary uppercase">Descripción</h3>
-          <p className="mt-3 text-[15px] leading-relaxed whitespace-pre-line text-texto-parrafo">
-            {oferta.descripcion}
-          </p>
-          <RequisitosList items={oferta.requisitos} headingTag="h3" />
-          <BeneficiosList items={oferta.beneficios ?? []} headingTag="h3" />
-        </article>
-
-        <div className="flex flex-col gap-6 xl:sticky xl:top-6">
-          {empresa && (
-            <section aria-labelledby="titulo-empresa" className={TARJETA}>
-              <h2 id="titulo-empresa" className="sr-only">
-                Empresa
-              </h2>
-              <div className="flex items-center gap-3">
-                <AvatarAjustado
-                  src={logoEmpresa?.url}
-                  ajuste={logoEmpresa?.ajuste}
-                  iniciales={inicialesDeEmpresa(empresa.razon_social)}
-                  alt={`Logo de ${empresa.razon_social}`}
-                  size="md"
-                />
-                <p className="min-w-0 text-[17px] leading-snug font-extrabold break-words text-heading">
-                  {oferta.empresa_nombre}
-                </p>
-              </div>
-              <DatosClave
-                className="mt-5"
-                datos={[
-                  { etiqueta: "Razón social", valor: empresa.razon_social },
-                  {
-                    etiqueta: "CUIT",
-                    valor: <span className="tabular-nums">{formatearCUIT(empresa.cuit)}</span>,
-                  },
-                  { etiqueta: "Rubro", valor: empresa.rubro },
-                ]}
-              />
-              {oferta.empresa_id && (
-                <Link
-                  href={`/admin/empresas/${oferta.empresa_id}`}
-                  className="mt-5 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--radius-sm)] text-[15px] font-bold text-primary outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
-                >
-                  Ver empresa
-                  <ArrowRight className="size-4" aria-hidden="true" />
-                </Link>
-              )}
-            </section>
-          )}
-
-          {pendiente ? (
-            <section aria-labelledby="titulo-decision" className={TARJETA}>
-              <h2 id="titulo-decision" className={TITULO_TARJETA}>
-                Decisión
-              </h2>
-              <p className="mt-2 text-[15px] text-muted-foreground-strong">
-                Si la publicás, los postulantes la ven en el listado de ofertas.
-              </p>
-              <div className="mt-5">
-                <OfertaAcciones ofertaId={ofertaId} estado={oferta.estado} />
-              </div>
-            </section>
-          ) : (
-            <>
-              {oferta.estado === "activa" && (
-                <section aria-labelledby="titulo-postulaciones" className={TARJETA}>
-                  <h2 id="titulo-postulaciones" className={TITULO_TARJETA}>
-                    Postulaciones
-                  </h2>
-                  <p className="mt-3 flex flex-col">
-                    <span className="text-[40px] leading-none font-extrabold text-heading tabular-nums">
-                      {totalPostulaciones}
-                    </span>
-                    <span className="mt-1.5 text-sm text-muted-foreground">
-                      {totalPostulaciones === 1 ? "postulación recibida" : "postulaciones recibidas"}
-                    </span>
-                  </p>
-                  {puedeBuscarPostulantes && (
-                    <Link
-                      href={`/admin/ofertas/${ofertaId}/candidatos`}
-                      className="btn-primario mt-5 w-full text-center"
-                    >
-                      <UserSearch aria-hidden="true" />
-                      Buscar postulantes para esta oferta
-                    </Link>
-                  )}
-                </section>
-              )}
-
-              <section aria-labelledby="titulo-revision" className={TARJETA}>
-                <h2 id="titulo-revision" className={TITULO_TARJETA}>
-                  Revisión
+            <h3 className="text-sm font-bold tracking-wider text-primary uppercase">Descripción</h3>
+            <p className="mt-3 text-[15px] leading-relaxed whitespace-pre-line text-texto-parrafo">
+              {oferta.descripcion}
+            </p>
+            <RequisitosList items={oferta.requisitos} headingTag="h3" />
+            <BeneficiosList items={oferta.beneficios ?? []} headingTag="h3" />
+          </article>
+        }
+        lateral={
+          <>
+            {empresa && (
+              <section aria-labelledby="titulo-empresa" className={TARJETA}>
+                <h2 id="titulo-empresa" className="sr-only">
+                  Empresa
                 </h2>
-                <div className="mt-2">
-                  <OfertaAcciones ofertaId={ofertaId} estado={oferta.estado} />
+                <div className="flex items-center gap-3">
+                  <AvatarAjustado
+                    src={logoEmpresa?.url}
+                    ajuste={logoEmpresa?.ajuste}
+                    iniciales={inicialesDeEmpresa(empresa.razon_social)}
+                    alt={`Logo de ${empresa.razon_social}`}
+                    size="md"
+                  />
+                  <p className="min-w-0 text-[17px] leading-snug font-extrabold break-words text-heading">
+                    {oferta.empresa_nombre}
+                  </p>
                 </div>
-                {oferta.motivo_rechazo && (
-                  <Aviso tono="danger" titulo="Motivo del rechazo" role="none" className="mt-4">
-                    {oferta.motivo_rechazo}
-                  </Aviso>
-                )}
                 <DatosClave
                   className="mt-5"
                   datos={[
-                    { etiqueta: "Enviada", valor: formatFecha(oferta.created_at) },
+                    { etiqueta: "Razón social", valor: empresa.razon_social },
                     {
-                      etiqueta: "Fecha de revisión",
-                      valor: oferta.revisado_en ? formatFechaHora(oferta.revisado_en) : null,
+                      etiqueta: "CUIT",
+                      valor: <span className="tabular-nums">{formatearCUIT(empresa.cuit)}</span>,
                     },
-                    {
-                      etiqueta: "Revisada por",
-                      valor: revisor ? `${revisor.nombre} ${revisor.apellido}` : null,
-                    },
-                    {
-                      etiqueta: "Publicada",
-                      valor: oferta.publicado_en ? formatFecha(oferta.publicado_en) : null,
-                    },
-                    {
-                      etiqueta: "Postulaciones",
-                      valor:
-                        oferta.estado !== "activa" && totalPostulaciones > 0
-                          ? String(totalPostulaciones)
-                          : null,
-                    },
+                    { etiqueta: "Rubro", valor: empresa.rubro },
                   ]}
                 />
+                {oferta.empresa_id && (
+                  <Link
+                    href={`/admin/empresas/${oferta.empresa_id}`}
+                    className="mt-5 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--radius-sm)] text-[15px] font-bold text-primary outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+                  >
+                    Ver empresa
+                    <ArrowRight className="size-4" aria-hidden="true" />
+                  </Link>
+                )}
               </section>
-            </>
-          )}
-        </div>
-      </div>
+            )}
+
+            {pendiente ? (
+              <section aria-labelledby="titulo-decision" className={TARJETA}>
+                <h2 id="titulo-decision" className={TITULO_TARJETA}>
+                  Decisión
+                </h2>
+                <p className="mt-2 text-[15px] text-muted-foreground-strong">
+                  Si la publicás, los postulantes la ven en el listado de ofertas.
+                </p>
+                <div className="mt-5">
+                  <OfertaAcciones ofertaId={ofertaId} estado={oferta.estado} />
+                </div>
+              </section>
+            ) : (
+              <>
+                {oferta.estado === "activa" && (
+                  <section aria-labelledby="titulo-postulaciones" className={TARJETA}>
+                    <h2 id="titulo-postulaciones" className={TITULO_TARJETA}>
+                      Postulaciones
+                    </h2>
+                    <p className="mt-3 flex flex-col">
+                      <span className="text-[40px] leading-none font-extrabold text-heading tabular-nums">
+                        {totalPostulaciones}
+                      </span>
+                      <span className="mt-1.5 text-sm text-muted-foreground">
+                        {totalPostulaciones === 1 ? "postulación recibida" : "postulaciones recibidas"}
+                      </span>
+                    </p>
+                    {puedeBuscarPostulantes && (
+                      <Link
+                        href={`/admin/ofertas/${ofertaId}/candidatos`}
+                        className="btn-primario mt-5 w-full text-center"
+                      >
+                        <UserSearch aria-hidden="true" />
+                        Buscar postulantes para esta oferta
+                      </Link>
+                    )}
+                  </section>
+                )}
+
+                <section aria-labelledby="titulo-revision" className={TARJETA}>
+                  <h2 id="titulo-revision" className={TITULO_TARJETA}>
+                    Revisión
+                  </h2>
+                  <div className="mt-2">
+                    <OfertaAcciones ofertaId={ofertaId} estado={oferta.estado} />
+                  </div>
+                  {oferta.motivo_rechazo && (
+                    <Aviso tono="danger" titulo="Motivo del rechazo" role="none" className="mt-4">
+                      {oferta.motivo_rechazo}
+                    </Aviso>
+                  )}
+                  <DatosClave
+                    className="mt-5"
+                    datos={[
+                      { etiqueta: "Enviada", valor: formatFecha(oferta.created_at) },
+                      {
+                        etiqueta: "Fecha de revisión",
+                        valor: oferta.revisado_en ? formatFechaHora(oferta.revisado_en) : null,
+                      },
+                      {
+                        etiqueta: "Revisada por",
+                        valor: revisor ? `${revisor.nombre} ${revisor.apellido}` : null,
+                      },
+                      {
+                        etiqueta: "Publicada",
+                        valor: oferta.publicado_en ? formatFecha(oferta.publicado_en) : null,
+                      },
+                      {
+                        etiqueta: "Postulaciones",
+                        valor:
+                          oferta.estado !== "activa" && totalPostulaciones > 0
+                            ? String(totalPostulaciones)
+                            : null,
+                      },
+                    ]}
+                  />
+                </section>
+              </>
+            )}
+          </>
+        }
+      />
     </section>
   );
 }

@@ -23,6 +23,7 @@ import { inicialesDePersona } from "@/lib/iniciales";
 import { AccionesDerivacion } from "./_components/acciones-derivacion";
 import { BookmarkBtn } from "./_components/bookmark-btn";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { DetalleConLateral } from "@/components/ui/detalle-con-lateral";
 import { fotosDeCandidatosEmpresa } from "@/lib/fotos-perfil";
 
 export const metadata: Metadata = {
@@ -108,7 +109,7 @@ export default async function CandidatoFichaPage({
   const estadoTono = DERIVACION_ESTADO_TONO[derivacion.estado_empresa] ?? "neutral";
 
   return (
-    <section className="contenido-lectura-ancho">
+    <section className="w-full">
       <BotonVolver href={`/empresa/ofertas/${ofertaId}`} destacado />
 
       {/* Cabecera */}
@@ -149,12 +150,12 @@ export default async function CandidatoFichaPage({
         />
       </header>
 
-      <div className="@container mt-8">
-        {/* Las dos columnas tienen el mismo alto (stretch): Gestión ocupa todo
-            el de la suya y, en las dos, el espacio que sobra queda abajo. */}
-        <div className="grid grid-cols-1 gap-6 @4xl:grid-cols-[minmax(0,1fr)_400px]">
-          {/* Columna principal */}
-          <div className="flex min-w-0 flex-col gap-6">
+      {/* Las dos columnas terminan a la misma altura: la más corta estira su
+          última tarjeta. */}
+      <DetalleConLateral
+        className="mt-8"
+        principal={
+          <>
             <Tarjeta titulo="Contacto">
               {candidato ? (
                 <DatosClave
@@ -218,16 +219,20 @@ export default async function CandidatoFichaPage({
               </Tarjeta>
             )}
 
-            <Link
-              href={`/empresa/candidatos/${derivacion.postulante_id}`}
-              className="btn-neutro w-full sm:w-fit"
-            >
-              <User aria-hidden="true" />
-              Ver perfil completo
-            </Link>
-          </div>
-
-          {/* Gestión */}
+            {/* En un div: si la columna se estira para igualar a Gestión, crece
+                el div y no el botón. */}
+            <div>
+              <Link
+                href={`/empresa/candidatos/${derivacion.postulante_id}`}
+                className="btn-neutro w-full sm:w-fit"
+              >
+                <User aria-hidden="true" />
+                Ver perfil completo
+              </Link>
+            </div>
+          </>
+        }
+        lateral={
           <section
             aria-labelledby="gestion-titulo"
             className="tarjeta p-5 sm:p-6"
@@ -244,8 +249,8 @@ export default async function CandidatoFichaPage({
               vacantesCubiertas={vacantesCubiertas}
             />
           </section>
-        </div>
-      </div>
+        }
+      />
     </section>
   );
 }

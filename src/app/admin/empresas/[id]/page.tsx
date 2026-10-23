@@ -17,6 +17,7 @@ import {
   type EstadoAprobacion,
 } from "@/lib/admin/historial-empresa";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { DetalleConLateral } from "@/components/ui/detalle-con-lateral";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { Badge, type TonoBadge } from "@/components/ui/badge";
 import { DatosClave } from "@/components/ui/datos-clave";
@@ -128,7 +129,7 @@ export default async function AdminEmpresaPage({
   ];
 
   return (
-    <section className="flex w-full max-w-[1200px] flex-col gap-6">
+    <section className="flex w-full flex-col gap-6">
       <div className="flex flex-col gap-4">
         <BotonVolver href={`/admin/empresas?estado=${estado}`} />
         <header className="flex items-start gap-4">
@@ -158,8 +159,11 @@ export default async function AdminEmpresaPage({
         </header>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
-        <div className="flex min-w-0 flex-col gap-6">
+      <DetalleConLateral
+        desde="xl"
+        lateralEnCelular="al-final"
+        debajoEnDosColumnas
+        principal={
           <section aria-labelledby="titulo-datos" className={TARJETA}>
             <h2 id="titulo-datos" className={TITULO_TARJETA}>
               Datos de la empresa
@@ -182,81 +186,84 @@ export default async function AdminEmpresaPage({
               ]}
             />
           </section>
-
-          <section aria-labelledby="titulo-responsable" className={TARJETA}>
-            <h2 id="titulo-responsable" className={TITULO_TARJETA}>
-              Persona responsable
+        }
+        lateral={
+          <section aria-labelledby="titulo-decision" className={TARJETA}>
+            <h2 id="titulo-decision" className={TITULO_TARJETA}>
+              Decisión
             </h2>
-            <DatosClave
-              className="mt-5"
-              datos={[
-                {
-                  etiqueta: "Nombre",
-                  valor: responsable ? `${responsable.nombre} ${responsable.apellido}` : "—",
-                },
-                { etiqueta: "Teléfono", valor: responsable?.telefono || "—" },
-                {
-                  etiqueta: "Email",
-                  valor: (
-                    <span className="flex flex-wrap items-center gap-2">
-                      <span className="break-all">{email ?? "—"}</span>
-                      {emailConfirmado === true && (
-                        <Badge tono="success" icono={CircleCheck}>
-                          Email confirmado
-                        </Badge>
-                      )}
-                    </span>
-                  ),
-                },
-              ]}
-            />
-          </section>
-
-          <section aria-labelledby="titulo-historial" className={TARJETA}>
-            <h2 id="titulo-historial" className={TITULO_TARJETA}>
-              Historial de la solicitud
-            </h2>
-            {errorHistorial ? (
-              <p role="alert" className="mt-4 text-sm text-danger">
-                No pudimos cargar el historial. Intentá de nuevo en unos minutos.
+            {estado === "pendiente" ? (
+              <p className="mt-2 text-[15px] text-muted-foreground-strong">
+                Si la aprobás, la empresa puede publicar ofertas. Cada oferta pasa igual por tu
+                revisión.
               </p>
             ) : (
-              <LineaDeTiempo className="mt-5" eventos={eventos} />
+              <div className="mt-3 flex flex-col gap-3">
+                <p className="flex flex-wrap items-center gap-2 text-[15px] text-muted-foreground-strong">
+                  <Badge tono={TONO_ESTADO[estado]} estado>
+                    {ESTADO_EMPRESA_LABEL[estado]}
+                  </Badge>
+                  {empresa.fecha_decision && <span>el {formatFecha(empresa.fecha_decision)}</span>}
+                </p>
+                {estado === "rechazada" && empresa.motivo_rechazo && (
+                  <Cita>{empresa.motivo_rechazo}</Cita>
+                )}
+              </div>
             )}
-          </section>
-        </div>
-
-        <section aria-labelledby="titulo-decision" className={`${TARJETA} xl:sticky xl:top-6`}>
-          <h2 id="titulo-decision" className={TITULO_TARJETA}>
-            Decisión
-          </h2>
-          {estado === "pendiente" ? (
-            <p className="mt-2 text-[15px] text-muted-foreground-strong">
-              Si la aprobás, la empresa puede publicar ofertas. Cada oferta pasa igual por tu
-              revisión.
-            </p>
-          ) : (
-            <div className="mt-3 flex flex-col gap-3">
-              <p className="flex flex-wrap items-center gap-2 text-[15px] text-muted-foreground-strong">
-                <Badge tono={TONO_ESTADO[estado]} estado>
-                  {ESTADO_EMPRESA_LABEL[estado]}
-                </Badge>
-                {empresa.fecha_decision && <span>el {formatFecha(empresa.fecha_decision)}</span>}
-              </p>
-              {estado === "rechazada" && empresa.motivo_rechazo && (
-                <Cita>{empresa.motivo_rechazo}</Cita>
-              )}
+            <div className="mt-5">
+              <EmpresaAcciones
+                empresaId={empresa.id}
+                razonSocial={empresa.razon_social}
+                estadoActual={estado}
+              />
             </div>
-          )}
-          <div className="mt-5">
-            <EmpresaAcciones
-              empresaId={empresa.id}
-              razonSocial={empresa.razon_social}
-              estadoActual={estado}
-            />
-          </div>
-        </section>
-      </div>
+          </section>
+        }
+        debajo={
+          <>
+            <section aria-labelledby="titulo-responsable" className={TARJETA}>
+              <h2 id="titulo-responsable" className={TITULO_TARJETA}>
+                Persona responsable
+              </h2>
+              <DatosClave
+                className="mt-5"
+                datos={[
+                  {
+                    etiqueta: "Nombre",
+                    valor: responsable ? `${responsable.nombre} ${responsable.apellido}` : "—",
+                  },
+                  { etiqueta: "Teléfono", valor: responsable?.telefono || "—" },
+                  {
+                    etiqueta: "Email",
+                    valor: (
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="break-all">{email ?? "—"}</span>
+                        {emailConfirmado === true && (
+                          <Badge tono="success" icono={CircleCheck}>
+                            Email confirmado
+                          </Badge>
+                        )}
+                      </span>
+                    ),
+                  },
+                ]}
+              />
+            </section>
+            <section aria-labelledby="titulo-historial" className={TARJETA}>
+              <h2 id="titulo-historial" className={TITULO_TARJETA}>
+                Historial de la solicitud
+              </h2>
+              {errorHistorial ? (
+                <p role="alert" className="mt-4 text-sm text-danger">
+                  No pudimos cargar el historial. Intentá de nuevo en unos minutos.
+                </p>
+              ) : (
+                <LineaDeTiempo className="mt-5" eventos={eventos} />
+              )}
+            </section>
+          </>
+        }
+      />
     </section>
   );
 }

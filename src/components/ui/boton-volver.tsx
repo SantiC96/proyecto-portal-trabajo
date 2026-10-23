@@ -5,15 +5,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { puedeVolverConHistorial } from "@/lib/navegacion-interna";
+import { volverAPantallaAnterior } from "@/lib/navegacion-interna";
 
 /**
  * "Volver", arriba del título en todas las páginas internas. Lleva a la
- * pantalla anterior de esta pestaña (router.back) cuando la pila de
- * navegación interna lo permite (puedeVolverConHistorial). Si se entró desde
- * un email, un link directo o una pestaña nueva, o lo anterior fue /auth o un
- * formulario recién enviado, navega a `href`. Es siempre un <a href> real:
- * se puede abrir en otra pestaña y solo se intercepta el clic simple.
+ * pantalla anterior de esta pestaña, con su query, salteando formularios ya
+ * enviados y pantallas de /auth (volverAPantallaAnterior). Solo si no hay una
+ * pantalla anterior del sitio (pestaña nueva, link de un email, link directo)
+ * navega a `href`. Es siempre un <a href> real: se puede abrir en otra
+ * pestaña y solo se intercepta el clic simple.
  */
 export function BotonVolver({
   href,
@@ -32,9 +32,7 @@ export function BotonVolver({
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
       return;
     }
-    if (!puedeVolverConHistorial()) return;
-    e.preventDefault();
-    router.back();
+    if (volverAPantallaAnterior(router)) e.preventDefault();
   }
 
   return (

@@ -151,6 +151,17 @@ Cuando exista espacio:
 
 En espacios reducidos se permite utilizar solamente el escudo.
 
+## Archivos del logo
+
+-   `public/images/logo-funes-blanco.png` (185 × 52): sobre verde
+    (sidebar, panel de marca del login y del registro).
+-   `public/images/logo-funes-verde.png` (185 × 52): sobre fondos claros
+    (tarjeta del login y del registro, `AuthShell`, contacto de la
+    oficina). Es el blanco con cada píxel en `#09713D` y la misma
+    transparencia, así que se ve igual de nítido; se muestra a 120 × 34
+    (la misma proporción). Reemplaza al viejo `logo-funes-color.png`
+    (92 × 26, borroso al agrandarlo), que se borró.
+
 ------------------------------------------------------------------------
 
 # 5. Paleta
@@ -248,7 +259,7 @@ Texto de estado suelto sobre blanco (sin fondo):
   `tooltip`             `#0F1D15`   tooltips de la sidebar contraída
   `danger-fondo`        `#FDEDEC`   hover de "Cerrar sesión" en el menú del usuario
   `fondo-auth`          `#F3F5F4`   fondo del login y de las pantallas de /auth
-  `texto-volver`        `#2E4337`   link "Volver al inicio" de /auth
+  `texto-volver`        `#2E4337`   link "Volver" de /auth
   `login-suave`         `#D7EBDF`   volanta y nota del panel verde del login
 
 ## Inicio, panel y listas
@@ -441,26 +452,52 @@ Las rutas de `/auth/*` no llevan navegación: solo el contenido.
 
 -   Padding del área de contenido: 32 px en escritorio, 24 px en tablet
     y 16 px en celular.
--   Sin `max-width` global: cada página decide su ancho.
+-   Sin `max-width`: todas las páginas con navegación ocupan todo el
+    ancho disponible al lado de la sidebar, en los tres roles (decisión
+    033). No hay espacio vacío a la derecha en pantallas anchas.
 -   Las páginas no agregan padding propio ni `mx-auto max-w-*`: el
     margen lo pone `.app-contenido`.
--   Listas y paneles: todo el ancho.
--   Textos largos, formularios y detalles: clase `.contenido-lectura`
-    (`max-width: 720px`), o `.contenido-lectura-ancho` (`960px`) si el
-    formulario o el detalle tiene dos columnas. Alineados a la izquierda.
+-   Siguen centrados con su ancho propio: las pantallas de `/auth`, los
+    diálogos, los popovers y los estados vacíos.
 -   Para pasar de una a varias columnas dentro del contenido se prefieren
     container queries (`@container`, `@xl:`, `@4xl:`) a los breakpoints
     de la ventana: la sidebar le quita ancho al contenido.
 
-Los formularios no deben expandirse innecesariamente a todo el viewport.
+Formularios: como ocupan todo el ancho, reparten los campos en grillas de
+2 columnas (3 si son cortos, como las contraseñas o los datos de la
+solicitud de la empresa) desde `@2xl:` del contenedor; los textareas, las
+zonas de carga y los campos largos van a todo el ancho (`col-span-*`). En
+el celular, una columna. Las secciones cortas que van juntas (requisitos y
+beneficios de la oferta) se ponen lado a lado.
 
-## Columna lateral sticky (detalle de una oferta)
+## Detalle con lateral y columnas parejas (`DetalleConLateral`)
 
-Desde 896 px de ancho disponible (`@4xl:`): dos columnas, el contenido
-(flexible) y una lateral de 360 px, con gap de 28. La lateral ocupa las
-dos filas y queda fija a 24 px del borde superior (`sticky top-6`). Más
-angosto: una sola columna y la tarjeta lateral va entre el encabezado y
-la descripción (es el orden del HTML).
+`src/components/ui/detalle-con-lateral.tsx`, con las props `principal`,
+`lateral` y `debajo` (fragmentos de tarjetas). Desde el breakpoint de la
+pantalla (`desde`: `@4xl` del contenido por defecto; `lg` o `xl` de la
+ventana en las que ya pasaban a dos columnas ahí):
+
+``` text
+┌──────────────────────────────┬───────────┐
+│ principal (1fr)              │ lateral   │  misma altura: la última
+│                              │ (400 px)  │  tarjeta de la columna más
+│                              ├───────────┤  corta crece (flex-1), con
+│                              │ (crece)   │  su contenido arriba
+├──────────────────────────────┴───────────┤
+│ debajo: a todo el ancho (o 2 columnas)   │
+└──────────────────────────────────────────┘
+```
+
+-   Separación igual en las columnas (`separacion`, `gap-6` por defecto).
+-   El lateral ya no es sticky: termina a la par del contenido.
+-   En una columna (celular), el orden de siempre: `principal`, `lateral`
+    y `debajo`, o el lateral primero o al final (`lateralEnCelular`).
+-   `debajoEnDosColumnas` para dos tarjetas cortas.
+
+Pantallas: detalle público de una oferta (título y "Postularme" arriba,
+descripción debajo), revisión de oferta y de empresa, ficha de una
+postulación (qué tarjetas acompañan a la lateral depende del estado),
+fichas del candidato de la empresa y detalle de curso.
 
 ## Índice de secciones (Mi perfil)
 
@@ -469,8 +506,8 @@ disponible (`@3xl:`), una columna de 220 px a la izquierda, sticky, con
 el título "En esta página" (13 px 700 en mayúsculas) y un link de 44 px
 por sección. Marca la sección visible con `IntersectionObserver` y
 `aria-current`: la activa va en verde, sobre blanco y con un borde
-izquierdo de 3 px. Las secciones, a la derecha, con un ancho máximo de
-760 px. En el celular el índice no se muestra.
+izquierdo de 3 px. Las secciones, a la derecha, ocupan el resto del
+ancho. En el celular el índice no se muestra.
 
 Cada sección del perfil es una tarjeta (`SeccionPerfil` en
 `components/perfil/piezas.tsx`) con su título de 20 px 800 (18 en el
@@ -481,14 +518,9 @@ Campos del perfil: alto 48, borde 1,5 px `border-campo`, radio 10; label
 
 ## PageContainer
 
-Todas las páginas internas deben utilizar un contenedor compartido.
-
-Responsabilidades:
-
--   ancho máximo;
--   padding responsive;
--   separación vertical;
--   alineación.
+`.app-contenido` hace de contenedor de todas las páginas internas:
+padding responsive (16 / 24 / 32 px) y alineación. Sin ancho máximo
+(ver "Contenido").
 
 ------------------------------------------------------------------------
 
@@ -601,6 +633,19 @@ Gestioná las búsquedas activas de tu empresa.
 
 En mobile las acciones pasan debajo del título.
 
+## "Volver"
+
+Arriba del título, `BotonVolver` (`src/components/ui/boton-volver.tsx`);
+en `/auth`, `LinkVolverAuth`. Dicen "Volver" y llevan a la pantalla
+anterior de esta pestaña con su query (pestaña, filtros, página y
+búsqueda). Saltean los formularios ya enviados (nueva, nuevo, editar,
+solicitud), las pantallas de `/auth` y los cambios de filtro o página de
+la misma pantalla; si se llegó por el redirect de una acción, también la
+pantalla donde se hizo. Solo sin una pantalla anterior del sitio
+(pestaña nueva, link de un email, link directo) van a su `href` de
+respaldo, la página padre. Todos los "Volver" del sitio usan estos dos
+componentes. Detalle en la decisión 031, punto 6.
+
 ------------------------------------------------------------------------
 
 # 14. Button
@@ -690,7 +735,19 @@ Usar `Combobox` cuando:
 
 Para selección múltiple, mostrar elementos seleccionados de manera clara
 y removible (chip blanco con borde verde, como la etiqueta de rubro
-verde).
+verde): `MultiCombobox`.
+
+Selección única con búsqueda: `Combobox` (`src/components/ui/combobox.tsx`).
+Un botón que muestra la opción elegida con un chevron y abre el mismo
+popup que `MultiCombobox` (`PopupCombobox`: lista con check, opciones de
+44 px, "sin resultados"), con un campo "Buscar…" arriba de la lista. La
+primera opción puede ser "todos" (`opcionVacia`, valor `""`). Con `name`,
+el valor viaja en un input oculto, así el formulario lo manda como un
+`<select>` (también un GET sin JavaScript, con el valor inicial).
+Teclado: Enter o flecha abajo abren con el foco en el buscador, las
+flechas recorren, Enter elige y Escape cierra; el foco vuelve al botón.
+Lo usa el rubro del buscador del inicio (botón de 52 px, sin borde desde
+md, texto de 16 px, 220 px de ancho).
 
 ------------------------------------------------------------------------
 
@@ -1048,7 +1105,16 @@ escribe.
 -   la activa: fondo `primary`, texto blanco;
 -   cada grupo lleva su título de 13 px 700 y `role="group"`;
 -   en el celular, una sola fila con scroll horizontal (sin barra); desde
-    sm bajan de renglón.
+    sm bajan de renglón;
+-   con `unaLinea` (los rubros del listado público, que son muchos)
+    siempre van en una sola fila (`FilaDesplazable`): scroll horizontal
+    con `.sin-barra-scroll`, un degradé desde `surface` en el borde hacia
+    el que hay más y, desde md, flechas de 44 px ("Ver rubros
+    anteriores", "Ver más rubros") que aparecen solo si se puede
+    desplazar hacia ese lado. La pastilla con foco se desplaza hasta
+    quedar visible (con `scroll-padding` para no quedar debajo de la
+    flecha) y la activa queda a la vista al entrar. Sin animación con
+    movimiento reducido.
 
 Cuando el filtro vive en la URL, cada pastilla es un link que mantiene los
 demás filtros y la activa se marca con `aria-current` (`aria-pressed` no
@@ -1098,6 +1164,20 @@ Cancelar                Acción
 ```
 
 No utilizar modales para procesos largos que deberían ser una página.
+
+## Elegir el tipo de cuenta (`RegisterModal`)
+
+El diálogo de "Registrarme" (`src/components/auth/register-modal.tsx`)
+usa el `Dialog` amplio a 480 px (casi todo el ancho en el celular):
+"Crear una cuenta" (20 px 800) y "Elegí cómo vas a usar el Portal de
+Empleo." (15 px `muted`); dos opciones, una debajo de la otra, que son
+links: borde 1,5 px `border`, radio 16, padding 20, mínimo 88 px, ícono
+blanco en un cuadrado verde de 48 px (radio 12), título de 17 px 800,
+descripción de 14 px `muted` y chevron; hover con borde `primary` y fondo
+`background` (`#F4F7F5`), foco con el anillo del proyecto. "Busco
+trabajo" lleva a `/auth/registro` y "Quiero publicar ofertas" a
+`/auth/registro?tipo=empresa`. Al pie, centrado, "¿Ya tenés cuenta?
+Iniciá sesión". Botón de cerrar de 44 px con `aria-label`.
 
 ## Diálogo amplio
 
@@ -1283,7 +1363,8 @@ preferencia).
     (debajo cuando la tarjeta mide menos de 448 px): color, nombre,
     cantidad y porcentaje. La parte más grande sobresale 6 px y se marca
     también en la leyenda (fondo `secondary` y texto 800). Con total 0,
-    un estado vacío corto en lugar de la dona.
+    un estado vacío corto en lugar de la dona. El total del centro no recibe
+    eventos del puntero y el tooltip va por encima (`z-index` 10).
 -   **Barras** (`BarrasOferta`): para comparar cantidades. Barras
     horizontales de 16 px por oferta (derivados `primary`, entrevistas
     `info`, seleccionados `accent`), con el valor al final de cada una y la
@@ -1311,7 +1392,7 @@ Estructura visual sugerida:
 
 ``` text
 Navegación lateral (sección 12)
-Bloque principal: volanta, título, bajada, buscador y rubros
+Bloque principal: volanta, título, bajada y buscador (con el rubro)
 Últimas ofertas (carrusel)
 Tu actividad (solo postulante con sesión)
 Cómo funciona (solo sin sesión)
@@ -1321,7 +1402,8 @@ Contacto de la Oficina de Empleo
 Gap de 48 px entre secciones; títulos de sección de 26 px 800. El bloque
 principal es una tarjeta blanca de radio 24 (padding 56 / 56 / 48, 24 en
 celular). El buscador (`role="search"`, hasta 960 px) lleva a `/ofertas`
-con `q` y `categoria`.
+con `q` y `categoria`; el rubro se elige en su `Combobox` (no hay una
+lista de rubros debajo).
 
 El objetivo visual principal debe ser facilitar el acceso a las ofertas
 laborales.
@@ -1336,11 +1418,13 @@ Sin navegación. Página: `src/app/auth/login/page.tsx`; formulario:
 `src/components/auth/login-form.tsx`; clases `.login-*` y `.auth-*` de
 `globals.css`.
 
-Desktop (desde lg), dos columnas a pantalla completa (`100svh`):
+Desktop (desde lg), dos columnas a pantalla completa (`100svh`). El
+panel verde es `PanelMarca` (`src/components/auth/panel-marca.tsx`,
+props `volanta`, `titulo` y `bajada`), compartido con el registro:
 
 ``` text
 ┌────────────────────────┬──────────────────────────────┐
-│ [logo blanco]          │   ← Volver al inicio         │
+│ [logo blanco]          │   ← Volver                   │
 │                 ▢      │  ┌────────────────────────┐  │
 │ TALENTO LOCAL, …    ▢  │  │ [logo verde]           │  │
 │ Un nuevo               │  │ TU ESPACIO PARA AVANZAR│  │
@@ -1381,18 +1465,28 @@ Desktop (desde lg), dos columnas a pantalla completa (`100svh`):
 Celular: sin el panel verde, fondo `fondo-auth`, tarjeta a todo el ancho
 con padding 24 px y título de 34 px.
 
-## Demás pantallas de /auth
+## Registro
 
-Registro, recuperar y nueva contraseña, reset enviado, verificar email
-e invitación usan `AuthShell` (`src/components/auth/auth-shell.tsx`):
-fondo `fondo-auth`, "Volver al inicio", y el contenido en la misma
-tarjeta que el login con el logo verde arriba. Ancho 460 px; el registro,
-720 px.
+La misma estructura que el login (`src/app/auth/registro/page.tsx`):
+`PanelMarca` a la izquierda y, a la derecha, la columna clara con
+"Volver" y el formulario en una tarjeta de 720 px con el logo verde.
+Desde lg el panel queda fijo (`sticky`, alto de la ventana) mientras el
+formulario se desplaza.
 
-### Registro
+-   Postulante: "Talento local, nuevas oportunidades" / "Sumate al Portal
+    de Empleo." / "Cargá tus datos una vez y postulate a las ofertas de
+    empresas de la ciudad."
+-   Empresa: "Empresas de Funes" / "Encontrá a tu próximo equipo en
+    Funes." / "Publicá tus ofertas y recibí candidatos preseleccionados
+    por la Oficina de Empleo."
+-   Celular (`enCelular`): el panel va arriba y más corto (padding
+    8 × 16 × 28, título de 34 px; 42 px en tablet) con "Volver" en
+    blanco, el logo de 148 px, la volanta y el título, sin la bajada, los
+    íconos ni la nota. Debajo, la tarjeta del formulario.
+-   Sin animaciones con movimiento reducido.
 
-Título en Georgia (`.login-titulo`, como el login): "Registro de
-postulante" o "Registro de empresa", con "Completá tus datos. Te vamos a
+Título de la tarjeta en Georgia (`.login-titulo`): "Crear tu cuenta de
+postulante" o "Registrar tu empresa", con "Completá tus datos. Te vamos a
 mandar un email para confirmar la cuenta." Los campos van en secciones
 numeradas planas (`SeccionNumerada variante="plana"`) separadas por una
 línea: el postulante tiene "Datos personales" y "Datos de acceso"; la
@@ -1406,6 +1500,13 @@ coinciden" en verde o "Las contraseñas no coinciden." en rojo. El CUIT
 muestra "CUIT válido" en vivo. "Crear cuenta" es primario a todo el ancho
 (52 px) y abajo va "¿Ya tenés cuenta? Iniciá sesión acá". Las piezas
 comunes están en `src/components/auth/partes-registro.tsx`.
+
+## Demás pantallas de /auth
+
+Recuperar y nueva contraseña, reset enviado, verificar email e invitación
+usan `AuthShell` (`src/components/auth/auth-shell.tsx`): fondo
+`fondo-auth`, "Volver" (`LinkVolverAuth`) y el contenido en la misma
+tarjeta que el login con el logo verde arriba, de 460 px.
 
 Evitar:
 

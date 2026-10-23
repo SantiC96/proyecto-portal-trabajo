@@ -169,7 +169,7 @@ export function RegistroPostulanteForm() {
 
   return (
     <div className="w-full">
-      <EncabezadoRegistro titulo="Registro de postulante" />
+      <EncabezadoRegistro titulo="Crear tu cuenta de postulante" />
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-8">
         <SeccionNumerada numero={1} id="seccion-personales" titulo="Datos personales" variante="plana">
