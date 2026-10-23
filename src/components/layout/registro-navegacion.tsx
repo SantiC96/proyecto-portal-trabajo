@@ -7,6 +7,9 @@ import {
   guardarPila,
   leerPila,
   rutaNormalizada,
+  sinQuery,
+  tomarNavegacionDelUsuario,
+  tomarSaltoPendiente,
   type EntradaNavegacion,
 } from "@/lib/navegacion-interna";
 
@@ -18,6 +21,20 @@ const VENTANA_MS = 10_000;
 let ultimoClicEnLink = 0;
 let ultimoPopstate = 0;
 let primeraCarga = true;
+// pushState hechos desde el último registro. history.length no alcanza: el
+// navegador lo topea (50 en Chrome) y a partir de ahí un push no lo hace crecer.
+let pushesPendientes = 0;
+let historialObservado = false;
+
+function observarPushState() {
+  if (historialObservado) return;
+  historialObservado = true;
+  const pushOriginal = window.history.pushState;
+  window.history.pushState = function pushState(...args: Parameters<History["pushState"]>) {
+    pushesPendientes++;
+    return pushOriginal.apply(this, args);
+  };
+}
 
 function vieneDelSitio(): boolean {
   try {
@@ -38,8 +55,12 @@ function tipoDeCarga(): string | undefined {
  * Suspense porque usa useSearchParams.
  *
  * Cada cambio de ruta se clasifica así:
+ * - "Volver" a una pantalla más atrás (tomarSaltoPendiente): se recorta la
+ *   pila hasta esa entrada;
  * - vino de "atrás"/"adelante" (popstate): se recorta la pila hasta esa ruta;
- * - history.length creció (push): se apila, marcando si hubo un clic en un link;
+ * - hubo un pushState: se apila. Es "tras una acción" si no hubo un clic en un
+ *   link ni una navegación marcada del usuario; un cambio de query en la misma
+ *   pantalla (pestaña, filtro, página) hereda lo de la entrada anterior;
  * - si no (router.replace, por ejemplo al quitar ?aviso=): reemplaza la última.
  */
 export function RegistroNavegacion() {
@@ -47,6 +68,7 @@ export function RegistroNavegacion() {
   const query = useSearchParams().toString();
 
   useEffect(() => {
+    observarPushState();
     function alHacerClic(e: MouseEvent) {
       if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       const link = e.target instanceof Element ? e.target.closest("a[href]") : null;
@@ -66,44 +88,72 @@ export function RegistroNavegacion() {
   }, []);
 
   useEffect(() => {
-    const ruta = rutaNormalizada(pathname, query);
-    const largo = window.history.length;
-    const ahora = Date.now();
-    const porHistorial = ahora - ultimoPopstate < VENTANA_MS;
-    const porLink = !porHistorial && ahora - ultimoClicEnLink < VENTANA_MS;
-    ultimoPopstate = 0;
-    ultimoClicEnLink = 0;
-
-    let pila = leerPila();
-    if (primeraCarga) {
-      primeraCarga = false;
-      // Una pestaña nueva, un link de un email o un sitio externo empiezan de
-      // cero aunque sessionStorage tenga una pila de antes.
-      const tipo = tipoDeCarga();
-      const continua =
-        largo > 1 &&
-        (tipo === "reload" || tipo === "back_forward" || (tipo === "navigate" && vieneDelSitio()));
-      if (!continua) pila = null;
-    }
-
-    let entradas: EntradaNavegacion[] = pila?.entradas ?? [];
-    const ultima = entradas[entradas.length - 1];
-
-    if (ultima?.ruta === ruta) {
-      // Recarga o el mismo render dos veces: nada que registrar.
-    } else if (porHistorial) {
-      const indice = entradas.map((e) => e.ruta).lastIndexOf(ruta);
-      // Si no está en la pila no se sabe qué hay antes: se empieza de cero.
-      entradas =
-        indice >= 0 ? entradas.slice(0, indice + 1) : [{ ruta, trasAccion: false }];
-    } else if (!pila || entradas.length === 0 || largo > pila.largoHistorial) {
-      entradas = [...entradas, { ruta, trasAccion: entradas.length > 0 && !porLink }];
-    } else {
-      entradas = [...entradas.slice(0, -1), { ruta, trasAccion: ultima?.trasAccion ?? false }];
-    }
-
-    guardarPila({ entradas: entradas.slice(-MAXIMO_ENTRADAS), largoHistorial: largo });
+    // En la tarea siguiente: el router de Next renderiza la ruta nueva dentro
+    // de su listener de popstate, antes de que corra el de acá.
+    const espera = window.setTimeout(() => registrarRuta(pathname, query), 0);
+    return () => window.clearTimeout(espera);
   }, [pathname, query]);
 
   return null;
+}
+
+/** Clasifica el cambio de ruta (ver RegistroNavegacion) y actualiza la pila. */
+function registrarRuta(pathname: string, query: string) {
+  const ruta = rutaNormalizada(pathname, query);
+  const largo = window.history.length;
+  const ahora = Date.now();
+  const salto = tomarSaltoPendiente();
+  const porSalto = salto !== null && salto.ruta === ruta && ahora - salto.en < VENTANA_MS;
+  const porHistorial = !porSalto && ahora - ultimoPopstate < VENTANA_MS;
+  const navegacionMarcada = tomarNavegacionDelUsuario();
+  const delUsuario =
+    ahora - ultimoClicEnLink < VENTANA_MS || ahora - navegacionMarcada < VENTANA_MS;
+  const huboPush = pushesPendientes > 0;
+  ultimoPopstate = 0;
+  ultimoClicEnLink = 0;
+  pushesPendientes = 0;
+
+  let pila = leerPila();
+  if (primeraCarga) {
+    primeraCarga = false;
+    // Una pestaña nueva, un link de un email o un sitio externo empiezan de
+    // cero aunque sessionStorage tenga una pila de antes.
+    const tipo = tipoDeCarga();
+    const continua =
+      largo > 1 &&
+      (tipo === "reload" || tipo === "back_forward" || (tipo === "navigate" && vieneDelSitio()));
+    if (!continua) pila = null;
+  }
+
+  let entradas: EntradaNavegacion[] = pila?.entradas ?? [];
+  const ultima = entradas[entradas.length - 1];
+
+  if (ultima?.ruta === ruta) {
+    // Recarga o el mismo render dos veces: nada que registrar.
+  } else if (porSalto && entradas[salto.indice]?.ruta === ruta) {
+    // El historial del navegador sigue teniendo las pantallas salteadas:
+    // desde acá, "Volver" ya no puede usar router.back().
+    entradas = [
+      ...entradas.slice(0, salto.indice),
+      { ...entradas[salto.indice], anteriorEnHistorial: false },
+    ];
+  } else if (porHistorial) {
+    const indice = entradas.map((e) => e.ruta).lastIndexOf(ruta);
+    // Si no está en la pila no se sabe qué hay antes: se empieza de cero.
+    entradas =
+      indice >= 0 ? entradas.slice(0, indice + 1) : [{ ruta, trasAccion: false }];
+  } else if (!pila || entradas.length === 0 || huboPush || largo > pila.largoHistorial) {
+    const mismaPantalla = ultima !== undefined && sinQuery(ultima.ruta) === pathname;
+    const trasAccion = mismaPantalla
+      ? ultima.trasAccion
+      : entradas.length > 0 && !delUsuario && !porSalto;
+    entradas = [...entradas, { ruta, trasAccion }];
+  } else {
+    entradas = [
+      ...entradas.slice(0, -1),
+      { ...(ultima ?? { trasAccion: false }), ruta },
+    ];
+  }
+
+  guardarPila({ entradas: entradas.slice(-MAXIMO_ENTRADAS), largoHistorial: largo });
 }
