@@ -1,14 +1,14 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { UserSearch } from "lucide-react";
+import { Briefcase, UserSearch } from "lucide-react";
 import { TarjetaOferta } from "@/components/ofertas/tarjeta-oferta";
-import { OfertasSinResultados } from "@/components/ofertas/ofertas-sin-resultados";
+import { EmptyJobResults } from "@/components/public/empty-job-results";
 import { Badge } from "@/components/ui/badge";
 import { Buscador } from "@/components/ui/buscador";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { GrupoPastillas, PastillaFiltro } from "@/components/ui/pastilla-filtro";
 import { Paginacion } from "@/components/ui/paginacion";
-import { ErrorListado } from "@/components/ui/estado-listado";
+import { EstadoVacio } from "@/components/ui/estado-listado";
 import { EsqueletoTarjeta } from "@/components/ui/esqueleto";
 import {
   MODALIDADES,
@@ -39,8 +39,13 @@ export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDir
   const clave = JSON.stringify(filtros);
 
   const hasActiveFilters =
-    filtros.q !== "" || filtros.categoria !== null || filtros.modalidad !== null;
-  const hrefLimpiar = hrefConParams(ruta, {}, {}, ANCLA);
+    filtros.categoria !== null || filtros.modalidad !== null;
+  const hrefLimpiar = hrefConParams(
+    ruta,
+    searchParams,
+    { categoria: null, modalidad: null, pagina: null },
+    ANCLA,
+  );
   const hrefFiltro = (cambios: Record<string, string | null>) =>
     hrefConParams(ruta, searchParams, { ...cambios, pagina: null });
 
@@ -53,7 +58,10 @@ export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDir
             key={clave}
             fallback={<span className="inline-block h-4 w-64 max-w-full rounded bg-secondary-hover" />}
           >
-            <ContadorOfertas resultado={resultado} hayFiltros={hasActiveFilters} />
+            <ContadorOfertas
+              resultado={resultado}
+              hayFiltros={filtros.q !== "" || hasActiveFilters}
+            />
           </Suspense>
         }
       />
@@ -114,8 +122,7 @@ export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDir
           resultado={resultado}
           ruta={ruta}
           searchParams={searchParams}
-          hrefLimpiar={hrefLimpiar}
-          hayFiltros={hasActiveFilters}
+          filtros={filtros}
         />
       </Suspense>
     </section>
@@ -150,14 +157,12 @@ async function ResultadosOfertas({
   resultado,
   ruta,
   searchParams,
-  hrefLimpiar,
-  hayFiltros,
+  filtros,
 }: {
   resultado: Promise<ResultadoOfertasPublicas>;
   ruta: string;
   searchParams: ParamsUrl;
-  hrefLimpiar: string;
-  hayFiltros: boolean;
+  filtros: FiltrosOfertasPublicas;
 }) {
   const [datos, usuario] = await Promise.all([resultado, obtenerUsuarioActual()]);
   // buscar_ofertas_publicas solo devuelve ofertas activas y vigentes: la
@@ -169,15 +174,40 @@ async function ResultadosOfertas({
 
   if (!datos.ok) {
     return (
-      <ErrorListado
-        mensaje="No pudimos cargar las ofertas. Intentá de nuevo en unos minutos."
-        refError={datos.refError}
-      />
+      <EmptyJobResults variant="error" refError={datos.refError} />
     );
   }
 
   if (datos.ofertas.length === 0) {
-    return <OfertasSinResultados hayFiltros={hayFiltros} hrefLimpiar={hrefLimpiar} />;
+    const hayBusqueda = filtros.q !== "";
+    const hayFiltros = filtros.categoria !== null || filtros.modalidad !== null;
+
+    if (!hayBusqueda && !hayFiltros) {
+      return (
+        <EstadoVacio
+          tipo="sin-registros"
+          className="mt-8"
+          icono={Briefcase}
+          titulo="Todavía no hay ofertas publicadas"
+          descripcion="Cuando las empresas de la ciudad publiquen búsquedas, van a aparecer en este espacio."
+        />
+      );
+    }
+
+    return (
+      <EmptyJobResults
+        variant={
+          hayBusqueda && hayFiltros
+            ? "busqueda-filtros"
+            : hayBusqueda
+              ? "busqueda"
+              : "filtros"
+        }
+        ruta={ruta}
+        searchParams={searchParams}
+        filtros={filtros}
+      />
+    );
   }
 
   // Sin las invitaciones las tarjetas se muestran igual, sin la marca.
