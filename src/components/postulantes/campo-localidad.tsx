@@ -34,7 +34,13 @@ type Props = {
   errorOtra?: string;
   deshabilitado?: boolean;
   className?: string;
+  /** Estilo de los campos de Mi perfil (alto 48, borde border-campo, label 15 px 700). */
+  estiloPerfil?: boolean;
 };
+
+const ETIQUETA_PERFIL = "text-[15px] font-bold text-control-foreground";
+const CAMPO_PERFIL = "campo min-h-12 rounded-[var(--radius-md)] border-border-campo text-base";
+const ERROR_PERFIL = "text-[13px] font-semibold";
 
 /**
  * "¿De dónde sos?": desplegable con las localidades de la zona (Funes
@@ -52,13 +58,17 @@ export function CampoLocalidad({
   errorOtra,
   deshabilitado = false,
   className,
+  estiloPerfil = false,
 }: Props) {
   const idOtra = `${id}-otra`;
 
   return (
     <div className={cn("flex flex-col gap-4", className)}>
       <div className="flex flex-col gap-1.5">
-        <label htmlFor={id} className="text-sm font-medium text-foreground">
+        <label
+          htmlFor={id}
+          className={cn("text-sm font-medium text-foreground", estiloPerfil && ETIQUETA_PERFIL)}
+        >
           ¿De dónde sos? <Obligatorio />
         </label>
         <select
@@ -67,7 +77,7 @@ export function CampoLocalidad({
           value={elegida}
           disabled={deshabilitado}
           onChange={(e) => onElegida(e.target.value)}
-          className={claseSelect}
+          className={estiloPerfil ? CAMPO_PERFIL : claseSelect}
           {...ariaErrorCampo(id, errorLocalidad)}
         >
           <option value="" disabled>
@@ -80,12 +90,19 @@ export function CampoLocalidad({
           ))}
           <option value={OTRA_LOCALIDAD}>Otra localidad</option>
         </select>
-        <ErrorCampo idCampo={id} mensaje={errorLocalidad} />
+        <ErrorCampo
+          idCampo={id}
+          mensaje={errorLocalidad}
+          className={estiloPerfil ? ERROR_PERFIL : undefined}
+        />
       </div>
 
       {elegida === OTRA_LOCALIDAD && (
         <div className="flex flex-col gap-1.5">
-          <label htmlFor={idOtra} className="text-sm font-medium text-foreground">
+          <label
+            htmlFor={idOtra}
+            className={cn("text-sm font-medium text-foreground", estiloPerfil && ETIQUETA_PERFIL)}
+          >
             ¿Cuál? <Obligatorio />
           </label>
           <div className="relative">
@@ -104,11 +121,15 @@ export function CampoLocalidad({
               onChange={(e) => onEscrita(e.target.value)}
               onBlur={(e) => onEscrita(normalizarLocalidad(e.target.value))}
               placeholder="Ej: Villa Constitución"
-              className={claseInput}
+              className={estiloPerfil ? `${CAMPO_PERFIL} pl-10` : claseInput}
               {...ariaErrorCampo(idOtra, errorOtra)}
             />
           </div>
-          <ErrorCampo idCampo={idOtra} mensaje={errorOtra} />
+          <ErrorCampo
+            idCampo={idOtra}
+            mensaje={errorOtra}
+            className={estiloPerfil ? ERROR_PERFIL : undefined}
+          />
         </div>
       )}
     </div>

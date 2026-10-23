@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Briefcase } from "lucide-react";
+import { Briefcase, Search } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { obtenerPostulanteActual, requerirRolPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
@@ -10,7 +10,12 @@ import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
-import { MisPostulacionesLista, type Postulacion } from "./mis-postulaciones-lista";
+import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
+import {
+  LeyendaEstados,
+  MisPostulacionesLista,
+  type Postulacion,
+} from "./mis-postulaciones-lista";
 import type {
   FilaCvDeMiPostulacion,
   FilaOfertaDeMiPostulacion,
@@ -27,66 +32,12 @@ export const metadata: Metadata = {
 
 const RUTA = "/mis-postulaciones";
 
-export default async function MisPostulacionesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ pagina?: string }>;
-}) {
-  const sp = await searchParams;
-  const pagina = leerPagina(sp.pagina);
-  await requerirRolPagina("postulante");
-  const postulante = await obtenerPostulanteActual();
-  if (!postulante) redirect("/");
-
-  return (
-    <section>
-      <div className="space-y-10">
-        <BotonVolver href="/perfil">Volver a mi perfil</BotonVolver>
-        {/* Postulaciones */}
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Mis postulaciones
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Seguí el estado de cada postulación que enviaste.
-          </p>
-
-          <Suspense fallback={null}>
-            <AvisoCursoPendiente className="mt-6" />
-          </Suspense>
-
-          <Suspense
-            key={pagina}
-            fallback={<EsqueletoLista filas={3} className="mt-6" />}
-          >
-            <ListadoMisPostulaciones
-              postulanteId={postulante.id}
-              pagina={pagina}
-              searchParams={sp}
-            />
-          </Suspense>
-        </div>
-
-      </div>
-    </section>
-  );
-}
-
-async function ListadoMisPostulaciones({
-  postulanteId,
-  pagina,
-  searchParams,
-}: {
-  postulanteId: string;
-  pagina: number;
-  searchParams: ParamsUrl;
-}) {
+// LEFT JOIN a ofertas: las ofertas cerradas no son visibles al postulante vía RLS
+// (no se puede agregar política porque migration_014 las reserva).
+// La UI muestra "Oferta no disponible" cuando oferta es null.
+async function consultarMisPostulaciones(postulanteId: string, pagina: number) {
   const supabase = await createSupabaseServerClient();
-
-  // LEFT JOIN a ofertas: las ofertas cerradas no son visibles al postulante vía RLS
-  // (no se puede agregar política porque migration_014 las reserva).
-  // La UI muestra "Oferta no disponible" cuando oferta es null.
-  const resultado = await consultarPagina(pagina, (desde, hasta) =>
+  return consultarPagina(pagina, (desde, hasta) =>
     supabase
       .from("postulaciones")
       .select(
@@ -98,12 +49,91 @@ async function ListadoMisPostulaciones({
       .order("id", { ascending: false })
       .range(desde, hasta)
   );
+}
+
+type ResultadoMisPostulaciones = ReturnType<typeof consultarMisPostulaciones>;
+
+export default async function MisPostulacionesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ pagina?: string }>;
+}) {
+  const sp = await searchParams;
+  const pagina = leerPagina(sp.pagina);
+  await requerirRolPagina("postulante");
+  const postulante = await obtenerPostulanteActual();
+  if (!postulante) redirect("/");
+
+  // Una sola consulta para la bajada del encabezado y el listado.
+  const resultado = consultarMisPostulaciones(postulante.id, pagina);
+
+  return (
+    <section className="flex flex-col gap-6">
+      <BotonVolver href="/perfil" destacado>
+        Volver a mi perfil
+      </BotonVolver>
+      <EncabezadoPagina
+        className="-mt-2"
+        titulo="Mis postulaciones"
+        bajada={
+          <Suspense
+            key={pagina}
+            fallback={<span className="inline-block h-4 w-72 max-w-full rounded bg-secondary-hover" />}
+          >
+            <BajadaMisPostulaciones resultado={resultado} />
+          </Suspense>
+        }
+        acciones={
+          <Link href="/ofertas" className="btn-secundario">
+            <Search aria-hidden="true" />
+            Buscar ofertas
+          </Link>
+        }
+      />
+
+      <Suspense fallback={null}>
+        <AvisoCursoPendiente />
+      </Suspense>
+
+      <LeyendaEstados />
+
+      <Suspense key={pagina} fallback={<EsqueletoLista filas={3} />}>
+        <ListadoMisPostulaciones
+          postulanteId={postulante.id}
+          resultado={resultado}
+          searchParams={sp}
+        />
+      </Suspense>
+    </section>
+  );
+}
+
+async function BajadaMisPostulaciones({ resultado }: { resultado: ResultadoMisPostulaciones }) {
+  const datos = await resultado;
+  if (!datos.ok || datos.total === 0) return <>Seguí el estado de cada postulación que enviaste.</>;
+  return (
+    <>
+      Mostrando {datos.filas.length} de {datos.total}{" "}
+      {datos.total === 1 ? "postulación" : "postulaciones"} · de la más reciente a la más antigua
+    </>
+  );
+}
+
+async function ListadoMisPostulaciones({
+  postulanteId,
+  resultado: consulta,
+  searchParams,
+}: {
+  postulanteId: string;
+  resultado: ResultadoMisPostulaciones;
+  searchParams: ParamsUrl;
+}) {
+  const [supabase, resultado] = await Promise.all([createSupabaseServerClient(), consulta]);
 
   if (!resultado.ok) {
     const ref = logError("mis_postulaciones_listado", resultado.error);
     return (
       <ErrorListado
-        className="mt-6"
         mensaje="No pudimos cargar tus postulaciones. Intentá de nuevo en unos minutos."
         refError={ref}
       />
@@ -116,15 +146,11 @@ async function ListadoMisPostulaciones({
     return (
       <EstadoVacio
         tipo="sin-registros"
-        className="mt-6"
         icono={Briefcase}
         titulo="Todavía no te postulaste a ninguna oferta"
         descripcion="Explorá las búsquedas activas y encontrá tu próximo trabajo."
         accion={
-          <Link
-            href="/ofertas"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white shadow-xs transition hover:bg-primary-hover"
-          >
+          <Link href="/ofertas" className="btn-primario">
             Ver ofertas laborales
           </Link>
         }
@@ -231,13 +257,14 @@ async function ListadoMisPostulaciones({
   }));
 
   return (
-    <div className="mt-6 space-y-6">
+    <div className="flex flex-col gap-6">
       <MisPostulacionesLista postulaciones={postulaciones} />
       <Paginacion
         ruta={RUTA}
         searchParams={searchParams}
         pagina={resultado.pagina}
         total={resultado.total}
+        variante="numeros"
       />
     </div>
   );
