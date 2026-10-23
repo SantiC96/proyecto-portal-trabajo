@@ -68,6 +68,12 @@
   --color-tabla-hover:        #f8fbf9;
   --color-tabla-separador:    #e8ecea; /* separadores de prioridad */
 
+  /* Pantallas públicas y del postulante (PR 4 del rediseño) */
+  --color-border-campo:     #b8c7be; /* buscador del listado, pastillas de filtro y campos del perfil */
+  --color-opcion-elegida:   #f3f8f5; /* fondo de la opción tipo radio elegida */
+  --color-texto-parrafo:    #22332a; /* párrafos del detalle de la oferta */
+  --color-texto-vence:      #8a1a12; /* "Vence el …" de las invitaciones */
+
   /* Navegación lateral y barra del celular (sobre --color-primary) */
   --color-sidebar-texto: #e3f0e8; /* secciones; bajada del login */
   --color-sidebar-suave: #cfe6d9; /* "Portal de empleo", rol, "Contraer menú" */
@@ -130,7 +136,8 @@ h1, h2 { font-weight: 800; }
   .btn-neutro,
   .btn-peligro,
   .btn-acento,
-  .btn-oscuro {
+  .btn-oscuro,
+  .btn-peligro-borde {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -138,11 +145,11 @@ h1, h2 { font-weight: 800; }
     text-decoration: none;
     transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
   }
-  :is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro):focus-visible {
+  :is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro, .btn-peligro-borde):focus-visible {
     outline: none;
     box-shadow: var(--sombra-foco);
   }
-  :is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro):is(:disabled, [aria-disabled="true"]) {
+  :is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro, .btn-peligro-borde):is(:disabled, [aria-disabled="true"]) {
     opacity: 0.6;
     cursor: not-allowed;
   }
@@ -159,6 +166,10 @@ h1, h2 { font-weight: 800; }
   /* Acción destructiva: eliminar, quitar, rechazar, cerrar sesión. */
   .btn-peligro { background: var(--color-danger); color: #fff; }
   .btn-peligro:not(:disabled, [aria-disabled="true"]):hover { background: var(--color-danger-hover); }
+
+  /* Acción destructiva de menor peso (retirar una postulación): blanco con borde y texto rojos. */
+  .btn-peligro-borde { background: var(--color-surface); border-color: var(--color-danger); color: var(--color-danger); }
+  .btn-peligro-borde:not(:disabled, [aria-disabled="true"]):hover { background: var(--color-danger-fondo); }
 
   .btn-acento { background: var(--color-accent); color: var(--color-accent-foreground); }
   .btn-acento:not(:disabled, [aria-disabled="true"]):hover { background: var(--color-accent-hover); }
@@ -224,7 +235,7 @@ h1, h2 { font-weight: 800; }
 /* Medidas comunes de todos los botones. Fuera de capa a propósito: ganan sobre
    las clases sueltas de cada pantalla (h-9, text-xs, sm:min-h-9, px-3) para
    que todos los botones midan lo mismo. */
-:is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro) {
+:is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro, .btn-peligro-borde) {
   min-height: 44px;
   gap: 8px;
   padding-inline: 18px;
@@ -234,7 +245,7 @@ h1, h2 { font-weight: 800; }
   font-weight: 700;
   line-height: 1.25;
 }
-:is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro) svg {
+:is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro, .btn-peligro-borde) svg {
   width: 18px;
   height: 18px;
   flex-shrink: 0;

@@ -2,15 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  CheckCircle2,
-  Clock,
-  ExternalLink,
-  FileText,
-  Pencil,
-  Upload,
-  XCircle,
-} from "lucide-react";
+import { CheckCircle2, Clock, ExternalLink, FileText, Upload, XCircle } from "lucide-react";
 import { actualizarLocalidad, subirComprobanteDomicilio } from "./actions";
 import type { ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
@@ -25,7 +17,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
-import { CampoLectura, MensajeError, SectionTitle } from "@/components/perfil/piezas";
+import {
+  CLASE_AYUDA_PERFIL,
+  MensajeError,
+  PieSeccion,
+  SeccionPerfil,
+} from "@/components/perfil/piezas";
+import { Franja } from "@/components/ui/franja";
 import { CampoLocalidad } from "@/components/postulantes/campo-localidad";
 import { formatFecha } from "@/lib/fechas";
 import { SECCION_PERFIL } from "@/lib/perfil-secciones";
@@ -101,7 +99,6 @@ export function SeccionProcedencia({
   const router = useRouter();
   const inicial = opcionDeLocalidad(localidad);
 
-  const [editando, setEditando] = useState(localidad === null);
   const [elegida, setElegida] = useState(inicial.elegida);
   const [escrita, setEscrita] = useState(inicial.escrita);
   const [confirmarCambio, setConfirmarCambio] = useState<string | null>(null);
@@ -116,13 +113,6 @@ export function SeccionProcedencia({
 
   const esFunes = esLocalidadFunes(localidad);
 
-  function cancelar() {
-    setElegida(inicial.elegida);
-    setEscrita(inicial.escrita);
-    campos.limpiarTodos();
-    setEditando(false);
-  }
-
   function guardar(nueva: string) {
     ejecutarGuardar(async () => {
       const result = await actualizarLocalidad({ localidad: elegida, otraLocalidad: escrita });
@@ -133,7 +123,6 @@ export function SeccionProcedencia({
       const guardada = opcionDeLocalidad(result.data?.localidad ?? nueva);
       setElegida(guardada.elegida);
       setEscrita(guardada.escrita);
-      setEditando(false);
       router.refresh();
     });
   }
@@ -150,10 +139,7 @@ export function SeccionProcedencia({
       campos.marcar(resuelta.campo, resuelta.mensaje, form);
       return;
     }
-    if (resuelta.localidad === localidad) {
-      setEditando(false);
-      return;
-    }
+    if (resuelta.localidad === localidad) return;
     // Sin localidad previa no hay verificación que reiniciar.
     if (localidad === null) {
       guardar(resuelta.localidad);
@@ -198,106 +184,62 @@ export function SeccionProcedencia({
   const estado = comprobante ? ESTADO_COMPROBANTE[comprobante.estado] : null;
 
   return (
-    <div
-      id={SECCION_PERFIL.procedencia}
-      className="scroll-mt-20 rounded-2xl border border-border bg-white px-4 py-5 shadow-sm sm:px-6 sm:py-6"
-    >
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <SectionTitle>Procedencia</SectionTitle>
-        {!editando && (
+    <SeccionPerfil id={SECCION_PERFIL.procedencia} titulo="Procedencia">
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+        <CampoLocalidad
+          id="p-localidad"
+          elegida={elegida}
+          escrita={escrita}
+          onElegida={(valor) => {
+            setElegida(valor);
+            campos.limpiar("localidad");
+            campos.limpiar("otraLocalidad");
+          }}
+          onEscrita={(valor) => {
+            setEscrita(valor);
+            campos.limpiar("otraLocalidad");
+          }}
+          errorLocalidad={campos.errores.localidad}
+          errorOtra={campos.errores.otraLocalidad}
+          deshabilitado={guardando}
+          estiloPerfil
+          className="sm:max-w-[calc(50%-8px)]"
+        />
+        <PieSeccion>
           <button
-            type="button"
-            onClick={() => setEditando(true)}
-            className="btn-secundario inline-flex min-h-11 items-center gap-1.5 px-3 text-xs font-medium sm:min-h-9"
+            type="submit"
+            disabled={guardando}
+            aria-busy={guardando}
+            className="btn-primario"
           >
-            <Pencil className="h-3.5 w-3.5" />
-            Cambiar localidad
+            {guardando && <Spinner />}
+            {guardando ? "Guardando…" : "Guardar"}
           </button>
-        )}
-      </div>
-
-      {!editando ? (
-        <CampoLectura label="Localidad" valor={localidad ?? ""} vacio="Sin informar" />
-      ) : (
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-          <CampoLocalidad
-            id="p-localidad"
-            elegida={elegida}
-            escrita={escrita}
-            onElegida={(valor) => {
-              setElegida(valor);
-              campos.limpiar("localidad");
-              campos.limpiar("otraLocalidad");
-            }}
-            onEscrita={(valor) => {
-              setEscrita(valor);
-              campos.limpiar("otraLocalidad");
-            }}
-            errorLocalidad={campos.errores.localidad}
-            errorOtra={campos.errores.otraLocalidad}
-            deshabilitado={guardando}
-          />
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="submit"
-              disabled={guardando}
-              aria-busy={guardando}
-              className="btn-primario min-h-11 justify-center px-6"
-            >
-              {guardando ? <Spinner /> : <CheckCircle2 className="h-4 w-4" />}
-              {guardando ? "Guardando…" : "Guardar localidad"}
-            </button>
-            {localidad !== null && (
-              <button
-                type="button"
-                onClick={cancelar}
-                disabled={guardando}
-                className="btn-secundario inline-flex min-h-11 items-center justify-center px-6 text-sm font-medium"
-              >
-                Cancelar
-              </button>
-            )}
-          </div>
-        </form>
-      )}
+        </PieSeccion>
+      </form>
 
       {esFunes && (
-        <div className="mt-6 border-t border-border pt-5">
-          <h3 className="text-sm font-semibold text-foreground">Comprobante de domicilio</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Cualquier documento donde figure tu dirección en Funes (por ejemplo, una factura de
-            un servicio). Lo revisa la Oficina de Empleo.
-          </p>
+        <div className="flex flex-col gap-3 border-t border-border pt-5">
+          <h3 className="text-base font-bold text-heading">Comprobante de domicilio</h3>
 
           {comprobante && estado ? (
-            <div className="mt-3 flex flex-col gap-3 rounded-xl border border-border bg-surface-tinted px-4 py-3">
-              <div className="flex min-w-0 items-start gap-3">
-                <FileText className="mt-0.5 h-6 w-6 shrink-0 text-primary" aria-hidden="true" />
+            <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border bg-surface px-4 py-3 sm:flex-row sm:items-center">
+              <div className="flex min-w-0 flex-1 items-start gap-3">
+                <FileText className="mt-0.5 size-6 shrink-0 text-primary" aria-hidden="true" />
                 <div className="min-w-0 flex-1">
-                  <p className="break-all text-sm font-medium text-foreground">
+                  <p className="break-all text-[15px] font-bold text-heading">
                     {comprobante.nombreOriginal}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[13px] text-muted-foreground">
                     {comprobante.tamano > 0 ? `${textoTamanoArchivo(comprobante.tamano)} · ` : ""}
-                    Subido el {formatFecha(comprobante.subidoEn)}
+                    Cargado el {formatFecha(comprobante.subidoEn)}
                   </p>
-                  {comprobante.estado === "rechazado" ? (
-                    <p className="mt-2 flex items-start gap-1.5 whitespace-pre-line break-words text-sm font-medium text-danger">
-                      <XCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                      <span>
-                        Rechazado{comprobante.motivo ? `: ${comprobante.motivo}` : ""}
-                      </span>
-                    </p>
-                  ) : (
-                    <p className="mt-2">
-                      <Badge tono={estado.tono} icono={estado.Icono}>
-                        {estado.texto}
-                      </Badge>
-                    </p>
-                  )}
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tono={estado.tono} icono={estado.Icono}>
+                  {estado.texto}
+                </Badge>
                 {comprobante.url && (
                   <a
                     href={subiendo ? undefined : comprobante.url}
@@ -305,52 +247,54 @@ export function SeccionProcedencia({
                     rel="noopener noreferrer"
                     aria-disabled={subiendo}
                     tabIndex={subiendo ? -1 : undefined}
-                    className={cn(
-                      "btn-secundario inline-flex min-h-11 items-center gap-1.5 px-3 text-sm font-medium sm:min-h-9",
-                      subiendo && "pointer-events-none opacity-60",
-                    )}
+                    className={cn("btn-neutro sm:min-h-10!", subiendo && "pointer-events-none")}
                   >
-                    <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                    <ExternalLink aria-hidden="true" />
                     Ver
                   </a>
                 )}
-                <button
-                  type="button"
-                  onClick={abrirSelector}
-                  disabled={subiendo}
-                  aria-busy={subiendo}
-                  className="btn-secundario inline-flex min-h-11 items-center gap-1.5 px-3 text-sm font-medium sm:min-h-9"
-                >
-                  {subiendo ? <Spinner /> : <Upload className="h-4 w-4" aria-hidden="true" />}
-                  {subiendo ? "Subiendo…" : "Reemplazar"}
-                </button>
               </div>
             </div>
           ) : (
-            <div className="mt-3 flex flex-col gap-1">
-              <p className="text-sm text-muted-foreground">Todavía no subiste un comprobante.</p>
-              <button
-                type="button"
-                onClick={abrirSelector}
-                disabled={subiendo}
-                aria-busy={subiendo}
-                className="btn-secundario mt-2 inline-flex min-h-11 w-fit items-center gap-1.5 px-4 text-sm font-medium sm:min-h-9"
-              >
-                {subiendo ? <Spinner /> : <Upload className="h-4 w-4" aria-hidden="true" />}
-                {subiendo ? "Subiendo…" : "Subir comprobante"}
-              </button>
-            </div>
+            <p className="text-[15px] text-muted-foreground">Todavía no subiste un comprobante.</p>
           )}
 
+          {comprobante?.estado === "rechazado" && comprobante.motivo && (
+            <Franja tono="error" titulo="Motivo del rechazo:" className="whitespace-pre-line">
+              {comprobante.motivo}
+            </Franja>
+          )}
+
+          <p className={CLASE_AYUDA_PERFIL}>
+            Cualquier documento donde figure tu dirección en Funes (por ejemplo, una factura de un
+            servicio). Lo revisa la Oficina de Empleo. {COMPROBANTE_HELP_TEXT}.
+          </p>
+
           {subiendo && archivo && (
-            <p className="mt-2 break-all text-xs text-muted-foreground" aria-live="polite">
+            <p className="break-all text-[13px] text-muted-foreground" aria-live="polite">
               Subiendo {archivo.name} ({textoTamanoArchivo(archivo.size)})…
             </p>
           )}
-          <p className="mt-2 text-xs text-muted-icon">{COMPROBANTE_HELP_TEXT}</p>
-          <div aria-live="polite" className="mt-3 empty:hidden">
+          <div aria-live="polite" className="empty:hidden">
             {errorArchivo && <MensajeError error={errorArchivo} />}
           </div>
+
+          <PieSeccion>
+            <button
+              type="button"
+              onClick={abrirSelector}
+              disabled={subiendo}
+              aria-busy={subiendo}
+              className="btn-secundario"
+            >
+              {subiendo ? <Spinner /> : <Upload aria-hidden="true" />}
+              {subiendo
+                ? "Subiendo…"
+                : comprobante
+                  ? "Subir nuevo comprobante"
+                  : "Subir comprobante"}
+            </button>
+          </PieSeccion>
 
           <input
             ref={inputRef}
@@ -416,6 +360,6 @@ export function SeccionProcedencia({
           />
         </DialogContent>
       </Dialog>
-    </div>
+    </SeccionPerfil>
   );
 }
