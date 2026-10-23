@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { Briefcase, ChartColumn, ChevronRight, Plus, UserCheck, Users } from "lucide-react";
+import { Briefcase, ChartColumn, Clock, Megaphone, Plus, UserCheck, Users } from "lucide-react";
 import { requerirEmpresaPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { obtenerIndicadoresEmpresa } from "@/lib/empresa/indicadores";
-import { leerPeriodo, PERIODO_LABEL, type Periodo } from "@/lib/indicadores-periodo";
+import { leerPeriodo, type Periodo } from "@/lib/indicadores-periodo";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 import {
   ESTADO_OFERTA_EMPRESA_LABEL,
@@ -16,16 +16,15 @@ import { formatFechaCorta } from "@/lib/fechas";
 import type { FilaIndicadoresEmpresa, FilaIndicadoresPorOfertaEmpresa } from "@/types/db";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { Badge } from "@/components/ui/badge";
-import {
-  GrupoIndicadores,
-  formatDecimal,
-  formatNumero,
-  type Indicador,
-} from "@/components/indicadores/grupo-indicadores";
+import { BarraProgreso } from "@/components/ui/barra-progreso";
+import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { SelectorPeriodo } from "@/components/indicadores/selector-periodo";
-import { TituloBloque } from "@/components/indicadores/titulo-bloque";
+import { GrillaNumeros, TarjetaNumero } from "@/components/indicadores/tarjeta-numero";
+import { TarjetaGrafico, type TablaDatos } from "@/components/indicadores/tarjeta-grafico";
+import { GraficoDona, type ParteDona } from "@/components/indicadores/grafico-dona";
+import { BarrasOferta, LeyendaMedidasOferta } from "@/components/indicadores/barras-oferta";
+import { formatDecimal, formatNumero, formatPorcentaje } from "@/components/indicadores/formato";
 import { EsqueletoIndicadoresEmpresa } from "./esqueleto-indicadores-empresa";
-import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Indicadores | Panel de empresa | Portal de Empleo Funes",
@@ -43,18 +42,13 @@ export default async function IndicadoresEmpresaPage({
   const periodo = leerPeriodo(sp.periodo);
 
   return (
-    <section>
-      <BotonVolver href="/empresa" />
-
-      <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-        Indicadores
-      </h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Datos de tus ofertas y de los candidatos que te derivó la Oficina de Empleo, calculados
-        en el momento.
-      </p>
-
-      <SelectorPeriodo ruta={RUTA} periodo={periodo} />
+    <section className="flex flex-col gap-6">
+      <EncabezadoPagina
+        className="sm:flex-col sm:items-stretch xl:flex-row xl:items-end"
+        titulo="Indicadores"
+        bajada="Cómo les va a tus ofertas y a tus candidatos."
+        acciones={<SelectorPeriodo ruta={RUTA} periodo={periodo} />}
+      />
 
       <Suspense key={periodo} fallback={<EsqueletoIndicadoresEmpresa />}>
         <ContenidoIndicadores periodo={periodo} />
@@ -76,7 +70,6 @@ async function ContenidoIndicadores({ periodo }: { periodo: Periodo }) {
     const ref = logError("indicadores_empresa", indicadores.error ?? "sin datos", { periodo });
     return (
       <ErrorListado
-        className="mt-8"
         mensaje="No pudimos cargar los indicadores. Intentá de nuevo en unos minutos."
         refError={ref}
       />
@@ -89,16 +82,12 @@ async function ContenidoIndicadores({ periodo }: { periodo: Periodo }) {
     return (
       <EstadoVacio
         tipo="sin-registros"
-        className="mt-8"
         icono={Briefcase}
         titulo="Todavía no publicaste ofertas"
         descripcion="Cuando publiques una oferta y la oficina te derive candidatos, vas a ver acá cómo avanza cada búsqueda."
         accion={
-          <Link
-            href="/empresa/ofertas/nueva"
-            className="btn-primario inline-flex h-11 items-center gap-2 px-4 text-sm"
-          >
-            <Plus className="h-4 w-4" />
+          <Link href="/empresa/ofertas/nueva" className="btn-primario">
+            <Plus aria-hidden="true" />
             Publicar mi primera oferta
           </Link>
         }
@@ -106,136 +95,214 @@ async function ContenidoIndicadores({ periodo }: { periodo: Periodo }) {
     );
   }
 
-  const etiquetaPeriodo = PERIODO_LABEL[periodo].toLowerCase();
-
-  const ofertas: Indicador[] = [
-    { etiqueta: "Publicadas y vigentes", valor: formatNumero(i.ofertas_vigentes) },
-    { etiqueta: "Pendientes de revisión", valor: formatNumero(i.ofertas_pendientes) },
-    { etiqueta: "Vencidas", valor: formatNumero(i.ofertas_vencidas) },
-    { etiqueta: "Cerradas", valor: formatNumero(i.ofertas_cerradas) },
-    { etiqueta: "Rechazadas", valor: formatNumero(i.ofertas_rechazadas) },
-  ];
-
-  const vacantes: Indicador[] = [
-    {
-      etiqueta: "Vacantes",
-      valor: formatNumero(i.vacantes_totales),
-      detalle: "De las ofertas publicadas",
-    },
-    {
-      etiqueta: "Vacantes cubiertas",
-      valor: formatNumero(i.vacantes_cubiertas),
-      detalle:
-        i.vacantes_totales > 0
-          ? `${formatDecimal((i.vacantes_cubiertas * 100) / i.vacantes_totales)} % del total`
-          : "Sin ofertas publicadas",
-    },
-  ];
-
-  const candidatos: Indicador[] = [
-    { etiqueta: "Candidatos derivados", valor: formatNumero(i.candidatos_derivados) },
-    {
-      etiqueta: "Entrevistas coordinadas",
-      valor: formatNumero(i.entrevistas_coordinadas),
-      detalle: "Por fecha de la entrevista, incluye las próximas",
-    },
-    { etiqueta: "Seleccionados", valor: formatNumero(i.seleccionados) },
-    { etiqueta: "No seleccionados", valor: formatNumero(i.no_seleccionados) },
-    {
-      etiqueta: "Días hasta la selección",
-      valor:
-        i.dias_promedio_contratacion === null ? "—" : formatDecimal(i.dias_promedio_contratacion),
-      detalle:
-        i.dias_promedio_contratacion === null
-          ? "Sin seleccionados en el período"
-          : "Promedio desde la derivación",
-    },
-  ];
-
   const refPorOferta = porOferta.error
     ? logError("indicadores_por_oferta_empresa", porOferta.error, { periodo })
     : undefined;
 
   return (
-    <div className="mt-8 flex flex-col gap-8">
-      <div>
-        <TituloBloque titulo="Situación actual" descripcion="No depende del período elegido." />
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <GrupoIndicadores titulo="Ofertas" icono={Briefcase} indicadores={ofertas} />
-          <GrupoIndicadores titulo="Vacantes" icono={UserCheck} indicadores={vacantes} />
-        </div>
-      </div>
-
-      <div>
-        <TituloBloque
-          titulo={`En el período: ${etiquetaPeriodo}`}
-          descripcion="Solo candidatos que te derivó la oficina. Cada evento cuenta en la fecha en que ocurrió."
+    <div className="flex flex-col gap-6">
+      <GrillaNumeros>
+        <TarjetaNumero
+          icono={Megaphone}
+          valor={formatNumero(i.ofertas_vigentes)}
+          etiqueta="Ofertas vigentes"
+          subtitulo="Publicadas hoy en el portal"
         />
-        {hayActividad(i) ? (
-          <div className="mt-4">
-            <GrupoIndicadores
-              titulo="Candidatos"
-              icono={Users}
-              indicadores={candidatos}
-              columnas="sm:grid-cols-3 lg:grid-cols-5"
-            />
+        <TarjetaNumero
+          icono={Users}
+          valor={formatNumero(i.candidatos_derivados)}
+          etiqueta="Candidatos derivados"
+          subtitulo={`${formatNumero(i.entrevistas_coordinadas)} ${i.entrevistas_coordinadas === 1 ? "entrevista coordinada" : "entrevistas coordinadas"} en el período`}
+        />
+        <TarjetaNumero
+          icono={UserCheck}
+          valor={formatNumero(i.seleccionados)}
+          etiqueta="Seleccionados"
+          subtitulo={
+            i.vacantes_totales > 0
+              ? `Vacantes cubiertas: ${formatNumero(i.vacantes_cubiertas)} de ${formatNumero(i.vacantes_totales)}`
+              : "En el período"
+          }
+        />
+        <TarjetaNumero
+          icono={Clock}
+          valor={
+            i.dias_promedio_contratacion === null ? "—" : formatDecimal(i.dias_promedio_contratacion)
+          }
+          etiqueta="Días hasta la contratación"
+          subtitulo={
+            i.dias_promedio_contratacion === null
+              ? "Sin seleccionados en el período"
+              : "Promedio desde la derivación"
+          }
+        />
+      </GrillaNumeros>
+
+      {hayActividad(i) ? (
+        <>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+            <TusOfertas i={i} />
+            <TusCandidatos i={i} />
           </div>
-        ) : (
-          <EstadoVacio
-            tipo="sin-registros"
-            className="mt-4"
-            icono={ChartColumn}
-            titulo="No hubo actividad en este período"
-            descripcion="No se registraron derivaciones, entrevistas ni resultados. Probá con un período más largo."
-            accion={
-              periodo !== "todo" ? (
-                <Link
-                  href={`${RUTA}?periodo=todo`}
-                  className="btn-secundario inline-flex min-h-11 items-center px-4 text-sm font-medium"
-                >
+          {porOferta.error ? (
+            <ErrorListado
+              mensaje="No pudimos cargar el detalle por oferta. Intentá de nuevo en unos minutos."
+              refError={refPorOferta}
+            />
+          ) : (
+            <PorOferta ofertas={porOferta.data} />
+          )}
+        </>
+      ) : (
+        <>
+          <div className="tarjeta flex flex-col items-center gap-3 px-4 py-10 text-center sm:px-8">
+            <span
+              aria-hidden="true"
+              className="flex size-12 items-center justify-center rounded-full bg-secondary text-primary"
+            >
+              <ChartColumn className="size-6" />
+            </span>
+            <h2 className="text-lg font-extrabold text-heading">
+              Todavía no hay actividad en este período
+            </h2>
+            <p className="max-w-lg text-[15px] text-muted-foreground">
+              Cuando publiques ofertas y la Oficina de Empleo te derive candidatos, vas a ver acá
+              cómo avanzan.
+            </p>
+            <div className="mt-1 flex flex-col gap-3 sm:flex-row">
+              <Link href="/empresa/ofertas/nueva" className="btn-primario">
+                <Plus aria-hidden="true" />
+                Publicar oferta
+              </Link>
+              {periodo !== "todo" && (
+                <Link href={`${RUTA}?periodo=todo`} className="btn-neutro">
                   Ver desde el inicio
                 </Link>
-              ) : undefined
-            }
-          />
-        )}
-      </div>
-
-      <div>
-        <TituloBloque
-          titulo="Por oferta"
-          descripcion="Derivados, entrevistas y seleccionados del período. Las vacantes cubiertas son desde la publicación."
-        />
-        {porOferta.error ? (
-          <ErrorListado
-            className="mt-4"
-            mensaje="No pudimos cargar el detalle por oferta. Intentá de nuevo en unos minutos."
-            refError={refPorOferta}
-          />
-        ) : (
-          <ListaPorOferta ofertas={porOferta.data} />
-        )}
-      </div>
+              )}
+            </div>
+          </div>
+          {/* El estado de las ofertas no depende del período. */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+            <TusOfertas i={i} />
+          </div>
+        </>
+      )}
     </div>
   );
 }
+
+// ── Donas ─────────────────────────────────────────────────────────────────
+
+function totalDe(partes: ParteDona[]): number {
+  return partes.reduce((s, p) => s + p.cantidad, 0);
+}
+
+/** La parte con más cantidad (la primera si empatan); ninguna si todas son 0. */
+function mayorParte(partes: ParteDona[]): ParteDona | undefined {
+  return partes.reduce<ParteDona | undefined>(
+    (a, b) => (b.cantidad > 0 && (!a || b.cantidad > a.cantidad) ? b : a),
+    undefined,
+  );
+}
+
+function tablaDona(titulo: string, columna: string, partes: ParteDona[]): TablaDatos {
+  const total = totalDe(partes);
+  return {
+    titulo,
+    columnas: [columna, "Cantidad", "Porcentaje"],
+    filas: partes.map((p) => ({
+      clave: p.clave,
+      celdas: [p.nombre, formatNumero(p.cantidad), formatPorcentaje(p.cantidad, total)],
+    })),
+  };
+}
+
+function resumenDona(titulo: string, partes: ParteDona[]): string {
+  const total = totalDe(partes);
+  const detalle = partes
+    .map((p) => `${p.nombre}: ${formatNumero(p.cantidad)} (${formatPorcentaje(p.cantidad, total)})`)
+    .join("; ");
+  return `Gráfico de dona. ${titulo}. Total: ${formatNumero(total)}. ${detalle}.`;
+}
+
+const CONCLUSION_OFERTAS: Record<string, string> = {
+  vigentes: "La mayoría de tus ofertas están publicadas",
+  revision: "La mayor parte de tus ofertas espera la revisión de la Oficina",
+  rechazadas: "La mayor parte de tus ofertas fue rechazada: revisá el motivo y corregilas",
+  cerradas: "La mayor parte de tus ofertas ya está cerrada",
+  vencidas: "La mayor parte de tus ofertas venció: podés renovarlas desde Mis ofertas",
+};
+
+function TusOfertas({ i }: { i: FilaIndicadoresEmpresa }) {
+  const partes: ParteDona[] = [
+    { clave: "vigentes", nombre: "Vigentes", cantidad: i.ofertas_vigentes },
+    { clave: "revision", nombre: "En revisión", cantidad: i.ofertas_pendientes },
+    { clave: "rechazadas", nombre: "Rechazadas", cantidad: i.ofertas_rechazadas },
+    { clave: "cerradas", nombre: "Cerradas", cantidad: i.ofertas_cerradas },
+    { clave: "vencidas", nombre: "Vencidas", cantidad: i.ofertas_vencidas },
+  ];
+  const mayor = mayorParte(partes);
+
+  return (
+    <TarjetaGrafico
+      titulo="Tus ofertas"
+      descripcion="En qué estado están hoy. No depende del período elegido."
+      conclusion={mayor ? CONCLUSION_OFERTAS[mayor.clave] : undefined}
+      tabla={mayor ? tablaDona("Tus ofertas por estado", "Estado", partes) : undefined}
+    >
+      <GraficoDona
+        partes={partes}
+        unidad="ofertas"
+        resaltada={mayor?.clave}
+        resumen={resumenDona("Tus ofertas por estado", partes)}
+        vacio="No tenés ofertas enviadas a la Oficina."
+      />
+    </TarjetaGrafico>
+  );
+}
+
+const CONCLUSION_CANDIDATOS: Record<string, string> = {
+  seleccionados: "La mayoría de tus candidatos fueron seleccionados",
+  no_seleccionados: "La mayoría de tus candidatos no fueron seleccionados",
+  proceso: "La mayoría de tus candidatos están en proceso",
+};
+
+function TusCandidatos({ i }: { i: FilaIndicadoresEmpresa }) {
+  // Derivados del período sin un resultado contado en el período.
+  const enProceso = Math.max(0, i.candidatos_derivados - i.seleccionados - i.no_seleccionados);
+  const partes: ParteDona[] = [
+    { clave: "seleccionados", nombre: "Seleccionados", cantidad: i.seleccionados },
+    { clave: "no_seleccionados", nombre: "No seleccionados", cantidad: i.no_seleccionados },
+    { clave: "proceso", nombre: "En proceso", cantidad: enProceso },
+  ];
+  const mayor = mayorParte(partes);
+
+  return (
+    <TarjetaGrafico
+      titulo="Tus candidatos"
+      descripcion="Los que te derivó la Oficina de Empleo en el período y su resultado."
+      conclusion={mayor ? CONCLUSION_CANDIDATOS[mayor.clave] : undefined}
+      tabla={mayor ? tablaDona("Tus candidatos por resultado", "Resultado", partes) : undefined}
+    >
+      <GraficoDona
+        partes={partes}
+        unidad="candidatos"
+        resaltada={mayor?.clave}
+        resumen={resumenDona("Tus candidatos por resultado", partes)}
+        vacio="No te derivaron candidatos en el período."
+      />
+    </TarjetaGrafico>
+  );
+}
+
+// ── Por oferta ────────────────────────────────────────────────────────────
 
 function estadoVisible(o: FilaIndicadoresPorOfertaEmpresa): EstadoOfertaEmpresa {
   return estadoVencimiento(o.estado, o.vence_en).vencida ? "vencida" : o.estado;
 }
 
-function BadgeEstado({ estado }: { estado: EstadoOfertaEmpresa }) {
-  return (
-    <Badge tono={ESTADO_OFERTA_EMPRESA_TONO[estado]} estado>
-      {ESTADO_OFERTA_EMPRESA_LABEL[estado]}
-    </Badge>
-  );
-}
-
 function textoCobertura(o: FilaIndicadoresPorOfertaEmpresa): string {
-  return o.vacantes === null
-    ? "—"
-    : `${formatNumero(o.cubiertas)} de ${formatNumero(o.vacantes)}`;
+  return o.vacantes === null ? "—" : `${formatNumero(o.cubiertas)} de ${formatNumero(o.vacantes)}`;
 }
 
 /** El vencimiento solo tiene sentido mientras la oferta está publicada. */
@@ -243,84 +310,113 @@ function textoVence(o: FilaIndicadoresPorOfertaEmpresa): string {
   return o.estado === "activa" && o.vence_en ? formatFechaCorta(o.vence_en) : "—";
 }
 
-function ListaPorOferta({ ofertas }: { ofertas: FilaIndicadoresPorOfertaEmpresa[] }) {
-  return (
-    <>
-      <div className="mt-4 hidden overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-xs lg:block">
-        <table className="w-full text-sm">
-          <thead className="bg-surface-tinted">
-            <tr className="text-left">
-              <th scope="col" className="px-4 py-3 font-medium text-muted-foreground">Oferta</th>
-              <th scope="col" className="px-4 py-3 font-medium text-muted-foreground">Estado</th>
-              <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">
-                Vacantes cubiertas
-              </th>
-              <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">Derivados</th>
-              <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">Entrevistas</th>
-              <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">Seleccionados</th>
-              <th scope="col" className="px-4 py-3 font-medium text-muted-foreground">Vence</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {ofertas.map((o) => (
-              <tr key={o.oferta_id} className="align-top">
-                <td className="px-4 py-3">
-                  <Link
-                    href={`/empresa/ofertas/${o.oferta_id}`}
-                    className="font-medium text-primary underline-offset-2 hover:underline"
-                  >
-                    {o.titulo}
-                  </Link>
-                </td>
-                <td className="px-4 py-3">
-                  <BadgeEstado estado={estadoVisible(o)} />
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums text-foreground">{textoCobertura(o)}</td>
-                <td className="px-4 py-3 text-right tabular-nums text-foreground">{formatNumero(o.derivados)}</td>
-                <td className="px-4 py-3 text-right tabular-nums text-foreground">{formatNumero(o.entrevistas)}</td>
-                <td className="px-4 py-3 text-right tabular-nums text-foreground">{formatNumero(o.seleccionados)}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{textoVence(o)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+function PorOferta({ ofertas }: { ofertas: FilaIndicadoresPorOfertaEmpresa[] }) {
+  const maximo = Math.max(1, ...ofertas.map((o) => Math.max(o.derivados, o.entrevistas, o.seleccionados)));
+  const conMasDerivados = ofertas.reduce<FilaIndicadoresPorOfertaEmpresa | undefined>(
+    (a, b) => (b.derivados > 0 && (!a || b.derivados > a.derivados) ? b : a),
+    undefined,
+  );
 
-      <ul className="mt-4 flex flex-col gap-3 lg:hidden">
-        {ofertas.map((o) => (
-          <li key={o.oferta_id}>
-            <Link
-              href={`/empresa/ofertas/${o.oferta_id}`}
-              className="relative block rounded-[var(--radius-lg)] border border-border bg-surface p-4 pr-10 shadow-xs transition-colors hover:bg-surface-tinted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="min-w-0 break-words font-semibold text-foreground">{o.titulo}</p>
-                <BadgeEstado estado={estadoVisible(o)} />
-              </div>
-              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
-                <DatoTarjeta etiqueta="Vacantes cubiertas" valor={textoCobertura(o)} />
-                <DatoTarjeta etiqueta="Derivados" valor={formatNumero(o.derivados)} />
-                <DatoTarjeta etiqueta="Entrevistas" valor={formatNumero(o.entrevistas)} />
-                <DatoTarjeta etiqueta="Seleccionados" valor={formatNumero(o.seleccionados)} />
-                <DatoTarjeta etiqueta="Vence" valor={textoVence(o)} />
-              </dl>
-              <ChevronRight
-                className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-icon"
-                aria-hidden="true"
-              />
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </>
+  return (
+    <TarjetaGrafico
+      titulo="Por oferta"
+      descripcion="Derivados, entrevistas y seleccionados del período. Las vacantes cubiertas son desde la publicación."
+      conclusion={
+        conMasDerivados
+          ? `${conMasDerivados.titulo} es la oferta con más candidatos derivados: ${formatNumero(conMasDerivados.derivados)}`
+          : ofertas.length > 0
+            ? "Ninguna oferta recibió candidatos derivados en el período"
+            : undefined
+      }
+      encabezado={ofertas.length > 0 ? <LeyendaMedidasOferta /> : undefined}
+      tabla={
+        ofertas.length > 0
+          ? {
+              titulo: "Indicadores por oferta",
+              columnas: [
+                "Oferta",
+                "Estado",
+                "Derivados",
+                "Entrevistas",
+                "Seleccionados",
+                "Vacantes cubiertas",
+                "Vence",
+              ],
+              filas: ofertas.map((o) => ({
+                clave: o.oferta_id,
+                celdas: [
+                  o.titulo,
+                  ESTADO_OFERTA_EMPRESA_LABEL[estadoVisible(o)],
+                  formatNumero(o.derivados),
+                  formatNumero(o.entrevistas),
+                  formatNumero(o.seleccionados),
+                  textoCobertura(o),
+                  textoVence(o),
+                ],
+              })),
+            }
+          : undefined
+      }
+    >
+      {ofertas.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No hay ofertas con datos para mostrar.</p>
+      ) : (
+        <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {ofertas.map((o) => (
+            <li key={o.oferta_id}>
+              <TarjetaPorOferta oferta={o} maximo={maximo} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </TarjetaGrafico>
   );
 }
 
-function DatoTarjeta({ etiqueta, valor }: { etiqueta: string; valor: string }) {
+function TarjetaPorOferta({
+  oferta: o,
+  maximo,
+}: {
+  oferta: FilaIndicadoresPorOfertaEmpresa;
+  maximo: number;
+}) {
+  const estado = estadoVisible(o);
+  const porcentaje = o.vacantes ? (o.cubiertas * 100) / o.vacantes : 0;
+
   return (
-    <div className="min-w-0">
-      <dt className="text-xs text-muted-foreground">{etiqueta}</dt>
-      <dd className="font-medium tabular-nums text-foreground">{valor}</dd>
-    </div>
+    <article className="flex h-full flex-col gap-4 rounded-[var(--radius-lg)] border border-border bg-surface p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <h3 className="min-w-0 flex-1 basis-40 text-base leading-snug font-bold break-words">
+          <Link
+            href={`/empresa/ofertas/${o.oferta_id}`}
+            className="rounded-[var(--radius-sm)] text-heading no-underline outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+          >
+            {o.titulo}
+          </Link>
+        </h3>
+        <Badge tono={ESTADO_OFERTA_EMPRESA_TONO[estado]} estado>
+          {ESTADO_OFERTA_EMPRESA_LABEL[estado]}
+        </Badge>
+      </div>
+
+      <BarrasOferta
+        valores={{ derivados: o.derivados, entrevistas: o.entrevistas, seleccionados: o.seleccionados }}
+        maximo={maximo}
+        resumen={`${o.titulo}: ${formatNumero(o.derivados)} derivados, ${formatNumero(o.entrevistas)} entrevistas y ${formatNumero(o.seleccionados)} seleccionados en el período.`}
+      />
+
+      <div className="mt-auto flex flex-col gap-2">
+        <p className="flex justify-between gap-3 text-sm">
+          <span className="font-semibold text-control-foreground">Vacantes cubiertas</span>
+          <span className="font-bold text-foreground tabular-nums">{textoCobertura(o)}</span>
+        </p>
+        {o.vacantes !== null && (
+          <BarraProgreso
+            porcentaje={porcentaje}
+            etiqueta={`Vacantes cubiertas: ${formatNumero(o.cubiertas)} de ${formatNumero(o.vacantes)}`}
+          />
+        )}
+      </div>
+    </article>
   );
 }
