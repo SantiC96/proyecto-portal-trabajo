@@ -11,7 +11,7 @@ export default async function NuevoCursoPage() {
   await requerirRolPagina("municipalidad");
   return (
     <section className="contenido-lectura">
-      <BotonVolver href="/admin/cursos">Volver a cursos</BotonVolver>
+      <BotonVolver href="/admin/cursos" />
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         Crear curso

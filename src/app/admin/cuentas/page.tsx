@@ -118,7 +118,7 @@ export default async function AdminCuentasPage() {
 
   return (
     <section>
-      <BotonVolver href="/admin">Volver al panel</BotonVolver>
+      <BotonVolver href="/admin" />
 
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>

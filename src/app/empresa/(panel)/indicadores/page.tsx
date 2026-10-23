@@ -44,7 +44,7 @@ export default async function IndicadoresEmpresaPage({
 
   return (
     <section>
-      <BotonVolver href="/empresa">Volver al panel</BotonVolver>
+      <BotonVolver href="/empresa" />
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         Indicadores

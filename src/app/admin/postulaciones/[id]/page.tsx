@@ -209,9 +209,7 @@ export default async function PostulacionFichaPage({
   return (
     <section className="contenido-lectura-ancho">
       {postulacion.estado === "recibida" && <MarcarFichaAbierta postulacionId={postulacionId} />}
-      <BotonVolver href="/admin/postulaciones" destacado>
-        Volver a Postulaciones
-      </BotonVolver>
+      <BotonVolver href="/admin/postulaciones" destacado />
 
       {/* Cabecera */}
       <header className="mt-4">

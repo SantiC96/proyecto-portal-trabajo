@@ -30,7 +30,7 @@ export default async function CursosCompletadosPage({
 
   return (
     <section>
-      <BotonVolver href="/admin/cursos">Volver a cursos</BotonVolver>
+      <BotonVolver href="/admin/cursos" />
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         Cursos completados

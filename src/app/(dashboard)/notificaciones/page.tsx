@@ -19,7 +19,7 @@ export default async function NotificacionesPostulantePage({
     <PaginaNotificaciones
       usuarioId={user.id}
       ruta={rutaNotificaciones("postulante")}
-      panel={{ href: "/perfil", label: "Volver a mi perfil" }}
+      volverA="/perfil"
       textoVacio="Te avisamos acá cuando deriven tu postulación, te coordinen una entrevista o te asignen un curso."
       searchParams={sp}
     />

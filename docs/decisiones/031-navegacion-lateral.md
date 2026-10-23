@@ -52,6 +52,18 @@ La sidebar de la oficina muestra cuántas ofertas esperan aprobación, cuántas 
 
 En escritorio la sidebar se puede contraer a 72 px (solo íconos, con tooltip). La preferencia es de cada navegador y no hace falta en el servidor, así que va en `localStorage` (`ftl-sidebar-colapsada`) y no en una cookie o en la base. Para que al recargar no se vea la sidebar ancha y después angosta, un script en el `<head>` del layout raíz pone `data-sidebar="colapsada"` en `<html>` antes de pintar (ver la guía de Next "Preventing flash before hydration"), y el CSS resuelve el ancho y lo que se ve con ese atributo. Los componentes leen el mismo atributo con `useSyncExternalStore` (`use-sidebar-colapsada.ts`), que en el servidor y durante la hidratación vale "expandida". El acceso a `localStorage` va en `try/catch`: si no está disponible, la preferencia dura hasta recargar. En el celular el panel siempre se abre completo.
 
+
+### 6. "Volver" lleva a la pantalla anterior (actualizado 2026-10-23)
+
+`BotonVolver` (`src/components/ui/boton-volver.tsx`) navegaba siempre a un destino fijo (`href`), para que funcionara igual al entrar desde un email. Pero en varias pantallas eso llevaba a una distinta de la que venía el usuario (por ejemplo, de la ficha de un candidato abierta desde el panel volvía al detalle de la oferta). Ahora:
+
+- **Registro de navegación interna.** `RegistroNavegacion` (`src/components/layout/registro-navegacion.tsx`), montado en `AppShell` dentro de un `Suspense` (usa `useSearchParams`), guarda en `sessionStorage` (`ftl_pila_navegacion`, con `try/catch`) la pila de rutas del sitio visitadas en esta pestaña, hasta 50. Cada cambio de ruta se clasifica: si vino de "atrás"/"adelante" (`popstate`) se recorta la pila hasta esa ruta; si `history.length` creció (push) se apila; si no (un `router.replace`, como el que quita `?aviso=`) se reemplaza la última. Cada entrada recuerda si se llegó con un clic en un link o sin él (un redirect de una acción o un `router.push` del código). Al cargar la página de cero, la pila solo continúa si es una recarga, un "atrás"/"adelante" o una navegación que viene del mismo sitio; una pestaña nueva, un link de un email o un sitio externo empiezan de cero.
+- **El botón.** Es un componente de cliente que sigue siendo un `<a href>` real (se puede abrir en otra pestaña, y sin JavaScript va al `href`). Solo en un clic simple, y si `puedeVolverConHistorial()` (`src/lib/navegacion-interna.ts`) lo permite, cancela el link y hace `router.back()`.
+- **Cuándo usa el `href` de respaldo:** no hay una ruta anterior en la pila de esta pestaña; la pantalla actual se alcanzó por un redirect de una acción (por ejemplo, crear una oferta y caer en Mis ofertas: "Volver" no lleva de nuevo al formulario enviado); la ruta anterior es un formulario (`/nueva`, `/nuevo`, `/editar`, `/empresa/solicitud`) o es de `/auth`.
+- **Texto único.** Dice "Volver" en todas las pantallas, con `aria-label` "Volver a la pantalla anterior": el destino ya no es siempre el mismo, así que un texto como "Volver a mis ofertas" podía ser falso. Cada pantalla sigue pasando su `href` de respaldo (la página padre). La búsqueda de postulantes de una oferta y la ficha del postulante mantienen `?volver=` (decisión 028) para calcular ese respaldo.
+
+Motivo: el comportamiento esperado de "Volver" es el del navegador, pero `router.back()` a ciegas puede sacar al usuario del sitio o devolverlo a un formulario ya enviado. La pila decide cuándo es seguro; en cualquier duda gana el destino fijo, que es el comportamiento anterior.
+
 ---
 
 ## Consecuencias

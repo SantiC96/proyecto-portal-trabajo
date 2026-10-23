@@ -26,9 +26,7 @@ export default async function InvitacionesPage() {
 
   return (
     <section className="flex flex-col gap-6">
-      <BotonVolver href="/perfil" destacado>
-        Volver a mi perfil
-      </BotonVolver>
+      <BotonVolver href="/perfil" destacado />
       <EncabezadoPagina
         className="-mt-2"
         titulo="Invitaciones"

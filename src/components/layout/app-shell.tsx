@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { obtenerPendientesNavegacion } from "@/app/admin/actions";
 import { RegisterModal } from "@/components/auth/register-modal";
 import { NavegacionMovil } from "@/components/layout/navegacion-movil";
+import { RegistroNavegacion } from "@/components/layout/registro-navegacion";
 import { Sidebar } from "@/components/layout/sidebar";
 import { CampanaNotificaciones } from "@/components/notificaciones/campana-notificaciones";
 import type { PendientesOficina } from "@/lib/admin/pendientes";
@@ -117,11 +118,19 @@ export function AppShell({
     <RegisterModal onClose={() => setRegistroAbierto(false)} />
   );
 
+  // También en /auth: BotonVolver necesita saber si lo anterior era de ahí.
+  const registroNavegacion = (
+    <Suspense fallback={null}>
+      <RegistroNavegacion />
+    </Suspense>
+  );
+
   if (!conNavegacion) {
     return (
       <>
         {children}
         {modalRegistro}
+        {registroNavegacion}
       </>
     );
   }
@@ -163,6 +172,7 @@ export function AppShell({
 
       <div className="app-contenido">{children}</div>
       {modalRegistro}
+      {registroNavegacion}
     </div>
   );
 }

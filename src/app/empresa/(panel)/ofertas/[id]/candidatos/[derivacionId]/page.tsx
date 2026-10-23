@@ -23,6 +23,7 @@ import { inicialesDePersona } from "@/lib/iniciales";
 import { AccionesDerivacion } from "./_components/acciones-derivacion";
 import { BookmarkBtn } from "./_components/bookmark-btn";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { fotosDeCandidatosEmpresa } from "@/lib/fotos-perfil";
 
 export const metadata: Metadata = {
   title: "Ficha de candidato | Portal de Empleo Funes",
@@ -62,7 +63,7 @@ export default async function CandidatoFichaPage({
   if (!derivacion) notFound();
 
   // Get candidate data and saved status in parallel
-  const [candidatoResult, cvResult, guardadoResult, vacantesResult, contratadosResult] = await Promise.all([
+  const [candidatoResult, cvResult, guardadoResult, vacantesResult, contratadosResult, fotos] = await Promise.all([
     supabase.rpc("candidato_para_empresa", {
       p_postulante_id: derivacion.postulante_id,
     }),
@@ -76,6 +77,7 @@ export default async function CandidatoFichaPage({
       .maybeSingle(),
     supabase.from("oferta_vacantes").select("cantidad").eq("oferta_id", ofertaId).maybeSingle(),
     supabase.rpc("contratados_en_oferta", { p_oferta_id: ofertaId }),
+    fotosDeCandidatosEmpresa([derivacion.postulante_id]),
   ]);
 
   const candidato: FilaCandidatoParaEmpresa | null = candidatoResult.data?.[0] ?? null;
@@ -100,20 +102,21 @@ export default async function CandidatoFichaPage({
   }
 
   const nombre = candidato ? `${candidato.nombre} ${candidato.apellido}` : "Candidato";
+  const foto = fotos.get(derivacion.postulante_id);
   const estadoLabel =
     DERIVACION_ESTADO_LABEL[derivacion.estado_empresa] ?? derivacion.estado_empresa;
   const estadoTono = DERIVACION_ESTADO_TONO[derivacion.estado_empresa] ?? "neutral";
 
   return (
     <section className="contenido-lectura-ancho">
-      <BotonVolver href={`/empresa/ofertas/${ofertaId}`} destacado>
-        Volver a {oferta.titulo}
-      </BotonVolver>
+      <BotonVolver href={`/empresa/ofertas/${ofertaId}`} destacado />
 
       {/* Cabecera */}
       <header className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-4">
           <AvatarAjustado
+            src={foto?.url}
+            ajuste={foto?.ajuste}
             alt=""
             size="ficha"
             iniciales={candidato ? inicialesDePersona(candidato.nombre, candidato.apellido) : undefined}
@@ -147,7 +150,9 @@ export default async function CandidatoFichaPage({
       </header>
 
       <div className="@container mt-8">
-        <div className="grid grid-cols-1 gap-6 @4xl:grid-cols-[minmax(0,1fr)_400px] @4xl:items-start">
+        {/* Las dos columnas tienen el mismo alto (stretch): Gestión ocupa todo
+            el de la suya y, en las dos, el espacio que sobra queda abajo. */}
+        <div className="grid grid-cols-1 gap-6 @4xl:grid-cols-[minmax(0,1fr)_400px]">
           {/* Columna principal */}
           <div className="flex min-w-0 flex-col gap-6">
             <Tarjeta titulo="Contacto">
@@ -225,7 +230,7 @@ export default async function CandidatoFichaPage({
           {/* Gestión */}
           <section
             aria-labelledby="gestion-titulo"
-            className="tarjeta p-5 sm:p-6 @4xl:sticky @4xl:top-6"
+            className="tarjeta p-5 sm:p-6"
           >
             <h2 id="gestion-titulo" className="mb-4 text-xl font-extrabold text-heading">
               Gestión

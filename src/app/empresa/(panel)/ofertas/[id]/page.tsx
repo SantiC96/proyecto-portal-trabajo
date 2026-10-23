@@ -34,6 +34,7 @@ import { RenovarOfertaBtn } from "../_components/renovar-oferta-btn";
 import { BajaOfertaBtn } from "../_components/baja-oferta-btn";
 import { bajasDeOfertas } from "@/lib/empresa/bajas-oferta";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { fotosDeCandidatosEmpresa } from "@/lib/fotos-perfil";
 
 export const metadata: Metadata = {
   title: "Detalle de oferta | Portal de Empleo Funes",
@@ -99,9 +100,7 @@ export default async function OfertaDetallePage({
 
   return (
     <section className="contenido-lectura-ancho">
-      <BotonVolver href="/empresa/ofertas" destacado>
-        Volver a Mis ofertas
-      </BotonVolver>
+      <BotonVolver href="/empresa/ofertas" destacado />
 
       <header className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
@@ -291,11 +290,14 @@ async function ListadoDerivados({
   const uniquePostulanteIds = [
     ...new Set(derivaciones.map((d) => d.postulante_id)),
   ];
-  const nombreResults = await Promise.all(
-    uniquePostulanteIds.map((pid) =>
-      supabase.rpc("candidato_para_empresa", { p_postulante_id: pid })
-    )
-  );
+  const [nombreResults, fotos] = await Promise.all([
+    Promise.all(
+      uniquePostulanteIds.map((pid) =>
+        supabase.rpc("candidato_para_empresa", { p_postulante_id: pid })
+      )
+    ),
+    fotosDeCandidatosEmpresa(uniquePostulanteIds),
+  ]);
   uniquePostulanteIds.forEach((pid, i) => {
     const row = nombreResults[i].data?.[0];
     if (row) nombresMap[pid] = row;
@@ -328,6 +330,7 @@ async function ListadoDerivados({
               <CeldaPersona
                 nombre={nombre}
                 href={href}
+                foto={fotos.get(d.postulante_id)}
                 iniciales={
                   candidato ? inicialesDePersona(candidato.nombre, candidato.apellido) : undefined
                 }
