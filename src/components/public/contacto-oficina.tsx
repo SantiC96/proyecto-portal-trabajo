@@ -19,7 +19,7 @@ export function ContactoOficina() {
     >
       <div className="flex items-center gap-4">
         <Image
-          src="/images/logo-funes-color.png"
+          src="/images/logo-funes-verde.png"
           alt="Municipalidad de Funes"
           width={120}
           height={34}
