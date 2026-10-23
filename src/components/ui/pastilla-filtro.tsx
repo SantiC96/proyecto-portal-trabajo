@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { FilaDesplazable } from "@/components/ui/fila-desplazable";
 
 /** Clases de una pastilla de filtro: 44 px en el celular, 40 px desde sm. */
 export function clasePastilla(activa: boolean, className?: string): string {
@@ -40,31 +41,41 @@ export function PastillaFiltro({
 
 /**
  * Grupo de pastillas con su título. En el celular, una sola fila con scroll
- * horizontal; desde sm bajan de renglón.
+ * horizontal; desde sm bajan de renglón. Con `unaLinea` (muchas opciones,
+ * como los rubros) quedan siempre en una fila que se recorre de costado, con
+ * degradé y flechas (FilaDesplazable).
  */
 export function GrupoPastillas({
   id,
   titulo,
+  unaLinea,
   children,
   className,
 }: {
   id: string;
   titulo: string;
+  unaLinea?: { textoAnteriores: string; textoSiguientes: string };
   children: ReactNode;
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
+    <div className={cn("flex min-w-0 flex-col gap-2", className)}>
       <span id={id} className="text-[13px] font-bold text-muted-foreground-strong">
         {titulo}
       </span>
-      <div
-        role="group"
-        aria-labelledby={id}
-        className="sin-barra-scroll -mx-4 -my-1 flex gap-2 overflow-x-auto px-4 py-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
-      >
-        {children}
-      </div>
+      {unaLinea ? (
+        <FilaDesplazable etiquetaId={id} {...unaLinea}>
+          {children}
+        </FilaDesplazable>
+      ) : (
+        <div
+          role="group"
+          aria-labelledby={id}
+          className="sin-barra-scroll -mx-4 -my-1 flex gap-2 overflow-x-auto px-4 py-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+        >
+          {children}
+        </div>
+      )}
     </div>
   );
 }

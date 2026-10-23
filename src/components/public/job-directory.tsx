@@ -73,7 +73,11 @@ export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDir
           inputClassName="min-h-[52px] border-border-campo"
         />
 
-        <GrupoPastillas id="filtro-rubro" titulo="Rubro">
+        <GrupoPastillas
+          id="filtro-rubro"
+          titulo="Rubro"
+          unaLinea={{ textoAnteriores: "Ver rubros anteriores", textoSiguientes: "Ver más rubros" }}
+        >
           <PastillaFiltro
             href={hrefFiltro({ categoria: null })}
             activa={filtros.categoria === null}
