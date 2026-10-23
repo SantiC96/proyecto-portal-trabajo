@@ -18,7 +18,7 @@ export default async function RecuperarContrasenaPage({
   const linkVencido = error === "link-vencido";
 
   return (
-    <AuthShell volver={{ href: "/auth/login", texto: "Volver al inicio de sesión" }}>
+    <AuthShell volverHref="/auth/login">
           <div>
           <div className="mb-6 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">

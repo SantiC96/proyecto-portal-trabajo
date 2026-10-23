@@ -1,135 +1,115 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { X, UserPlus, User, Building2 } from "lucide-react";
+import { useEffect, type ComponentType, type SVGProps } from "react";
+import { Building2, ChevronRight, User, X } from "lucide-react";
 import { AuthLink } from "@/components/auth/auth-link";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface RegisterModalProps {
   onClose: () => void;
 }
 
+/** Diálogo "Registrarme": elegir entre la cuenta de postulante y la de empresa. */
 export function RegisterModal({ onClose }: RegisterModalProps) {
-  const dialogRef = useRef<HTMLDivElement>(null);
-
+  // AppShell lo desmonta al cerrar: el foco vuelve a donde estaba.
   useEffect(() => {
     const previouslyFocused = document.activeElement;
-    dialogRef.current?.querySelector<HTMLElement>("button")?.focus();
-
     return () => {
       if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus();
     };
   }, []);
 
   return (
-    <div
-      ref={dialogRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="register-dialog-title"
-      onKeyDown={(event) => {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          onClose();
-          return;
-        }
-
-        if (event.key !== "Tab") return;
-
-        const focusableElements = dialogRef.current?.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        );
-        if (!focusableElements?.length) return;
-
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-
-        if (event.shiftKey && document.activeElement === firstElement) {
-          event.preventDefault();
-          lastElement.focus();
-        } else if (!event.shiftKey && document.activeElement === lastElement) {
-          event.preventDefault();
-          firstElement.focus();
-        }
-      }}
-      onClick={(e) => {
-        // Cierra al hacer clic en el fondo oscuro
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="relative w-full max-w-md rounded-[var(--radius-xl)] bg-surface p-6 shadow-[var(--sombra-dialogo)]">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute top-4 right-4 rounded-full p-1.5 text-muted-foreground transition hover:bg-secondary hover:text-foreground"
-          aria-label="Cerrar ventana"
+    <Dialog open onOpenChange={(abierto) => !abierto && onClose()}>
+      <DialogContent
+        tamano="amplio"
+        showCloseButton={false}
+        className="max-w-[calc(100%-1.5rem)] sm:max-w-[480px]"
+      >
+        <DialogClose
+          aria-label="Cerrar"
+          className="absolute top-3 right-3 flex size-11 items-center justify-center rounded-[var(--radius-md)] text-muted-foreground outline-none transition-colors hover:bg-surface-tinted hover:text-heading focus-visible:shadow-[var(--sombra-foco)] sm:top-4 sm:right-4"
         >
-          <X className="h-5 w-5" />
-        </button>
+          <X className="size-5" aria-hidden="true" />
+        </DialogClose>
 
-        <div className="mb-5 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <UserPlus className="h-6 w-6" />
-          </div>
-          <h3 id="register-dialog-title" className="text-xl font-bold text-foreground">
+        <div className="pr-10">
+          <DialogTitle className="text-xl leading-tight font-extrabold text-heading">
             Crear una cuenta
-          </h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Seleccioná el tipo de registro que corresponde a tu perfil:
-          </p>
+          </DialogTitle>
+          <DialogDescription className="mt-1.5 text-[15px] text-muted-foreground">
+            Elegí cómo vas a usar el Portal de Empleo.
+          </DialogDescription>
         </div>
 
         <div className="flex flex-col gap-3">
-          <AuthLink
+          <OpcionCuenta
             href="/auth/registro"
             onClick={onClose}
-            className="group flex items-start gap-4 rounded-xl border border-border p-4 text-left transition hover:border-primary hover:bg-surface-tinted"
-          >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
-              <User className="h-5 w-5" />
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-foreground group-hover:text-primary">
-                Soy Postulante (Persona física)
-              </h4>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Buscás empleo en Funes, querés cargar tu CV y postularte a ofertas laborales del portal.
-              </p>
-            </div>
-          </AuthLink>
-
-          <AuthLink
+            Icono={User}
+            titulo="Busco trabajo"
+            descripcion="Creá tu perfil y postulate a ofertas de empresas de Funes."
+          />
+          <OpcionCuenta
             href="/auth/registro?tipo=empresa"
             onClick={onClose}
-            className="group flex items-start gap-4 rounded-xl border border-border p-4 text-left transition hover:border-primary hover:bg-surface-tinted"
-          >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
-              <Building2 className="h-5 w-5" />
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-foreground group-hover:text-primary">
-                Soy Empresa (Persona jurídica)
-              </h4>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Tenés un comercio o empresa en Funes o la región y querés publicar vacantes y recibir preselecciones de candidatos.
-              </p>
-            </div>
-          </AuthLink>
+            Icono={Building2}
+            titulo="Quiero publicar ofertas"
+            descripcion="Registrá tu empresa y recibí candidatos preseleccionados por la Oficina de Empleo."
+          />
         </div>
 
-        <div className="mt-5 border-t border-border pt-4 text-center">
-          <p className="text-xs text-muted-foreground">
-            ¿Ya tenés una cuenta?{" "}
-            <AuthLink
-              href="/auth/login"
-              onClick={onClose}
-              className="font-semibold text-primary hover:underline"
-            >
-              Iniciá sesión acá
-            </AuthLink>
-          </p>
-        </div>
-      </div>
-    </div>
+        <p className="text-center text-[15px] text-muted-foreground">
+          ¿Ya tenés cuenta?{" "}
+          <AuthLink
+            href="/auth/login"
+            onClick={onClose}
+            className="inline-flex min-h-11 items-center rounded-[var(--radius-sm)] font-bold text-primary outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+          >
+            Iniciá sesión
+          </AuthLink>
+        </p>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function OpcionCuenta({
+  href,
+  onClick,
+  Icono,
+  titulo,
+  descripcion,
+}: {
+  href: string;
+  onClick: () => void;
+  Icono: ComponentType<SVGProps<SVGSVGElement>>;
+  titulo: string;
+  descripcion: string;
+}) {
+  return (
+    <AuthLink
+      href={href}
+      onClick={onClick}
+      className="flex min-h-[88px] items-center gap-4 rounded-2xl border-[1.5px] border-border bg-surface p-5 text-left outline-none transition-colors hover:border-primary hover:bg-background focus-visible:border-primary focus-visible:shadow-[var(--sombra-foco)]"
+    >
+      <span
+        aria-hidden="true"
+        className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"
+      >
+        <Icono className="size-6" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[17px] leading-snug font-extrabold text-heading">{titulo}</span>
+        <span className="mt-1 block text-sm text-muted-foreground">{descripcion}</span>
+      </span>
+      <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-muted-icon" />
+    </AuthLink>
   );
 }

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useSesion } from "@/components/layout/sesion-provider";
 import { SesionActivaModal } from "@/components/auth/sesion-activa-modal";
 import { useAccion } from "@/lib/use-accion";
+import { marcarNavegacionDelUsuario } from "@/lib/navegacion-interna";
 import type { Rol } from "@/types/db";
 
 interface Props {
@@ -51,9 +52,11 @@ export function AuthLink({ href, className, children, onClick }: Props) {
           setModalData({ nombre: data.nombre, rol: data.rol, profileHref: data.profileHref });
         } else {
           router.refresh();
+          marcarNavegacionDelUsuario();
           router.push(href);
         }
       } catch {
+        marcarNavegacionDelUsuario();
         router.push(href);
       }
     });
