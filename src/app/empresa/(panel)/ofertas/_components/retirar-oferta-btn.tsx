@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { retirarOferta } from "@/app/empresa/(panel)/ofertas/actions";
-import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
+import { DialogoConfirmacion, type EstiloBoton } from "@/components/ui/dialogo-confirmacion";
 
 interface Props {
   ofertaId: string;
@@ -13,6 +13,9 @@ interface Props {
   candidatosDerivados: number;
   /** Adónde ir después de la baja; sin valor, se refresca la página actual. */
   volverA?: string;
+  /** Estilo del botón; por defecto, el rojo chico de Mis ofertas. */
+  estiloBoton?: EstiloBoton;
+  claseBoton?: string;
 }
 
 /**
@@ -29,15 +32,15 @@ const TEXTO_RETIRO = {
     total === 1 ? "Hay 1 candidato en proceso." : `Hay ${total} candidatos en proceso.`,
 } as const;
 
-export function RetirarOfertaBtn({ ofertaId, ofertaTitulo, postulacionesOficina, candidatosDerivados, volverA }: Props) {
+export function RetirarOfertaBtn({ ofertaId, ofertaTitulo, postulacionesOficina, candidatosDerivados, volverA, estiloBoton = "peligro", claseBoton = "px-3 text-xs sm:min-h-9" }: Props) {
   const router = useRouter();
   const total = postulacionesOficina + candidatosDerivados;
 
   return (
     <DialogoConfirmacion
       textoBoton={TEXTO_RETIRO.boton}
-      estiloBoton="peligro"
-      claseBoton="px-3 text-xs sm:min-h-9"
+      estiloBoton={estiloBoton}
+      claseBoton={claseBoton}
       ayudaBoton={TEXTO_RETIRO.ayuda}
       titulo={TEXTO_RETIRO.titulo}
       descripcion={TEXTO_RETIRO.descripcion(ofertaTitulo)}

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { eliminarOferta } from "@/app/empresa/(panel)/ofertas/actions";
-import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
+import { DialogoConfirmacion, type EstiloBoton } from "@/components/ui/dialogo-confirmacion";
 import { DIAS_RESTAURACION_OFERTA } from "@/lib/oferta-estados";
 
 interface Props {
@@ -11,17 +11,20 @@ interface Props {
   esBorrador?: boolean;
   /** Adónde ir después de la baja; sin valor, se refresca la página actual. */
   volverA?: string;
+  /** Estilo del botón; por defecto, el rojo chico de Mis ofertas. */
+  estiloBoton?: EstiloBoton;
+  claseBoton?: string;
 }
 
-export function EliminarEnvioBtn({ ofertaId, ofertaTitulo, esBorrador = false, volverA }: Props) {
+export function EliminarEnvioBtn({ ofertaId, ofertaTitulo, esBorrador = false, volverA, estiloBoton = "peligro", claseBoton = "px-3 text-xs sm:min-h-9" }: Props) {
   const router = useRouter();
   const objeto = esBorrador ? "el borrador" : "la oferta";
 
   return (
     <DialogoConfirmacion
       textoBoton="Eliminar"
-      estiloBoton="peligro"
-      claseBoton="px-3 text-xs sm:min-h-9"
+      estiloBoton={estiloBoton}
+      claseBoton={claseBoton}
       ayudaBoton={`Pasa a la pestaña Eliminadas. Podés restaurarla durante ${DIAS_RESTAURACION_OFERTA} días.`}
       titulo={esBorrador ? "¿Eliminar este borrador?" : "¿Eliminar esta oferta?"}
       descripcion={
