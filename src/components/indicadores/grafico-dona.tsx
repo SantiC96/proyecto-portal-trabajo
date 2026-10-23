@@ -68,7 +68,10 @@ export function GraficoDona({ partes, unidad, resumen, resaltada, vacio }: Props
         <div role="img" aria-label={resumen} className="relative size-[200px] shrink-0">
           <ChartContainer config={config} className="aspect-square size-[200px]">
             <PieChart accessibilityLayer margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+              {/* Por encima del total del centro (un div posterior en el DOM,
+                  sin eventos del puntero). */}
               <ChartTooltip
+                wrapperStyle={{ zIndex: 10 }}
                 content={
                   <ChartTooltipContent
                     hideLabel
