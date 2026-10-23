@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, useTransition, type FormEvent } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,13 +15,16 @@ type Props = {
   etiqueta?: string;
   className?: string;
   inputClassName?: string;
+  /** Texto de un botón para buscar al lado del campo (por ejemplo "Buscar"). */
+  boton?: string;
 };
 
 /**
  * Campo de búsqueda que escribe "q" en la URL (con debounce) y vuelve a la
  * página 1. Usa router.replace para no llenar el historial con cada tecla.
  */
-export function Buscador({ placeholder, etiqueta, className, inputClassName }: Props) {
+export function Buscador({ placeholder, etiqueta, className, inputClassName, boton }: Props) {
+  const idCampo = useId();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -81,18 +84,21 @@ export function Buscador({ placeholder, etiqueta, className, inputClassName }: P
     navegar("");
   }
 
-  return (
-    <form role="search" onSubmit={handleSubmit} className={cn("relative", className)}>
+  const campo = (
+    <div className="relative min-w-0 flex-1">
       <Search
         className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-icon"
         aria-hidden="true"
       />
+      <label htmlFor={idCampo} className="sr-only">
+        {etiqueta ?? placeholder}
+      </label>
       <input
+        id={idCampo}
         type="search"
         value={valor}
         onChange={(e) => handleChange(e.target.value)}
         placeholder={placeholder}
-        aria-label={etiqueta ?? placeholder}
         maxLength={LARGO_MAXIMO_BUSQUEDA}
         enterKeyHint="search"
         className={cn(
@@ -117,6 +123,21 @@ export function Buscador({ placeholder, etiqueta, className, inputClassName }: P
           </button>
         )}
       </div>
+    </div>
+  );
+
+  return (
+    <form
+      role="search"
+      onSubmit={handleSubmit}
+      className={cn(boton ? "flex flex-col gap-3 sm:flex-row" : "relative", className)}
+    >
+      {campo}
+      {boton && (
+        <button type="submit" className="btn-primario min-h-[52px]! px-7!">
+          {boton}
+        </button>
+      )}
     </form>
   );
 }

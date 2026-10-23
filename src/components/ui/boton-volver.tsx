@@ -10,11 +10,14 @@ import { cn } from "@/lib/utils";
 export function BotonVolver({
   href,
   children = "Volver",
+  destacado = false,
   className,
 }: {
   href: string;
   /** Texto después de la flecha: "Volver a mis ofertas". */
   children?: React.ReactNode;
+  /** Estilo del rediseño de las pantallas del postulante: 15 px 700, verde, flecha de 18 px. */
+  destacado?: boolean;
   className?: string;
 }) {
   return (
@@ -22,6 +25,8 @@ export function BotonVolver({
       href={href}
       className={cn(
         "-ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-muted-foreground-strong transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+        destacado &&
+          "w-fit text-[15px] font-bold text-primary hover:text-primary-hover hover:underline [&_svg]:size-[18px]",
         className,
       )}
     >
