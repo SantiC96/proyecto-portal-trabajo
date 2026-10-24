@@ -45,6 +45,17 @@ const { armarEmail } = await import(
 const { escaparHtml, htmlCorreo, textoVistaPrevia } = await import(
   pathToFileURL(path.join(RAIZ, "src/lib/emails/diseno.ts")).href
 );
+const { CID_LOGO, LOGO_CORREO_PNG_BASE64 } = await import(
+  pathToFileURL(path.join(RAIZ, "src/lib/emails/logo-correo.ts")).href
+);
+
+// En el correo real el logo es un adjunto embebido (cid:, ver transporte.ts);
+// el navegador no lo resuelve, así que acá va como data URI.
+function conLogoVisible(html) {
+  return html
+    .split(`cid:${CID_LOGO}`)
+    .join(`data:image/png;base64,${LOGO_CORREO_PNG_BASE64}`);
+}
 
 // ─── Plantillas de Supabase ─────────────────────────────────────────────────
 // Los links son los que esperan las rutas del portal (ver
@@ -174,16 +185,16 @@ function generarVistaPrevia() {
   process.env.NEXT_PUBLIC_SITE_URL = sitio;
   for (const [tipo, titulo, mensaje, link] of AVISOS) {
     const { asunto, html, texto } = armarEmail({ titulo, mensaje, link });
-    escribir(path.join(CARPETA_VISTA_PREVIA, `${tipo}.html`), html);
+    escribir(path.join(CARPETA_VISTA_PREVIA, `${tipo}.html`), conLogoVisible(html));
     escribir(path.join(CARPETA_VISTA_PREVIA, `${tipo}.txt`), texto);
     correos.push({ archivo: `${tipo}.html`, nombre: tipo, asunto });
   }
 
-  // Sin NEXT_PUBLIC_SITE_URL no hay logo (va el nombre en texto) ni botón.
+  // Sin NEXT_PUBLIC_SITE_URL no hay botón (el logo va embebido igual).
   delete process.env.NEXT_PUBLIC_SITE_URL;
   const [, titulo, mensaje, link] = AVISOS[1];
   const sinSitio = armarEmail({ titulo, mensaje, link });
-  escribir(path.join(CARPETA_VISTA_PREVIA, "sin-url-del-sitio.html"), sinSitio.html);
+  escribir(path.join(CARPETA_VISTA_PREVIA, "sin-url-del-sitio.html"), conLogoVisible(sinSitio.html));
   escribir(path.join(CARPETA_VISTA_PREVIA, "sin-url-del-sitio.txt"), sinSitio.texto);
   correos.push({ archivo: "sin-url-del-sitio.html", nombre: "sin NEXT_PUBLIC_SITE_URL", asunto: sinSitio.asunto });
   process.env.NEXT_PUBLIC_SITE_URL = sitio;
@@ -227,7 +238,7 @@ function generarVistaPrevia() {
 </head>
 <body>
 <h1>Vista previa de correos</h1>
-<p>Generado con <code>npm run emails:vista-previa</code>. El logo se carga de ${escaparHtml(sitio)} (con <code>npm run dev</code> corriendo).</p>
+<p>Generado con <code>npm run emails:vista-previa</code>. En los avisos el logo va embebido (acá como data URI); en las plantillas de Supabase se carga de ${escaparHtml(sitio)} (con <code>npm run dev</code> corriendo).</p>
 ${filas}
 </body>
 </html>

@@ -154,10 +154,10 @@ En espacios reducidos se permite utilizar solamente el escudo.
 ## Archivos del logo
 
 -   `public/images/logo-funes-blanco.png` (185 × 52): sobre verde
-    (sidebar, panel de marca del login, del registro y de recuperar la
-    contraseña; encabezado de los correos).
+    (sidebar, panel de marca de las pantallas de /auth; encabezado de
+    los correos).
 -   `public/images/logo-funes-verde.png` (185 × 52): sobre fondos claros
-    (tarjeta del login, del registro y de recuperar la contraseña desde lg, `AuthShell`, contacto de la
+    (tarjeta de las pantallas de /auth desde lg, contacto de la
     oficina). Es el blanco con cada píxel en `#09713D` y la misma
     transparencia, así que se ve igual de nítido; se muestra a 120 × 34
     (la misma proporción). Reemplaza al viejo `logo-funes-color.png`
@@ -849,6 +849,36 @@ en los extremos).
     para la página actual y puntos de 8 px `punto-carrusel`.
 -   Si todas las tarjetas entran, no hay flechas ni puntos.
 
+### Pase automático
+
+-   Cada 7 segundos (`INTERVALO_MS`, el tiempo de leer una tarjeta)
+    avanza **una tarjeta**, no una página, con el mismo desplazamiento
+    suave. Desde la última vuelve a la primera, también con
+    desplazamiento suave. Los puntos marcan la página con más tarjetas a
+    la vista.
+-   Se pausa mientras el mouse está sobre las tarjetas, hay foco dentro
+    de ellas, un dedo las toca o desliza, la pestaña está oculta
+    (`visibilitychange`) o el carrusel está fuera de la pantalla
+    (`IntersectionObserver`). Al terminar la causa retoma con los 7
+    segundos completos. Las pausas por mouse, foco y toque se miden sobre
+    la lista de tarjetas y no sobre los botones, para que el botón de
+    reanudar y las flechas funcionen con el mouse o el foco encima.
+-   Usar las flechas, o deslizarlo a mano, reinicia el conteo.
+-   Botón de pausa y reproducción a la izquierda de las flechas, con el
+    mismo estilo (redondo de 44 px): ícono `Pause` o `Play`,
+    `aria-label` "Pausar el carrusel" o "Reanudar el carrusel" y
+    `aria-pressed`. Pausado con el botón queda pausado hasta que el
+    usuario lo reanude; el mouse y el foco no lo reanudan.
+-   Con `prefers-reduced-motion` arranca pausado; el botón lo inicia y
+    cada paso es sin animación.
+-   Sin flechas (todas las tarjetas entran) no hay pase automático ni
+    botón.
+-   Accesibilidad: la sección lleva `aria-roledescription="carrusel"` y
+    su título. Un texto solo para lectores ("Página 2 de 3") va con
+    `aria-live="off"` mientras avanza solo y `"polite"` cuando está
+    pausado o lo mueve el usuario. El pase solo desplaza la lista: nunca
+    mueve el foco.
+
 ------------------------------------------------------------------------
 
 # 19. CandidateCard
@@ -1296,6 +1326,32 @@ pantallas anchas). "Candidatos por contactar": una tarjeta con una fila por
 candidato (iniciales, nombre de 16 px 700, "[oferta] · derivado el
 [fecha]", badge y "Ver candidato" neutro, a todo el ancho en el celular).
 
+### Cuenta en revisión o rechazada
+
+Mientras la empresa no está aprobada, todo lo que está bajo
+`src/app/empresa/(panel)/` muestra su estado en lugar de la página,
+dentro del `AppShell` y a todo el ancho: `EncabezadoPagina` "Hola,
+[razón social]" y una `Franja` arriba.
+
+-   **En revisión:** `Franja` de aviso con el reloj, "Tu cuenta está en
+    revisión" y el texto normal o el de la solicitud reenviada. Debajo,
+    dos tarjetas del mismo alto (una columna en el celular, dos desde
+    768 px de contenido): "Estado de tu solicitud", con una
+    `LineaDeTiempo` de tres pasos (enviada o reenviada con su fecha, "En
+    revisión por la Oficina de Empleo" resaltado como paso actual y
+    "Cuenta aprobada: vas a poder publicar ofertas" pendiente, en gris),
+    y "¿Qué pasa mientras tanto?", con el plazo de 1 a 3 días hábiles y
+    lo que va a poder hacer (publicar ofertas, recibir candidatos
+    preseleccionados, coordinar entrevistas) con íconos en cuadrados
+    `secondary` de 36 px.
+-   **Rechazada:** `Franja` de error "Tu solicitud fue rechazada" con el
+    texto y el motivo ("Motivo:" en negrita, en otra línea). Debajo, la
+    tarjeta "Qué podés hacer" con la explicación de que, al reenviarla,
+    la Oficina la vuelve a revisar, y "Corregir y reenviar solicitud"
+    primario (a todo el ancho en el celular).
+-   Al pie de los dos, el contacto de la Oficina (`ContactoOficina
+    enTarjeta`) en una tarjeta.
+
 ------------------------------------------------------------------------
 
 ## Indicadores (oficina y empresa)
@@ -1490,8 +1546,8 @@ desplazar un poco.
 
 ## Panel en el celular
 
-`PanelMarca` se ve igual en todas las pantallas que lo usan (login,
-registro y recuperar la contraseña); no hay una prop para activarlo.
+`PanelMarca` se ve igual en todas las pantallas que lo usan (todas las
+de /auth); no hay una prop para activarlo.
 Por debajo de lg va arriba: padding 8 × 16 × 20 (16 × 24 × 36 en
 tablet), gap 10, "Volver" en blanco (`LinkVolverAuth claro`, prop
 `volver`), el logo de 148 px, la volanta y el título de 32 px (42 px en
@@ -1534,16 +1590,58 @@ muestra "CUIT válido" en vivo. "Crear cuenta" es primario a todo el ancho
 (52 px) y abajo va "¿Ya tenés cuenta? Iniciá sesión acá". Las piezas
 comunes están en `src/components/auth/partes-registro.tsx`.
 
+## Pantallas de una tarjeta (`PantallaAuth`)
+
+Todas las pantallas de /auth tienen el panel verde. Las de una sola
+tarjeta (recuperar la contraseña, verificar el email y aceptar la
+invitación) usan `PantallaAuth` (`src/components/auth/pantalla-auth.tsx`):
+la estructura del login, con `PanelMarca` a la izquierda (arriba en el
+celular), la columna clara con "Volver" desde lg y la tarjeta de 460 px
+con el logo verde desde lg. Props: `panel` (volanta, título y bajada),
+`volverHref` (destino de "Volver" sin pantalla anterior; por defecto el
+inicio) y, para la tarjeta, `titulo`, `bajada`, `icono` y `tonoIcono`.
+
+-   Encabezado de la tarjeta (`EncabezadoTarjetaAuth`): el ícono en un
+    círculo de 56 px (verde claro; `danger` con el ícono blanco para un
+    link inválido), el título en Georgia (`.login-titulo`) y la bajada
+    de 15 px.
+-   Las mismas animaciones de entrada que el login (`.login-entrada` y
+    `--demorada`), sin animación con movimiento reducido.
+-   Campos, mostrar u ocultar la contraseña, errores y botón principal
+    con las clases del login: `etiqueta-campo`, `login-campo`,
+    `login-campo-icono`, `campo login-input`, `login-ver-contrasena` y
+    `btn-primario login-enviar` (52 px). "Las contraseñas coinciden" o
+    "no coinciden" en 14 px, como en el registro.
+
+### Verificar el email
+
+-   Postulante (`/auth/verificar-email`): "Ya casi estás" / "Confirmá tu
+    email y empezá a postularte." / "Te mandamos un link para activar tu
+    cuenta del Portal de Empleo." Tarjeta "Revisá tu correo" con el
+    sobre, el aviso del comprobante si no se subió y el recuadro "¿Qué
+    sigue después de confirmar?".
+-   Empresa (`/auth/verificar-email-empresa`): "Empresas de Funes" /
+    "Confirmá tu email y esperá la aprobación." / "La Oficina de Empleo
+    revisa cada empresa antes de que pueda publicar ofertas." Los dos
+    pasos van numerados con círculos verdes de 28 px, título de 15 px 700
+    y texto de 14 px, como las secciones numeradas.
+
+### Aceptar la invitación
+
+`/auth/aceptar-invitacion`: "Oficina de Empleo" / "Sumate al equipo de
+la Oficina." / "Elegí tu contraseña para entrar al panel de la Oficina
+de Empleo." La tarjeta es el formulario de la contraseña nueva con el
+candado arriba ("Activá tu cuenta"); con el link inválido, el ícono de
+alerta en rojo y "Ir a iniciar sesión" primario a todo el ancho.
+
 ## Recuperar la contraseña
 
 `/auth/recuperar-contrasena`, `/auth/reset-enviado` y
 `/auth/nueva-contrasena` usan `PantallaRecuperacion`
-(`src/components/auth/pantalla-recuperacion.tsx`): la estructura del
-login, con `PanelMarca` a la izquierda (arriba en el celular) y la
-columna clara con la tarjeta de 460 px. El panel es el mismo en las tres,
-para que se lean como un solo recorrido: "Recuperá tu acceso" / "Volvé a
-entrar al Portal de Empleo." / "Te mandamos un email con un link para
-crear una contraseña nueva."
+(`src/components/auth/pantalla-recuperacion.tsx`), que es `PantallaAuth`
+con el mismo panel en las tres, para que se lean como un solo recorrido:
+"Recuperá tu acceso" / "Volvé a entrar al Portal de Empleo." / "Te
+mandamos un email con un link para crear una contraseña nueva."
 
 -   Títulos de la tarjeta en Georgia (`.login-titulo`), con la bajada en
     15 px debajo: "Recuperar contraseña", "Revisá tu email" (con un sobre
@@ -1552,17 +1650,10 @@ crear una contraseña nueva."
 -   "Volver" como en el login: a la pantalla anterior y, si no la hay, al
     login.
 -   Las mismas animaciones de entrada que el login.
--   Los formularios no cambiaron: campos, mostrar u ocultar la contraseña,
-    validaciones y mensajes. El de la contraseña nueva es el mismo que el
-    de la invitación de la oficina; solo en la recuperación su encabezado
-    va en Georgia.
-
-## Demás pantallas de /auth
-
-Verificar email, verificar email de la empresa y aceptar la invitación
-usan `AuthShell` (`src/components/auth/auth-shell.tsx`): fondo
-`fondo-auth`, "Volver" (`LinkVolverAuth`) y el contenido en la misma
-tarjeta que el login con el logo verde arriba, de 460 px.
+-   Los campos tienen el mismo estilo y tamaño que los del login (ver
+    arriba); validaciones y mensajes no cambiaron. El formulario de la
+    contraseña nueva es el mismo que el de la invitación de la oficina;
+    en la recuperación va sin ícono.
 
 Evitar:
 
@@ -1680,6 +1771,11 @@ de 2 px `border` que los une. El último (el más reciente) va en `primary`
 con un anillo verde translúcido de 4 px. Título del evento en 15 px 700 y
 detalle (quién y cuándo) en 14 px `muted-foreground`. Historial de estados
 de la ficha de una postulación.
+
+Para mostrar pasos, cada evento puede llevar `estado`: "hecho" (punto
+`muted-icon`), "actual" (el resaltado, con `aria-current="step"`) y
+"pendiente" (punto hueco con borde de 2 px `muted-icon` y título en
+`muted-foreground`). Lo usa la cuenta de empresa en revisión.
 
 ## Archivo en una tarjeta
 
@@ -1994,9 +2090,14 @@ solo diseño (decisión 034).
 -   **Botón:** una tabla con fondo `primary` y el link adentro (padding
     14 × 28, 16 px 700 blanco), para que se vea en los clientes que no
     respetan el padding de un `<a>`. Debajo va siempre la URL visible.
--   **Logo:** URL absoluta (`NEXT_PUBLIC_SITE_URL` +
-    `/images/logo-funes-blanco.png`; `{{ .SiteURL }}` en Supabase). Sin la
-    URL del sitio, el encabezado dice "Municipalidad de Funes" en texto.
+-   **Logo:** en los avisos va embebido en el correo (`src="cid:logo-funes"`;
+    `transporte.ts` adjunta el PNG de `src/lib/emails/logo-correo.ts` en
+    cada envío), porque muchos clientes bloquean las imágenes externas y en
+    local la URL del sitio es `localhost`. Las plantillas de Supabase no
+    pueden adjuntarlo: lo cargan de
+    `{{ .SiteURL }}/images/logo-funes-blanco.png`, y la *Site URL* de
+    Supabase tiene que ser la dirección de Vercel. Sin logo, el encabezado
+    dice "Municipalidad de Funes" en texto.
 
 Reglas:
 

@@ -711,16 +711,6 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
 }
 
 /* ── Pantallas de /auth ──────────────────────────────────────────────────── */
-.auth-fondo {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100svh;
-  padding: 24px 16px;
-  background: var(--color-fondo-auth);
-}
-@media (min-width: 640px) { .auth-fondo { padding: 48px 24px; } }
 .auth-volver {
   display: inline-flex;
   align-items: center;
@@ -750,8 +740,8 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
 @media (min-width: 640px) { .auth-tarjeta { padding: 40px; } }
 
 /* ── Login ───────────────────────────────────────────────────────────────── */
-/* Login, registro y recuperar la contraseña: el panel verde (PanelMarca) a la
-   izquierda desde lg; en el celular va arriba y más corto, con "Volver", la
+/* Todas las pantallas de /auth: el panel verde (PanelMarca) a la izquierda
+   desde lg; en el celular va arriba y más corto, con "Volver", la
    marca, la volanta y el título, sin la bajada, los íconos ni la nota. */
 .login-pantalla {
   display: flex;
