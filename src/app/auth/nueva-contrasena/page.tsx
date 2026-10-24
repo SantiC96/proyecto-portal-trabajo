@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { AuthShell } from "@/components/auth/auth-shell";
+import { PantallaRecuperacion } from "@/components/auth/pantalla-recuperacion";
 import { RECOVERY_COOKIE } from "@/lib/session-config";
 import { NuevaContrasenaForm } from "./form";
 
@@ -18,10 +18,10 @@ export default async function NuevaContrasenaPage({
   }
 
   return (
-    <AuthShell>
+    <PantallaRecuperacion>
       <NuevaContrasenaForm
         tokenHash={type === "recovery" ? (token_hash ?? "") : ""}
       />
-    </AuthShell>
+    </PantallaRecuperacion>
   );
 }

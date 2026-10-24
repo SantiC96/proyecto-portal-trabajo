@@ -24,38 +24,37 @@ const ICONOS_FLOTANTES = [
 ];
 
 /**
- * Panel verde de marca del login y del registro: patrón de puntos, brillo,
- * anillo, íconos flotantes, logo blanco, volanta, título en Georgia, bajada y
- * la nota del pie. Desde lg es la columna izquierda.
+ * Panel verde de marca del login, del registro y de recuperar la contraseña:
+ * patrón de puntos, brillo, anillo, íconos flotantes, logo blanco, volanta,
+ * título en Georgia, bajada y la nota del pie. Desde lg es la columna
+ * izquierda.
  *
- * Con `enCelular` (registro) también se ve en el celular, arriba y más corto:
- * `volver`, la marca, la volanta y el título, sin la bajada, los íconos ni la
- * nota. Con `fijo` queda sticky a la altura de la ventana mientras el
- * formulario de la derecha se desplaza.
+ * En el celular siempre va arriba y más corto: `volver`, la marca, la volanta
+ * y el título, sin la bajada, los íconos ni la nota (y sin los saltos de línea
+ * del título). Así todas las pantallas que lo usan se ven igual. Con `fijo`
+ * queda sticky a la altura de la ventana mientras el formulario de la derecha
+ * se desplaza.
  */
 export function PanelMarca({
   volanta,
   titulo,
   bajada,
-  enCelular = false,
   fijo = false,
   volver,
 }: {
   volanta: string;
   titulo: ReactNode;
   bajada: string;
-  enCelular?: boolean;
   fijo?: boolean;
-  /** Link de volver dentro del panel, solo en el celular (con `enCelular`). */
+  /**
+   * Link de volver dentro del panel, solo en el celular. En escritorio la
+   * pantalla lo pone en la columna del formulario (con `hidden lg:block`).
+   */
   volver?: ReactNode;
 }) {
   return (
     <section
-      className={cn(
-        "login-panel",
-        enCelular && "login-panel--celular",
-        fijo && "login-panel--fijo",
-      )}
+      className={cn("login-panel", fijo && "login-panel--fijo")}
       aria-label="Portal de Empleo de la Municipalidad de Funes"
     >
       <div className="login-panel-brillo" aria-hidden="true" />
@@ -72,7 +71,7 @@ export function PanelMarca({
         ))}
       </div>
 
-      {enCelular && volver && <div className="login-panel-volver">{volver}</div>}
+      {volver && <div className="login-panel-volver">{volver}</div>}
 
       <Image
         src="/images/logo-funes-blanco.png"

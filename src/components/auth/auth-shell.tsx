@@ -2,10 +2,11 @@ import Image from "next/image";
 import { LinkVolverAuth } from "@/components/auth/link-volver-auth";
 
 /**
- * Pantallas de /auth sin navegación (recuperar y nueva contraseña, verificar
- * email, invitación): fondo claro, contenido centrado de 460 px, "Volver" y
- * el contenido en una tarjeta con el logo arriba, como la del login. El login
- * y el registro tienen su propio diseño con el panel verde (PanelMarca).
+ * Pantallas de /auth sin navegación (verificar email, verificar email de la
+ * empresa, invitación): fondo claro, contenido centrado de 460 px, "Volver" y
+ * el contenido en una tarjeta con el logo arriba, como la del login. El login,
+ * el registro y recuperar la contraseña tienen su propio diseño con el panel
+ * verde (PanelMarca).
  */
 export function AuthShell({
   children,

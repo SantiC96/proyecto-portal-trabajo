@@ -31,7 +31,7 @@ Motivos: las secciones quedan a la vista en lugar de escondidas en un menú; el 
 
 ### 2. Rutas sin navegación
 
-Todo `/auth/*` (login, registro, recuperar y nueva contraseña, reset enviado, verificar email y verificar email de empresa, aceptar invitación, y la redirección de cuenta desactivada) muestra solo su contenido: son pantallas de un solo paso donde la navegación distrae. Usan `AuthShell` (fondo claro, "Volver al inicio" y la tarjeta del login); el login tiene su propio diseño de dos columnas. `not-found` y `error` siguen lo que decide `AppShell` para la ruta: con sidebar fuera de `/auth`.
+Todo `/auth/*` (login, registro, recuperar y nueva contraseña, reset enviado, verificar email y verificar email de empresa, aceptar invitación, y la redirección de cuenta desactivada) muestra solo su contenido: son pantallas de un solo paso donde la navegación distrae. Usan `AuthShell` (fondo claro, "Volver al inicio" y la tarjeta del login); el login tiene su propio diseño de dos columnas. *(Actualizado en la decisión 034: el login, el registro y las tres pantallas de recuperar la contraseña usan el panel verde `PanelMarca`, que en el celular va arriba y más corto; `AuthShell` queda para verificar email, verificar email de empresa y aceptar invitación.)* `not-found` y `error` siguen lo que decide `AppShell` para la ruta: con sidebar fuera de `/auth`.
 
 ### 3. La decisión se toma en el cliente con `usePathname`
 

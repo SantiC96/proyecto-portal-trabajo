@@ -19,17 +19,21 @@ import { Aviso } from "@/components/ui/aviso";
 type Campo = "password" | "confirmar";
 
 // La misma pantalla sirve para recuperar la contraseña y para aceptar la
-// invitación de la oficina (/auth/aceptar-invitacion).
+// invitación de la oficina (/auth/aceptar-invitacion). La recuperación va en
+// PantallaRecuperacion y lleva el encabezado del login (Georgia, sin ícono);
+// la invitación sigue en AuthShell con el suyo.
 const VARIANTES = {
   recuperacion: {
     accion: restablecerContrasena,
-    titulo: "Nueva contraseña",
+    encabezadoLogin: true,
+    titulo: "Elegí una contraseña nueva",
     descripcion: "Elegí una nueva contraseña para tu cuenta.",
     etiqueta: "Nueva contraseña",
     linkVencido: { href: "/auth/recuperar-contrasena", texto: "Pedir un link nuevo" },
   },
   invitacion: {
     accion: aceptarInvitacion,
+    encabezadoLogin: false,
     titulo: "Activá tu cuenta",
     descripcion:
       "Te invitaron a la cuenta de la Oficina de Empleo. Elegí tu contraseña para entrar al panel.",
@@ -104,17 +108,24 @@ export function NuevaContrasenaForm({
 
   return (
     <div className="w-full">
-      <div className="mb-6 text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <Lock className="h-7 w-7" />
+      {textos.encabezadoLogin ? (
+        <div className="mb-6">
+          <h1 className="login-titulo login-titulo--sin-volanta">{textos.titulo}</h1>
+          <p className="mt-3 text-[15px] text-muted-foreground">{textos.descripcion}</p>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          {textos.titulo}
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {textos.descripcion}
-        </p>
-      </div>
+      ) : (
+        <div className="mb-6 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Lock className="h-7 w-7" />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            {textos.titulo}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {textos.descripcion}
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
 

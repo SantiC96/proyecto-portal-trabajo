@@ -48,8 +48,8 @@ export default async function RegistroPage({ searchParams }: Props) {
   // Como el login: el panel verde a la izquierda (arriba y más corto en el
   // celular) y el formulario en una tarjeta de 720 px a la derecha.
   return (
-    <main className="login-pantalla login-pantalla--registro">
-      <PanelMarca {...panel} enCelular fijo volver={<LinkVolverAuth claro />} />
+    <main className="login-pantalla">
+      <PanelMarca {...panel} fijo volver={<LinkVolverAuth claro />} />
 
       <div className="login-columna">
         <div className="w-full max-w-[720px]">
