@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:tipos": "node scripts/generar-tipos-db.mjs"
+    "db:tipos": "node scripts/generar-tipos-db.mjs",
+    "emails:vista-previa": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/vista-previa-emails.mjs",
+    "emails:supabase": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/vista-previa-emails.mjs --supabase"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

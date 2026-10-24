@@ -44,3 +44,6 @@ next-env.d.ts
 
 # supabase cli (supabase link guarda el project ref acá)
 /supabase/.temp
+
+# vista previa de los correos (npm run emails:vista-previa)
+/emails-vista-previa/
