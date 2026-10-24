@@ -549,6 +549,8 @@ Si falta alguna variable `SMTP_*` o `EMAIL_FROM`, la app funciona igual y los em
 | `npm run start` | Sirve el build de producción |
 | `npm run lint` | ESLint (`eslint-config-next`) |
 | `npm run db:tipos` | Regenera `src/types/database.ts` desde Supabase |
+| `npm run emails:vista-previa` | Genera en `emails-vista-previa/` (ignorada) ejemplos de cada correo para verlos en el navegador; no manda nada |
+| `npm run emails:supabase` | Regenera las plantillas de Supabase en `docs/emails/supabase/` con el diseño de los correos |
 
 No hay tests automáticos configurados.
 

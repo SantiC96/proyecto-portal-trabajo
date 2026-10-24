@@ -154,9 +154,10 @@ En espacios reducidos se permite utilizar solamente el escudo.
 ## Archivos del logo
 
 -   `public/images/logo-funes-blanco.png` (185 × 52): sobre verde
-    (sidebar, panel de marca del login y del registro).
+    (sidebar, panel de marca del login, del registro y de recuperar la
+    contraseña; encabezado de los correos).
 -   `public/images/logo-funes-verde.png` (185 × 52): sobre fondos claros
-    (tarjeta del login y del registro, `AuthShell`, contacto de la
+    (tarjeta del login, del registro y de recuperar la contraseña desde lg, `AuthShell`, contacto de la
     oficina). Es el blanco con cada píxel en `#09713D` y la misma
     transparencia, así que se ve igual de nítido; se muestra a 120 × 34
     (la misma proporción). Reemplaza al viejo `logo-funes-color.png`
@@ -1454,16 +1455,50 @@ props `volanta`, `titulo` y `bajada`), compartido con el registro:
     Lock; botón de mostrar contraseña de 44 × 44), botón primario de
     52 px con radio 12 y sombra. Mensajes con `Aviso` (info para avisos
     de sesión, danger para errores).
--   **Registrate:** botón con `aria-expanded` que despliega dos opciones
-    (filas de 64 px, borde 1,5 px `border-strong`, radio 14, ícono en un
-    cuadrado verde de 44 px, hover borde verde) hacia
-    `/auth/registro` y `/auth/registro?tipo=empresa`.
--   **Animaciones** (sin movimiento reducido): título y tarjeta suben
-    16 px con fundido en 700 ms (la tarjeta 150 ms después); las
-    opciones de registro aparecen en 250 ms.
+-   **Sin asteriscos:** "Correo electrónico" y "Contraseña" no llevan
+    `<Obligatorio />`. Son dos campos y los dos son obligatorios, así que
+    la marca no distingue nada; siguen con `required` y con los mismos
+    mensajes de error. El resto de los formularios marca los obligatorios
+    como siempre.
+-   **Registrate:** botón con `aria-expanded` y `aria-controls` que
+    despliega dos opciones (filas de 64 px, borde 1,5 px `border-strong`,
+    radio 14, ícono en un cuadrado verde de 44 px, hover borde verde)
+    hacia `/auth/registro` y `/auth/registro?tipo=empresa`, más
+    "Cancelar".
+-   **Animación de las opciones** (`.login-registro-plegable` en
+    `globals.css`): al abrir, el bloque crece de 0 a su alto con
+    `grid-template-rows` (0fr → 1fr, 250 ms ease-out) y lo de abajo se
+    corre con él; cada fila (la de "Cancelar", Postulante y Empresa) entra
+    con opacidad 0 → 1 y de −8 px a 0, 40 ms después de la anterior. Al
+    cerrar ("Cancelar" o "Registrate" de nuevo), lo inverso de abajo hacia
+    arriba en 200 ms ease-in. Al quitar `hidden`, `@starting-style` hace
+    que la transición parta del bloque cerrado. Mientras está cerrado o
+    cerrándose el bloque es `inert` (no se enfoca con Tab) y queda
+    `hidden` recién al terminar (`transitionend`, con un respaldo de
+    320 ms). "Cancelar" devuelve el foco a "Registrate". Apretarlo varias
+    veces seguidas revierte la transición desde donde esté. Con movimiento
+    reducido aparece y desaparece sin animación.
+-   **Animaciones de entrada** (sin movimiento reducido): título y tarjeta
+    suben 16 px con fundido en 700 ms (la tarjeta 150 ms después).
 
-Celular: sin el panel verde, fondo `fondo-auth`, tarjeta a todo el ancho
-con padding 24 px y título de 34 px.
+Celular y tablet (menos de lg): el mismo `PanelMarca` arriba y más corto
+que en el registro y en recuperar la contraseña (ver "Panel en el
+celular"), y debajo la tarjeta a todo el ancho con padding 24 px, sin el
+logo verde (ya está en el panel) y título de 34 px. A 375 × 667 el botón
+"Iniciar sesión" queda unos 50 px debajo del borde: alcanza con
+desplazar un poco.
+
+## Panel en el celular
+
+`PanelMarca` se ve igual en todas las pantallas que lo usan (login,
+registro y recuperar la contraseña); no hay una prop para activarlo.
+Por debajo de lg va arriba: padding 8 × 16 × 20 (16 × 24 × 36 en
+tablet), gap 10, "Volver" en blanco (`LinkVolverAuth claro`, prop
+`volver`), el logo de 148 px, la volanta y el título de 32 px (42 px en
+tablet) sin los saltos de línea, sin la bajada, los íconos ni la nota.
+Mide 235 px a 375 px de ancho. Cada pantalla pone el otro "Volver" en la
+columna del formulario solo desde lg (`hidden lg:block`), así nunca se
+ven dos.
 
 ## Registro
 
@@ -1479,10 +1514,8 @@ formulario se desplaza.
 -   Empresa: "Empresas de Funes" / "Encontrá a tu próximo equipo en
     Funes." / "Publicá tus ofertas y recibí candidatos preseleccionados
     por la Oficina de Empleo."
--   Celular (`enCelular`): el panel va arriba y más corto (padding
-    8 × 16 × 28, título de 34 px; 42 px en tablet) con "Volver" en
-    blanco, el logo de 148 px, la volanta y el título, sin la bajada, los
-    íconos ni la nota. Debajo, la tarjeta del formulario.
+-   Celular: el panel va arriba y más corto, igual que en el login (ver
+    "Panel en el celular"). Debajo, la tarjeta del formulario.
 -   Sin animaciones con movimiento reducido.
 
 Título de la tarjeta en Georgia (`.login-titulo`): "Crear tu cuenta de
@@ -1501,9 +1534,32 @@ muestra "CUIT válido" en vivo. "Crear cuenta" es primario a todo el ancho
 (52 px) y abajo va "¿Ya tenés cuenta? Iniciá sesión acá". Las piezas
 comunes están en `src/components/auth/partes-registro.tsx`.
 
+## Recuperar la contraseña
+
+`/auth/recuperar-contrasena`, `/auth/reset-enviado` y
+`/auth/nueva-contrasena` usan `PantallaRecuperacion`
+(`src/components/auth/pantalla-recuperacion.tsx`): la estructura del
+login, con `PanelMarca` a la izquierda (arriba en el celular) y la
+columna clara con la tarjeta de 460 px. El panel es el mismo en las tres,
+para que se lean como un solo recorrido: "Recuperá tu acceso" / "Volvé a
+entrar al Portal de Empleo." / "Te mandamos un email con un link para
+crear una contraseña nueva."
+
+-   Títulos de la tarjeta en Georgia (`.login-titulo`), con la bajada en
+    15 px debajo: "Recuperar contraseña", "Revisá tu email" (con un sobre
+    en un círculo verde claro de 56 px arriba) y "Elegí una contraseña
+    nueva".
+-   "Volver" como en el login: a la pantalla anterior y, si no la hay, al
+    login.
+-   Las mismas animaciones de entrada que el login.
+-   Los formularios no cambiaron: campos, mostrar u ocultar la contraseña,
+    validaciones y mensajes. El de la contraseña nueva es el mismo que el
+    de la invitación de la oficina; solo en la recuperación su encabezado
+    va en Georgia.
+
 ## Demás pantallas de /auth
 
-Recuperar y nueva contraseña, reset enviado, verificar email e invitación
+Verificar email, verificar email de la empresa y aceptar la invitación
 usan `AuthShell` (`src/components/auth/auth-shell.tsx`): fondo
 `fondo-auth`, "Volver" (`LinkVolverAuth`) y el contenido en la misma
 tarjeta que el login con el logo verde arriba, de 460 px.
@@ -1902,3 +1958,57 @@ priorizar claridad, velocidad de lectura y operación.
 Postulante, Empresa y Municipalidad deben percibirse como tres
 experiencias dentro del mismo sistema, no como tres aplicaciones
 distintas.
+
+------------------------------------------------------------------------
+
+# 40. Correos
+
+Los avisos que manda el portal salen todos de `armarEmail`
+(`src/lib/emails/plantilla.ts`): un asunto, un título, un mensaje y un
+link opcional. El HTML está en `src/lib/emails/diseno.ts`, que también
+genera las plantillas de Supabase (`docs/emails/supabase/`), así hay un
+solo diseño (decisión 034).
+
+``` text
+            fondo #F4F7F5
+  ┌──────────────────────────────────────┐  560 px máx., borde 1 px,
+  │ [logo blanco 150 px]                 │  radio 16
+  │ PORTAL DE EMPLEO          (verde)    │  franja primary, 24 × 32
+  ├──────────────────────────────────────┤
+  │ Título en Georgia 26 px              │  padding 32 (24 angosto)
+  │ Mensaje 16/26 px                     │
+  │ [ Ver en el portal ]                 │  48 px, radio 12
+  │ Si el botón no funciona, copiá …     │  13 px gris + URL
+  └──────────────────────────────────────┘
+     pie 12 px gris, centrado
+     Municipalidad de Funes · Oficina de Empleo
+```
+
+-   **Colores:** los valores de los tokens (`COLOR` en `diseno.ts`):
+    `background`, `surface`, `border`, `primary`, `foreground`,
+    `muted-foreground` y `login-suave` para "PORTAL DE EMPLEO". Los
+    clientes de correo no leen variables CSS: si cambia un token, cambiarlo
+    también ahí.
+-   **Letra:** Public Sans si el cliente la carga (link a Google Fonts);
+    si no, Arial o Helvetica. Georgia solo en el título.
+-   **Botón:** una tabla con fondo `primary` y el link adentro (padding
+    14 × 28, 16 px 700 blanco), para que se vea en los clientes que no
+    respetan el padding de un `<a>`. Debajo va siempre la URL visible.
+-   **Logo:** URL absoluta (`NEXT_PUBLIC_SITE_URL` +
+    `/images/logo-funes-blanco.png`; `{{ .SiteURL }}` en Supabase). Sin la
+    URL del sitio, el encabezado dice "Municipalidad de Funes" en texto.
+
+Reglas:
+
+-   Tablas con `role="presentation"` y estilos en línea; una sola media
+    query, para anchos menores de 600 px.
+-   Sin imágenes de fondo, sin SVG, sin variables CSS.
+-   `meta color-scheme` light y un texto de vista previa oculto con el
+    comienzo del mensaje.
+-   Todo el contenido dinámico se escapa en `armarEmail` antes de armar el
+    HTML.
+-   Cada correo va también en texto plano: el nombre del portal, el
+    asunto, el mensaje, "Ver en el portal: <URL>" y el pie.
+-   Para ver los cambios: `npm run emails:vista-previa` y abrir
+    `emails-vista-previa/index.html` (cada correo a 600 y 375 px). No
+    manda correos.
