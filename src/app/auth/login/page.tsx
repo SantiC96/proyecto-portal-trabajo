@@ -21,19 +21,22 @@ export default async function LoginPage({
         volanta="Talento local, nuevas oportunidades"
         titulo={
           <>
-            Un nuevo
-            <br />
-            camino
-            <br />
+            {/* Los espacios separan las palabras en el celular, donde los saltos no se ven. */}
+            Un nuevo <br />
+            camino <br />
             empieza acá.
           </>
         }
         bajada="Conectamos a las personas que buscan crecer con las empresas que necesitan su talento."
+        volver={<LinkVolverAuth claro />}
       />
 
       <div className="login-columna">
         <div className="w-full max-w-[460px]">
-          <LinkVolverAuth />
+          {/* En el celular el link va dentro del panel verde. */}
+          <div className="hidden lg:block">
+            <LinkVolverAuth />
+          </div>
           <LoginForm
             confirmacionError={error === "confirmacion"}
             inactividad={motivo === "inactividad"}

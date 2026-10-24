@@ -750,22 +750,32 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
 @media (min-width: 640px) { .auth-tarjeta { padding: 40px; } }
 
 /* ── Login ───────────────────────────────────────────────────────────────── */
-.login-pantalla { display: flex; min-height: 100svh; background: var(--color-fondo-auth); }
-.login-panel { display: none; }
+/* Login, registro y recuperar la contraseña: el panel verde (PanelMarca) a la
+   izquierda desde lg; en el celular va arriba y más corto, con "Volver", la
+   marca, la volanta y el título, sin la bajada, los íconos ni la nota. */
+.login-pantalla {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  background: var(--color-fondo-auth);
+}
+.login-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  background-color: var(--color-primary);
+  background-image: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1px);
+  background-size: 28px 28px;
+  color: #fff;
+}
 @media (min-width: 1024px) {
+  .login-pantalla { flex-direction: row; }
   .login-panel {
-    position: relative;
-    isolation: isolate;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
     width: min(640px, max(360px, 42%));
     padding: clamp(40px, 4.7vw, 72px) clamp(40px, 4.7vw, 72px) 28px;
-    background-color: var(--color-primary);
-    background-image: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1px);
-    background-size: 28px 28px;
-    color: #fff;
   }
 }
 .login-panel-brillo {
@@ -841,38 +851,22 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
   color: var(--color-login-suave);
 }
 
-/* Registro: el mismo panel (PanelMarca). En el celular va arriba y más corto,
-   con "Volver", la marca, la volanta y el título; desde lg queda fijo a la
-   altura de la ventana mientras el formulario se desplaza. */
-.login-pantalla--registro { flex-direction: column; }
-.login-panel-volver { display: none; }
+/* Celular y tablet: panel arriba, más corto. El título pierde los saltos de
+   línea (el del login tiene tres) para que todas las pantallas midan lo mismo. */
 @media (max-width: 1023px) {
-  .login-panel--celular {
-    position: relative;
-    isolation: isolate;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 14px;
-    padding: 8px 16px 28px;
-    background-color: var(--color-primary);
-    background-image: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1px);
-    background-size: 28px 28px;
-    color: #fff;
-  }
-  .login-panel--celular .login-panel-volver { display: block; }
-  .login-panel--celular :is(.login-iconos, .login-panel-bajada, .login-panel-nota) { display: none; }
-  .login-panel--celular .login-panel-logo { width: 148px; }
-  .login-panel--celular .login-panel-texto { gap: 10px; margin: 0; padding: 6px 0 0; }
-  .login-panel--celular .login-panel-titulo { font-size: 34px; line-height: 1.05; }
+  .login-panel { align-items: flex-start; gap: 10px; padding: 8px 16px 20px; }
+  .login-panel :is(.login-iconos, .login-panel-bajada, .login-panel-nota) { display: none; }
+  .login-panel .login-panel-logo { width: 148px; }
+  .login-panel .login-panel-texto { gap: 10px; margin: 0; padding: 6px 0 0; }
+  .login-panel .login-panel-titulo { font-size: 32px; line-height: 1.05; }
+  .login-panel .login-panel-titulo br { display: none; }
 }
 @media (min-width: 640px) and (max-width: 1023px) {
-  .login-panel--celular { padding: 16px 24px 36px; }
-  .login-panel--celular .login-panel-titulo { font-size: 42px; }
+  .login-panel { padding: 16px 24px 36px; }
+  .login-panel .login-panel-titulo { font-size: 42px; }
 }
 @media (min-width: 1024px) {
-  .login-pantalla--registro { flex-direction: row; }
+  .login-panel-volver { display: none; }
   .login-panel--fijo {
     position: sticky;
     top: 0;
@@ -900,6 +894,7 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
   color: var(--color-heading);
 }
 @media (min-width: 1024px) { .login-titulo { font-size: 42px; } }
+.login-titulo--sin-volanta { margin-top: 0; }
 
 .login-campo { position: relative; display: flex; align-items: center; }
 .login-campo-icono {
@@ -942,7 +937,16 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
   border-radius: 12px;
   box-shadow: 0 8px 20px rgb(0 104 51 / 0.25);
 }
-.login-registro { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+/* Opciones de "Registrate": el bloque crece de 0 a su alto (grid-template-rows
+   0fr → 1fr) y cada opción entra desde 8 px arriba. El recorte deja 4 px a los
+   costados y abajo para que el anillo de foco no se corte. Las transiciones
+   están más abajo, solo sin movimiento reducido. */
+.login-registro-plegable { display: grid; grid-template-rows: 0fr; }
+.login-registro-plegable[data-abierto] { grid-template-rows: 1fr; }
+.login-registro-recorte { min-height: 0; overflow: hidden; margin: 0 -4px; }
+.login-registro { display: flex; flex-direction: column; gap: 10px; padding: 12px 4px 4px; }
+.login-registro-item { opacity: 0; transform: translateY(-8px); }
+.login-registro-plegable[data-abierto] .login-registro-item { opacity: 1; transform: none; }
 .login-opcion {
   display: flex;
   align-items: center;
@@ -987,7 +991,28 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
   .login-entrada--demorada { animation-delay: 150ms; }
   .login-icono-flotante { animation: flotar 6s ease-in-out infinite; }
   .login-panel-brillo { animation: pulsar 8s ease-in-out infinite; }
-  .login-registro { animation: subir-aparecer 250ms ease-out; }
+
+  /* Cierre: 200 ms ease-in, de abajo hacia arriba (Empresa sale primero). */
+  .login-registro-plegable { transition: grid-template-rows 200ms ease-in; }
+  /* El tercer valor es el borde del hover de .login-opcion, sin demora. */
+  .login-registro-item {
+    transition: opacity 120ms ease-in, transform 120ms ease-in, border-color 150ms ease;
+  }
+  .login-registro-item:nth-child(2) { transition-delay: 40ms, 40ms, 0ms; }
+  .login-registro-item:nth-child(1) { transition-delay: 80ms, 80ms, 0ms; }
+  /* Apertura: 250 ms ease-out, de arriba hacia abajo, 40 ms entre opciones. */
+  .login-registro-plegable[data-abierto] { transition: grid-template-rows 250ms ease-out; }
+  .login-registro-plegable[data-abierto] .login-registro-item {
+    transition: opacity 170ms ease-out, transform 170ms ease-out, border-color 150ms ease;
+  }
+  .login-registro-plegable[data-abierto] .login-registro-item:nth-child(1) { transition-delay: 0ms; }
+  .login-registro-plegable[data-abierto] .login-registro-item:nth-child(2) { transition-delay: 40ms, 40ms, 0ms; }
+  .login-registro-plegable[data-abierto] .login-registro-item:nth-child(3) { transition-delay: 80ms, 80ms, 0ms; }
+  /* Al quitar `hidden` el bloque parte cerrado y la transición corre. */
+  @starting-style {
+    .login-registro-plegable[data-abierto] { grid-template-rows: 0fr; }
+    .login-registro-plegable[data-abierto] .login-registro-item { opacity: 0; transform: translateY(-8px); }
+  }
 }
 
 @keyframes aparecer { from { opacity: 0; } }
