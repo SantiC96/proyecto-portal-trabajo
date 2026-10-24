@@ -1,7 +1,18 @@
 "use client";
 
-import { Children, useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Children,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+  type TouchEvent,
+} from "react";
+import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
+import { useMovimientoReducido } from "@/components/indicadores/use-movimiento-reducido";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -20,6 +31,15 @@ type Medida = {
   alFinal: boolean;
 };
 
+// El tiempo de leer una tarjeta (título, empresa, rubros, lugar y jornada)
+// antes de que pase a la siguiente.
+const INTERVALO_MS = 7000;
+
+function suscribirVisibilidad(avisar: () => void) {
+  document.addEventListener("visibilitychange", avisar);
+  return () => document.removeEventListener("visibilitychange", avisar);
+}
+
 const BOTON_FLECHA =
   "inline-grid size-11 shrink-0 place-items-center rounded-full border-[1.5px] border-border-control bg-surface text-control-foreground outline-none transition-colors hover:bg-surface-tinted focus-visible:shadow-[var(--sombra-foco)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-surface";
 
@@ -30,12 +50,37 @@ const BOTON_FLECHA =
  * la sidebar le quita ancho al contenido). Las flechas desplazan una página;
  * con teclado se llega a cada tarjeta y el navegador la trae a la vista. Si
  * todas entran, no hay flechas ni puntos.
+ *
+ * Pase automático: cada INTERVALO_MS avanza una tarjeta y, desde la última,
+ * vuelve a la primera. Se pausa mientras el mouse, el foco o un dedo están
+ * sobre las tarjetas, con la pestaña oculta y con el carrusel fuera de la
+ * pantalla; al terminar la causa retoma con el intervalo completo, igual que
+ * después de usar las flechas. El botón de pausa lo detiene hasta que el
+ * usuario lo reanude. Con movimiento reducido arranca pausado.
  */
 export function CarruselOfertas({ titulo, bajada, enlace, children }: Props) {
   const idTitulo = useId();
   const pista = useRef<HTMLUListElement>(null);
+  const seccion = useRef<HTMLElement>(null);
   const [medida, setMedida] = useState<Medida | null>(null);
   const items = Children.toArray(children);
+
+  const reducido = useMovimientoReducido();
+  // null: sin elección del usuario; con movimiento reducido cuenta como pausado.
+  const [pausaElegida, setPausaElegida] = useState<boolean | null>(null);
+  const pausadoPorUsuario = pausaElegida ?? reducido;
+  const [conMouse, setConMouse] = useState(false);
+  const [conFoco, setConFoco] = useState(false);
+  const [conToque, setConToque] = useState(false);
+  const [enPantalla, setEnPantalla] = useState(false);
+  const pestanaOculta = useSyncExternalStore(
+    suscribirVisibilidad,
+    () => document.hidden,
+    () => false,
+  );
+  // Cambia para volver a contar el intervalo completo.
+  const [ciclo, setCiclo] = useState(0);
+  const reiniciarConteo = useCallback(() => setCiclo((c) => c + 1), []);
 
   const pasoDePagina = useCallback(() => {
     const el = pista.current;
@@ -82,6 +127,49 @@ export function CarruselOfertas({ titulo, bajada, enlace, children }: Props) {
     };
   }, [medir]);
 
+  useEffect(() => {
+    const el = seccion.current;
+    if (!el) return;
+    const observador = new IntersectionObserver(([entrada]) =>
+      setEnPantalla(entrada.isIntersecting),
+    );
+    observador.observe(el);
+    return () => observador.disconnect();
+  }, []);
+
+  const avanzarUnaTarjeta = useCallback(() => {
+    const datos = pasoDePagina();
+    if (!datos) return;
+    const { el, paso } = datos;
+    const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "auto"
+      : "smooth";
+    // Solo desplaza la lista: nunca mueve el foco.
+    if (el.scrollLeft >= el.scrollWidth - el.clientWidth - 1) {
+      el.scrollTo({ left: 0, behavior });
+    } else {
+      el.scrollBy({ left: paso, behavior });
+    }
+  }, [pasoDePagina]);
+
+  const avanzaSolo =
+    medida !== null &&
+    !pausadoPorUsuario &&
+    !conMouse &&
+    !conFoco &&
+    !conToque &&
+    enPantalla &&
+    !pestanaOculta;
+
+  useEffect(() => {
+    if (!avanzaSolo) return;
+    const temporizador = window.setTimeout(() => {
+      avanzarUnaTarjeta();
+      reiniciarConteo();
+    }, INTERVALO_MS);
+    return () => window.clearTimeout(temporizador);
+  }, [avanzaSolo, ciclo, avanzarUnaTarjeta, reiniciarConteo]);
+
   function desplazar(sentido: 1 | -1) {
     const datos = pasoDePagina();
     if (!datos) return;
@@ -90,10 +178,22 @@ export function CarruselOfertas({ titulo, bajada, enlace, children }: Props) {
       left: sentido * datos.paso * datos.porVista,
       behavior: reducido ? "auto" : "smooth",
     });
+    reiniciarConteo();
+  }
+
+  function alSoltar(e: TouchEvent) {
+    if (e.touches.length > 0) return;
+    setConToque(false);
+    reiniciarConteo();
   }
 
   return (
-    <section aria-labelledby={idTitulo} className="@container">
+    <section
+      ref={seccion}
+      aria-labelledby={idTitulo}
+      aria-roledescription="carrusel"
+      className="@container"
+    >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <h2 id={idTitulo} className="text-[26px] leading-tight font-extrabold">
@@ -105,6 +205,23 @@ export function CarruselOfertas({ titulo, bajada, enlace, children }: Props) {
           {enlace}
           {medida && (
             <div className="flex gap-2">
+              <button
+                type="button"
+                className={BOTON_FLECHA}
+                aria-label={pausadoPorUsuario ? "Reanudar el carrusel" : "Pausar el carrusel"}
+                aria-pressed={pausadoPorUsuario}
+                aria-controls={`${idTitulo}-pista`}
+                onClick={() => {
+                  setPausaElegida(!pausadoPorUsuario);
+                  reiniciarConteo();
+                }}
+              >
+                {pausadoPorUsuario ? (
+                  <Play className="size-5" aria-hidden="true" />
+                ) : (
+                  <Pause className="size-5" aria-hidden="true" />
+                )}
+              </button>
               <button
                 type="button"
                 className={BOTON_FLECHA}
@@ -136,6 +253,17 @@ export function CarruselOfertas({ titulo, bajada, enlace, children }: Props) {
         // El padding de 4 px deja ver el foco y la elevación de la tarjeta, que
         // el desplazamiento horizontal recortaría.
         className="sin-barra-scroll mt-5 -mx-1 flex snap-x snap-mandatory scroll-px-1 gap-4 overflow-x-auto scroll-smooth p-1 motion-reduce:scroll-auto"
+        // Pausas del pase automático: solo sobre las tarjetas, así el botón de
+        // reanudar y las flechas funcionan aunque el mouse o el foco estén ahí.
+        onPointerEnter={(e) => e.pointerType === "mouse" && setConMouse(true)}
+        onPointerLeave={(e) => e.pointerType === "mouse" && setConMouse(false)}
+        onFocus={() => setConFoco(true)}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget)) setConFoco(false);
+        }}
+        onTouchStart={() => setConToque(true)}
+        onTouchEnd={alSoltar}
+        onTouchCancel={alSoltar}
       >
         {items.map((item, i) => (
           <li
@@ -146,6 +274,13 @@ export function CarruselOfertas({ titulo, bajada, enlace, children }: Props) {
           </li>
         ))}
       </ul>
+
+      {medida && (
+        // Mientras avanza solo no se anuncia; cuando lo mueve el usuario, sí.
+        <p className="sr-only" aria-live={avanzaSolo ? "off" : "polite"} aria-atomic="true">
+          Página {medida.pagina + 1} de {medida.paginas}
+        </p>
+      )}
 
       {medida && medida.paginas > 1 && (
         <div aria-hidden="true" className="mt-5 flex items-center justify-center gap-2">
