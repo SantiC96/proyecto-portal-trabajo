@@ -24,7 +24,7 @@ const ICONOS_FLOTANTES = [
 ];
 
 /**
- * Panel verde de marca del login, del registro y de recuperar la contraseña:
+ * Panel verde de marca de las pantallas de /auth:
  * patrón de puntos, brillo, anillo, íconos flotantes, logo blanco, volanta,
  * título en Georgia, bajada y la nota del pie. Desde lg es la columna
  * izquierda.

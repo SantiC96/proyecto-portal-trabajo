@@ -1,68 +1,59 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Mail } from "lucide-react";
-import { AuthShell } from "@/components/auth/auth-shell";
+import { PantallaAuth } from "@/components/auth/pantalla-auth";
 
 export const metadata: Metadata = {
   title: "Verificá tu correo | Portal de Empleo Funes",
 };
 
+const PASOS = [
+  {
+    titulo: "Confirmá tu correo electrónico",
+    texto: "Hacé clic en el enlace que te enviamos para verificar tu dirección de email.",
+  },
+  {
+    titulo: "Esperá la aprobación de la Oficina de Empleo",
+    texto:
+      "Una vez confirmado el email, nuestro equipo revisará tu solicitud. Te avisaremos cuando esté lista.",
+  },
+];
+
 export default function VerificarEmailEmpresaPage() {
   return (
-    <AuthShell>
-        <div>
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Mail className="h-7 w-7" />
-          </div>
-          <h1 className="text-center text-2xl font-bold tracking-tight text-foreground">
-            Revisá tu correo
-          </h1>
-          <p className="mt-3 text-center text-sm text-muted-foreground">
-            Tu solicitud fue enviada. Seguí estos dos pasos para activar tu
-            cuenta:
-          </p>
-
-          <ol className="mt-6 flex flex-col gap-4">
-            <li className="flex items-start gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
-                1
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-foreground">
-                  Confirmá tu correo electrónico
-                </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Hacé clic en el enlace que te enviamos para verificar tu
-                  dirección de email.
-                </p>
-              </div>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
-                2
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-foreground">
-                  Esperá la aprobación de la Oficina de Empleo
-                </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Una vez confirmado el email, nuestro equipo revisará tu
-                  solicitud. Te avisaremos cuando esté lista.
-                </p>
-              </div>
-            </li>
-          </ol>
-
-          <p className="mt-8 text-center text-xs text-muted-icon">
-            ¿Ya confirmaste?{" "}
-            <Link
-              href="/auth/login"
-              className="font-semibold text-primary hover:underline"
+    <PantallaAuth
+      panel={{
+        volanta: "Empresas de Funes",
+        titulo: "Confirmá tu email y esperá la aprobación.",
+        bajada: "La Oficina de Empleo revisa cada empresa antes de que pueda publicar ofertas.",
+      }}
+      titulo="Revisá tu correo"
+      icono={<Mail aria-hidden="true" />}
+      bajada="Tu solicitud fue enviada. Seguí estos dos pasos para activar tu cuenta:"
+    >
+      <ol className="flex flex-col gap-4">
+        {PASOS.map((paso, i) => (
+          <li key={paso.titulo} className="flex items-start gap-3">
+            <span
+              aria-hidden="true"
+              className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-primary-foreground"
             >
-              Iniciá sesión acá
-            </Link>
-          </p>
-        </div>
-    </AuthShell>
+              {i + 1}
+            </span>
+            <div className="min-w-0">
+              <p className="text-[15px] leading-snug font-bold text-heading">{paso.titulo}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{paso.texto}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      <p className="text-sm text-muted-foreground">
+        ¿Ya confirmaste?{" "}
+        <Link href="/auth/login" className="login-link">
+          Iniciá sesión acá
+        </Link>
+      </p>
+    </PantallaAuth>
   );
 }
