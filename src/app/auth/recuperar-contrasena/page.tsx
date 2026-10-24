@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { Mail } from "lucide-react";
-import { AuthShell } from "@/components/auth/auth-shell";
+import { PantallaRecuperacion } from "@/components/auth/pantalla-recuperacion";
 import { RecuperarContrasenaForm } from "./form";
 import { Aviso } from "@/components/ui/aviso";
 
@@ -18,29 +17,15 @@ export default async function RecuperarContrasenaPage({
   const linkVencido = error === "link-vencido";
 
   return (
-    <AuthShell volverHref="/auth/login">
-          <div>
-          <div className="mb-6 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Mail className="h-7 w-7" />
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Recuperar contraseña
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Ingresá tu email y te enviamos un enlace para crear una nueva
-              contraseña.
-            </p>
-          </div>
+    <PantallaRecuperacion
+      titulo="Recuperar contraseña"
+      bajada="Ingresá tu email y te enviamos un enlace para crear una nueva contraseña."
+    >
+      {linkVencido && (
+        <Aviso tono="danger">El enlace venció o ya fue usado. Pedí uno nuevo.</Aviso>
+      )}
 
-          {linkVencido && (
-            <Aviso tono="danger" className="mb-1">
-              El enlace venció o ya fue usado. Pedí uno nuevo.
-            </Aviso>
-          )}
-
-          <RecuperarContrasenaForm />
-          </div>
-    </AuthShell>
+      <RecuperarContrasenaForm />
+    </PantallaRecuperacion>
   );
 }
