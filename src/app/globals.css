@@ -6,6 +6,16 @@
   --color-primary-hover:      #00532a;
   --color-primary-foreground: #ffffff;
 
+  /* Paleta específica del directorio público de ofertas. */
+  --color-ofertas-primary:   #0b6b38;
+  --color-ofertas-heading:   #0b2b1b;
+  --color-ofertas-background: #f3f6f4;
+  --color-ofertas-border:    #e1e8e4;
+  --color-ofertas-border-strong: #c5d0ca;
+  --color-ofertas-icon:      #eaf2ee;
+  --color-ofertas-secondary: #4a5a51;
+  --color-ofertas-active:    #12201a;
+
   /* Superficies y bordes */
   --color-background:      #f4f7f5;
   --color-surface:         #ffffff;
@@ -15,7 +25,7 @@
   --color-border:          #dde5e0;
   --color-border-strong:   #c6d3cb; /* bordes de campos */
   --color-border-control:  #cbd6cf; /* botón neutro y paginación */
-  --color-border-tab:      #c6d8cd; /* pestañas inactivas, pastillas de rubro y buscador del inicio */
+  --color-border-tab:      #c6d8cd; /* pastillas de rubro y buscador del inicio */
 
   /* Texto */
   --color-foreground:              #17251d;
@@ -58,6 +68,18 @@
   --color-tabla-hover:        #f8fbf9;
   --color-tabla-separador:    #e8ecea; /* separadores de prioridad */
 
+  /* Pantallas públicas y del postulante (PR 4 del rediseño) */
+  --color-border-campo:     #b8c7be; /* buscador del listado, pastillas de filtro y campos del perfil */
+  --color-opcion-elegida:   #f3f8f5; /* fondo de la opción tipo radio elegida */
+  --color-texto-parrafo:    #22332a; /* párrafos del detalle de la oferta */
+  --color-texto-vence:      #8a1a12; /* "Vence el …" de las invitaciones */
+
+  /* Pantallas de la empresa y de la oficina (PR 5 del rediseño) */
+  --color-tabla-cabecera:   #f3f5f4; /* encabezado del componente Tabla */
+  --color-tabla-fila-hover: #fafbfa; /* hover de fila del componente Tabla */
+  --color-texto-pestana:    #3d4a43; /* pestañas inactivas; cantidad en cero */
+  --color-pastilla-gris:    #dde3df; /* cantidad de pestañas y tarjetas de pendiente */
+
   /* Navegación lateral y barra del celular (sobre --color-primary) */
   --color-sidebar-texto: #e3f0e8; /* secciones; bajada del login */
   --color-sidebar-suave: #cfe6d9; /* "Portal de empleo", rol, "Contraer menú" */
@@ -80,6 +102,7 @@
   --radius-md: 0.625rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
+  --radius-ofertas: 1.25rem;
 
   --sombra-foco:          0 0 0 3px rgb(0 104 51 / 0.25);
   --sombra-foco-campo:    0 0 0 3px rgb(0 104 51 / 0.18);
@@ -119,7 +142,8 @@ h1, h2 { font-weight: 800; }
   .btn-neutro,
   .btn-peligro,
   .btn-acento,
-  .btn-oscuro {
+  .btn-oscuro,
+  .btn-peligro-borde {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -127,11 +151,11 @@ h1, h2 { font-weight: 800; }
     text-decoration: none;
     transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
   }
-  :is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro):focus-visible {
+  :is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro, .btn-peligro-borde):focus-visible {
     outline: none;
     box-shadow: var(--sombra-foco);
   }
-  :is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro):is(:disabled, [aria-disabled="true"]) {
+  :is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro, .btn-peligro-borde):is(:disabled, [aria-disabled="true"]) {
     opacity: 0.6;
     cursor: not-allowed;
   }
@@ -148,6 +172,10 @@ h1, h2 { font-weight: 800; }
   /* Acción destructiva: eliminar, quitar, rechazar, cerrar sesión. */
   .btn-peligro { background: var(--color-danger); color: #fff; }
   .btn-peligro:not(:disabled, [aria-disabled="true"]):hover { background: var(--color-danger-hover); }
+
+  /* Acción destructiva de menor peso (retirar una postulación): blanco con borde y texto rojos. */
+  .btn-peligro-borde { background: var(--color-surface); border-color: var(--color-danger); color: var(--color-danger); }
+  .btn-peligro-borde:not(:disabled, [aria-disabled="true"]):hover { background: var(--color-danger-fondo); }
 
   .btn-acento { background: var(--color-accent); color: var(--color-accent-foreground); }
   .btn-acento:not(:disabled, [aria-disabled="true"]):hover { background: var(--color-accent-hover); }
@@ -213,7 +241,7 @@ h1, h2 { font-weight: 800; }
 /* Medidas comunes de todos los botones. Fuera de capa a propósito: ganan sobre
    las clases sueltas de cada pantalla (h-9, text-xs, sm:min-h-9, px-3) para
    que todos los botones midan lo mismo. */
-:is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro) {
+:is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro, .btn-peligro-borde) {
   min-height: 44px;
   gap: 8px;
   padding-inline: 18px;
@@ -223,7 +251,7 @@ h1, h2 { font-weight: 800; }
   font-weight: 700;
   line-height: 1.25;
 }
-:is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro) svg {
+:is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-acento, .btn-oscuro, .btn-peligro-borde) svg {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
@@ -290,11 +318,8 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
   .app-contenido { flex: 1; min-height: 100vh; padding: 32px; }
 }
 
-/* Textos largos, formularios y detalles: cada página decide su ancho, alineado
-   a la izquierda. Las listas y los paneles usan todo el ancho. */
-.contenido-lectura { width: 100%; max-width: 720px; }
-/* Formularios y detalles con dos columnas. */
-.contenido-lectura-ancho { width: 100%; max-width: 960px; }
+/* Las páginas ocupan todo el ancho al lado de la sidebar, sin max-width
+   (decisión 033): los formularios reparten sus campos en grillas. */
 
 /* Listas que se desplazan de costado (carrusel): sin barra visible. */
 .sin-barra-scroll { scrollbar-width: none; }
@@ -712,6 +737,9 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
 }
 .auth-volver:hover { color: var(--color-primary); }
 .auth-volver:focus-visible { box-shadow: var(--sombra-foco); }
+.auth-volver--claro { margin-bottom: 0; color: #fff; }
+.auth-volver--claro:hover { color: var(--color-login-suave); }
+.auth-volver--claro:focus-visible { box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 4px #fff; }
 .auth-volver svg { width: 18px; height: 18px; }
 .auth-tarjeta {
   padding: 24px;
@@ -722,22 +750,32 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
 @media (min-width: 640px) { .auth-tarjeta { padding: 40px; } }
 
 /* ── Login ───────────────────────────────────────────────────────────────── */
-.login-pantalla { display: flex; min-height: 100svh; background: var(--color-fondo-auth); }
-.login-panel { display: none; }
+/* Login, registro y recuperar la contraseña: el panel verde (PanelMarca) a la
+   izquierda desde lg; en el celular va arriba y más corto, con "Volver", la
+   marca, la volanta y el título, sin la bajada, los íconos ni la nota. */
+.login-pantalla {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  background: var(--color-fondo-auth);
+}
+.login-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  background-color: var(--color-primary);
+  background-image: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1px);
+  background-size: 28px 28px;
+  color: #fff;
+}
 @media (min-width: 1024px) {
+  .login-pantalla { flex-direction: row; }
   .login-panel {
-    position: relative;
-    isolation: isolate;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
     width: min(640px, max(360px, 42%));
     padding: clamp(40px, 4.7vw, 72px) clamp(40px, 4.7vw, 72px) 28px;
-    background-color: var(--color-primary);
-    background-image: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1px);
-    background-size: 28px 28px;
-    color: #fff;
   }
 }
 .login-panel-brillo {
@@ -813,6 +851,30 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
   color: var(--color-login-suave);
 }
 
+/* Celular y tablet: panel arriba, más corto. El título pierde los saltos de
+   línea (el del login tiene tres) para que todas las pantallas midan lo mismo. */
+@media (max-width: 1023px) {
+  .login-panel { align-items: flex-start; gap: 10px; padding: 8px 16px 20px; }
+  .login-panel :is(.login-iconos, .login-panel-bajada, .login-panel-nota) { display: none; }
+  .login-panel .login-panel-logo { width: 148px; }
+  .login-panel .login-panel-texto { gap: 10px; margin: 0; padding: 6px 0 0; }
+  .login-panel .login-panel-titulo { font-size: 32px; line-height: 1.05; }
+  .login-panel .login-panel-titulo br { display: none; }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .login-panel { padding: 16px 24px 36px; }
+  .login-panel .login-panel-titulo { font-size: 42px; }
+}
+@media (min-width: 1024px) {
+  .login-panel-volver { display: none; }
+  .login-panel--fijo {
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    height: 100svh;
+  }
+}
+
 .login-columna {
   display: flex;
   flex: 1;
@@ -832,6 +894,7 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
   color: var(--color-heading);
 }
 @media (min-width: 1024px) { .login-titulo { font-size: 42px; } }
+.login-titulo--sin-volanta { margin-top: 0; }
 
 .login-campo { position: relative; display: flex; align-items: center; }
 .login-campo-icono {
@@ -874,7 +937,16 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
   border-radius: 12px;
   box-shadow: 0 8px 20px rgb(0 104 51 / 0.25);
 }
-.login-registro { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+/* Opciones de "Registrate": el bloque crece de 0 a su alto (grid-template-rows
+   0fr → 1fr) y cada opción entra desde 8 px arriba. El recorte deja 4 px a los
+   costados y abajo para que el anillo de foco no se corte. Las transiciones
+   están más abajo, solo sin movimiento reducido. */
+.login-registro-plegable { display: grid; grid-template-rows: 0fr; }
+.login-registro-plegable[data-abierto] { grid-template-rows: 1fr; }
+.login-registro-recorte { min-height: 0; overflow: hidden; margin: 0 -4px; }
+.login-registro { display: flex; flex-direction: column; gap: 10px; padding: 12px 4px 4px; }
+.login-registro-item { opacity: 0; transform: translateY(-8px); }
+.login-registro-plegable[data-abierto] .login-registro-item { opacity: 1; transform: none; }
 .login-opcion {
   display: flex;
   align-items: center;
@@ -919,7 +991,28 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
   .login-entrada--demorada { animation-delay: 150ms; }
   .login-icono-flotante { animation: flotar 6s ease-in-out infinite; }
   .login-panel-brillo { animation: pulsar 8s ease-in-out infinite; }
-  .login-registro { animation: subir-aparecer 250ms ease-out; }
+
+  /* Cierre: 200 ms ease-in, de abajo hacia arriba (Empresa sale primero). */
+  .login-registro-plegable { transition: grid-template-rows 200ms ease-in; }
+  /* El tercer valor es el borde del hover de .login-opcion, sin demora. */
+  .login-registro-item {
+    transition: opacity 120ms ease-in, transform 120ms ease-in, border-color 150ms ease;
+  }
+  .login-registro-item:nth-child(2) { transition-delay: 40ms, 40ms, 0ms; }
+  .login-registro-item:nth-child(1) { transition-delay: 80ms, 80ms, 0ms; }
+  /* Apertura: 250 ms ease-out, de arriba hacia abajo, 40 ms entre opciones. */
+  .login-registro-plegable[data-abierto] { transition: grid-template-rows 250ms ease-out; }
+  .login-registro-plegable[data-abierto] .login-registro-item {
+    transition: opacity 170ms ease-out, transform 170ms ease-out, border-color 150ms ease;
+  }
+  .login-registro-plegable[data-abierto] .login-registro-item:nth-child(1) { transition-delay: 0ms; }
+  .login-registro-plegable[data-abierto] .login-registro-item:nth-child(2) { transition-delay: 40ms, 40ms, 0ms; }
+  .login-registro-plegable[data-abierto] .login-registro-item:nth-child(3) { transition-delay: 80ms, 80ms, 0ms; }
+  /* Al quitar `hidden` el bloque parte cerrado y la transición corre. */
+  @starting-style {
+    .login-registro-plegable[data-abierto] { grid-template-rows: 0fr; }
+    .login-registro-plegable[data-abierto] .login-registro-item { opacity: 0; transform: translateY(-8px); }
+  }
 }
 
 @keyframes aparecer { from { opacity: 0; } }

@@ -138,7 +138,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
   }
 
   return (
-    <div className="w-full max-w-xl">
+    <div className="@container w-full">
       {/* Motivo del rechazo */}
       {datos.motivoRechazo && (
         <Aviso tono="danger" titulo="Motivo del rechazo:" role="none" className="mb-6">
@@ -149,12 +149,12 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
       <form
         onSubmit={handleSubmit}
         noValidate
-        className="flex flex-col gap-6 rounded-2xl border border-border bg-white px-7 py-8 shadow-sm"
+        className="flex flex-col gap-6 rounded-2xl border border-border bg-white px-4 py-6 shadow-sm sm:px-7 sm:py-8"
       >
         {/* ── 1. Datos de la empresa ────────────────────────────────── */}
         <section>
           <SectionTitle>Datos de la empresa</SectionTitle>
-          <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2 @5xl:grid-cols-3">
             {/* Razón social */}
             <div className="flex flex-col gap-1.5">
               <label
@@ -265,7 +265,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
             </div>
 
             {/* Descripción */}
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5 @2xl:col-span-2 @5xl:col-span-3">
               <label
                 htmlFor="sol-descripcion"
                 className="text-sm font-medium text-foreground"
@@ -300,8 +300,7 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
         {/* ── 2. Persona responsable ────────────────────────────────── */}
         <section>
           <SectionTitle>Persona responsable</SectionTitle>
-          <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2 @5xl:grid-cols-3">
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="sol-nombre"
@@ -356,7 +355,6 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
                 </InputWrapper>
                 <ErrorCampo idCampo="sol-apellido" mensaje={campos.errores.apellido} />
               </div>
-            </div>
 
             <div className="flex flex-col gap-1.5">
               <label

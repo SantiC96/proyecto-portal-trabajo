@@ -8,9 +8,16 @@ type Props = {
   ofertaId: string;
   ofertaTitulo: string;
   duracionDias: number;
+  /** Clases del botón; por defecto, el chico de Mis ofertas. */
+  claseBoton?: string;
 };
 
-export function RenovarOfertaBtn({ ofertaId, ofertaTitulo, duracionDias }: Props) {
+export function RenovarOfertaBtn({
+  ofertaId,
+  ofertaTitulo,
+  duracionDias,
+  claseBoton = "px-3 text-xs sm:min-h-9",
+}: Props) {
   return (
     <DialogoConfirmacion
       textoBoton={
@@ -20,7 +27,7 @@ export function RenovarOfertaBtn({ ofertaId, ofertaTitulo, duracionDias }: Props
         </>
       }
       estiloBoton="primario"
-      claseBoton="px-3 text-xs sm:min-h-9"
+      claseBoton={claseBoton}
       titulo="Renovar oferta"
       descripcion={
         <>

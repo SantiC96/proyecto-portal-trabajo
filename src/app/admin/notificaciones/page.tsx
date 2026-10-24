@@ -19,7 +19,7 @@ export default async function NotificacionesAdminPage({
     <PaginaNotificaciones
       usuarioId={user.id}
       ruta={rutaNotificaciones("municipalidad")}
-      panel={{ href: "/admin", label: "Volver al panel" }}
+      volverA="/admin"
       textoVacio="Te avisamos acá de contrataciones, empresas y ofertas para revisar y cursos completados."
       searchParams={sp}
     />

@@ -134,3 +134,5 @@ export type FilaOfertaDeMiPostulacion = ConNulos<
   FilaRpc<"ofertas_de_mis_postulaciones">,
   "empresa_nombre"
 >;
+/** Foto activa de los candidatos que la empresa puede ver (migration_060). */
+export type FilaAvatarCandidatoEmpresa = FilaRpc<"avatares_de_candidatos_para_empresa">;

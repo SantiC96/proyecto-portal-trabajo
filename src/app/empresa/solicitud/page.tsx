@@ -26,7 +26,7 @@ export default async function SolicitudEmpresaPage() {
     <>
       <main className="flex-1">
         <section>
-          <div className="contenido-lectura-ancho">
+          <div className="w-full">
             <div className="mb-6">
               <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
                 Corregir solicitud

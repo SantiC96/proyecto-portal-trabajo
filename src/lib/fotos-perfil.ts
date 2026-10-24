@@ -18,7 +18,7 @@ type FilaAvatar = {
   ajuste_zoom: number | null;
 };
 
-function ajusteDe(fila: FilaAvatar): AjusteAvatar {
+function ajusteDe(fila: Pick<FilaAvatar, "ajuste_x" | "ajuste_y" | "ajuste_zoom">): AjusteAvatar {
   return {
     x: Number(fila.ajuste_x ?? 50),
     y: Number(fila.ajuste_y ?? 50),
@@ -66,6 +66,59 @@ export async function fotosDePerfil(usuarioIds: string[]): Promise<Map<string, F
     fotos.set(fila.usuario_id, {
       ruta: fila.ruta,
       url: urlPorRuta.get(fila.ruta) ?? null,
+      ajuste: ajusteDe(fila),
+    });
+  }
+  return fotos;
+}
+
+/** La función acepta hasta 100 ids por llamada (migration_060). */
+const MAXIMO_CANDIDATOS_POR_LLAMADA = 100;
+
+/**
+ * Foto activa de los candidatos que ve la empresa de la sesión, por
+ * postulante_id. La empresa no lee archivos_usuario: la ruta y el ajuste los
+ * da avatares_de_candidatos_para_empresa (solo derivados o guardados por
+ * ella) y la firma la permite la política de storage de la 029 para esas
+ * mismas fotos. Una llamada y una firma para todo el lote. Si algo falla, el
+ * candidato queda sin foto (iniciales).
+ */
+export async function fotosDeCandidatosEmpresa(
+  postulanteIds: string[],
+): Promise<Map<string, FotoPerfil>> {
+  const fotos = new Map<string, FotoPerfil>();
+  const ids = [...new Set(postulanteIds)].slice(0, MAXIMO_CANDIDATOS_POR_LLAMADA);
+  if (ids.length === 0) return fotos;
+
+  const supabase = await createSupabaseServerClient();
+  const { data: filas, error } = await supabase.rpc("avatares_de_candidatos_para_empresa", {
+    p_postulante_ids: ids,
+  });
+  if (error) {
+    logError("fotosDeCandidatosEmpresa", error);
+    return fotos;
+  }
+  if (!filas || filas.length === 0) return fotos;
+
+  const { data: firmadas, error: errorFirma } = await supabase.storage
+    .from("avatares")
+    .createSignedUrls(
+      filas.map((f) => f.ruta),
+      VIGENCIA_URL_SEGUNDOS,
+    );
+  if (errorFirma) logError("fotosDeCandidatosEmpresa:firma", errorFirma);
+
+  const urlPorRuta = new Map<string, string>();
+  for (const f of firmadas ?? []) {
+    if (f.path && f.signedUrl) urlPorRuta.set(f.path, f.signedUrl);
+  }
+
+  for (const fila of filas) {
+    const url = urlPorRuta.get(fila.ruta) ?? null;
+    if (!url) continue;
+    fotos.set(fila.postulante_id, {
+      ruta: fila.ruta,
+      url,
       ajuste: ajusteDe(fila),
     });
   }

@@ -9,7 +9,7 @@ type Props = {
   className?: string;
 };
 
-/** Título de la página (32 px, 800) con su bajada y acciones opcionales. */
+/** Título de la página (32 px 800; 26 px en el celular) con su bajada y acciones opcionales. */
 export function EncabezadoPagina({ titulo, bajada, acciones, className }: Props) {
   return (
     <header
@@ -19,7 +19,7 @@ export function EncabezadoPagina({ titulo, bajada, acciones, className }: Props)
       )}
     >
       <div className="min-w-0">
-        <h1 className="break-words text-[32px] leading-[1.15] font-extrabold tracking-[-0.01em] text-heading">
+        <h1 className="break-words text-[26px] leading-[1.15] sm:text-[32px] font-extrabold tracking-[-0.01em] text-heading">
           {titulo}
         </h1>
         {bajada && <p className="mt-1.5 text-base text-muted-foreground">{bajada}</p>}

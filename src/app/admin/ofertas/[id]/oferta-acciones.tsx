@@ -69,7 +69,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
 
   if (estado !== "pendiente_aprobacion") {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-[15px] text-muted-foreground-strong">
         {estado === "activa"
           ? "Esta oferta ya fue aprobada y está publicada."
           : estado === "rechazada"
@@ -81,20 +81,20 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         <button
           type="button"
           onClick={() => setAbrirAprobar(true)}
           disabled={isPending}
-          className="btn-primario min-h-11 justify-center"
+          className="btn-primario w-full"
         >
-          Aprobar
+          Publicar oferta
         </button>
         <button
           type="button"
           onClick={() => setAbrirRechazar(true)}
           disabled={isPending}
-          className="btn-peligro inline-flex min-h-11 items-center justify-center whitespace-nowrap px-4 text-sm font-medium"
+          className="btn-peligro-borde w-full"
         >
           Rechazar
         </button>
@@ -109,7 +109,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Aprobar oferta</DialogTitle>
+            <DialogTitle>Publicar oferta</DialogTitle>
             <DialogDescription>
               La oferta pasará a{" "}
               <span className="font-semibold text-foreground">activa</span> y
@@ -120,8 +120,8 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
             pendiente={isPending}
             onCancelar={() => setAbrirAprobar(false)}
             onConfirmar={handleAprobar}
-            textoConfirmar="Aprobar oferta"
-            textoPendiente="Aprobando…"
+            textoConfirmar="Publicar oferta"
+            textoPendiente="Publicando…"
           />
         </DialogContent>
       </Dialog>
@@ -147,10 +147,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <label
-              htmlFor="motivo-rechazo"
-              className="text-sm font-medium text-foreground"
-            >
+            <label htmlFor="motivo-rechazo" className="etiqueta-campo">
               Motivo del rechazo{" "}
               <Obligatorio />
             </label>
@@ -168,7 +165,16 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
               {...ariaErrorCampo("motivo-rechazo", campos.errores.motivo)}
             />
             <ErrorCampo idCampo="motivo-rechazo" mensaje={campos.errores.motivo} />
-            <ContadorCaracteres actual={motivo.length} maximo={LARGO_MAXIMO.motivo} />
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm text-muted-foreground">
+                La empresa ve este motivo y puede corregir la oferta.
+              </p>
+              <ContadorCaracteres
+                className="shrink-0"
+                actual={motivo.length}
+                maximo={LARGO_MAXIMO.motivo}
+              />
+            </div>
           </div>
           <BotonesDialogo
             pendiente={isPending}

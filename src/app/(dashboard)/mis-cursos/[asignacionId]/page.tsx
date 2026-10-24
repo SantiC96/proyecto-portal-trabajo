@@ -46,8 +46,8 @@ export default async function MiCursoDetallePage({
 
   return (
     <section>
-      <div className="contenido-lectura">
-        <BotonVolver href="/mis-cursos">Volver a mis cursos</BotonVolver>
+      <div className="w-full">
+        <BotonVolver href="/mis-cursos" />
 
         <article className="mt-6 rounded-2xl border border-border bg-white p-6 shadow-xs sm:p-8 space-y-6">
           <div>

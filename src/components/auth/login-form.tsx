@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type TransitionEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -21,7 +21,6 @@ import { toErrorAccion } from "@/lib/resultado";
 import {
   CLASE_CONTROL_INVALIDO,
   ErrorCampo,
-  Obligatorio,
   ariaErrorCampo,
 } from "@/components/ui/obligatorio";
 import { useErroresCampo } from "@/lib/use-errores-campo";
@@ -53,9 +52,51 @@ export function LoginForm({
   const { pendiente: isLoading, ejecutar } = useAccion();
   const [error, setError] = useState<ErrorAccion | null>(null);
   const campos = useErroresCampo<"email" | "password">();
+  // registroAbierto es lo que se pidió (aria-expanded y la animación);
+  // registroOculto pone `hidden` recién cuando terminó de cerrarse.
   const [registroAbierto, setRegistroAbierto] = useState(false);
+  const [registroOculto, setRegistroOculto] = useState(true);
+  const cierreRegistroRef = useRef<number | null>(null);
   const botonRegistroRef = useRef<HTMLButtonElement>(null);
   const idOpcionesRegistro = useId();
+
+  useEffect(() => () => {
+    if (cierreRegistroRef.current !== null) window.clearTimeout(cierreRegistroRef.current);
+  }, []);
+
+  function cancelarCierreRegistro() {
+    if (cierreRegistroRef.current === null) return;
+    window.clearTimeout(cierreRegistroRef.current);
+    cierreRegistroRef.current = null;
+  }
+
+  function abrirRegistro() {
+    cancelarCierreRegistro();
+    setRegistroOculto(false);
+    setRegistroAbierto(true);
+  }
+
+  function cerrarRegistro() {
+    cancelarCierreRegistro();
+    setRegistroAbierto(false);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setRegistroOculto(true);
+      return;
+    }
+    // Respaldo por si transitionend no llega (pestaña en segundo plano, o una
+    // transición interrumpida). Es un poco más largo que la de cierre.
+    cierreRegistroRef.current = window.setTimeout(() => {
+      cierreRegistroRef.current = null;
+      setRegistroOculto(true);
+    }, 320);
+  }
+
+  function alTerminarTransicionRegistro(e: TransitionEvent<HTMLDivElement>) {
+    if (e.target !== e.currentTarget || e.propertyName !== "grid-template-rows") return;
+    if (registroAbierto) return;
+    cancelarCierreRegistro();
+    setRegistroOculto(true);
+  }
   // Belt-and-suspenders: force the root layout to re-render after a proxy signOut
   // (inactivity, previous-browser session or deactivated account) so the navigation
   // reflects the cleared session without needing a manual F5.
@@ -77,11 +118,11 @@ export function LoginForm({
   return (
     <div className="auth-tarjeta login-tarjeta login-entrada login-entrada--demorada">
       <Image
-        src="/images/logo-funes-color.png"
+        src="/images/logo-funes-verde.png"
         alt="Municipalidad de Funes"
         width={120}
         height={34}
-        className="h-auto w-[120px]"
+        className="hidden h-auto w-[120px] lg:block"
         loading="eager"
       />
 
@@ -116,7 +157,7 @@ export function LoginForm({
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
           <label htmlFor="login-email" className="etiqueta-campo">
-            Correo electrónico <Obligatorio />
+            Correo electrónico
           </label>
           <div className="login-campo">
             <Mail aria-hidden="true" className="login-campo-icono" />
@@ -141,7 +182,7 @@ export function LoginForm({
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <label htmlFor="login-password" className="etiqueta-campo">
-              Contraseña <Obligatorio />
+              Contraseña
             </label>
             <Link href="/auth/recuperar-contrasena" className="login-link">
               ¿Olvidaste tu contraseña?
@@ -209,7 +250,7 @@ export function LoginForm({
           <button
             ref={botonRegistroRef}
             type="button"
-            onClick={() => setRegistroAbierto((abierto) => !abierto)}
+            onClick={() => (registroAbierto ? cerrarRegistro() : abrirRegistro())}
             aria-expanded={registroAbierto}
             aria-controls={idOpcionesRegistro}
             className="login-link login-link--boton"
@@ -218,17 +259,26 @@ export function LoginForm({
           </button>
         </p>
 
-        <div id={idOpcionesRegistro} hidden={!registroAbierto}>
-          {registroAbierto && (
+        {/* Se despliega con grid-template-rows (0fr → 1fr); mientras está cerrado o
+            cerrándose es inert, y queda hidden cuando termina de cerrarse. */}
+        <div
+          id={idOpcionesRegistro}
+          hidden={registroOculto}
+          inert={!registroAbierto}
+          data-abierto={registroAbierto || undefined}
+          onTransitionEnd={alTerminarTransicionRegistro}
+          className="login-registro-plegable"
+        >
+          <div className="login-registro-recorte">
             <div className="login-registro">
-              <div className="flex items-center justify-between gap-3">
+              <div className="login-registro-item flex items-center justify-between gap-3">
                 <p className="text-left text-sm font-bold text-heading">
                   ¿Cómo querés registrarte?
                 </p>
                 <button
                   type="button"
                   onClick={() => {
-                    setRegistroAbierto(false);
+                    cerrarRegistro();
                     botonRegistroRef.current?.focus();
                   }}
                   className="login-link login-link--boton min-h-11 px-2"
@@ -236,7 +286,7 @@ export function LoginForm({
                   Cancelar
                 </button>
               </div>
-              <AuthLink href="/auth/registro" className="login-opcion">
+              <AuthLink href="/auth/registro" className="login-opcion login-registro-item">
                 <span className="login-opcion-icono" aria-hidden="true">
                   <User />
                 </span>
@@ -248,7 +298,7 @@ export function LoginForm({
                 </span>
                 <ChevronRight aria-hidden="true" className="h-5 w-5 shrink-0 text-muted-icon" />
               </AuthLink>
-              <AuthLink href="/auth/registro?tipo=empresa" className="login-opcion">
+              <AuthLink href="/auth/registro?tipo=empresa" className="login-opcion login-registro-item">
                 <span className="login-opcion-icono" aria-hidden="true">
                   <Building2 />
                 </span>
@@ -261,7 +311,7 @@ export function LoginForm({
                 <ChevronRight aria-hidden="true" className="h-5 w-5 shrink-0 text-muted-icon" />
               </AuthLink>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

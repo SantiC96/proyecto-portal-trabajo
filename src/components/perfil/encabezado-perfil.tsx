@@ -64,6 +64,7 @@ export function EncabezadoPerfil({
   subtitulo,
   iniciales,
   variante = "foto",
+  tituloSeccion,
 }: {
   avatarActivo: FotoPerfil | null;
   /** Nombre grande: la persona, o la empresa en su perfil. */
@@ -73,6 +74,8 @@ export function EncabezadoPerfil({
   /** Se muestran en el avatar cuando no hay foto. */
   iniciales?: string;
   variante?: keyof typeof TEXTOS;
+  /** Título de la tarjeta cuando es una sección del perfil con índice ("Foto"). */
+  tituloSeccion?: string;
 }) {
   const router = useRouter();
   const textos = TEXTOS[variante];
@@ -167,7 +170,13 @@ export function EncabezadoPerfil({
   );
 
   return (
-    <div className="tarjeta px-4 py-5 sm:px-6 sm:py-6">
+    <section
+      aria-label={tituloSeccion}
+      className="tarjeta flex flex-col gap-5 px-4 py-[18px] sm:p-6"
+    >
+      {tituloSeccion && (
+        <h2 className="text-lg font-extrabold text-heading sm:text-xl">{tituloSeccion}</h2>
+      )}
       <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:gap-6 sm:text-left">
         <div className="shrink-0">
           {puedeVer ? (
@@ -283,6 +292,6 @@ export function EncabezadoPerfil({
           }}
         />
       )}
-    </div>
+    </section>
   );
 }

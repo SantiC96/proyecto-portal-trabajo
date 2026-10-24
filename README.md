@@ -87,7 +87,7 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 - **Supabase** como base de datos (Postgres), autenticación y almacenamiento de archivos (CV y fotos en buckets privados).
 - **Seguridad por roles en la base:** Row Level Security, permisos por columna y funciones SQL que validan rol, propiedad y estado.
 - **Emails por Gmail (SMTP)** con una cola en la base y un cron diario de respaldo.
-- **Interfaz con Tailwind CSS y shadcn/ui:** verde institucional, Public Sans y estados en colores sólidos según el [design system](docs/DESIGN_SYSTEM_Portal_Municipal_Empleo.md).
+- **Interfaz con Tailwind CSS y shadcn/ui:** verde institucional, Public Sans y estados en colores sólidos según el [design system](docs/DESIGN_SYSTEM_Portal_Municipal_Empleo.md). Los gráficos de los indicadores usan los charts de shadcn/ui sobre **Recharts**.
 - **Navegación lateral por rol:** sidebar a la izquierda (contraíble) y, en el celular, barra superior con panel; las pantallas de `/auth` van sin navegación.
 - **Git** con `main` (producción) y `develop` (integración), ramas `feat/`, `fix/`, `refactor/`, `docs/` y pull requests.
 

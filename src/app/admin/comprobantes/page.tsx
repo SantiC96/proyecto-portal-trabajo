@@ -11,13 +11,15 @@ import {
   urlsFirmadasDeComprobantes,
 } from "@/lib/comprobantes";
 import { formatFecha, formatFechaHora } from "@/lib/fechas";
-import { BotonVolver } from "@/components/ui/boton-volver";
+import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { PestanasEstado } from "@/components/ui/pestanas-estado";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { RevisarComprobante } from "@/components/admin/revisar-comprobante";
 import { Badge } from "@/components/ui/badge";
+import { DatosClave } from "@/components/ui/datos-clave";
+import { CeldaTabla, FilaTabla, Tabla } from "@/components/ui/tabla";
 
 export const metadata: Metadata = {
   title: "Comprobantes | Panel municipal | Portal de Empleo Funes",
@@ -30,6 +32,10 @@ type PestanaComprobantes = (typeof PESTANAS)[number];
 
 const COLUMNAS =
   "id, ruta, creado_en, verificacion_estado, verificacion_motivo, verificado_en, usuarios!usuario_id(nombre, apellido, postulantes(id, dni, localidad, domicilio)), revisor:usuarios!verificado_por(nombre, apellido)" as const;
+
+// Nombre | DNI | Localidad | Domicilio declarado | Cargado el | Comprobante | acciones o resultado.
+const COLUMNAS_TABLA =
+  "minmax(0,1.3fr) 6.5rem minmax(0,1fr) minmax(0,1.5fr) 6.5rem minmax(0,1.2fr) minmax(11rem,auto)";
 
 export default async function ComprobantesPage({
   searchParams,
@@ -54,24 +60,20 @@ export default async function ComprobantesPage({
   const pendientes = count ?? 0;
 
   return (
-    <section>
-      <BotonVolver href="/admin">Volver al panel</BotonVolver>
-
-      <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-        Comprobantes de domicilio
-      </h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Revisá los comprobantes que suben los postulantes de Funes.
-      </p>
+    <section className="flex flex-col gap-6">
+      <EncabezadoPagina
+        titulo="Comprobantes de domicilio"
+        bajada="Al aprobarlo, el postulante pasa a «De Funes verificado»."
+      />
 
       <PestanasEstado
-        className="mt-6"
         etiqueta="Estado de los comprobantes"
         pestanas={[
           {
             href: RUTA,
-            label: pendientes > 0 ? `Por revisar (${pendientes})` : "Por revisar",
+            label: "Por revisar",
             activa: pestana === "por-revisar",
+            cantidad: pendientes,
           },
           {
             href: hrefConParams(RUTA, {}, { estado: "revisados" }),
@@ -81,14 +83,9 @@ export default async function ComprobantesPage({
         ]}
       />
 
-      <div className="mt-4 space-y-4">
-        <Suspense
-          key={JSON.stringify({ pestana, pagina })}
-          fallback={<EsqueletoLista filas={5} />}
-        >
-          <ListadoComprobantes pestana={pestana} pagina={pagina} searchParams={sp} />
-        </Suspense>
-      </div>
+      <Suspense key={JSON.stringify({ pestana, pagina })} fallback={<EsqueletoLista filas={5} />}>
+        <ListadoComprobantes pestana={pestana} pagina={pagina} searchParams={sp} />
+      </Suspense>
     </section>
   );
 }
@@ -155,109 +152,139 @@ async function ListadoComprobantes({
   );
 
   return (
-    <>
-      <p className="text-sm text-muted-foreground">
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-muted-foreground-strong">
         {resultado.total === 1 ? "1 comprobante" : `${resultado.total} comprobantes`}
       </p>
 
-      {/* En celular cada comprobante es una tarjeta; desde lg, una fila. */}
-      <ul className="space-y-3">
+      {/* Desde 896 px de ancho, una tabla; más angosto, una tarjeta por comprobante. */}
+      <Tabla
+        columnas={COLUMNAS_TABLA}
+        etiqueta={porRevisar ? "Comprobantes por revisar" : "Comprobantes revisados"}
+        encabezados={[
+          "Nombre",
+          "DNI",
+          "Localidad",
+          "Domicilio declarado",
+          "Cargado el",
+          "Comprobante",
+          porRevisar ? "" : "Resultado",
+        ]}
+      >
         {filas.map((f) => {
           const usuario = f.usuarios;
           const postulante = usuario?.postulantes ?? null;
           const nombre = usuario ? `${usuario.nombre} ${usuario.apellido}` : "—";
           const url = urls.get(f.ruta) ?? null;
           const rechazado = f.verificacion_estado === "rechazado";
+          const localidad = postulante?.localidad ?? "Sin informar";
+          const domicilio = postulante?.domicilio || "—";
 
           return (
-            <li
-              key={f.id}
-              className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-border bg-surface p-4 lg:flex-row lg:items-center lg:gap-6"
-            >
-              <div className="min-w-0 flex-1 space-y-2">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  {postulante ? (
-                    <Link
-                      href={`/admin/postulantes/${postulante.id}`}
-                      className="break-words font-medium text-primary underline-offset-2 hover:underline"
-                    >
-                      {nombre}
-                    </Link>
-                  ) : (
-                    <span className="break-words font-medium text-foreground">{nombre}</span>
-                  )}
-                  {!porRevisar && <EstadoRevision rechazado={rechazado} />}
-                </div>
-
-                <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
-                  <Dato etiqueta="DNI">
-                    <span className="font-mono">{postulante?.dni ?? "—"}</span>
-                  </Dato>
-                  <Dato etiqueta="Localidad">{postulante?.localidad ?? "Sin informar"}</Dato>
-                  <Dato etiqueta="Domicilio">{postulante?.domicilio || "—"}</Dato>
-                  <Dato etiqueta="Subido el">{formatFecha(f.creado_en)}</Dato>
-                  {!porRevisar && (
-                    <Dato etiqueta="Revisado">
-                      {formatFechaHora(f.verificado_en)}
-                      {f.revisor ? ` por ${f.revisor.nombre} ${f.revisor.apellido}` : ""}
-                    </Dato>
-                  )}
-                </dl>
-
-                {rechazado && f.verificacion_motivo && (
-                  <p className="whitespace-pre-line break-words text-sm text-danger">
-                    Motivo: {f.verificacion_motivo}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-2 lg:flex-none lg:justify-end">
-                {url ? (
-                  <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-secundario inline-flex min-h-11 items-center gap-1.5 px-4 text-sm font-medium"
+            <FilaTabla key={f.id}>
+              {/* Nombre; en la tarjeta, con el DNI y la fecha debajo. */}
+              <div className="min-w-0">
+                {postulante ? (
+                  <Link
+                    href={`/admin/postulantes/${postulante.id}`}
+                    className="rounded-[var(--radius-sm)] text-[15px] font-bold break-words text-heading no-underline outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
                   >
-                    Ver comprobante
-                    <ExternalLink className="h-4 w-4" aria-hidden="true" />
-                    <span className="sr-only">(se abre en otra pestaña)</span>
-                  </a>
+                    {nombre}
+                  </Link>
                 ) : (
-                  <span className="self-center text-xs text-muted-foreground">
-                    El archivo no está disponible.
-                  </span>
+                  <span className="text-[15px] font-bold break-words text-heading">{nombre}</span>
                 )}
-                {porRevisar && <RevisarComprobante archivoId={f.id} />}
+                <p className="mt-0.5 text-sm text-muted-foreground @4xl:hidden">
+                  <span className="tabular-nums">DNI {postulante?.dni ?? "—"}</span> · Cargado el{" "}
+                  {formatFecha(f.creado_en)}
+                </p>
               </div>
-            </li>
+
+              <CeldaTabla etiqueta="DNI" className="hidden tabular-nums @4xl:block">
+                {postulante?.dni ?? "—"}
+              </CeldaTabla>
+              <CeldaTabla etiqueta="Localidad" className="hidden @4xl:block">
+                {localidad}
+              </CeldaTabla>
+              <CeldaTabla etiqueta="Domicilio declarado" className="hidden @4xl:block">
+                {domicilio}
+              </CeldaTabla>
+              <DatosClave
+                className="@4xl:hidden"
+                datos={[
+                  { etiqueta: "Localidad", valor: localidad },
+                  { etiqueta: "Domicilio declarado", valor: domicilio },
+                ]}
+              />
+              <CeldaTabla etiqueta="Cargado el" className="hidden tabular-nums @4xl:block">
+                {formatFecha(f.creado_en)}
+              </CeldaTabla>
+
+              {/* Comprobante: link en la tabla, botón a todo el ancho en la tarjeta. */}
+              <div className="min-w-0">
+                {url ? (
+                  <>
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-neutro w-full @4xl:hidden"
+                    >
+                      Ver comprobante
+                      <ExternalLink aria-hidden="true" />
+                      <span className="sr-only">(se abre en otra pestaña)</span>
+                    </a>
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hidden min-h-10 items-center gap-1.5 rounded-[var(--radius-sm)] text-[15px] font-bold text-primary underline-offset-2 outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)] @4xl:inline-flex"
+                    >
+                      <ExternalLink aria-hidden="true" className="size-4 shrink-0" />
+                      Ver comprobante
+                      <span className="sr-only">de {nombre} (se abre en otra pestaña)</span>
+                    </a>
+                  </>
+                ) : (
+                  <span className="text-sm text-muted-foreground">El archivo no está disponible.</span>
+                )}
+              </div>
+
+              {porRevisar ? (
+                <RevisarComprobante
+                  archivoId={f.id}
+                  rechazarConBorde
+                  className="grid grid-cols-2 gap-2 @4xl:flex @4xl:flex-nowrap @4xl:justify-end"
+                  claseBoton="w-full px-3! @4xl:w-auto @4xl:min-h-10! @4xl:text-sm!"
+                />
+              ) : (
+                <CeldaTabla etiqueta="Resultado" className="flex flex-col items-start gap-1">
+                  <Badge tono={rechazado ? "danger" : "success"} estado>
+                    {rechazado ? "Rechazado" : "Aprobado"}
+                  </Badge>
+                  <span className="text-[13px] text-muted-foreground">
+                    {formatFechaHora(f.verificado_en)}
+                    {f.revisor ? ` · por ${f.revisor.nombre} ${f.revisor.apellido}` : ""}
+                  </span>
+                  {rechazado && f.verificacion_motivo && (
+                    <span className="text-sm whitespace-pre-line break-words text-danger">
+                      Motivo: {f.verificacion_motivo}
+                    </span>
+                  )}
+                </CeldaTabla>
+              )}
+            </FilaTabla>
           );
         })}
-      </ul>
+      </Tabla>
 
       <Paginacion
         ruta={RUTA}
         searchParams={searchParams}
         pagina={resultado.pagina}
         total={resultado.total}
+        variante="numeros"
       />
-    </>
-  );
-}
-
-function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
-  return (
-    <div className="flex min-w-0 gap-2">
-      <dt className="w-20 flex-none text-muted-foreground">{etiqueta}</dt>
-      <dd className="min-w-0 break-words text-foreground">{children}</dd>
     </div>
-  );
-}
-
-function EstadoRevision({ rechazado }: { rechazado: boolean }) {
-  return (
-    <Badge tono={rechazado ? "danger" : "success"} estado>
-      {rechazado ? "Rechazado" : "Aprobado"}
-    </Badge>
   );
 }

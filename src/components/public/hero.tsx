@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { BuscadorInicio } from "@/components/public/buscador-inicio";
-import { hrefConParams } from "@/lib/paginacion";
 
 type Props = {
   /** Solo el postulante con sesión ve el saludo y los textos para él. */
@@ -15,7 +13,7 @@ const TEXTOS_GENERALES = {
     "Ofertas de empresas de la ciudad, revisadas por la Oficina de Empleo. Cargá tu perfil una vez y postulate sin llevar el CV impreso.",
 };
 
-/** Bloque principal del inicio: textos, buscador de ofertas y rubros. */
+/** Bloque principal del inicio: textos y buscador de ofertas (el rubro se elige en el buscador). */
 export function Hero({ nombrePostulante, categorias }: Props) {
   const textos =
     nombrePostulante !== null
@@ -46,23 +44,6 @@ export function Hero({ nombrePostulante, categorias }: Props) {
       </div>
 
       <BuscadorInicio categorias={categorias} />
-
-      {categorias.length > 0 && (
-        <nav aria-label="Rubros" className="flex flex-wrap items-center gap-2">
-          <span className="mr-1 text-sm font-semibold text-muted-foreground-strong">Rubros:</span>
-          {categorias.map((c) => (
-            <Link
-              key={c}
-              href={hrefConParams("/ofertas", {}, { categoria: c })}
-              // 36 px de alto; el área táctil llega a 44 px con el margen
-              // vertical invisible del ::before.
-              className="relative inline-flex h-9 items-center rounded-[18px] border border-border-tab bg-surface px-3.5 text-sm font-semibold text-control-foreground outline-none transition-colors before:absolute before:-inset-y-1 before:inset-x-0 hover:border-primary hover:text-primary focus-visible:shadow-[var(--sombra-foco)]"
-            >
-              {c}
-            </Link>
-          ))}
-        </nav>
-      )}
     </section>
   );
 }

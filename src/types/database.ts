@@ -1008,6 +1008,16 @@ export type Database = {
         }[]
       }
       archivos_dias_purga: { Args: never; Returns: number }
+      avatares_de_candidatos_para_empresa: {
+        Args: { p_postulante_ids: string[] }
+        Returns: {
+          ajuste_x: number
+          ajuste_y: number
+          ajuste_zoom: number
+          postulante_id: string
+          ruta: string
+        }[]
+      }
       bloquear_pre_entrevista: {
         Args: { p_pre_entrevista_id: string }
         Returns: Record<string, unknown>

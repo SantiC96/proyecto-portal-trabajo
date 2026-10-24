@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { CalendarClock } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { CampoFechaHora, fechaHoraISO, horarioYaPaso } from "@/components/ui/campo-fecha-hora";
 import {
@@ -22,43 +23,38 @@ import {
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
 import { mostrarAviso } from "@/lib/avisos";
-import { BookmarkBtn } from "./bookmark-btn";
 import { useAccion } from "@/lib/use-accion";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
 import {
-  CLASE_CONTROL_INVALIDO,
   ErrorCampo,
   Obligatorio,
   ariaErrorCampo,
 } from "@/components/ui/obligatorio";
 import { useErroresCampo } from "@/lib/use-errores-campo";
 import { formatFechaHora } from "@/lib/fechas";
-import { cn } from "@/lib/utils";
-import { Aviso } from "@/components/ui/aviso";
+import { Franja } from "@/components/ui/franja";
+import { OpcionRadio } from "@/components/ui/opcion-radio";
+import { Spinner } from "@/components/ui/spinner";
 
 /** "fecha" es el error de fecha y hora que devuelve el servidor; va debajo del horario. */
 type CampoEntrevista = "dia" | "hora" | "fecha" | "lugar";
 
-type EntrevistaDialogProps = {
-  open: boolean;
-  onClose: () => void;
-  derivacionId: string;
-  ofertaId: string;
-  modo: "coordinar" | "reprogramar";
-  fechaActual?: string | null;
-  lugarActual?: string | null;
-};
-
-function EntrevistaDialog({
-  open,
-  onClose,
+/**
+ * Coordinar (o reprogramar, si ya hay una) la entrevista, en la tarjeta de
+ * gestión. Mismas acciones y validaciones que el diálogo anterior.
+ */
+function FormularioEntrevista({
   derivacionId,
   ofertaId,
   modo,
-  fechaActual,
   lugarActual,
-}: EntrevistaDialogProps) {
+}: {
+  derivacionId: string;
+  ofertaId: string;
+  modo: "coordinar" | "reprogramar";
+  lugarActual: string | null;
+}) {
   const router = useRouter();
   const { pendiente: isPending, ejecutar } = useAccion();
   const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined);
@@ -66,22 +62,12 @@ function EntrevistaDialog({
   const [lugar, setLugar] = useState(lugarActual ?? "");
   const campos = useErroresCampo<CampoEntrevista>();
 
-  function handleReset() {
-    setSelectedDay(undefined);
-    setSelectedTime("");
-    setLugar(lugarActual ?? "");
-    campos.limpiarTodos();
-  }
-
-  function handleClose() {
-    handleReset();
-    onClose();
-  }
-
-  function handleSubmit() {
-    if (!campos.validar({ dia: selectedDay, hora: selectedTime, lugar }) || !selectedDay) return;
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    if (!campos.validar({ dia: selectedDay, hora: selectedTime, lugar }, form) || !selectedDay) return;
     if (horarioYaPaso(selectedDay, selectedTime)) {
-      campos.marcar("hora", "El horario elegido ya pasó. Seleccioná uno futuro.", null);
+      campos.marcar("hora", "El horario elegido ya pasó. Seleccioná uno futuro.", form);
       return;
     }
     const fechaISO = fechaHoraISO(selectedDay, selectedTime);
@@ -90,94 +76,74 @@ function EntrevistaDialog({
       const result = await action(derivacionId, ofertaId, fechaISO, lugar.trim());
       if (!campos.tomarDelServidor(result, ["fecha", "lugar"])) mostrarAviso(result);
       if (result.ok) {
-        handleReset();
-        onClose();
+        setSelectedDay(undefined);
+        setSelectedTime("");
+        campos.limpiarTodos();
         router.refresh();
       }
     });
   }
 
-  const titulo =
-    modo === "coordinar" ? "Coordinar entrevista" : "Reprogramar entrevista";
-
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (!v && !isPending) handleClose();
-      }}
-    >
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{titulo}</DialogTitle>
-          {fechaActual && modo === "reprogramar" && (
-            <DialogDescription>
-              Entrevista actual: {formatFechaHora(fechaActual)}
-            </DialogDescription>
-          )}
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <CampoFechaHora
-            idHorario="horario-select"
-            dia={selectedDay}
-            hora={selectedTime}
-            onDiaChange={(dia) => {
-              setSelectedDay(dia);
-              campos.limpiar("dia");
-              campos.limpiar("fecha");
-            }}
-            onHoraChange={(hora) => {
-              setSelectedTime(hora);
-              campos.limpiar("hora");
-              campos.limpiar("fecha");
-            }}
-            deshabilitado={isPending}
-            errorDia={campos.errores.dia}
-            errorHora={campos.errores.hora ?? campos.errores.fecha}
-          />
-
-          {/* Lugar (obligatorio) */}
-          <div>
-            <label
-              htmlFor="lugar-input"
-              className="mb-1.5 block text-sm font-medium text-foreground"
-            >
-              Lugar o indicaciones <Obligatorio />
-            </label>
-            <input
-              id="lugar-input"
-              type="text"
-              value={lugar}
-              onChange={(e) => {
-                setLugar(e.target.value);
-                campos.limpiar("lugar");
-              }}
-              placeholder="Dirección, piso, o link de videollamada"
-              maxLength={LARGO_MAXIMO.lugarEntrevista}
-              disabled={isPending}
-              {...ariaErrorCampo("lugar-input", campos.errores.lugar)}
-              className={cn(
-                "h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring",
-                CLASE_CONTROL_INVALIDO
-              )}
-            />
-            <ErrorCampo idCampo="lugar-input" mensaje={campos.errores.lugar} className="mt-1.5" />
-          </div>
-
-        </div>
-
-        <BotonesDialogo
-          pendiente={isPending}
-          onCancelar={handleClose}
-          onConfirmar={handleSubmit}
-          textoConfirmar={modo === "coordinar" ? "Coordinar entrevista" : "Reprogramar entrevista"}
-          textoPendiente="Guardando…"
+    <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <h3 className="text-[17px] font-extrabold text-heading">
+        {modo === "coordinar" ? "Coordinar entrevista" : "Reprogramar entrevista"}
+      </h3>
+      <CampoFechaHora
+        compacto
+        idHorario="entrevista-hora"
+        dia={selectedDay}
+        hora={selectedTime}
+        onDiaChange={(dia) => {
+          setSelectedDay(dia);
+          campos.limpiar("dia");
+          campos.limpiar("fecha");
+        }}
+        onHoraChange={(hora) => {
+          setSelectedTime(hora);
+          campos.limpiar("hora");
+          campos.limpiar("fecha");
+        }}
+        deshabilitado={isPending}
+        errorDia={campos.errores.dia}
+        errorHora={campos.errores.hora ?? campos.errores.fecha}
+      />
+      <div>
+        <label htmlFor="lugar-input" className="etiqueta-campo mb-1.5 block">
+          Lugar <Obligatorio />
+        </label>
+        <input
+          id="lugar-input"
+          type="text"
+          value={lugar}
+          onChange={(e) => {
+            setLugar(e.target.value);
+            campos.limpiar("lugar");
+          }}
+          placeholder="Dirección, piso, o link de videollamada"
+          maxLength={LARGO_MAXIMO.lugarEntrevista}
+          disabled={isPending}
+          {...ariaErrorCampo("lugar-input", campos.errores.lugar)}
+          className="campo"
         />
-      </DialogContent>
-    </Dialog>
+        <ErrorCampo idCampo="lugar-input" mensaje={campos.errores.lugar} className="mt-1.5" />
+      </div>
+      <button type="submit" disabled={isPending} aria-busy={isPending} className="btn-secundario w-full">
+        {isPending && <Spinner />}
+        {isPending ? "Guardando…" : "Guardar entrevista"}
+      </button>
+    </form>
   );
 }
+
+// El motivo se guarda como texto en el mismo campo de siempre (nota_empresa):
+// el texto de la opción elegida o lo que escribió en "Otro motivo".
+const MOTIVOS = [
+  "No cumple con los requisitos del puesto",
+  "Elegimos a otra persona",
+  "No se presentó a la entrevista",
+] as const;
+const OTRO_MOTIVO = "otro";
 
 type Props = {
   derivacionId: string;
@@ -185,29 +151,28 @@ type Props = {
   estado: EstadoDerivacionEmpresa;
   fechaEntrevista: string | null;
   lugarEntrevista: string | null;
-  postulanteId: string;
-  guardadoId: string | null;
   vacantesCubiertas: boolean;
 };
 
+/** Contenido de la tarjeta "Gestión" de la ficha del candidato. */
 export function AccionesDerivacion({
   derivacionId,
   ofertaId,
   estado,
   fechaEntrevista,
   lugarEntrevista,
-  postulanteId,
-  guardadoId,
   vacantesCubiertas,
 }: Props) {
   const router = useRouter();
   const { pendiente: isPending, ejecutar } = useAccion();
-  const [openEntrevista, setOpenEntrevista] = useState<"coordinar" | "reprogramar" | null>(null);
   const [openRechazo, setOpenRechazo] = useState(false);
   const [openSeleccion, setOpenSeleccion] = useState(false);
   const [openOfertaCerrada, setOpenOfertaCerrada] = useState(false);
-  const [motivo, setMotivo] = useState("");
+  const [opcion, setOpcion] = useState<string | null>(null);
+  const [otroMotivo, setOtroMotivo] = useState("");
   const camposRechazo = useErroresCampo<"motivo">();
+
+  const motivo = opcion === OTRO_MOTIVO ? otroMotivo : (opcion ?? "");
 
   // Entrevista ya pasada → empresa puede seleccionar
   const entrevistaYaPaso =
@@ -220,6 +185,13 @@ export function AccionesDerivacion({
     : !entrevistaYaPaso
       ? "Disponible después de la entrevista"
       : null;
+
+  function cerrarRechazo() {
+    setOpenRechazo(false);
+    setOpcion(null);
+    setOtroMotivo("");
+    camposRechazo.limpiarTodos();
+  }
 
   function handleSeleccionar() {
     ejecutar(async () => {
@@ -241,8 +213,7 @@ export function AccionesDerivacion({
       const result = await rechazarCandidato(derivacionId, ofertaId, motivo);
       if (!camposRechazo.tomarDelServidor(result, ["motivo"])) mostrarAviso(result);
       if (result.ok) {
-        setOpenRechazo(false);
-        setMotivo("");
+        cerrarRechazo();
         router.refresh();
       }
     });
@@ -250,124 +221,92 @@ export function AccionesDerivacion({
 
   if (estado === "contratado") {
     return (
-      <Aviso tono="success" titulo="Seleccionado">
+      <Franja tono="ok" titulo="Seleccionado.">
         Marcaste a este candidato como seleccionado para el puesto.
-      </Aviso>
+      </Franja>
     );
   }
 
   if (estado === "oferta_retirada") {
     return (
-      <div className="rounded-[var(--radius-lg)] border border-border bg-surface-tinted p-4">
-        <p className="text-sm font-semibold text-foreground">Proceso cerrado</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Retiraste la oferta y el proceso con este candidato quedó cerrado.
-        </p>
-      </div>
+      <Franja tono="neutra" titulo="Proceso cerrado.">
+        Retiraste la oferta y el proceso con este candidato quedó cerrado.
+      </Franja>
     );
   }
 
   if (estado === "retirada_postulante") {
     return (
-      <div className="rounded-[var(--radius-lg)] border border-border bg-surface-tinted p-4">
-        <p className="text-sm font-semibold text-foreground">Se retiró</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          El candidato retiró su postulación y el proceso quedó cerrado.
-        </p>
-      </div>
+      <Franja tono="neutra" titulo="Se retiró.">
+        El candidato retiró su postulación y el proceso quedó cerrado.
+      </Franja>
     );
   }
 
   if (estado === "rechazado") {
     return (
-      <div className="rounded-[var(--radius-lg)] border border-border bg-surface-tinted p-4">
-        <p className="text-sm font-semibold text-foreground">No seleccionado</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Este candidato no fue seleccionado para el puesto.
-        </p>
-      </div>
+      <Franja tono="neutra" titulo="No seleccionado.">
+        Este candidato no fue seleccionado para el puesto.
+      </Franja>
     );
   }
 
+  const idOtro = "motivo-rechazo";
+  const idOpciones = "motivo-rechazo-opciones";
+  const errorMotivo = camposRechazo.errores.motivo;
+
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-5">
+      {estado === "en_proceso" && fechaEntrevista && (
+        <Franja tono="info" icono={CalendarClock} titulo="Entrevista coordinada:">
+          {formatFechaHora(fechaEntrevista)}
+          {lugarEntrevista ? ` · ${lugarEntrevista}` : ""}
+        </Franja>
+      )}
 
-      {/* Acciones según estado */}
-      <div className="flex flex-col gap-2">
-        {estado === "pendiente" && (
+      <FormularioEntrevista
+        // Al guardar cambia la fecha: el formulario vuelve a empezar vacío.
+        key={fechaEntrevista ?? "sin-entrevista"}
+        derivacionId={derivacionId}
+        ofertaId={ofertaId}
+        modo={estado === "pendiente" ? "coordinar" : "reprogramar"}
+        lugarActual={lugarEntrevista}
+      />
+
+      <hr className="border-border" />
+
+      <div className="flex flex-col gap-3">
+        <div>
+          <h3 className="text-[17px] font-extrabold text-heading">Resultado</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Marcalo cuando termines el proceso con este candidato.
+          </p>
+        </div>
+        <div className="flex flex-col gap-1.5">
           <button
             type="button"
-            onClick={() => setOpenEntrevista("coordinar")}
-            disabled={isPending}
-            className="btn-primario min-h-11 justify-center"
+            onClick={() => setOpenSeleccion(true)}
+            disabled={isPending || motivoSeleccionNoDisponible !== null}
+            aria-describedby={motivoSeleccionNoDisponible ? "motivo-seleccion" : undefined}
+            className="btn-primario w-full"
           >
-            Coordinar entrevista
+            Contratado
           </button>
-        )}
-
-        {estado === "en_proceso" && (
-          <button
-            type="button"
-            onClick={() => setOpenEntrevista("reprogramar")}
-            disabled={isPending}
-            className="btn-secundario inline-flex min-h-11 items-center justify-center px-4 text-sm font-medium"
-          >
-            Reprogramar
-          </button>
-        )}
-
-        {/* Seleccionar: solo en en_proceso. Deshabilitado hasta que pase la fecha
-            o si ya se cubrieron las vacantes */}
-        {estado === "en_proceso" && (
-          <div className="flex flex-col gap-1">
-            <button
-              type="button"
-              onClick={() => setOpenSeleccion(true)}
-              disabled={isPending || motivoSeleccionNoDisponible !== null}
-              title={motivoSeleccionNoDisponible ?? undefined}
-              className="btn-secundario inline-flex min-h-11 items-center justify-center px-4 text-sm font-medium"
-            >
-              Seleccionar
-            </button>
-            {motivoSeleccionNoDisponible && (
-              <p className="text-xs text-muted-foreground">
-                {motivoSeleccionNoDisponible}
-              </p>
-            )}
-          </div>
-        )}
-
+          {motivoSeleccionNoDisponible && (
+            <p id="motivo-seleccion" className="text-[13px] text-muted-foreground">
+              {motivoSeleccionNoDisponible}
+            </p>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => setOpenRechazo(true)}
           disabled={isPending}
-          className="btn-peligro inline-flex min-h-11 items-center justify-center px-4 text-sm font-medium"
+          className="btn-peligro-borde w-full"
         >
-          No seleccionar
+          No seleccionado
         </button>
-
-        <hr className="border-border" />
-
-        {/* Guardar perfil */}
-        <BookmarkBtn
-          postulanteId={postulanteId}
-          ofertaOrigenId={ofertaId}
-          guardadoId={guardadoId}
-        />
       </div>
-
-      {/* Dialog: Coordinar / Reprogramar entrevista */}
-      {openEntrevista && (
-        <EntrevistaDialog
-          open={true}
-          onClose={() => setOpenEntrevista(null)}
-          derivacionId={derivacionId}
-          ofertaId={ofertaId}
-          modo={openEntrevista}
-          fechaActual={fechaEntrevista}
-          lugarActual={lugarEntrevista}
-        />
-      )}
 
       {/* Dialog: Seleccionar */}
       <Dialog
@@ -397,42 +336,67 @@ export function AccionesDerivacion({
       <Dialog
         open={openRechazo}
         onOpenChange={(v) => {
-          if (!v && !isPending) { setOpenRechazo(false); setMotivo(""); camposRechazo.limpiarTodos(); }
+          if (!v && !isPending) cerrarRechazo();
         }}
       >
-        <DialogContent>
+        <DialogContent tamano="amplio">
           <DialogHeader>
             <DialogTitle>No seleccionar candidato</DialogTitle>
             <DialogDescription>
               Indicá el motivo (no lo verá el postulante). Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <label
-              htmlFor="motivo-rechazo"
-              className="text-sm font-medium text-foreground"
-            >
+
+          <fieldset disabled={isPending} className="flex min-w-0 flex-col gap-2">
+            <legend className="mb-2 text-[15px] font-bold text-control-foreground">
               Motivo <Obligatorio />
-            </label>
-            <Textarea
-              id="motivo-rechazo"
-              value={motivo}
-              onChange={(e) => {
-                setMotivo(e.target.value);
-                camposRechazo.limpiar("motivo");
-              }}
-              placeholder="¿Por qué no encaja este candidato?"
-              maxLength={LARGO_MAXIMO.motivo}
-              className="min-h-24"
-              disabled={isPending}
-              {...ariaErrorCampo("motivo-rechazo", camposRechazo.errores.motivo)}
-            />
-            <ErrorCampo idCampo="motivo-rechazo" mensaje={camposRechazo.errores.motivo} />
-            <ContadorCaracteres actual={motivo.length} maximo={LARGO_MAXIMO.motivo} />
-          </div>
+            </legend>
+            {[...MOTIVOS, OTRO_MOTIVO].map((valor) => (
+              <OpcionRadio
+                key={valor}
+                name="motivo-rechazo-opcion"
+                value={valor}
+                checked={opcion === valor}
+                onChange={() => {
+                  setOpcion(valor);
+                  camposRechazo.limpiar("motivo");
+                }}
+                {...(opcion !== OTRO_MOTIVO ? ariaErrorCampo(idOpciones, errorMotivo) : {})}
+              >
+                <span className="text-[15px] font-semibold text-heading">
+                  {valor === OTRO_MOTIVO ? "Otro motivo" : valor}
+                </span>
+              </OpcionRadio>
+            ))}
+          </fieldset>
+          {opcion !== OTRO_MOTIVO && <ErrorCampo idCampo={idOpciones} mensaje={errorMotivo} />}
+
+          {opcion === OTRO_MOTIVO && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={idOtro} className="text-[15px] font-bold text-control-foreground">
+                Contanos el motivo <Obligatorio />
+              </label>
+              <Textarea
+                id={idOtro}
+                value={otroMotivo}
+                onChange={(e) => {
+                  setOtroMotivo(e.target.value);
+                  camposRechazo.limpiar("motivo");
+                }}
+                placeholder="¿Por qué no encaja este candidato?"
+                maxLength={LARGO_MAXIMO.motivo}
+                className="min-h-24"
+                disabled={isPending}
+                {...ariaErrorCampo(idOtro, errorMotivo)}
+              />
+              <ErrorCampo idCampo={idOtro} mensaje={errorMotivo} />
+              <ContadorCaracteres actual={otroMotivo.length} maximo={LARGO_MAXIMO.motivo} />
+            </div>
+          )}
+
           <BotonesDialogo
             pendiente={isPending}
-            onCancelar={() => { setOpenRechazo(false); setMotivo(""); camposRechazo.limpiarTodos(); }}
+            onCancelar={cerrarRechazo}
             onConfirmar={handleRechazar}
             textoConfirmar="No seleccionar"
             textoPendiente="Guardando…"

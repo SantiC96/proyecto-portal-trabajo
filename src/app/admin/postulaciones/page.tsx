@@ -12,12 +12,19 @@ import {
   type ParamsUrl,
 } from "@/lib/paginacion";
 import { Buscador } from "@/components/ui/buscador";
-import { ContadoresEstado, PestanasEstado, type Contador } from "@/components/ui/pestanas-estado";
+import { PestanasEstado } from "@/components/ui/pestanas-estado";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { Esqueleto, EsqueletoLista } from "@/components/ui/esqueleto";
+import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
+import {
+  CLASE_ACCION_FILA,
+  CeldaPersona,
+  CeldaTabla,
+  FilaTabla,
+  Tabla as TablaListado,
+} from "@/components/ui/tabla";
 import { Badge } from "@/components/ui/badge";
-import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import {
   BADGE_ESTADO_VISIBLE,
   badgePostulacion,
@@ -34,7 +41,7 @@ import type { FilaPostulacionNoSeleccionada, Tabla } from "@/types/db";
 import { formatFechaCorta, formatFechaHoraCorta } from "@/lib/fechas";
 import { requerirRolPagina } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { BotonVolver } from "@/components/ui/boton-volver";
+import { inicialesDePersona } from "@/lib/iniciales";
 import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
 import { BadgePorInvitacion } from "@/components/admin/badge-por-invitacion";
 import { estadosDeComprobantes } from "@/lib/comprobantes";
@@ -129,7 +136,8 @@ export default async function PostulacionesPage({
 
   const supabase = await createSupabaseServerClient();
 
-  // Contadores por sección
+  // Cantidad de cada pestaña: conteos sin filas (head: true), en paralelo, con
+  // las mismas condiciones que el listado (postulaciones-pestanas.ts).
   const [
     { count: cRecibidas },
     { count: cRevision },
@@ -173,29 +181,29 @@ export default async function PostulacionesPage({
     ofertaId !== "" &&
     (ofertasDisponibles.find((o) => o.id === ofertaId)?.cantidad ?? 0) === 0;
 
-  const pendientesTotal = (cRecibidas ?? 0) + (cRevision ?? 0);
+  const cantidades: Record<EstadoFiltro, number> = {
+    pendiente: (cRecibidas ?? 0) + (cRevision ?? 0),
+    derivada: cDerivadas ?? 0,
+    contratado: cContratados ?? 0,
+    rechazada_municipalidad: cRechazadas ?? 0,
+    retirada_postulante: cRetiradas ?? 0,
+  };
 
-  const contadores: Contador[] = [
-    { label: "Recibidas", valor: cRecibidas ?? 0, tono: "warning" },
-    { label: "En revisión", valor: cRevision ?? 0, tono: "info" },
-    { label: "Derivadas", valor: cDerivadas ?? 0, tono: "teal" },
-    { label: "Contratado", valor: cContratados ?? 0, tono: "success" },
-    { label: "No seleccionado", valor: cRechazadas ?? 0, tono: "neutral" },
-    { label: "Retiradas", valor: cRetiradas ?? 0, tono: "neutral" },
-  ];
+  // Una sola carga compartida por el contador de los filtros y la lista. La
+  // clave cambia con cada filtro o página: los Suspense se vuelven a montar y
+  // muestran el esqueleto mientras llega el resultado nuevo.
+  const filtros: FiltrosListado = { estado, ofertaId, q, primeroFunes, pagina, ofertaSinPostulaciones };
+  const datos = cargarListado(filtros);
+  const clave = JSON.stringify(filtros);
 
   return (
-    <section>
-      <BotonVolver href="/admin">Volver al panel</BotonVolver>
-
-      <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-        Postulaciones
-      </h1>
-
-      <ContadoresEstado className="mt-6" contadores={contadores} />
+    <section className="flex flex-col gap-6">
+      <EncabezadoPagina
+        titulo="Postulaciones"
+        bajada="Revisá cada postulación antes de derivarla a la empresa."
+      />
 
       <PestanasEstado
-        className="mt-6"
         etiqueta="Estado de las postulaciones"
         pestanas={ESTADOS_FILTRO.map((tab) => ({
           href: hrefConParams(RUTA, {}, {
@@ -206,77 +214,85 @@ export default async function PostulacionesPage({
           }),
           label: LABEL_FILTRO[tab],
           activa: tab === estado,
-          cantidad: tab === "pendiente" ? pendientesTotal : undefined,
+          cantidad: cantidades[tab],
         }))}
       />
 
-      {/* Filtros de búsqueda */}
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+      <div className="flex flex-col gap-4">
+        {/* Mide lo mismo que los desplegables de abajo: Oferta (w-80) y, si
+            se muestra, Orden (w-64) con la separación entre ellos (gap-3). */}
         <Buscador
-          className="flex-1 sm:min-w-[180px]"
-          placeholder="Nombre, apellido o DNI…"
+          className={cn("w-full min-w-0", ordenDisponible ? "sm:w-[36.75rem]" : "sm:w-80")}
+          inputClassName="rounded-xl"
+          placeholder="Buscar por nombre, apellido o DNI"
         />
-        <form method="GET" action={RUTA} className="flex flex-wrap gap-3">
-          <input type="hidden" name="estado" value={estado} />
-          {sp.q && <input type="hidden" name="q" value={sp.q} />}
-          {ordenDisponible && (
-            <select
-              name="orden"
-              defaultValue={primeroFunes ? "prioridad" : ""}
-              aria-label="Ordenar postulaciones"
-              className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 sm:max-w-xs"
-            >
-              <option value="">Más recientes primero</option>
-              <option value="prioridad">Primero verificados de Funes</option>
-            </select>
-          )}
-          {/* key: las opciones cambian con la pestaña y defaultValue solo
-              se aplica al montar. */}
-          <select
-            key={`${estado}-${ofertaId}`}
-            name="oferta_id"
-            defaultValue={ofertaId}
-            aria-label="Filtrar por oferta"
-            className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 sm:max-w-xs"
-          >
-            <option value="">Todas las ofertas</option>
-            {ofertasDisponibles.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.empresaNombre ? `${o.titulo} — ${o.empresaNombre}` : o.titulo} ({o.cantidad})
-              </option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            className="h-11 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
-          >
-            Filtrar
-          </button>
-        </form>
-      </div>
-      {(q || ofertaId || primeroFunes) && (
-        <Link
-          href={hrefConParams(RUTA, {}, { estado })}
-          className="mt-2 inline-flex min-h-11 items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Limpiar filtros
-        </Link>
-      )}
 
-      {/* Resultados */}
-      <Suspense
-        key={JSON.stringify({ estado, ofertaId, q, primeroFunes, pagina })}
-        fallback={<EsqueletoLista filas={5} className="mt-4" />}
-      >
-        <ListadoPostulaciones
-          estado={estado}
-          ofertaId={ofertaId}
-          q={q}
-          primeroFunes={primeroFunes}
-          pagina={pagina}
-          ofertaSinPostulaciones={ofertaSinPostulaciones}
-          searchParams={sp}
-        />
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <form
+            method="GET"
+            action={RUTA}
+            className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
+          >
+            <input type="hidden" name="estado" value={estado} />
+            {sp.q && <input type="hidden" name="q" value={sp.q} />}
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <label htmlFor="filtro-oferta" className="etiqueta-campo">
+                Oferta
+              </label>
+              {/* key: las opciones cambian con la pestaña y defaultValue solo
+                  se aplica al montar. */}
+              <select
+                id="filtro-oferta"
+                key={`${estado}-${ofertaId}`}
+                name="oferta_id"
+                defaultValue={ofertaId}
+                className="campo sm:w-80"
+              >
+                <option value="">Todas las ofertas</option>
+                {ofertasDisponibles.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.empresaNombre ? `${o.titulo} — ${o.empresaNombre}` : o.titulo} ({o.cantidad})
+                  </option>
+                ))}
+              </select>
+            </div>
+            {ordenDisponible && (
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <label htmlFor="filtro-orden" className="etiqueta-campo">
+                  Orden
+                </label>
+                <select
+                  id="filtro-orden"
+                  name="orden"
+                  defaultValue={primeroFunes ? "prioridad" : ""}
+                  className="campo sm:w-64"
+                >
+                  <option value="">Más recientes primero</option>
+                  <option value="prioridad">Primero verificados de Funes</option>
+                </select>
+              </div>
+            )}
+            <button type="submit" className="btn-neutro min-h-12">
+              Filtrar
+            </button>
+            {(q || ofertaId || primeroFunes) && (
+              <Link
+                href={hrefConParams(RUTA, {}, { estado })}
+                className="inline-flex min-h-12 items-center rounded-[var(--radius-sm)] px-1 text-[15px] font-semibold text-primary underline-offset-2 outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+              >
+                Limpiar filtros
+              </Link>
+            )}
+          </form>
+
+          <Suspense key={clave} fallback={<Esqueleto className="h-4 w-48" />}>
+            <ContadorPostulaciones datos={datos} />
+          </Suspense>
+        </div>
+      </div>
+
+      <Suspense key={clave} fallback={<EsqueletoLista filas={5} />}>
+        <ListadoPostulaciones datos={datos} estado={estado} searchParams={sp} />
       </Suspense>
     </section>
   );
@@ -290,15 +306,7 @@ const TEXTO_VACIO: Record<EstadoFiltro, string> = {
   retirada_postulante: "Ningún postulante retiró una postulación en revisión o derivada.",
 };
 
-async function ListadoPostulaciones({
-  estado,
-  ofertaId,
-  q,
-  primeroFunes,
-  pagina,
-  ofertaSinPostulaciones,
-  searchParams,
-}: {
+type FiltrosListado = {
   estado: EstadoFiltro;
   ofertaId: string;
   q: string;
@@ -306,20 +314,33 @@ async function ListadoPostulaciones({
   pagina: number;
   /** La oferta de la URL no tiene postulaciones en esta pestaña. */
   ofertaSinPostulaciones: boolean;
-  searchParams: ParamsUrl;
-}) {
-  if (ofertaSinPostulaciones) {
-    return (
-      <EstadoVacio
-        tipo="sin-resultados"
-        className="mt-4"
-        titulo="No hay postulaciones de esta oferta en esta pestaña."
-        descripcion="Elegí otra pestaña u otra oferta."
-        hrefLimpiar={hrefConParams(RUTA, searchParams, { oferta_id: null, pagina: null })}
-        textoLimpiar="Ver todas las ofertas"
-      />
-    );
-  }
+};
+
+type Avatar = { url: string; ajuste: { x: number; y: number; zoom: number } };
+
+type DatosListado =
+  | { tipo: "error"; refError: string }
+  | { tipo: "oferta-sin-postulaciones" }
+  | { tipo: "vacio"; conFiltros: boolean }
+  | {
+      tipo: "ok";
+      filas: Fila[];
+      pagina: number;
+      total: number;
+      procedenciaMap: Map<string, Procedencia>;
+      porInvitacion: Set<string>;
+      avatarMap: Map<string, Avatar>;
+    };
+
+async function cargarListado({
+  estado,
+  ofertaId,
+  q,
+  primeroFunes,
+  pagina,
+  ofertaSinPostulaciones,
+}: FiltrosListado): Promise<DatosListado> {
+  if (ofertaSinPostulaciones) return { tipo: "oferta-sin-postulaciones" };
 
   const supabase = await createSupabaseServerClient();
 
@@ -337,8 +358,7 @@ async function ListadoPostulaciones({
 
     const errorPrefiltro = usuariosRes.error ?? postulantesRes.error;
     if (errorPrefiltro) {
-      const ref = logError("admin_postulaciones_busqueda", errorPrefiltro);
-      return <ErrorListado className="mt-4" refError={ref} />;
+      return { tipo: "error", refError: logError("admin_postulaciones_busqueda", errorPrefiltro) };
     }
 
     const idsFromNombre = usuariosRes.data?.map((u) => u.id) ?? [];
@@ -407,8 +427,7 @@ async function ListadoPostulaciones({
     });
 
     if (!resultado.ok) {
-      const ref = logError("admin_postulaciones_contratados", resultado.error);
-      return <ErrorListado className="mt-4" refError={ref} />;
+      return { tipo: "error", refError: logError("admin_postulaciones_contratados", resultado.error) };
     }
 
     filas = resultado.filas.map((d) => ({
@@ -438,8 +457,10 @@ async function ListadoPostulaciones({
     });
 
     if (!resultado.ok) {
-      const ref = logError("admin_postulaciones_no_seleccionadas", resultado.error);
-      return <ErrorListado className="mt-4" refError={ref} />;
+      return {
+        tipo: "error",
+        refError: logError("admin_postulaciones_no_seleccionadas", resultado.error),
+      };
     }
 
     filas = resultado.filas.map((r) => ({
@@ -519,8 +540,10 @@ async function ListadoPostulaciones({
     });
 
     if (!resultado.ok) {
-      const ref = logError("admin_postulaciones_listado", resultado.error, { estado });
-      return <ErrorListado className="mt-4" refError={ref} />;
+      return {
+        tipo: "error",
+        refError: logError("admin_postulaciones_listado", resultado.error, { estado }),
+      };
     }
 
     filas = resultado.filas.map((r) => ({
@@ -535,32 +558,7 @@ async function ListadoPostulaciones({
     total = resultado.total;
   }
 
-  if (filas.length === 0) {
-    return q || ofertaId ? (
-      <EstadoVacio
-        tipo="sin-resultados"
-        className="mt-4"
-        titulo="No se encontraron postulaciones con los filtros aplicados"
-        hrefLimpiar={hrefConParams(RUTA, {}, { estado })}
-      />
-    ) : (
-      <EstadoVacio
-        tipo="sin-registros"
-        className="mt-4"
-        icono={ClipboardList}
-        titulo={TEXTO_VACIO[estado]}
-      />
-    );
-  }
-
-  const etiquetaFecha =
-    estado === "contratado"
-      ? "Contratado el"
-      : estado === "rechazada_municipalidad"
-        ? "Rechazado el"
-        : estado === "retirada_postulante"
-          ? "Retirada el"
-          : "Fecha";
+  if (filas.length === 0) return { tipo: "vacio", conFiltros: Boolean(q || ofertaId) };
 
   // Avatares en batch
   const usuarioIds = filas
@@ -601,10 +599,7 @@ async function ListadoPostulaciones({
     });
   }
 
-  const avatarMap = new Map<
-    string,
-    { url: string; ajuste: { x: number; y: number; zoom: number } }
-  >();
+  const avatarMap = new Map<string, Avatar>();
 
   if (usuarioIds.length > 0) {
     const { data: avatarArchivos } = await supabase
@@ -640,204 +635,139 @@ async function ListadoPostulaciones({
     }
   }
 
+  return {
+    tipo: "ok",
+    filas,
+    pagina: paginaActual,
+    total,
+    procedenciaMap,
+    porInvitacion,
+    avatarMap,
+  };
+}
+
+async function ContadorPostulaciones({ datos }: { datos: Promise<DatosListado> }) {
+  const d = await datos;
+  if (d.tipo !== "ok") return null;
   return (
-    <>
-          {/* Tabla desktop */}
-          <div className="mt-4 hidden overflow-x-auto md:block">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="py-3 pr-4 font-medium text-muted-foreground">
-                    Candidato
-                  </th>
-                  <th className="py-3 pr-4 font-medium text-muted-foreground">
-                    DNI
-                  </th>
-                  <th className="py-3 pr-4 font-medium text-muted-foreground">
-                    Oferta
-                  </th>
-                  <th className="py-3 pr-4 font-medium text-muted-foreground">
-                    Empresa
-                  </th>
-                  <th className="py-3 pr-4 font-medium text-muted-foreground">
-                    {estado === "contratado"
-                      ? "Fecha de contratación"
-                      : estado === "rechazada_municipalidad"
-                        ? "Fecha de rechazo"
-                        : estado === "retirada_postulante"
-                          ? "Fecha de retiro"
-                          : "Fecha"}
-                  </th>
-                  <th className="py-3 pr-4 font-medium text-muted-foreground">
-                    Estado
-                  </th>
-                  <th className="py-3 font-medium text-muted-foreground" />
-                </tr>
-              </thead>
-              <tbody>
-                {filas.map((fila) => {
-                  const usuario = fila.postulante?.usuarios;
-                  const usuarioId = fila.postulante?.usuario_id ?? "";
-                  const avatar = avatarMap.get(usuarioId);
-                  return (
-                    <tr
-                      key={fila.postulacionId}
-                      className="border-b border-border last:border-0"
-                    >
-                      <td className="py-4 pr-4">
-                        <div className="flex items-center gap-3">
-                          <AvatarAjustado
-                            src={avatar?.url ?? null}
-                            alt={
-                              usuario
-                                ? `${usuario.nombre} ${usuario.apellido}`
-                                : "Candidato"
-                            }
-                            ajuste={avatar?.ajuste}
-                            size="sm"
-                          />
-                          <div className="min-w-0 space-y-1">
-                            <span className="block font-medium text-foreground">
-                              {usuario
-                                ? `${usuario.nombre} ${usuario.apellido}`
-                                : "—"}
-                            </span>
-                            <ProcedenciaFila procedencia={procedenciaMap.get(fila.postulacionId)} />
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 pr-4 font-mono text-muted-foreground">
-                        {fila.postulante?.dni ?? "—"}
-                      </td>
-                      <td className="py-4 pr-4 text-foreground">
-                        {fila.oferta?.titulo ?? "—"}
-                      </td>
-                      <td className="py-4 pr-4 text-muted-foreground">
-                        {fila.oferta?.empresa_nombre ?? "—"}
-                      </td>
-                      <td className="py-4 pr-4 text-muted-foreground">
-                        {formatFechaCorta(fila.fecha)}
-                      </td>
-                      <td className="py-4 pr-4">
-                        <Badge tono={fila.badge.tono} estado>
-                          {fila.badge.label}
-                        </Badge>
-                        {porInvitacion.has(fila.postulacionId) && (
-                          <BadgePorInvitacion className="mt-1.5 flex" />
-                        )}
-                        <PreEntrevistaCoordinada pre={fila.preEntrevista} className="mt-1.5" />
-                      </td>
-                      <td className="py-4">
-                        <Link
-                          href={`/admin/postulaciones/${fila.postulacionId}`}
-                          className="btn-neutro whitespace-nowrap"
-                        >
-                          Ver ficha
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+    <p className="text-sm whitespace-nowrap text-muted-foreground-strong" aria-live="polite">
+      Mostrando {d.filas.length} de {d.total} {d.total === 1 ? "postulación" : "postulaciones"}
+    </p>
+  );
+}
 
-          {/* Cards mobile */}
-          <div className="mt-4 space-y-3 md:hidden">
-            {filas.map((fila) => {
-              const usuario = fila.postulante?.usuarios;
-              const usuarioId = fila.postulante?.usuario_id ?? "";
-              const avatar = avatarMap.get(usuarioId);
-              return (
-                <div
-                  key={fila.postulacionId}
-                  className="rounded-[var(--radius-lg)] border border-border bg-surface p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <AvatarAjustado
-                        src={avatar?.url ?? null}
-                        alt={
-                          usuario
-                            ? `${usuario.nombre} ${usuario.apellido}`
-                            : "Candidato"
-                        }
-                        ajuste={avatar?.ajuste}
-                        size="sm"
-                      />
-                      <p className="font-semibold text-foreground">
-                        {usuario
-                          ? `${usuario.nombre} ${usuario.apellido}`
-                          : "—"}
-                      </p>
-                    </div>
-                    <Badge tono={fila.badge.tono} estado>
-                      {fila.badge.label}
-                    </Badge>
-                  </div>
-                  <ProcedenciaFila
-                    procedencia={procedenciaMap.get(fila.postulacionId)}
-                    className="mt-2"
-                  />
-                  {porInvitacion.has(fila.postulacionId) && (
-                    <BadgePorInvitacion className="mt-2" />
-                  )}
-                  <dl className="mt-3 space-y-1.5 text-sm">
-                    <div className="flex gap-2">
-                      <dt className="w-24 flex-shrink-0 text-muted-foreground">
-                        DNI
-                      </dt>
-                      <dd className="font-mono text-foreground">
-                        {fila.postulante?.dni ?? "—"}
-                      </dd>
-                    </div>
-                    <div className="flex gap-2">
-                      <dt className="w-24 flex-shrink-0 text-muted-foreground">
-                        Oferta
-                      </dt>
-                      <dd className="text-foreground">
-                        {fila.oferta?.titulo ?? "—"}
-                      </dd>
-                    </div>
-                    <div className="flex gap-2">
-                      <dt className="w-24 flex-shrink-0 text-muted-foreground">
-                        Empresa
-                      </dt>
-                      <dd className="text-muted-foreground">
-                        {fila.oferta?.empresa_nombre ?? "—"}
-                      </dd>
-                    </div>
-                    <div className="flex gap-2">
-                      <dt className="w-24 flex-shrink-0 text-muted-foreground">
-                        {etiquetaFecha}
-                      </dt>
-                      <dd className="text-muted-foreground">
-                        {formatFechaCorta(fila.fecha)}
-                      </dd>
-                    </div>
-                  </dl>
-                  <PreEntrevistaCoordinada pre={fila.preEntrevista} className="mt-3" />
-                  <div className="mt-4">
-                    <Link
-                      href={`/admin/postulaciones/${fila.postulacionId}`}
-                      className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-tinted"
-                    >
-                      Ver ficha
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+// Postulante | Oferta y empresa | Fecha | Estado | acción.
+const COLUMNAS = "minmax(0,1.6fr) minmax(0,1.6fr) 7rem minmax(0,1.4fr) auto";
 
-          <Paginacion
-            className="mt-6"
-            ruta={RUTA}
-            searchParams={searchParams}
-            pagina={paginaActual}
-            total={total}
-          />
-    </>
+const ENCABEZADO_FECHA: Record<EstadoFiltro, string> = {
+  pendiente: "Fecha",
+  derivada: "Fecha",
+  contratado: "Contratado el",
+  rechazada_municipalidad: "Rechazado el",
+  retirada_postulante: "Retirada el",
+};
+
+async function ListadoPostulaciones({
+  datos,
+  estado,
+  searchParams,
+}: {
+  datos: Promise<DatosListado>;
+  estado: EstadoFiltro;
+  searchParams: ParamsUrl;
+}) {
+  const d = await datos;
+
+  if (d.tipo === "error") return <ErrorListado refError={d.refError} />;
+
+  if (d.tipo === "oferta-sin-postulaciones") {
+    return (
+      <EstadoVacio
+        tipo="sin-resultados"
+        titulo="No hay postulaciones de esta oferta en esta pestaña."
+        descripcion="Elegí otra pestaña u otra oferta."
+        hrefLimpiar={hrefConParams(RUTA, searchParams, { oferta_id: null, pagina: null })}
+        textoLimpiar="Ver todas las ofertas"
+      />
+    );
+  }
+
+  if (d.tipo === "vacio") {
+    return d.conFiltros ? (
+      <EstadoVacio
+        tipo="sin-resultados"
+        titulo="No se encontraron postulaciones con los filtros aplicados"
+        hrefLimpiar={hrefConParams(RUTA, {}, { estado })}
+      />
+    ) : (
+      <EstadoVacio tipo="sin-registros" icono={ClipboardList} titulo={TEXTO_VACIO[estado]} />
+    );
+  }
+
+  const etiquetaFecha = ENCABEZADO_FECHA[estado];
+
+  return (
+    <div className="flex flex-col gap-6">
+      <TablaListado
+        columnas={COLUMNAS}
+        etiqueta="Postulaciones"
+        encabezados={["Postulante", "Oferta y empresa", etiquetaFecha, "Estado", ""]}
+      >
+        {d.filas.map((fila) => {
+          const usuario = fila.postulante?.usuarios;
+          const nombre = usuario ? `${usuario.nombre} ${usuario.apellido}` : "—";
+          const avatar = d.avatarMap.get(fila.postulante?.usuario_id ?? "");
+          const href = `/admin/postulaciones/${fila.postulacionId}`;
+          return (
+            <FilaTabla key={fila.postulacionId}>
+              <CeldaPersona
+                nombre={nombre}
+                href={href}
+                foto={avatar}
+                iniciales={usuario ? inicialesDePersona(usuario.nombre, usuario.apellido) : undefined}
+              >
+                {fila.postulante?.dni && (
+                  <span className="text-[13px] text-muted-foreground tabular-nums">
+                    DNI {fila.postulante.dni}
+                  </span>
+                )}
+                <ProcedenciaFila procedencia={d.procedenciaMap.get(fila.postulacionId)} />
+              </CeldaPersona>
+              <CeldaTabla etiqueta="Oferta y empresa">
+                <span className="block text-[15px] leading-snug font-bold text-heading">
+                  {fila.oferta?.titulo ?? "—"}
+                </span>
+                <span className="mt-0.5 block text-sm text-muted-foreground">
+                  {fila.oferta?.empresa_nombre || "—"}
+                </span>
+              </CeldaTabla>
+              <CeldaTabla etiqueta={etiquetaFecha} rotuloVisible className="tabular-nums">
+                {formatFechaCorta(fila.fecha)}
+              </CeldaTabla>
+              <CeldaTabla etiqueta="Estado" className="flex flex-col items-start gap-1.5">
+                <Badge tono={fila.badge.tono} estado>
+                  {fila.badge.label}
+                </Badge>
+                {d.porInvitacion.has(fila.postulacionId) && <BadgePorInvitacion />}
+                <PreEntrevistaCoordinada pre={fila.preEntrevista} />
+              </CeldaTabla>
+              <Link href={href} className={`btn-neutro ${CLASE_ACCION_FILA}`}>
+                Ver ficha
+                <span className="sr-only">: {nombre}</span>
+              </Link>
+            </FilaTabla>
+          );
+        })}
+      </TablaListado>
+
+      <Paginacion
+        ruta={RUTA}
+        searchParams={searchParams}
+        pagina={d.pagina}
+        total={d.total}
+        variante="numeros"
+      />
+    </div>
   );
 }
 

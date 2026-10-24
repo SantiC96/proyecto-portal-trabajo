@@ -1,18 +1,14 @@
 "use client"
 
 import { Combobox } from "@base-ui/react/combobox"
-import { Check, ChevronDown, X } from "lucide-react"
+import { ChevronDown, X } from "lucide-react"
 import { useRef, useState } from "react"
 
 import { cn } from "@/lib/utils"
-
-interface Opcion {
-  id: string
-  nombre: string
-}
+import { PopupCombobox, normalizarBusqueda, type OpcionCombobox } from "@/components/ui/combobox"
 
 interface MultiComboboxProps {
-  opciones: Opcion[]
+  opciones: OpcionCombobox[]
   seleccionados: string[]
   onChange: (ids: string[]) => void
   placeholder?: string
@@ -21,13 +17,6 @@ interface MultiComboboxProps {
   campoClassName?: string
   /** aria-invalid / aria-describedby del input cuando el campo tiene un error. */
   ariaInput?: { "aria-invalid"?: true; "aria-describedby"?: string }
-}
-
-function normalizar(texto: string): string {
-  return texto
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
 }
 
 export function MultiCombobox({
@@ -45,7 +34,7 @@ export function MultiCombobox({
   const inputRef = useRef<HTMLInputElement>(null)
 
   const filtradas = inputValue
-    ? opciones.filter((o) => normalizar(o.nombre).includes(normalizar(inputValue)))
+    ? opciones.filter((o) => normalizarBusqueda(o.nombre).includes(normalizarBusqueda(inputValue)))
     : opciones
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -120,34 +109,7 @@ export function MultiCombobox({
         </Combobox.Trigger>
       </div>
 
-      {/* Popup */}
-      <Combobox.Portal>
-        <Combobox.Positioner side="bottom" align="start" sideOffset={4} className="z-50">
-          <Combobox.Popup data-slot="combobox-popup" className="w-[var(--anchor-width)] rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--sombra-dialogo)]">
-            <Combobox.List className="max-h-64 overflow-y-auto p-1">
-              {filtradas.map((opt) => (
-                <Combobox.Item
-                  key={opt.id}
-                  value={opt.id}
-                  className="flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-3 py-2 text-[15px] text-foreground transition-colors duration-150 hover:bg-secondary hover:text-primary data-[highlighted]:bg-secondary data-[highlighted]:text-primary"
-                >
-                  <span className="flex w-4 flex-shrink-0 items-center justify-center text-primary">
-                    <Combobox.ItemIndicator>
-                      <Check size={14} />
-                    </Combobox.ItemIndicator>
-                  </span>
-                  {opt.nombre}
-                </Combobox.Item>
-              ))}
-            </Combobox.List>
-            {filtradas.length === 0 && (
-              <Combobox.Empty className="px-3 py-3 text-sm text-muted-foreground">
-                {vacioTexto}
-              </Combobox.Empty>
-            )}
-          </Combobox.Popup>
-        </Combobox.Positioner>
-      </Combobox.Portal>
+      <PopupCombobox opciones={filtradas} vacioTexto={vacioTexto} />
     </Combobox.Root>
   )
 }

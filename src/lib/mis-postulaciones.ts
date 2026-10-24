@@ -67,6 +67,19 @@ export const AVISO_OFERTA_RETIRADA =
 export const TEXTO_SELECCIONADO = "¡Fuiste seleccionado para este puesto!";
 export const TEXTO_NO_SELECCIONADO = "No fuiste seleccionado para este puesto.";
 
+/**
+ * Se puede retirar mientras el proceso siga abierto: recibida, en revisión o
+ * derivada con la empresa todavía sin resultado. Un seleccionado o un proceso
+ * cerrado no se retiran (retirar_postulacion, migration_053).
+ */
+export function sePuedeRetirar(
+  estado: EstadoPostulacion,
+  estadoEmpresa: EstadoDerivacionEmpresa | null | undefined,
+): boolean {
+  if (estado === "recibida" || estado === "en_revision") return true;
+  return estado === "derivada" && (estadoEmpresa === "pendiente" || estadoEmpresa === "en_proceso");
+}
+
 /** Ancla de cada postulación en Mis postulaciones. */
 export function anclaPostulacion(postulacionId: string): string {
   return `postulacion-${postulacionId}`;

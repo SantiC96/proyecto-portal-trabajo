@@ -7,6 +7,7 @@ export const SECCION_PERFIL = {
   procedencia: "procedencia",
   rubros: "rubros",
   cvs: "cvs",
+  contrasena: "contrasena",
 } as const;
 
 export type SeccionPerfil = (typeof SECCION_PERFIL)[keyof typeof SECCION_PERFIL];

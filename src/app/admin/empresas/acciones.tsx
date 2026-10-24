@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -11,10 +11,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
-import { Badge, type TonoBadge } from "@/components/ui/badge";
 import { aprobarEmpresa, rechazarEmpresa } from "../actions";
 import { mostrarAviso } from "@/lib/avisos";
-import type { HistorialEntry } from "./page";
+import type { EstadoAprobacion } from "@/lib/admin/historial-empresa";
 import { useAccion } from "@/lib/use-accion";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
@@ -24,38 +23,22 @@ import {
   ariaErrorCampo,
 } from "@/components/ui/obligatorio";
 import { useErroresCampo } from "@/lib/use-errores-campo";
-import { formatFechaCorta } from "@/lib/fechas";
 
 type Props = {
   empresaId: string;
   razonSocial: string;
-  estadoActual: "pendiente" | "aprobada" | "rechazada";
-  historial: HistorialEntry[];
-  fechaReenvio?: string;
+  estadoActual: EstadoAprobacion;
 };
 
-const EVENTO_LABEL: Record<HistorialEntry["evento"], string> = {
-  aprobada: "Aprobada",
-  rechazada: "Rechazada",
-  reenviada: "Reenviada",
-};
-
-const EVENTO_TONO: Record<HistorialEntry["evento"], TonoBadge> = {
-  aprobada: "success",
-  rechazada: "danger",
-  reenviada: "warning",
-};
-
-export function EmpresaAcciones({
-  empresaId,
-  razonSocial,
-  estadoActual,
-  historial,
-  fechaReenvio,
-}: Props) {
+/**
+ * Botones de la decisión sobre una empresa, con sus diálogos de
+ * confirmación. Como hasta ahora, una empresa rechazada se puede aprobar y una
+ * aprobada se puede rechazar.
+ */
+export function EmpresaAcciones({ empresaId, razonSocial, estadoActual }: Props) {
+  const router = useRouter();
   const [abrirAprobar, setAbrirAprobar] = useState(false);
   const [abrirRechazar, setAbrirRechazar] = useState(false);
-  const [mostrarHistorial, setMostrarHistorial] = useState(false);
   const [motivo, setMotivo] = useState("");
   const campos = useErroresCampo<"motivo">();
   const { pendiente: isPending, ejecutar } = useAccion();
@@ -78,7 +61,10 @@ export function EmpresaAcciones({
     ejecutar(async () => {
       const resultado = await aprobarEmpresa(empresaId);
       mostrarAviso(resultado);
-      if (resultado.ok) setAbrirAprobar(false);
+      if (resultado.ok) {
+        setAbrirAprobar(false);
+        router.refresh();
+      }
     });
   }
 
@@ -90,85 +76,32 @@ export function EmpresaAcciones({
       if (resultado.ok) {
         setAbrirRechazar(false);
         setMotivo("");
+        router.refresh();
       }
     });
   }
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Etiqueta "Reenviada" con fecha (solo en pestaña pendiente) */}
-      {estadoActual === "pendiente" && fechaReenvio && (
-        <div className="flex items-center gap-2">
-          <Badge tono="warning">Reenviada</Badge>
-          <span className="text-xs text-muted-foreground">
-            {formatFechaCorta(fechaReenvio)}
-          </span>
-        </div>
+      {estadoActual !== "aprobada" && (
+        <button
+          type="button"
+          onClick={() => handleAbrirAprobar(true)}
+          disabled={isPending}
+          className="btn-primario w-full"
+        >
+          Aprobar
+        </button>
       )}
-
-      {/* Botones de acción */}
-      <div className="flex flex-wrap gap-2">
-        {estadoActual !== "aprobada" && (
-          <button
-            type="button"
-            onClick={() => handleAbrirAprobar(true)}
-            disabled={isPending}
-            className="btn-primario min-h-11 justify-center"
-          >
-            Aprobar
-          </button>
-        )}
-        {estadoActual !== "rechazada" && (
-          <button
-            type="button"
-            onClick={() => handleAbrirRechazar(true)}
-            disabled={isPending}
-            className="btn-peligro inline-flex min-h-11 items-center justify-center px-4 text-sm font-medium"
-          >
-            Rechazar
-          </button>
-        )}
-      </div>
-
-      {/* Historial de revisiones */}
-      {historial.length > 0 && (
-        <div>
-          <button
-            type="button"
-            onClick={() => setMostrarHistorial((v) => !v)}
-            aria-expanded={mostrarHistorial}
-            className="flex min-h-11 items-center gap-1 text-xs text-muted-foreground transition hover:text-foreground"
-          >
-            {mostrarHistorial ? (
-              <ChevronUp className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5" />
-            )}
-            {mostrarHistorial ? "Ocultar historial" : "Ver historial"}
-          </button>
-
-          {mostrarHistorial && (
-            <ol className="mt-2 space-y-2">
-              {historial.map((entry) => (
-                <li key={entry.id} className="flex flex-col gap-0.5">
-                  <div className="flex items-center gap-2">
-                    <Badge tono={EVENTO_TONO[entry.evento]}>
-                      {EVENTO_LABEL[entry.evento]}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {formatFechaCorta(entry.created_at)}
-                    </span>
-                  </div>
-                  {entry.motivo && (
-                    <p className="ml-1 text-xs text-muted-foreground">
-                      {entry.motivo}
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
+      {estadoActual !== "rechazada" && (
+        <button
+          type="button"
+          onClick={() => handleAbrirRechazar(true)}
+          disabled={isPending}
+          className="btn-peligro-borde w-full"
+        >
+          Rechazar
+        </button>
       )}
 
       {/* Dialog: Aprobar */}
@@ -204,10 +137,7 @@ export function EmpresaAcciones({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <label
-              htmlFor={`motivo-${empresaId}`}
-              className="text-sm font-medium text-foreground"
-            >
+            <label htmlFor={`motivo-${empresaId}`} className="etiqueta-campo">
               Motivo del rechazo <Obligatorio />
             </label>
             <Textarea

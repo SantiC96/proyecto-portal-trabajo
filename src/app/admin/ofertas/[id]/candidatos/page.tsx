@@ -65,7 +65,7 @@ export default async function CandidatosOfertaPage({
   if (!oferta) notFound();
 
   const destino = destinoVolverBusqueda(ofertaId, sp.volver);
-  const volver = <BotonVolver href={destino.href}>{destino.texto}</BotonVolver>;
+  const volver = <BotonVolver href={destino.href} />;
 
   const abierta =
     oferta.estado === "activa" && !estadoVencimiento(oferta.estado, oferta.vence_en).vencida;

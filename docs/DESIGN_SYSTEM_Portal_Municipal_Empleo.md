@@ -151,6 +151,18 @@ Cuando exista espacio:
 
 En espacios reducidos se permite utilizar solamente el escudo.
 
+## Archivos del logo
+
+-   `public/images/logo-funes-blanco.png` (185 × 52): sobre verde
+    (sidebar, panel de marca del login, del registro y de recuperar la
+    contraseña; encabezado de los correos).
+-   `public/images/logo-funes-verde.png` (185 × 52): sobre fondos claros
+    (tarjeta del login, del registro y de recuperar la contraseña desde lg, `AuthShell`, contacto de la
+    oficina). Es el blanco con cada píxel en `#09713D` y la misma
+    transparencia, así que se ve igual de nítido; se muestra a 120 × 34
+    (la misma proporción). Reemplaza al viejo `logo-funes-color.png`
+    (92 × 26, borroso al agrandarlo), que se borró.
+
 ------------------------------------------------------------------------
 
 # 5. Paleta
@@ -248,7 +260,7 @@ Texto de estado suelto sobre blanco (sin fondo):
   `tooltip`             `#0F1D15`   tooltips de la sidebar contraída
   `danger-fondo`        `#FDEDEC`   hover de "Cerrar sesión" en el menú del usuario
   `fondo-auth`          `#F3F5F4`   fondo del login y de las pantallas de /auth
-  `texto-volver`        `#2E4337`   link "Volver al inicio" de /auth
+  `texto-volver`        `#2E4337`   link "Volver" de /auth
   `login-suave`         `#D7EBDF`   volanta y nota del panel verde del login
 
 ## Inicio, panel y listas
@@ -266,7 +278,28 @@ Texto de estado suelto sobre blanco (sin fondo):
   `tabla-hover`          `#F8FBF9`   hover de fila
   `tabla-separador`      `#E8ECEA`   separadores de prioridad
 
-`border-tab` (`#C6D8CD`) también es el borde de las pastillas de rubro y
+## Pantallas públicas y del postulante
+
+  Token               Valor       Uso
+  ------------------- ----------- ---------------------------------------------
+  `border-campo`      `#B8C7BE`   buscador del listado, pastillas de filtro, opciones tipo radio y campos de Mi perfil
+  `opcion-elegida`    `#F3F8F5`   fondo de la opción tipo radio elegida
+  `texto-parrafo`     `#22332A`   párrafos y listas del detalle de una oferta
+  `texto-vence`       `#8A1A12`   "Vence el …" de las invitaciones (9,9:1 sobre blanco)
+
+## Pantallas de la empresa y de la oficina
+
+  Token               Valor       Uso
+  ------------------- ----------- ---------------------------------------------
+  `tabla-cabecera`    `#F3F5F4`   encabezado del componente `Tabla`
+  `tabla-fila-hover`  `#FAFBFA`   hover de fila del componente `Tabla`
+  `texto-pestana`     `#3D4A43`   pestañas inactivas; cantidad en cero de la tarjeta de pendiente (9,3:1 sobre blanco)
+  `pastilla-gris`     `#DDE3DF`   fondo de la cantidad de las pestañas y de la tarjeta de pendiente en cero
+
+Las etiquetas de `DatosClave` y el encabezado de la tabla usan `neutral`
+(`#4F5E55`); los valores, `control-foreground` (`#22332A`).
+
+`border-tab` (`#C6D8CD`) es el borde de las pastillas de rubro y
 del buscador del inicio. Sombra del buscador: `--sombra-buscador`
 (`0 8px 24px rgb(0 60 30 / 0.08)`).
 
@@ -293,7 +326,7 @@ En `:root` están los radios (`--radius-sm` 8 px, `--radius-md` 10 px,
   `--sombra-tarjeta-hover`   `0 8px 20px rgb(15 42 27 / .08)`
 
 Clases de componente en `globals.css`: `.btn-primario`, `.btn-secundario`,
-`.btn-neutro`, `.btn-peligro`, `.btn-acento`, `.campo`, `.campo-grupo`,
+`.btn-neutro`, `.btn-peligro`, `.btn-peligro-borde`, `.btn-acento`, `.campo`, `.campo-grupo`,
 `.etiqueta-campo`, `.tarjeta` y `.tarjeta-clickeable`.
 
 ------------------------------------------------------------------------
@@ -420,29 +453,75 @@ Las rutas de `/auth/*` no llevan navegación: solo el contenido.
 
 -   Padding del área de contenido: 32 px en escritorio, 24 px en tablet
     y 16 px en celular.
--   Sin `max-width` global: cada página decide su ancho.
+-   Sin `max-width`: todas las páginas con navegación ocupan todo el
+    ancho disponible al lado de la sidebar, en los tres roles (decisión
+    033). No hay espacio vacío a la derecha en pantallas anchas.
 -   Las páginas no agregan padding propio ni `mx-auto max-w-*`: el
     margen lo pone `.app-contenido`.
--   Listas y paneles: todo el ancho.
--   Textos largos, formularios y detalles: clase `.contenido-lectura`
-    (`max-width: 720px`), o `.contenido-lectura-ancho` (`960px`) si el
-    formulario o el detalle tiene dos columnas. Alineados a la izquierda.
+-   Siguen centrados con su ancho propio: las pantallas de `/auth`, los
+    diálogos, los popovers y los estados vacíos.
 -   Para pasar de una a varias columnas dentro del contenido se prefieren
     container queries (`@container`, `@xl:`, `@4xl:`) a los breakpoints
     de la ventana: la sidebar le quita ancho al contenido.
 
-Los formularios no deben expandirse innecesariamente a todo el viewport.
+Formularios: como ocupan todo el ancho, reparten los campos en grillas de
+2 columnas (3 si son cortos, como las contraseñas o los datos de la
+solicitud de la empresa) desde `@2xl:` del contenedor; los textareas, las
+zonas de carga y los campos largos van a todo el ancho (`col-span-*`). En
+el celular, una columna. Las secciones cortas que van juntas (requisitos y
+beneficios de la oferta) se ponen lado a lado.
+
+## Detalle con lateral y columnas parejas (`DetalleConLateral`)
+
+`src/components/ui/detalle-con-lateral.tsx`, con las props `principal`,
+`lateral` y `debajo` (fragmentos de tarjetas). Desde el breakpoint de la
+pantalla (`desde`: `@4xl` del contenido por defecto; `lg` o `xl` de la
+ventana en las que ya pasaban a dos columnas ahí):
+
+``` text
+┌──────────────────────────────┬───────────┐
+│ principal (1fr)              │ lateral   │  misma altura: la última
+│                              │ (400 px)  │  tarjeta de la columna más
+│                              ├───────────┤  corta crece (flex-1), con
+│                              │ (crece)   │  su contenido arriba
+├──────────────────────────────┴───────────┤
+│ debajo: a todo el ancho (o 2 columnas)   │
+└──────────────────────────────────────────┘
+```
+
+-   Separación igual en las columnas (`separacion`, `gap-6` por defecto).
+-   El lateral ya no es sticky: termina a la par del contenido.
+-   En una columna (celular), el orden de siempre: `principal`, `lateral`
+    y `debajo`, o el lateral primero o al final (`lateralEnCelular`).
+-   `debajoEnDosColumnas` para dos tarjetas cortas.
+
+Pantallas: detalle público de una oferta (título y "Postularme" arriba,
+descripción debajo), revisión de oferta y de empresa, ficha de una
+postulación (qué tarjetas acompañan a la lateral depende del estado),
+fichas del candidato de la empresa y detalle de curso.
+
+## Índice de secciones (Mi perfil)
+
+`src/components/perfil/indice-secciones.tsx`: desde 768 px de ancho
+disponible (`@3xl:`), una columna de 220 px a la izquierda, sticky, con
+el título "En esta página" (13 px 700 en mayúsculas) y un link de 44 px
+por sección. Marca la sección visible con `IntersectionObserver` y
+`aria-current`: la activa va en verde, sobre blanco y con un borde
+izquierdo de 3 px. Las secciones, a la derecha, ocupan el resto del
+ancho. En el celular el índice no se muestra.
+
+Cada sección del perfil es una tarjeta (`SeccionPerfil` en
+`components/perfil/piezas.tsx`) con su título de 20 px 800 (18 en el
+celular), una línea de ayuda opcional, los campos en una grilla de 2
+columnas (1 en el celular) y su botón "Guardar" abajo a la derecha.
+Campos del perfil: alto 48, borde 1,5 px `border-campo`, radio 10; label
+15 px 700, ayuda 13 px, error 13 px 600 en `danger`.
 
 ## PageContainer
 
-Todas las páginas internas deben utilizar un contenedor compartido.
-
-Responsabilidades:
-
--   ancho máximo;
--   padding responsive;
--   separación vertical;
--   alineación.
+`.app-contenido` hace de contenedor de todas las páginas internas:
+padding responsive (16 / 24 / 32 px) y alineación. Sin ancho máximo
+(ver "Contenido").
 
 ------------------------------------------------------------------------
 
@@ -532,7 +611,8 @@ Todas se desactivan con `prefers-reduced-motion: reduce`.
 # 13. Header de página
 
 Componente compartido: `EncabezadoPagina`
-(`src/components/ui/encabezado-pagina.tsx`): título de 32 px 800,
+(`src/components/ui/encabezado-pagina.tsx`): título de 32 px 800 (26 px
+en el celular),
 letter-spacing `-.01em`, color `heading`; bajada de 16 px
 `muted-foreground` con 6 px de margen; acciones a la derecha, alineadas
 abajo.
@@ -553,6 +633,19 @@ Gestioná las búsquedas activas de tu empresa.
 ```
 
 En mobile las acciones pasan debajo del título.
+
+## "Volver"
+
+Arriba del título, `BotonVolver` (`src/components/ui/boton-volver.tsx`);
+en `/auth`, `LinkVolverAuth`. Dicen "Volver" y llevan a la pantalla
+anterior de esta pestaña con su query (pestaña, filtros, página y
+búsqueda). Saltean los formularios ya enviados (nueva, nuevo, editar,
+solicitud), las pantallas de `/auth` y los cambios de filtro o página de
+la misma pantalla; si se llegó por el redirect de una acción, también la
+pantalla donde se hizo. Solo sin una pantalla anterior del sitio
+(pestaña nueva, link de un email, link directo) van a su `href` de
+respaldo, la página padre. Todos los "Volver" del sitio usan estos dos
+componentes. Detalle en la decisión 031, punto 6.
 
 ------------------------------------------------------------------------
 
@@ -583,6 +676,7 @@ clases sueltas de cada pantalla.
   `.btn-secundario`  `secondary`        blanco          1,5 px `primary`        `primary`             fondo `secondary`
   `.btn-neutro`      `outline`          blanco          1,5 px `border-control` `control-foreground`  `surface-tinted`
   `.btn-peligro`     `destructive`      `danger`        ---                     blanco                `danger-hover`
+  `.btn-peligro-borde` ---              blanco          1,5 px `danger`         `danger`              `danger-fondo`
   `.btn-acento`      `accent`           `accent`        ---                     `accent-foreground`   `accent-hover`
 
 `ghost` y `link` quedan para acciones de baja jerarquía y botones de
@@ -594,6 +688,9 @@ clases sueltas de cada pantalla.
     jerarquía salvo que representen acciones equivalentes.
 -   "Cancelar" en los diálogos usa el botón neutro.
 -   "Cerrar sesión" y toda acción destructiva usan el botón de peligro.
+    Una destructiva de menor peso que convive con otras acciones
+    ("Retirar postulación", "Eliminar" un CV) usa `.btn-peligro-borde`
+    (`estiloBoton="peligroBorde"` en `DialogoConfirmacion`).
 -   El botón de acento se reserva para la navegación (rediseño, PR 2).
 -   Dentro de un aviso rojo, la acción usa el botón neutro (el verde no
     contrasta sobre el rojo).
@@ -639,7 +736,19 @@ Usar `Combobox` cuando:
 
 Para selección múltiple, mostrar elementos seleccionados de manera clara
 y removible (chip blanco con borde verde, como la etiqueta de rubro
-verde).
+verde): `MultiCombobox`.
+
+Selección única con búsqueda: `Combobox` (`src/components/ui/combobox.tsx`).
+Un botón que muestra la opción elegida con un chevron y abre el mismo
+popup que `MultiCombobox` (`PopupCombobox`: lista con check, opciones de
+44 px, "sin resultados"), con un campo "Buscar…" arriba de la lista. La
+primera opción puede ser "todos" (`opcionVacia`, valor `""`). Con `name`,
+el valor viaja en un input oculto, así el formulario lo manda como un
+`<select>` (también un GET sin JavaScript, con el valor inicial).
+Teclado: Enter o flecha abajo abren con el foco en el buscador, las
+flechas recorren, Enter elige y Escape cierra; el foco vuelve al botón.
+Lo usa el rubro del buscador del inicio (botón de 52 px, sin borde desde
+md, texto de 16 px, 220 px de ancho).
 
 ------------------------------------------------------------------------
 
@@ -715,7 +824,13 @@ clickeable, padding 24, gap 14:
 -   El título es el link y cubre la tarjeta (un paso de teclado por
     oferta); el botón de abajo es visual. Una acción extra con su propio
     link (`Buscar postulantes` de la oficina) va por encima.
--   El listado `/ofertas` sigue usando `JobCard`.
+-   El listado `/ofertas` también usa `TarjetaOferta` (`JobCard` se
+    borró): grilla de 3, 2 o 1 columnas según el ancho del contenido
+    (`@4xl:` y `@xl:`), "Te invitaron" para el postulante y "Buscar
+    postulantes" para la oficina.
+-   Sin logo de la empresa (está en el bucket privado de avatares): el
+    detalle y las invitaciones muestran sus iniciales en un círculo verde
+    (`InicialesEmpresa`, 64 o 44 px).
 
 ## Carrusel
 
@@ -810,7 +925,8 @@ dominio y cada helper los mapea a un tono en un único lugar.
                     Rechazada                                 danger
                     Vencida                                   danger
                     Cerrada                                   neutral
-                    Modificada                                info
+                    Modificada / Corregida (por revisar)      info
+                    Nueva (por revisar)                       teal
   Empresa           Pendiente / Reenviada                     warning     `/admin/empresas`
                     Aprobada                                  success
                     Rechazada                                 danger
@@ -842,7 +958,8 @@ dominio y cada helper los mapea a un tono en un único lugar.
                     Media                                     warning
                     Baja                                      neutral
   Cuenta oficina    Activa / Desactivada                      success / neutral
-  Contadores        Pendientes (pestañas, tarjetas)           warning     `ContadoresEstado`, `PestanasEstado`
+  Contadores        Pendientes (tarjetas de pendiente)        warning     `TarjetaPendiente` (gris si es 0)
+                    Cantidad de una pestaña                   ---         `PestanasEstado`: gris; verde en la activa
 
 Contraste de cada tono: ver la sección 5 (todos superan 6,5:1).
 
@@ -870,6 +987,26 @@ Características:
 -   loading state;
 -   paginación cuando corresponda.
 
+### Estado vacío del directorio público de ofertas
+
+En `/ofertas`, distinguir los resultados vacíos por búsqueda, filtros o
+ambos del error de carga. La tarjeta de estado vacío usa superficie
+blanca, borde sólido y mantiene el ancho disponible del listado, con su
+contenido centrado.
+El título es «Aún no hay empleos que coincidan con tu búsqueda» y el
+texto de apoyo es «Probá con otro rubro o modalidad, o quitá algún filtro
+para ver más ofertas laborales.».
+El texto de apoyo es de al menos 14 px y contraste AA. «Limpiar filtros» es la única acción principal y quita la búsqueda y los
+filtros activos. La acción mantiene su ancho natural también en mobile.
+Anunciar resultados vacíos con una región
+`aria-live="polite"`; los errores se presentan por separado y permiten
+reintentar.
+
+El buscador y los filtros forman una tarjeta de ancho completo; los chips
+de rubro y modalidad se envuelven en varias líneas, también en mobile.
+Esta superficie usa los tokens locales `ofertas-*` para la paleta solicitada
+por el módulo, sin cambiar los colores institucionales globales.
+
 En mobile no forzar tablas ilegibles: utilizar cards o una
 representación responsive definida.
 
@@ -896,6 +1033,45 @@ Una sola marca para los dos formatos (`/admin/postulantes`):
     px a la derecha; la actual en verde y "…" si son muchas). El total
     ("Mostrando X–Y de N") va en la fila de filtros.
 
+## Componente Tabla (empresa y oficina)
+
+`src/components/ui/tabla.tsx` (`Tabla`, `FilaTabla`, `CeldaTabla`,
+`CeldaPersona`, `CLASE_ACCION_FILA`). Mismo criterio que la lista de
+postulantes, con un componente para no repetir las clases:
+
+-   Desde 896 px de ancho disponible (`@4xl`): contenedor con borde 1 px
+    `border`, radio 16, `overflow hidden` y fondo blanco. Encabezado de 12
+    px 700 en mayúsculas, letter-spacing `.06em`, color `neutral`, fondo
+    `tabla-cabecera`, padding 12 × 16. Filas de 15 px con padding 14 × 16,
+    borde inferior `tabla-borde` y hover `tabla-fila-hover`.
+-   Las columnas son un `grid-template-columns` (`columnas`) que comparten
+    el encabezado y las filas.
+-   La celda "quién" (`CeldaPersona`): foto o iniciales en un círculo de 40
+    px y el nombre en 15 px 700 como link; debajo, un badge o un dato.
+-   Más angosto: cada fila es una tarjeta (radio 16, padding 16) con los
+    mismos datos uno debajo del otro y la acción a todo el ancho
+    (`CLASE_ACCION_FILA`: a todo el ancho en la tarjeta, 40 px y 14 px en
+    la tabla). Una celda puede mostrar su rótulo en la tarjeta
+    (`rotuloVisible`: "Derivado el 3 de octubre").
+-   Si la tarjeta ordena los datos distinto que la tabla (Comprobantes:
+    nombre, DNI y fecha arriba; localidad y domicilio en `DatosClave`), las
+    celdas de cada formato se ocultan con `hidden @4xl:block` y
+    `@4xl:hidden`.
+-   El encabezado es visual (`aria-hidden`); cada celda lleva su rótulo para
+    los lectores de pantalla y la lista tiene `aria-label`.
+
+La usan el detalle de una oferta de la empresa (candidatos derivados),
+Postulaciones y Comprobantes de la oficina.
+
+## Lista de datos (`DatosClave`)
+
+`src/components/ui/datos-clave.tsx`: un `dl` en dos columnas, la etiqueta
+(14 px 700 `neutral`, 160 px) y el valor (15 px `control-foreground`).
+Cuando la lista mide menos de 384 px (una columna angosta o el celular),
+la etiqueta va arriba del valor. Los datos sin valor se omiten. La usan los
+datos de una oferta, el contacto del candidato, la tarjeta del candidato de
+la oficina y los datos de una derivación.
+
 ------------------------------------------------------------------------
 
 # 23. Filtros
@@ -911,6 +1087,63 @@ Orden recomendado:
 Los filtros activos deben ser visibles y fáciles de limpiar.
 
 No esconder filtros básicos detrás de un modal en desktop.
+
+## Buscador con botón (listado de ofertas)
+
+`<Buscador boton="Buscar" />`: campo de 52 px, radio 12, borde 1,5 px
+`border-campo`, ícono a la izquierda y label oculto (`sr-only`); al lado,
+el botón primario "Buscar" de 52 px y padding `0 28px`. En el celular el
+botón pasa debajo, a todo el ancho. Sigue buscando sola mientras se
+escribe.
+
+## Pastillas de filtro
+
+`src/components/ui/pastilla-filtro.tsx` (`PastillaFiltro`,
+`GrupoPastillas`, `clasePastilla()`):
+
+-   40 px de alto (44 px en el celular), radio 20, borde 1,5 px
+    `border-campo`, 15 px 600, texto `control-foreground`;
+-   la activa: fondo `primary`, texto blanco;
+-   cada grupo lleva su título de 13 px 700 y `role="group"`;
+-   en el celular, una sola fila con scroll horizontal (sin barra); desde
+    sm bajan de renglón;
+-   con `unaLinea` (los rubros del listado público, que son muchos)
+    siempre van en una sola fila (`FilaDesplazable`): scroll horizontal
+    con `.sin-barra-scroll`, un degradé desde `surface` en el borde hacia
+    el que hay más y, desde md, flechas de 44 px ("Ver rubros
+    anteriores", "Ver más rubros") que aparecen solo si se puede
+    desplazar hacia ese lado. La pastilla con foco se desplaza hasta
+    quedar visible (con `scroll-padding` para no quedar debajo de la
+    flecha) y la activa queda a la vista al entrar. Sin animación con
+    movimiento reducido.
+
+Cuando el filtro vive en la URL, cada pastilla es un link que mantiene los
+demás filtros y la activa se marca con `aria-current` (`aria-pressed` no
+es válido en un link). En una pastilla que es un botón, `aria-pressed`.
+Una pastilla que solo admite un valor opcional (Modalidad) se desactiva al
+tocarla de nuevo.
+
+## Pestañas de estado
+
+`PestanasEstado` (`src/components/ui/pestanas-estado.tsx`), con subrayado.
+Es compartido: cambia en todas las pantallas que lo usan (Mis ofertas de la
+empresa; Postulaciones, Ofertas, Empresas y Comprobantes de la oficina).
+
+-   contenedor con una línea inferior de 2 px `border` (sombra interna:
+    un borde quedaría fuera del área de scroll y recortaría el subrayado);
+    en el celular se desplaza de costado (sin barra);
+-   cada pestaña es un link de 48 px de alto, padding `0 14px`, 15 px 600,
+    color `texto-pestana`, con un subrayado de 3 px transparente que tapa
+    el borde del contenedor;
+-   la activa: verde, 800, subrayado `primary` y `aria-current="page"`; en
+    hover, el texto se pone verde y el subrayado `border-strong`;
+-   la cantidad (opcional, también en 0) en una pastilla de 22 px, fondo
+    `pastilla-gris` y texto `control-foreground`; en la activa, fondo verde
+    y texto blanco.
+
+Filtros con label arriba (Postulaciones de la oficina): cada select con su
+`.etiqueta-campo` y `.campo` de 48 px, el botón "Filtrar" neutro de 48 px y
+"Mostrando X de N" a la derecha.
 
 ------------------------------------------------------------------------
 
@@ -932,6 +1165,43 @@ Cancelar                Acción
 ```
 
 No utilizar modales para procesos largos que deberían ser una página.
+
+## Elegir el tipo de cuenta (`RegisterModal`)
+
+El diálogo de "Registrarme" (`src/components/auth/register-modal.tsx`)
+usa el `Dialog` amplio a 480 px (casi todo el ancho en el celular):
+"Crear una cuenta" (20 px 800) y "Elegí cómo vas a usar el Portal de
+Empleo." (15 px `muted`); dos opciones, una debajo de la otra, que son
+links: borde 1,5 px `border`, radio 16, padding 20, mínimo 88 px, ícono
+blanco en un cuadrado verde de 48 px (radio 12), título de 17 px 800,
+descripción de 14 px `muted` y chevron; hover con borde `primary` y fondo
+`background` (`#F4F7F5`), foco con el anillo del proyecto. "Busco
+trabajo" lleva a `/auth/registro` y "Quiero publicar ofertas" a
+`/auth/registro?tipo=empresa`. Al pie, centrado, "¿Ya tenés cuenta?
+Iniciá sesión". Botón de cerrar de 44 px con `aria-label`.
+
+## Diálogo amplio
+
+`<DialogContent tamano="amplio">` (pantallas del postulante): ancho 540
+px, radio 20, padding 28 (22 × 18 en el celular), título de 22 px 800 y
+botón X de 44 px. Sin franja gris al pie: las acciones van a la derecha;
+en el celular, a todo el ancho y apiladas, con la principal abajo.
+
+## Opciones tipo radio
+
+`src/components/ui/opcion-radio.tsx` (`OpcionRadio`), dentro de un
+`fieldset` con su `legend`:
+
+-   fila con borde 1,5 px `border-campo` y radio 12; toda la fila es el
+    label (mínimo 44 px);
+-   la elegida: borde `primary` y fondo `opcion-elegida`; el foco se ve
+    en toda la fila;
+-   `extra` deja algo fuera del label a la derecha (el link "Ver" de un
+    CV).
+
+La usan "Elegí con qué CV postularte" (`DialogoElegirCv`), el motivo de
+"No me interesa" y el motivo de "No seleccionado" de la empresa (la opción
+"Otro motivo" muestra un campo de texto).
 
 Las acciones destructivas requieren confirmación explícita.
 
@@ -991,6 +1261,119 @@ visible va al lado, en 14 px 700.
 Borde de 2 px `accent` sobre blanco, título `invitacion-titulo`, badge
 warning y botón `.btn-oscuro` (fondo `accent-foreground`, texto blanco).
 
+## Tarjeta de pendiente (panel de la oficina)
+
+`src/components/ui/tarjeta-pendiente.tsx` (`TarjetaPendiente`). Toda la
+tarjeta es un link (`.tarjeta`, padding 20, gap 14); en hover, el borde se
+pone `primary`.
+
+-   arriba: ícono blanco en un cuadrado `primary` de 44 px con radio 12 y,
+    a la derecha, la cantidad en una pastilla de 36 px de alto, 20 px 800
+    (`aria-label` "N pendientes"): `accent` con `accent-foreground` si es
+    mayor a 0; `pastilla-gris` con `texto-pestana` si es 0;
+-   el título en 17 px 800;
+-   abajo, la acción en 15 px 700 verde con flecha.
+
+Grilla de 3 columnas, 2 en tablet y 1 en el celular (según el ancho del
+contenido).
+
+## Tarjeta de acceso
+
+`src/components/ui/tarjeta-acceso.tsx` (`TarjetaAcceso`): link con un ícono
+en un cuadrado verde de 44 px, título de 17 px 800, descripción de 14 px,
+un dato opcional (13 px 600, "3 cursos activos") y chevron. En hover, el
+borde verde. Accesos del panel de la oficina y "Más herramientas" del panel
+de la empresa, en 2 columnas (1 en el celular).
+
+## Panel de la empresa
+
+`EncabezadoPagina` "Hola, [razón social]" con "Mis ofertas" (neutro) y
+"Publicar oferta" (primario). Si hay ofertas vencidas o por vencer, una
+`Franja` de aviso con el link a Mis ofertas. Los indicadores de ofertas
+usan las mismas tarjetas que el panel del postulante (badge del estado y
+número de 36 px 800; 2 columnas en el celular, 3 en tablet y 5 en
+pantallas anchas). "Candidatos por contactar": una tarjeta con una fila por
+candidato (iniciales, nombre de 16 px 700, "[oferta] · derivado el
+[fecha]", badge y "Ver candidato" neutro, a todo el ancho en el celular).
+
+------------------------------------------------------------------------
+
+## Indicadores (oficina y empresa)
+
+`/admin/indicadores` y `/empresa/indicadores`: `EncabezadoPagina` con el
+control segmentado del período a la derecha (debajo hasta xl), una fila de
+tarjetas de número y los gráficos, cada uno en su `TarjetaGrafico`. Los
+números salen de las funciones de la base (decisiones 019 y 021); la
+página los pide en el servidor y los pasa a los gráficos por props.
+
+### Control segmentado (`SelectorPeriodo`)
+
+`src/components/indicadores/selector-periodo.tsx`. Fondo
+`secondary-hover`, padding 4, radio 12. Cada opción es un link de 40 px
+(44 en el celular), 14 px 700; la elegida en `surface` con texto `primary`
+y una sombra suave, marcada con `aria-current` (en un link no vale
+`aria-pressed`). "Últimos 30 días", "Últimos 90 días", "Este año" y
+"Todo", con el mismo `?periodo=` de siempre. En el celular ocupa todo el
+ancho, en dos filas.
+
+### Tarjeta de número (`TarjetaNumero`)
+
+`src/components/indicadores/tarjeta-numero.tsx`. `.tarjeta` con padding
+20: un ícono blanco en un cuadrado `primary` de 48 px con radio 12, el
+número en 36 px 800 (28 en el celular), la etiqueta en 15 px 700 y un
+subtítulo de 13 px. Con `href`, toda la tarjeta es el link (chevron arriba
+a la derecha). `GrillaNumeros`: 4 columnas, 2 en el celular.
+
+### Tarjeta de gráfico (`TarjetaGrafico`)
+
+`src/components/indicadores/tarjeta-grafico.tsx`. Padding 24 (18 × 16 en
+el celular); título de 18 px 800 y descripción de 14 px `muted`; un valor
+destacado opcional arriba a la derecha (30 px 800 con su etiqueta de 13
+px). Debajo, **la conclusión**: una línea de 15 px 700 `primary-hover` con
+un ícono, calculada con los datos ("Octubre fue el mes con más
+postulaciones: 34", "La mayoría de tus candidatos están en proceso"). Al
+final, **"Ver datos"** (`details`/`summary`, 44 px) despliega una tabla
+con los mismos números: es la alternativa al gráfico para quien no lo ve.
+`IndicadorChico` (ícono en un cuadrado `secondary` de 40 px, número de 22
+px 800 y texto de 13 px) arma las tarjetas de resumen como "Proceso de la
+Oficina".
+
+### Gráficos
+
+Componentes de cliente en `src/components/indicadores/`, sobre el chart
+de shadcn/ui (`src/components/ui/chart.tsx`, Recharts) con los colores
+ajustados a los tokens: tooltip en `surface` con anillo `border`, texto de
+13 px, grilla `tabla-borde` y cursor `border-strong`. Todos llevan
+`accessibilityLayer` y un `role="img"` con un `aria-label` que resume el
+gráfico; no animan con `prefers-reduced-motion` (ni antes de conocer la
+preferencia).
+
+-   **Paleta**, siempre en este orden (`PALETA_GRAFICOS`): `primary`
+    #006833, `accent` #F2B705, `info` #1D4E9E, `muted-icon` #8A988F,
+    `violet` #5B3A9E y `teal` #0B5D57. Cada parte toma el color de su
+    posición, nunca de su tamaño. El amarillo y el gris no llegan a 3:1
+    contra el blanco: por eso cada parte lleva su nombre y su número en la
+    leyenda, y está la tabla de "Ver datos".
+-   **Área** (`GraficoArea`): una serie en el tiempo. Degradé `primary`
+    de .35 a 0, línea de 2 px, curva suave, grilla horizontal tenue, eje X
+    con el mes abreviado y sin eje Y; el tooltip muestra el mes completo y
+    el valor.
+-   **Dona** (`GraficoDona`): partes de un mismo total, **hasta seis**.
+    200 px, con el total (32 px 800) y la unidad (13 px `muted`) en el
+    centro, 2 px de separación blanca entre partes y la leyenda al costado
+    (debajo cuando la tarjeta mide menos de 448 px): color, nombre,
+    cantidad y porcentaje. La parte más grande sobresale 6 px y se marca
+    también en la leyenda (fondo `secondary` y texto 800). Con total 0,
+    un estado vacío corto en lugar de la dona. El total del centro no recibe
+    eventos del puntero y el tooltip va por encima (`z-index` 10).
+-   **Barras** (`BarrasOferta`): para comparar cantidades. Barras
+    horizontales de 16 px por oferta (derivados `primary`, entrevistas
+    `info`, seleccionados `accent`), con el valor al final de cada una y la
+    misma escala en todas las ofertas; la leyenda (`LeyendaMedidasOferta`)
+    va arriba de las tarjetas.
+
+Ver `docs/decisiones/032-graficos-de-indicadores.md`.
+
 ------------------------------------------------------------------------
 
 # 26. Landing pública
@@ -1010,7 +1393,7 @@ Estructura visual sugerida:
 
 ``` text
 Navegación lateral (sección 12)
-Bloque principal: volanta, título, bajada, buscador y rubros
+Bloque principal: volanta, título, bajada y buscador (con el rubro)
 Últimas ofertas (carrusel)
 Tu actividad (solo postulante con sesión)
 Cómo funciona (solo sin sesión)
@@ -1020,7 +1403,8 @@ Contacto de la Oficina de Empleo
 Gap de 48 px entre secciones; títulos de sección de 26 px 800. El bloque
 principal es una tarjeta blanca de radio 24 (padding 56 / 56 / 48, 24 en
 celular). El buscador (`role="search"`, hasta 960 px) lleva a `/ofertas`
-con `q` y `categoria`.
+con `q` y `categoria`; el rubro se elige en su `Combobox` (no hay una
+lista de rubros debajo).
 
 El objetivo visual principal debe ser facilitar el acceso a las ofertas
 laborales.
@@ -1035,11 +1419,13 @@ Sin navegación. Página: `src/app/auth/login/page.tsx`; formulario:
 `src/components/auth/login-form.tsx`; clases `.login-*` y `.auth-*` de
 `globals.css`.
 
-Desktop (desde lg), dos columnas a pantalla completa (`100svh`):
+Desktop (desde lg), dos columnas a pantalla completa (`100svh`). El
+panel verde es `PanelMarca` (`src/components/auth/panel-marca.tsx`,
+props `volanta`, `titulo` y `bajada`), compartido con el registro:
 
 ``` text
 ┌────────────────────────┬──────────────────────────────┐
-│ [logo blanco]          │   ← Volver al inicio         │
+│ [logo blanco]          │   ← Volver                   │
 │                 ▢      │  ┌────────────────────────┐  │
 │ TALENTO LOCAL, …    ▢  │  │ [logo verde]           │  │
 │ Un nuevo               │  │ TU ESPACIO PARA AVANZAR│  │
@@ -1069,24 +1455,114 @@ Desktop (desde lg), dos columnas a pantalla completa (`100svh`):
     Lock; botón de mostrar contraseña de 44 × 44), botón primario de
     52 px con radio 12 y sombra. Mensajes con `Aviso` (info para avisos
     de sesión, danger para errores).
--   **Registrate:** botón con `aria-expanded` que despliega dos opciones
-    (filas de 64 px, borde 1,5 px `border-strong`, radio 14, ícono en un
-    cuadrado verde de 44 px, hover borde verde) hacia
-    `/auth/registro` y `/auth/registro?tipo=empresa`.
--   **Animaciones** (sin movimiento reducido): título y tarjeta suben
-    16 px con fundido en 700 ms (la tarjeta 150 ms después); las
-    opciones de registro aparecen en 250 ms.
+-   **Sin asteriscos:** "Correo electrónico" y "Contraseña" no llevan
+    `<Obligatorio />`. Son dos campos y los dos son obligatorios, así que
+    la marca no distingue nada; siguen con `required` y con los mismos
+    mensajes de error. El resto de los formularios marca los obligatorios
+    como siempre.
+-   **Registrate:** botón con `aria-expanded` y `aria-controls` que
+    despliega dos opciones (filas de 64 px, borde 1,5 px `border-strong`,
+    radio 14, ícono en un cuadrado verde de 44 px, hover borde verde)
+    hacia `/auth/registro` y `/auth/registro?tipo=empresa`, más
+    "Cancelar".
+-   **Animación de las opciones** (`.login-registro-plegable` en
+    `globals.css`): al abrir, el bloque crece de 0 a su alto con
+    `grid-template-rows` (0fr → 1fr, 250 ms ease-out) y lo de abajo se
+    corre con él; cada fila (la de "Cancelar", Postulante y Empresa) entra
+    con opacidad 0 → 1 y de −8 px a 0, 40 ms después de la anterior. Al
+    cerrar ("Cancelar" o "Registrate" de nuevo), lo inverso de abajo hacia
+    arriba en 200 ms ease-in. Al quitar `hidden`, `@starting-style` hace
+    que la transición parta del bloque cerrado. Mientras está cerrado o
+    cerrándose el bloque es `inert` (no se enfoca con Tab) y queda
+    `hidden` recién al terminar (`transitionend`, con un respaldo de
+    320 ms). "Cancelar" devuelve el foco a "Registrate". Apretarlo varias
+    veces seguidas revierte la transición desde donde esté. Con movimiento
+    reducido aparece y desaparece sin animación.
+-   **Animaciones de entrada** (sin movimiento reducido): título y tarjeta
+    suben 16 px con fundido en 700 ms (la tarjeta 150 ms después).
 
-Celular: sin el panel verde, fondo `fondo-auth`, tarjeta a todo el ancho
-con padding 24 px y título de 34 px.
+Celular y tablet (menos de lg): el mismo `PanelMarca` arriba y más corto
+que en el registro y en recuperar la contraseña (ver "Panel en el
+celular"), y debajo la tarjeta a todo el ancho con padding 24 px, sin el
+logo verde (ya está en el panel) y título de 34 px. A 375 × 667 el botón
+"Iniciar sesión" queda unos 50 px debajo del borde: alcanza con
+desplazar un poco.
+
+## Panel en el celular
+
+`PanelMarca` se ve igual en todas las pantallas que lo usan (login,
+registro y recuperar la contraseña); no hay una prop para activarlo.
+Por debajo de lg va arriba: padding 8 × 16 × 20 (16 × 24 × 36 en
+tablet), gap 10, "Volver" en blanco (`LinkVolverAuth claro`, prop
+`volver`), el logo de 148 px, la volanta y el título de 32 px (42 px en
+tablet) sin los saltos de línea, sin la bajada, los íconos ni la nota.
+Mide 235 px a 375 px de ancho. Cada pantalla pone el otro "Volver" en la
+columna del formulario solo desde lg (`hidden lg:block`), así nunca se
+ven dos.
+
+## Registro
+
+La misma estructura que el login (`src/app/auth/registro/page.tsx`):
+`PanelMarca` a la izquierda y, a la derecha, la columna clara con
+"Volver" y el formulario en una tarjeta de 720 px con el logo verde.
+Desde lg el panel queda fijo (`sticky`, alto de la ventana) mientras el
+formulario se desplaza.
+
+-   Postulante: "Talento local, nuevas oportunidades" / "Sumate al Portal
+    de Empleo." / "Cargá tus datos una vez y postulate a las ofertas de
+    empresas de la ciudad."
+-   Empresa: "Empresas de Funes" / "Encontrá a tu próximo equipo en
+    Funes." / "Publicá tus ofertas y recibí candidatos preseleccionados
+    por la Oficina de Empleo."
+-   Celular: el panel va arriba y más corto, igual que en el login (ver
+    "Panel en el celular"). Debajo, la tarjeta del formulario.
+-   Sin animaciones con movimiento reducido.
+
+Título de la tarjeta en Georgia (`.login-titulo`): "Crear tu cuenta de
+postulante" o "Registrar tu empresa", con "Completá tus datos. Te vamos a
+mandar un email para confirmar la cuenta." Los campos van en secciones
+numeradas planas (`SeccionNumerada variante="plana"`) separadas por una
+línea: el postulante tiene "Datos personales" y "Datos de acceso"; la
+empresa, "Datos de la empresa", "Persona responsable" y "Datos de acceso".
+Desde sm, dos columnas por sección (domicilio, localidad, descripción y la
+zona del comprobante a todo el ancho); en el celular, una. El comprobante
+de domicilio es una zona de carga con borde punteado. "Mínimo 8
+caracteres." va como ayuda de la contraseña, con un botón de 44 px para
+mostrarla u ocultarla; debajo de "Repetir contraseña", "Las contraseñas
+coinciden" en verde o "Las contraseñas no coinciden." en rojo. El CUIT
+muestra "CUIT válido" en vivo. "Crear cuenta" es primario a todo el ancho
+(52 px) y abajo va "¿Ya tenés cuenta? Iniciá sesión acá". Las piezas
+comunes están en `src/components/auth/partes-registro.tsx`.
+
+## Recuperar la contraseña
+
+`/auth/recuperar-contrasena`, `/auth/reset-enviado` y
+`/auth/nueva-contrasena` usan `PantallaRecuperacion`
+(`src/components/auth/pantalla-recuperacion.tsx`): la estructura del
+login, con `PanelMarca` a la izquierda (arriba en el celular) y la
+columna clara con la tarjeta de 460 px. El panel es el mismo en las tres,
+para que se lean como un solo recorrido: "Recuperá tu acceso" / "Volvé a
+entrar al Portal de Empleo." / "Te mandamos un email con un link para
+crear una contraseña nueva."
+
+-   Títulos de la tarjeta en Georgia (`.login-titulo`), con la bajada en
+    15 px debajo: "Recuperar contraseña", "Revisá tu email" (con un sobre
+    en un círculo verde claro de 56 px arriba) y "Elegí una contraseña
+    nueva".
+-   "Volver" como en el login: a la pantalla anterior y, si no la hay, al
+    login.
+-   Las mismas animaciones de entrada que el login.
+-   Los formularios no cambiaron: campos, mostrar u ocultar la contraseña,
+    validaciones y mensajes. El de la contraseña nueva es el mismo que el
+    de la invitación de la oficina; solo en la recuperación su encabezado
+    va en Georgia.
 
 ## Demás pantallas de /auth
 
-Registro, recuperar y nueva contraseña, reset enviado, verificar email
-e invitación usan `AuthShell` (`src/components/auth/auth-shell.tsx`):
-fondo `fondo-auth`, "Volver al inicio", y el contenido en la misma
-tarjeta que el login con el logo verde arriba. Ancho 460 px; el registro,
-640 px.
+Verificar email, verificar email de la empresa y aceptar la invitación
+usan `AuthShell` (`src/components/auth/auth-shell.tsx`): fondo
+`fondo-auth`, "Volver" (`LinkVolverAuth`) y el contenido en la misma
+tarjeta que el login con el logo verde arriba, de 460 px.
 
 Evitar:
 
@@ -1160,8 +1636,92 @@ Componente `src/components/ui/aviso.tsx`, tonos `info`, `success`,
     danger.
 
 Las notas neutras (por ejemplo "No fuiste seleccionado") no son avisos:
-van sobre `surface-tinted` con borde `border` y texto
-`muted-foreground-strong`.
+dentro de una tarjeta van como franja neutra.
+
+## Franja
+
+`src/components/ui/franja.tsx`: información dentro de una tarjeta (el
+estado de una postulación, un aviso sobre la oferta, el motivo de un
+rechazo). No se anuncia sola (sin `role`). Padding 12 × 14, radio 12,
+15 px con interlineado 1,45, ícono de 20 px y `titulo` en negrita al
+principio, en la misma línea que el texto.
+
+  Tono       Fondo                                       Texto
+  ---------- ------------------------------------------- ----------------------
+  `info`     `info`                                      blanco
+  `ok`       `success`                                   blanco
+  `neutra`   blanco, borde interno 1,5 px `muted-icon`   `foreground`
+  `aviso`    blanco, borde interno 2 px `accent`         `invitacion-titulo`
+  `error`    `danger`                                    blanco
+
+En Mis postulaciones: pre-entrevista y entrevista coordinada en `info`,
+"¡Fuiste seleccionado…!" en `ok`, "No fuiste seleccionado…" y "La
+empresa retiró la oferta…" en `neutra`.
+
+En las fichas de la empresa y de la oficina: "Entrevista coordinada:" y
+"Coordinada:" (pre-entrevista) en `info`; el resultado final del proceso
+en `ok` (seleccionado o contratado) o `neutra` (no seleccionado, proceso
+cerrado, retirada); "Modificada tras la postulación" y las ofertas
+vencidas del panel de la empresa en `aviso`.
+
+## Cita
+
+`src/components/ui/cita.tsx` (`Cita`): la nota de la Oficina de Empleo.
+`blockquote` de 16 px con interlineado 1,6, borde izquierdo de 3 px
+`primary` y padding 4 × 16; la firma debajo (`figcaption`, 13 px
+`muted-foreground`): quién y cuándo, si se sabe ("Oficina de Empleo · 3 de
+octubre de 2026").
+
+## Línea de tiempo
+
+`src/components/ui/linea-de-tiempo.tsx` (`LineaDeTiempo`): lista ordenada
+(`ol`) con un punto de 12 px `muted-icon` por evento y una línea vertical
+de 2 px `border` que los une. El último (el más reciente) va en `primary`
+con un anillo verde translúcido de 4 px. Título del evento en 15 px 700 y
+detalle (quién y cuándo) en 14 px `muted-foreground`. Historial de estados
+de la ficha de una postulación.
+
+## Archivo en una tarjeta
+
+`src/components/ui/fila-archivo.tsx` (`FilaArchivo`): fila con borde y
+radio 12; ícono en un cuadrado `secondary` de 40 px, nombre (15 px 700),
+detalle ("Cargado el …") y "Ver CV" neutro a la derecha (a todo el ancho
+en el celular), que abre la URL firmada en otra pestaña.
+
+## Formulario en secciones numeradas
+
+`src/components/ui/seccion-numerada.tsx` (`SeccionNumerada`): el número en
+un círculo `primary` de 28 px (14 px 800 blanco) y el título de 18 px 800;
+los campos debajo. Variante "tarjeta" (cada sección en su `.tarjeta`,
+padding 24; 20 × 16 en el celular) para el formulario de oferta y "plana"
+para el registro. Los campos usan `.campo` y `.etiqueta-campo`; las
+opciones cortas (modalidad, jornada, duración) son radios con forma de
+pastilla (`clasePastilla`). Si el envío tiene errores, arriba aparece un
+`Aviso` de error enfocado ("Faltan datos para enviar la oferta. Revisá los
+N campos marcados.") y cada campo muestra el suyo en rojo.
+
+El formulario de oferta tiene seis secciones (El puesto, Rubros,
+Condiciones, Requisitos, Beneficios y Publicación) y un pie a todo el
+ancho con Cancelar, "Guardar borrador" (neutro) y "Enviar a revisión"
+(primario). Arriba, según el caso, una `Franja` de error con el motivo del
+rechazo o una de aviso al editar una oferta publicada.
+
+### Vista previa
+
+En pantallas anchas (desde xl), una columna lateral sticky de 360 px con
+"Vista previa": la `TarjetaOferta` con lo que se va cargando (título,
+empresa, rubros, modalidad, jornada y ubicación), inerte (`inert`: no se
+enfoca ni se lee, es una copia del formulario), y la nota "La Oficina de
+Empleo revisa cada oferta antes de publicarla." En el celular y en tablet
+no se muestra.
+
+## Formularios dentro de una tarjeta angosta
+
+Coordinar una entrevista (empresa) o una pre-entrevista (oficina) va en la
+tarjeta de gestión, no en un diálogo: `<CampoFechaHora compacto />` pone
+fecha (campo de fecha del navegador, desde hoy) y hora lado a lado, el
+lugar debajo a todo el ancho y el botón secundario "Guardar …" a todo el
+ancho. Mismas validaciones y mensajes que el diálogo con calendario.
 
 ## Toasts
 
@@ -1398,3 +1958,57 @@ priorizar claridad, velocidad de lectura y operación.
 Postulante, Empresa y Municipalidad deben percibirse como tres
 experiencias dentro del mismo sistema, no como tres aplicaciones
 distintas.
+
+------------------------------------------------------------------------
+
+# 40. Correos
+
+Los avisos que manda el portal salen todos de `armarEmail`
+(`src/lib/emails/plantilla.ts`): un asunto, un título, un mensaje y un
+link opcional. El HTML está en `src/lib/emails/diseno.ts`, que también
+genera las plantillas de Supabase (`docs/emails/supabase/`), así hay un
+solo diseño (decisión 034).
+
+``` text
+            fondo #F4F7F5
+  ┌──────────────────────────────────────┐  560 px máx., borde 1 px,
+  │ [logo blanco 150 px]                 │  radio 16
+  │ PORTAL DE EMPLEO          (verde)    │  franja primary, 24 × 32
+  ├──────────────────────────────────────┤
+  │ Título en Georgia 26 px              │  padding 32 (24 angosto)
+  │ Mensaje 16/26 px                     │
+  │ [ Ver en el portal ]                 │  48 px, radio 12
+  │ Si el botón no funciona, copiá …     │  13 px gris + URL
+  └──────────────────────────────────────┘
+     pie 12 px gris, centrado
+     Municipalidad de Funes · Oficina de Empleo
+```
+
+-   **Colores:** los valores de los tokens (`COLOR` en `diseno.ts`):
+    `background`, `surface`, `border`, `primary`, `foreground`,
+    `muted-foreground` y `login-suave` para "PORTAL DE EMPLEO". Los
+    clientes de correo no leen variables CSS: si cambia un token, cambiarlo
+    también ahí.
+-   **Letra:** Public Sans si el cliente la carga (link a Google Fonts);
+    si no, Arial o Helvetica. Georgia solo en el título.
+-   **Botón:** una tabla con fondo `primary` y el link adentro (padding
+    14 × 28, 16 px 700 blanco), para que se vea en los clientes que no
+    respetan el padding de un `<a>`. Debajo va siempre la URL visible.
+-   **Logo:** URL absoluta (`NEXT_PUBLIC_SITE_URL` +
+    `/images/logo-funes-blanco.png`; `{{ .SiteURL }}` en Supabase). Sin la
+    URL del sitio, el encabezado dice "Municipalidad de Funes" en texto.
+
+Reglas:
+
+-   Tablas con `role="presentation"` y estilos en línea; una sola media
+    query, para anchos menores de 600 px.
+-   Sin imágenes de fondo, sin SVG, sin variables CSS.
+-   `meta color-scheme` light y un texto de vista previa oculto con el
+    comienzo del mensaje.
+-   Todo el contenido dinámico se escapa en `armarEmail` antes de armar el
+    HTML.
+-   Cada correo va también en texto plano: el nombre del portal, el
+    asunto, el mensaje, "Ver en el portal: <URL>" y el pie.
+-   Para ver los cambios: `npm run emails:vista-previa` y abrir
+    `emails-vista-previa/index.html` (cada correo a 600 y 375 px). No
+    manda correos.

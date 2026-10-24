@@ -282,9 +282,32 @@ Las plantillas disponibles son:
 
 <p style="color: #6b7280; font-size: 12px;">
   Si no solicitaste este cambio, podés ignorar este email.
-  El link expira en 24 horas.
+  El link expira en 1 hora.
 </p>
 ```
+
+
+---
+
+## Aplicar las plantillas
+
+Las plantillas del portal están en [`docs/emails/supabase/`](../emails/supabase/README.md), con el mismo diseño que los avisos que manda el portal. Su README tiene la tabla con la plantilla de Supabase, el archivo, el asunto sugerido y el link de cada una. Se generan con `npm run emails:supabase` (no editarlas a mano).
+
+> **Antes de reemplazar una plantilla, compará su link con el que está configurado hoy en el panel.** Si el link del panel es distinto (otra ruta, otro `type`, `{{ .ConfirmationURL }}` en lugar de `token_hash` o al revés), no la pegues: averiguá primero por qué. Un link equivocado deja a las personas sin poder confirmar la cuenta, recuperar la contraseña o activar la invitación.
+
+Pasos, para cada plantilla de la tabla (Confirm signup, Reset Password e Invite user):
+
+1. Dashboard de Supabase → tu proyecto → **Authentication** → **Email Templates**.
+2. Elegir la plantilla y copiar aparte el HTML que tiene hoy (sirve para comparar y para volver atrás).
+3. Buscar el `href` del botón en el HTML actual y compararlo con la columna "Link que usa" del README.
+4. Si coinciden, reemplazar el **Subject** por el asunto sugerido y el cuerpo (**Message body**, en modo código) por el contenido completo del archivo `.html`.
+5. **Save changes**.
+6. Probar el recorrido: registrarse con un email de prueba, pedir "¿Olvidaste tu contraseña?" e invitar una cuenta desde `/admin/cuentas`. Revisar que el correo llegue con el logo y que el botón y el link visible lleven a la pantalla correcta.
+
+Revisar también:
+
+- **Authentication → URL Configuration → Site URL:** la URL del sitio publicado, sin `/` al final (el logo se carga de `{{ .SiteURL }}/images/logo-funes-blanco.png`).
+- **Authentication → Providers → Email:** el vencimiento del link (*Email OTP Expiration*). Está en 3600 segundos (1 hora) y es un solo valor para los tres correos: confirmar el registro, recuperar la contraseña y la invitación. Las plantillas dicen "El link vence en 1 hora"; si se cambia el valor en Supabase, hay que corregir el texto en `scripts/vista-previa-emails.mjs` y volver a generar con `npm run emails:supabase`.
 
 ---
 
@@ -345,7 +368,7 @@ La ruta `/auth/callback` no existe o tiene un error. Verificar que el archivo `s
 
 ### `exchangeCodeForSession` falla con `invalid_grant`
 
-El `code` del link ya fue usado o expiró (duran 24 horas). El usuario debe solicitar un nuevo link.
+El `code` del link ya fue usado o expiró (duran 1 hora, según *Email OTP Expiration*). El usuario debe solicitar un nuevo link.
 
 ### El usuario queda logueado pero sin fila en la tabla `usuarios`
 
