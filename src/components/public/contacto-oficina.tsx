@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { Clock, Mail, MapPin, Phone } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Datos del footer que tenía el inicio hasta la navegación lateral (decisión
 // 031). La oficina no tiene una dirección con calle cargada en el portal.
@@ -10,12 +11,20 @@ const TELEFONO_LINK = "+543414936010";
 const CLASE_LINK =
   "inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-md)] outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]";
 
-/** Contacto de la Oficina de Empleo, al final del inicio. */
-export function ContactoOficina() {
+/**
+ * Contacto de la Oficina de Empleo, al final del inicio. `enTarjeta`: en una
+ * tarjeta del panel (cuenta de empresa en revisión o rechazada).
+ */
+export function ContactoOficina({ enTarjeta = false }: { enTarjeta?: boolean }) {
   return (
     <section
       aria-labelledby="contacto-oficina-titulo"
-      className="flex flex-col gap-5 border-t border-border pt-8 lg:flex-row lg:items-center lg:justify-between"
+      className={cn(
+        "flex flex-col gap-5",
+        enTarjeta
+          ? "tarjeta px-4 py-5 sm:p-6 xl:flex-row xl:items-center xl:justify-between"
+          : "border-t border-border pt-8 lg:flex-row lg:items-center lg:justify-between",
+      )}
     >
       <div className="flex items-center gap-4">
         <Image
