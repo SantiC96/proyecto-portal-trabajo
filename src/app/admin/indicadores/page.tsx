@@ -18,12 +18,17 @@ import { requerirRolPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import {
   obtenerIndicadores,
-  type PostulacionesMes,
+  type PostulacionesPeriodo,
   type PostulacionesRubro,
 } from "@/lib/admin/indicadores";
-import { leerPeriodo, type Periodo } from "@/lib/indicadores-periodo";
+import { desdePeriodo, leerPeriodo, type Agrupacion, type Periodo } from "@/lib/indicadores-periodo";
 import type { FilaIndicadoresPortal } from "@/types/db";
-import { formatMesAnio } from "@/lib/fechas";
+import {
+  formatDiaMesCorto,
+  formatMesAnio,
+  formatMesCorto,
+  partesFechaSinHora,
+} from "@/lib/fechas";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { SelectorPeriodo } from "@/components/indicadores/selector-periodo";
@@ -33,7 +38,7 @@ import {
   TarjetaGrafico,
   type TablaDatos,
 } from "@/components/indicadores/tarjeta-grafico";
-import { GraficoArea, type PuntoMes } from "@/components/indicadores/grafico-area";
+import { GraficoArea, type PuntoArea } from "@/components/indicadores/grafico-area";
 import { GraficoDona, type ParteDona } from "@/components/indicadores/grafico-dona";
 import { formatDecimal, formatNumero, formatPorcentaje } from "@/components/indicadores/formato";
 import { EsqueletoIndicadores } from "./esqueleto-indicadores";
@@ -84,7 +89,7 @@ function hayActividad(i: FilaIndicadoresPortal): boolean {
 }
 
 async function ContenidoIndicadores({ periodo }: { periodo: Periodo }) {
-  const { indicadores, porMes, porRubro } = await obtenerIndicadores(periodo);
+  const { agrupacion, indicadores, porPeriodo, porRubro } = await obtenerIndicadores(periodo);
 
   if (indicadores.error || !indicadores.data) {
     const ref = logError("indicadores_portal", indicadores.error ?? "sin datos", { periodo });
@@ -96,7 +101,7 @@ async function ContenidoIndicadores({ periodo }: { periodo: Periodo }) {
     );
   }
 
-  if (porMes.error) logError("postulaciones_por_mes", porMes.error);
+  if (porPeriodo.error) logError("postulaciones_por_periodo", porPeriodo.error, { periodo });
   if (porRubro.error) logError("postulaciones_por_rubro", porRubro.error, { periodo });
 
   const i = indicadores.data;
@@ -138,7 +143,12 @@ async function ContenidoIndicadores({ periodo }: { periodo: Periodo }) {
         />
       </GrillaNumeros>
 
-      <PostulacionesPorMes meses={porMes.data} error={Boolean(porMes.error)} />
+      <PostulacionesEnElTiempo
+        filas={porPeriodo.data}
+        agrupacion={agrupacion}
+        periodo={periodo}
+        error={Boolean(porPeriodo.error)}
+      />
 
       {hayActividad(i) ? (
         <>
@@ -174,65 +184,195 @@ async function ContenidoIndicadores({ periodo }: { periodo: Periodo }) {
   );
 }
 
-// ── Postulaciones por mes ─────────────────────────────────────────────────
+// ── Postulaciones en el tiempo ────────────────────────────────────────────
 
-/** Los 12 meses que terminan en el último que devolvió la base, con 0 en los que falten. */
-function completarMeses(meses: PostulacionesMes[]): PuntoMes[] {
-  const porMes = new Map(meses.map((m) => [m.mes.slice(0, 7), Number(m.cantidad)]));
-  const ultimo = meses.at(-1)?.mes ?? mesActualArgentina();
-  const [anio, mes] = ultimo.slice(0, 7).split("-").map(Number);
-  return Array.from({ length: 12 }, (_, k) => {
-    const clave = new Date(Date.UTC(anio, mes - 1 - (11 - k), 1)).toISOString().slice(0, 7);
-    return { mes: `${clave}-01`, cantidad: porMes.get(clave) ?? 0 };
-  });
-}
-
-function mesActualArgentina(): string {
-  const anioMes = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Argentina/Buenos_Aires",
-    year: "numeric",
-    month: "2-digit",
-  }).format(new Date());
-  return `${anioMes}-01`;
-}
+const TEXTOS_AGRUPACION: Record<
+  Agrupacion,
+  { titulo: string; unidad: string; columna: string; cadaPunto: string }
+> = {
+  dia: { titulo: "Postulaciones por día", unidad: "día", columna: "Día", cadaPunto: "un punto por día" },
+  semana: {
+    titulo: "Postulaciones por semana",
+    unidad: "semana",
+    columna: "Semana",
+    cadaPunto: "un punto por semana, de lunes a domingo",
+  },
+  mes: { titulo: "Postulaciones por mes", unidad: "mes", columna: "Mes", cadaPunto: "un punto por mes" },
+};
 
 function capitalizar(texto: string): string {
   return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
-/** "Octubre" de "2026-10-01". */
-function nombreMes(mes: string): string {
-  return capitalizar(formatMesAnio(mes).split(" de ")[0]);
+/** "2026-10-25": la fecha de un momento en Argentina. */
+function fechaArgentina(momento: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(
+    momento,
+  );
 }
 
-function PostulacionesPorMes({ meses, error }: { meses: PostulacionesMes[]; error: boolean }) {
-  const datos = completarMeses(meses);
-  const total = datos.reduce((s, m) => s + m.cantidad, 0);
-  // El más reciente gana los empates.
-  const mayor = datos.reduce((a, b) => (b.cantidad >= a.cantidad ? b : a), datos[0]);
-  const desde = formatMesAnio(datos[0].mes);
-  const hasta = formatMesAnio(datos[datos.length - 1].mes);
+function sumarDias(fecha: string, dias: number): string {
+  const [anio, mes, dia] = fecha.split("-").map(Number);
+  return new Date(Date.UTC(anio, mes - 1, dia + dias)).toISOString().slice(0, 10);
+}
+
+/** "12 de octubre de 2026" (o sin el año). */
+function textoDia(fecha: string, conAnio = true): string {
+  const p = partesFechaSinHora(fecha);
+  if (!p) return "—";
+  return conAnio ? `${p.dia} de ${p.mes} de ${p.anio}` : `${p.dia} de ${p.mes}`;
+}
+
+/** "del 6 al 12 de octubre de 2026", "del 29 de septiembre al 5 de octubre de 2026". */
+function textoRango(desde: string, hasta: string, conAnio = true): string {
+  const a = partesFechaSinHora(desde);
+  const b = partesFechaSinHora(hasta);
+  if (!a || !b) return "—";
+  if (desde === hasta) return `del ${textoDia(hasta, conAnio)}`;
+  const final = textoDia(hasta, conAnio);
+  if (a.anio !== b.anio) return `del ${textoDia(desde, true)} al ${textoDia(hasta, true)}`;
+  if (a.mes !== b.mes) return `del ${a.dia} de ${a.mes} al ${final}`;
+  return `del ${a.dia} al ${final}`;
+}
+
+/** "Marzo", o "Marzo de 2026" si el gráfico abarca más de un año. */
+function textoMes(mes: string, variosAnios: boolean): string {
+  const texto = formatMesAnio(mes);
+  return capitalizar(variosAnios ? texto : texto.split(" de ")[0]);
+}
+
+/** Un punto del gráfico con los días que abarca de verdad. */
+type PuntoConRango = PuntoArea & { desde: string; hasta: string };
+
+/**
+ * Las filas de postulaciones_por_periodo con sus textos. La primera y la
+ * última semana pueden quedar cortadas por el período: su rango va del
+ * primer día contado al último (hoy).
+ */
+function puntosDelGrafico(
+  filas: PostulacionesPeriodo[],
+  agrupacion: Agrupacion,
+  periodo: Periodo,
+): PuntoConRango[] {
+  const hoy = fechaArgentina(new Date());
+  const inicioPeriodo = desdePeriodo(periodo);
+  const primerDia = inicioPeriodo ? fechaArgentina(new Date(inicioPeriodo)) : undefined;
+
+  return filas.map((f) => {
+    const inicio = f.inicio.slice(0, 10);
+    const cantidad = Number(f.cantidad);
+
+    if (agrupacion === "dia") {
+      const p = partesFechaSinHora(inicio);
+      return {
+        clave: inicio,
+        cantidad,
+        eje: formatDiaMesCorto(inicio),
+        detalle: p ? `${capitalizar(p.diaSemana)} ${textoDia(inicio)}` : "—",
+        desde: inicio,
+        hasta: inicio,
+      };
+    }
+
+    if (agrupacion === "semana") {
+      const desde = primerDia && primerDia > inicio ? primerDia : inicio;
+      const domingo = sumarDias(inicio, 6);
+      const hasta = domingo > hoy ? hoy : domingo;
+      return {
+        clave: inicio,
+        cantidad,
+        eje: formatDiaMesCorto(desde),
+        detalle: capitalizar(textoRango(desde, hasta)),
+        desde,
+        hasta,
+      };
+    }
+
+    // El año ("ene 26") lo agrega GraficoArea a las etiquetas que muestra.
+    return {
+      clave: inicio,
+      cantidad,
+      eje: formatMesCorto(inicio),
+      detalle: capitalizar(formatMesAnio(inicio)),
+      desde: inicio,
+      hasta: inicio,
+    };
+  });
+}
+
+/** "Del 25 de septiembre al 25 de octubre de 2026", "De enero a octubre de 2026". */
+function textoAlcance(datos: PuntoConRango[], agrupacion: Agrupacion): string | undefined {
+  const primero = datos[0];
+  const ultimo = datos.at(-1);
+  if (!primero || !ultimo) return undefined;
+  if (agrupacion !== "mes") return capitalizar(textoRango(primero.desde, ultimo.hasta));
+  if (primero.clave === ultimo.clave) return `En ${formatMesAnio(ultimo.clave)}`;
+  const mismoAnio = primero.clave.slice(0, 4) === ultimo.clave.slice(0, 4);
+  return `De ${textoMes(primero.clave, !mismoAnio).toLowerCase()} a ${formatMesAnio(ultimo.clave)}`;
+}
+
+/** "Del 25 de septiembre al 25 de octubre de 2026": del primer día contado a hoy. */
+function textoRangoCompleto(datos: PuntoConRango[]): string | undefined {
+  const primero = datos[0];
+  if (!primero) return undefined;
+  return capitalizar(textoRango(primero.desde, fechaArgentina(new Date())));
+}
+
+function conclusionArea(
+  mayor: PuntoConRango,
+  agrupacion: Agrupacion,
+  variosAnios: boolean,
+): string {
+  const cantidad = formatNumero(mayor.cantidad);
+  switch (agrupacion) {
+    case "dia":
+      return `El ${textoDia(mayor.clave, variosAnios)} fue el día con más postulaciones: ${cantidad}`;
+    case "semana":
+      return `La semana ${textoRango(mayor.desde, mayor.hasta, variosAnios)} fue la de más postulaciones: ${cantidad}`;
+    case "mes":
+      return `${textoMes(mayor.clave, variosAnios)} fue el mes con más postulaciones: ${cantidad}`;
+  }
+}
+
+function PostulacionesEnElTiempo({
+  filas,
+  agrupacion,
+  periodo,
+  error,
+}: {
+  filas: PostulacionesPeriodo[];
+  agrupacion: Agrupacion;
+  periodo: Periodo;
+  error: boolean;
+}) {
+  const textos = TEXTOS_AGRUPACION[agrupacion];
+  const datos = puntosDelGrafico(filas, agrupacion, periodo);
+  // Cuenta lo mismo que postulaciones_nuevas: coincide con la tarjeta "Postulaciones nuevas".
+  const total = datos.reduce((s, p) => s + p.cantidad, 0);
   const conDatos = !error && total > 0;
+  const alcance = textoAlcance(datos, agrupacion);
+  const variosAnios = new Set(datos.map((p) => p.clave.slice(0, 4))).size > 1;
+  // El más reciente gana los empates.
+  const mayor = conDatos
+    ? datos.reduce((a, b) => (b.cantidad >= a.cantidad ? b : a), datos[0])
+    : undefined;
+  const conclusion = mayor ? conclusionArea(mayor, agrupacion, variosAnios) : undefined;
 
   return (
     <TarjetaGrafico
-      titulo="Postulaciones por mes"
-      descripcion={`Últimos 12 meses, de ${desde} a ${hasta}. No depende del período elegido.`}
-      destacado={error ? undefined : { valor: formatNumero(total), etiqueta: "en los 12 meses" }}
-      conclusion={
-        conDatos
-          ? `${nombreMes(mayor.mes)} fue el mes con más postulaciones: ${formatNumero(mayor.cantidad)}`
-          : undefined
-      }
+      titulo={textos.titulo}
+      descripcion={alcance ? `${alcance}, ${textos.cadaPunto}.` : undefined}
+      destacado={error ? undefined : { valor: formatNumero(total), etiqueta: "en el período" }}
+      conclusion={conclusion}
       iconoConclusion={TrendingUp}
       tabla={
         conDatos
           ? {
-              titulo: "Postulaciones por mes, últimos 12 meses",
-              columnas: ["Mes", "Postulaciones"],
-              filas: datos.map((m) => ({
-                clave: m.mes,
-                celdas: [capitalizar(formatMesAnio(m.mes)), formatNumero(m.cantidad)],
+              titulo: `${textos.titulo}. ${alcance}.`,
+              columnas: [textos.columna, "Postulaciones"],
+              filas: datos.map((p) => ({
+                clave: p.clave,
+                celdas: [p.detalle, formatNumero(p.cantidad)],
               })),
             }
           : undefined
@@ -241,14 +381,14 @@ function PostulacionesPorMes({ meses, error }: { meses: PostulacionesMes[]; erro
       {error ? (
         <ErrorGrafico />
       ) : total === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No hubo postulaciones en los últimos 12 meses.
-        </p>
+        <p className="text-sm text-muted-foreground">No hubo postulaciones en el período.</p>
       ) : (
         <GraficoArea
           datos={datos}
+          agrupacion={agrupacion}
+          rango={textoRangoCompleto(datos)}
           serie="Postulaciones"
-          resumen={`Gráfico de área de las postulaciones por mes, de ${desde} a ${hasta}. Total: ${formatNumero(total)}. El mes con más postulaciones fue ${formatMesAnio(mayor.mes)}, con ${formatNumero(mayor.cantidad)}.`}
+          resumen={`Gráfico de área de las postulaciones por ${textos.unidad}. ${alcance}. Total: ${formatNumero(total)}. ${conclusion}.`}
         />
       )}
     </TarjetaGrafico>

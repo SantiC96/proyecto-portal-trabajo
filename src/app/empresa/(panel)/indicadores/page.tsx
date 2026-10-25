@@ -6,6 +6,7 @@ import { requerirEmpresaPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { obtenerIndicadoresEmpresa } from "@/lib/empresa/indicadores";
 import { leerPeriodo, type Periodo } from "@/lib/indicadores-periodo";
+import { indicadoresDeEjemplo } from "@/lib/indicadores-ejemplo";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 import {
   ESTADO_OFERTA_EMPRESA_LABEL,
@@ -311,6 +312,7 @@ function textoVence(o: FilaIndicadoresPorOfertaEmpresa): string {
 }
 
 function PorOferta({ ofertas }: { ofertas: FilaIndicadoresPorOfertaEmpresa[] }) {
+  const enlazar = !indicadoresDeEjemplo();
   const maximo = Math.max(1, ...ofertas.map((o) => Math.max(o.derivados, o.entrevistas, o.seleccionados)));
   const conMasDerivados = ofertas.reduce<FilaIndicadoresPorOfertaEmpresa | undefined>(
     (a, b) => (b.derivados > 0 && (!a || b.derivados > a.derivados) ? b : a),
@@ -364,7 +366,7 @@ function PorOferta({ ofertas }: { ofertas: FilaIndicadoresPorOfertaEmpresa[] }) 
         <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {ofertas.map((o) => (
             <li key={o.oferta_id}>
-              <TarjetaPorOferta oferta={o} maximo={maximo} />
+              <TarjetaPorOferta oferta={o} maximo={maximo} enlazar={enlazar} />
             </li>
           ))}
         </ul>
@@ -376,9 +378,12 @@ function PorOferta({ ofertas }: { ofertas: FilaIndicadoresPorOfertaEmpresa[] }) 
 function TarjetaPorOferta({
   oferta: o,
   maximo,
+  enlazar,
 }: {
   oferta: FilaIndicadoresPorOfertaEmpresa;
   maximo: number;
+  /** Las ofertas de ejemplo no existen: su título no lleva link. */
+  enlazar: boolean;
 }) {
   const estado = estadoVisible(o);
   const porcentaje = o.vacantes ? (o.cubiertas * 100) / o.vacantes : 0;
@@ -387,12 +392,16 @@ function TarjetaPorOferta({
     <article className="flex h-full flex-col gap-4 rounded-[var(--radius-lg)] border border-border bg-surface p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <h3 className="min-w-0 flex-1 basis-40 text-base leading-snug font-bold break-words">
-          <Link
-            href={`/empresa/ofertas/${o.oferta_id}`}
-            className="rounded-[var(--radius-sm)] text-heading no-underline outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
-          >
-            {o.titulo}
-          </Link>
+          {enlazar ? (
+            <Link
+              href={`/empresa/ofertas/${o.oferta_id}`}
+              className="rounded-[var(--radius-sm)] text-heading no-underline outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+            >
+              {o.titulo}
+            </Link>
+          ) : (
+            <span className="text-heading">{o.titulo}</span>
+          )}
         </h3>
         <Badge tono={ESTADO_OFERTA_EMPRESA_TONO[estado]} estado>
           {ESTADO_OFERTA_EMPRESA_LABEL[estado]}
