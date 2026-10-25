@@ -1,12 +1,29 @@
 import Link from "next/link";
-import { Briefcase, CheckCircle2, ChevronRight, Circle, Mail, Search } from "lucide-react";
+import {
+  BadgeCheck,
+  Briefcase,
+  CheckCircle2,
+  ChevronRight,
+  Circle,
+  CircleX,
+  Mail,
+  Search,
+  Send,
+  Undo2,
+  type LucideIcon,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import { logError } from "@/lib/logger";
 import { formatFechaHora, formatFechaRelativa } from "@/lib/fechas";
 import {
   AVISO_OFERTA_RETIRADA,
+  ETIQUETA_FILTRO,
+  INDICADOR_FILTRO,
   TEXTO_NO_SELECCIONADO,
   TEXTO_SELECCIONADO,
   badgePostulacion,
+  cantidadConEstado,
+  type FiltroMisPostulaciones,
 } from "@/lib/mis-postulaciones";
 import { hrefSeccionPerfil, SECCION_PERFIL } from "@/lib/perfil-secciones";
 import { textoInvitacionReciente } from "@/lib/invitaciones";
@@ -20,10 +37,11 @@ import {
 } from "@/lib/postulante/panel";
 import { formatNumero } from "@/components/indicadores/formato";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { Badge, type TonoBadge } from "@/components/ui/badge";
+import { Badge, claseTextoTono, type TonoBadge } from "@/components/ui/badge";
 import { BarraProgreso } from "@/components/ui/barra-progreso";
 import { TarjetaOferta } from "@/components/ofertas/tarjeta-oferta";
 import { BadgeCoincidencia } from "@/components/ofertas/coincidencia";
+import { CLASE_GRILLA_INDICADORES, claseCuadroIndicador } from "./esqueletos";
 
 // Bloques de /panel. Cada uno carga sus datos dentro de su propio Suspense y,
 // si falla, muestra su error sin afectar a los demás (docs/decisiones/029).
@@ -81,7 +99,17 @@ export function AccionesPanel() {
 
 // ── Indicadores ────────────────────────────────────────────────────────────
 
-type Indicador = { etiqueta: string; valor: number; tono: TonoBadge; href: string };
+type Indicador = { filtro: FiltroMisPostulaciones; tono: TonoBadge; icono: LucideIcon };
+
+// El tono es el del badge de cada estado (badgePostulacion). La grilla y el
+// esqueleto (esqueletos.tsx) están pensados para estos cinco cuadros.
+const INDICADORES: Indicador[] = [
+  { filtro: "en-revision", tono: "info", icono: Search },
+  { filtro: "derivadas", tono: "teal", icono: Send },
+  { filtro: "seleccionadas", tono: "success", icono: BadgeCheck },
+  { filtro: "no-seleccionadas", tono: "neutral", icono: CircleX },
+  { filtro: "retiradas", tono: "neutral", icono: Undo2 },
+];
 
 export async function BloqueIndicadores() {
   const { data: i, error } = await obtenerIndicadoresPostulante();
@@ -101,44 +129,44 @@ export async function BloqueIndicadores() {
     );
   }
 
-  // Mis postulaciones no tiene filtros ni pestañas: todos llevan al listado.
-  // El tono es el del badge de cada estado (badgePostulacion); "Activas" usa
-  // el verde, como en el inicio.
-  const indicadores: Indicador[] = [
-    { etiqueta: "Activas", valor: i.postulaciones_activas, tono: "success", href: MIS_POSTULACIONES },
-    { etiqueta: "En revisión", valor: i.en_revision, tono: "info", href: MIS_POSTULACIONES },
-    {
-      etiqueta: "Enviadas a la empresa",
-      valor: i.derivadas_sin_resultado,
-      tono: "teal",
-      href: MIS_POSTULACIONES,
-    },
-    { etiqueta: "Seleccionadas", valor: i.contratadas, tono: "success", href: MIS_POSTULACIONES },
-    { etiqueta: "No seleccionadas", valor: i.no_seleccionadas, tono: "neutral", href: MIS_POSTULACIONES },
-    { etiqueta: "Retiradas", valor: i.retiradas, tono: "neutral", href: MIS_POSTULACIONES },
-  ];
-
+  // Cada cuadro lleva a Mis postulaciones filtrada por su estado, con los
+  // mismos criterios que este número (CRITERIO_FILTRO).
   return (
     <section aria-labelledby="panel-indicadores" className="@container">
       <h2 id="panel-indicadores" className="sr-only">
         Tus postulaciones
       </h2>
-      <ul className="grid grid-cols-2 gap-4 @2xl:grid-cols-3 @6xl:grid-cols-6">
-        {indicadores.map((ind) => (
-          <li key={ind.etiqueta}>
-            <Link
-              href={ind.href}
-              className="tarjeta tarjeta-clickeable flex h-full flex-col gap-2.5 p-5 outline-none focus-visible:shadow-[var(--sombra-foco)]"
-            >
-              <Badge tono={ind.tono} estado>
-                {ind.etiqueta}
-              </Badge>
-              <span className="text-[36px] leading-none font-extrabold text-heading">
-                {formatNumero(ind.valor)}
-              </span>
-            </Link>
-          </li>
-        ))}
+      <ul className={CLASE_GRILLA_INDICADORES}>
+        {INDICADORES.map(({ filtro, tono, icono: Icono }, indice) => {
+          const valor = Number(i[INDICADOR_FILTRO[filtro]]);
+          return (
+            <li key={filtro} className={claseCuadroIndicador(indice)}>
+              <Link
+                href={`${MIS_POSTULACIONES}?estado=${filtro}`}
+                aria-label={`${cantidadConEstado(filtro, valor)}. Ver lista`}
+                className="tarjeta tarjeta-clickeable flex h-full flex-col gap-2.5 p-5 outline-none focus-visible:shadow-[var(--sombra-foco)]"
+              >
+                <Badge tono={tono} estado>
+                  {ETIQUETA_FILTRO[filtro]}
+                </Badge>
+                {/* El ícono a la izquierda del número; arriba si el cuadro es angosto. */}
+                <div className="@container">
+                  <div className="flex flex-col items-start gap-2.5 @[7.5rem]:flex-row @[7.5rem]:items-center @[7.5rem]:gap-3">
+                    <span
+                      aria-hidden="true"
+                      className="grid size-10 shrink-0 place-items-center rounded-[var(--radius-md)] bg-secondary"
+                    >
+                      <Icono className={cn("size-5", claseTextoTono(tono))} />
+                    </span>
+                    <span className="text-[36px] leading-none font-extrabold text-heading">
+                      {formatNumero(valor)}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
