@@ -1275,9 +1275,42 @@ Las métricas no deben convertirse en grandes cards sin contexto
 ## Tarjetas de indicadores (panel del postulante)
 
 Cada tarjeta es un link (`.tarjeta-clickeable`, padding 20, gap 10): el
-`Badge` del estado como etiqueta (con su tono) y el número debajo (36 px
-800, interlineado 1, `heading`). 2 columnas en celular, 3 en tablet y una
-fila en pantallas anchas. Al pasar el mouse se eleva.
+`Badge` del estado como etiqueta (con su tono) y, debajo, el ícono del
+estado a la izquierda del número (36 px 800, interlineado 1, `heading`).
+Son cinco y la grilla no deja huecos: en celular, 2 por fila y el último a
+todo el ancho; desde 672 px de ancho disponible, 3 arriba y 2 abajo (grilla
+de 6 columnas: cada cuadro de arriba ocupa 2 y cada uno de abajo, 3); desde
+1024 px, los cinco en una fila. No hay cuadro de "Activas": repetía la suma
+de En revisión y Enviadas a la empresa. Al pasar el mouse se eleva (sin movimiento con movimiento reducido); el foco, con
+`sombra-foco`.
+
+-   ícono de lucide de 20 px en un cuadrado de 40 px, radio 10
+    (`radius-md`), fondo `secondary` (`#EEF1EF`), en el color de texto del
+    tono de su badge (`claseTextoTono`), `aria-hidden`: En revisión
+    `Search` (`info`), Enviadas a la empresa `Send` (`teal`), Seleccionadas `BadgeCheck` (`success`), No
+    seleccionadas `CircleX` (`neutral`) y Retiradas `Undo2` (`neutral`);
+-   si el contenido del cuadro mide menos de 7,5 rem (cuadros angostos,
+    celulares de 320 px), el ícono va arriba del número (container query);
+-   cada tarjeta lleva a Mis postulaciones filtrada por su estado
+    (`/mis-postulaciones?estado=en-revision`, `derivadas`,
+    `seleccionadas`, `no-seleccionadas`, `retiradas`), con el nombre
+    accesible "3 postulaciones en revisión. Ver lista".
+
+## Filtro por estado (Mis postulaciones)
+
+`GrupoPastillas` "Estado" con `unaLinea` (`FilaDesplazable`: una sola
+fila con scroll horizontal y flechas "Ver estados anteriores" / "Ver más
+estados"), arriba de la lista y debajo de la leyenda de estados:
+`PastillaFiltro` "Todas" y una por cada estado de las tarjetas del panel
+(no hay pastilla "Activas"), con las mismas etiquetas y su cantidad al
+lado (700, números tabulares). Las cantidades de cada estado son las de `indicadores_postulante()` y los
+criterios de la lista filtrada son los mismos (`CRITERIO_FILTRO`,
+`src/lib/mis-postulaciones.ts`). Cambiar de filtro vuelve a la página 1;
+la paginación y "Mostrando X de N" son los de la lista filtrada. Un
+`?estado=` no válido (por ejemplo, `activas` de un link viejo) muestra
+todas. Un filtro sin resultados muestra `EstadoVacio` `sin-resultados` con un texto por
+estado ("No tenés postulaciones retiradas.") y "Ver todas". Los cambios de
+filtro no cuentan como pantallas distintas para "Volver".
 
 ## Barra de progreso
 
@@ -1320,8 +1353,8 @@ de la empresa, en 2 columnas (1 en el celular).
 `EncabezadoPagina` "Hola, [razón social]" con "Mis ofertas" (neutro) y
 "Publicar oferta" (primario). Si hay ofertas vencidas o por vencer, una
 `Franja` de aviso con el link a Mis ofertas. Los indicadores de ofertas
-usan las mismas tarjetas que el panel del postulante (badge del estado y
-número de 36 px 800; 2 columnas en el celular, 3 en tablet y 5 en
+usan las mismas tarjetas que el panel del postulante, sin ícono (badge
+del estado y número de 36 px 800; 2 columnas en el celular, 3 en tablet y 5 en
 pantallas anchas). "Candidatos por contactar": una tarjeta con una fila por
 candidato (iniciales, nombre de 16 px 700, "[oferta] · derivado el
 [fecha]", badge y "Ver candidato" neutro, a todo el ancho en el celular).

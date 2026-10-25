@@ -6,7 +6,26 @@ import { Briefcase, Search } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { obtenerPostulanteActual, requerirRolPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
-import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
+import {
+  consultarPagina,
+  hrefConParams,
+  leerPagina,
+  type ErrorConsulta,
+  type ParamsUrl,
+} from "@/lib/paginacion";
+import {
+  CRITERIO_FILTRO,
+  ETIQUETA_FILTRO,
+  FILTROS_MIS_POSTULACIONES,
+  INDICADOR_FILTRO,
+  VACIO_FILTRO,
+  leerFiltroMisPostulaciones,
+  type FiltroMisPostulaciones,
+} from "@/lib/mis-postulaciones";
+import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
+import { obtenerIndicadoresPostulante } from "@/lib/postulante/panel";
+import { formatNumero } from "@/components/indicadores/formato";
+import { GrupoPastillas, PastillaFiltro } from "@/components/ui/pastilla-filtro";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
@@ -32,23 +51,89 @@ export const metadata: Metadata = {
 
 const RUTA = "/mis-postulaciones";
 
+type ClienteSupabase = Awaited<ReturnType<typeof createSupabaseServerClient>>;
+
+/**
+ * Ids de las postulaciones 'derivada' del postulante cuyo resultado de la
+ * empresa cumple `condicion`. El postulante no lee derivaciones (RLS): el
+ * resultado sale de estado_derivacion_postulante (028), sin fila si todavía
+ * no hay derivación.
+ */
+async function derivadasQueCumplen(
+  supabase: ClienteSupabase,
+  postulanteId: string,
+  condicion: (estadoEmpresa: EstadoDerivacionEmpresa | null) => boolean,
+): Promise<{ ok: true; ids: string[] } | { ok: false; error: ErrorConsulta }> {
+  const { data, error } = await supabase
+    .from("postulaciones")
+    .select("id")
+    .eq("postulante_id", postulanteId)
+    .eq("estado", "derivada");
+  if (error) return { ok: false, error };
+
+  const filas = data ?? [];
+  const estados = await Promise.all(
+    filas.map((f) => supabase.rpc("estado_derivacion_postulante", { p_postulacion_id: f.id })),
+  );
+  const fallida = estados.find((r) => r.error);
+  if (fallida?.error) return { ok: false, error: fallida.error };
+
+  return {
+    ok: true,
+    ids: filas
+      .filter((_, i) => condicion(estados[i].data?.[0]?.estado_empresa ?? null))
+      .map((f) => f.id),
+  };
+}
+
 // LEFT JOIN a ofertas: las ofertas cerradas no son visibles al postulante vía RLS
 // (no se puede agregar política porque migration_014 las reserva).
 // La UI muestra "Oferta no disponible" cuando oferta es null.
-async function consultarMisPostulaciones(postulanteId: string, pagina: number) {
+// El filtro va en la consulta, antes del rango: el total y la paginación son
+// los de la lista filtrada.
+async function consultarMisPostulaciones(
+  postulanteId: string,
+  pagina: number,
+  filtro: FiltroMisPostulaciones | null,
+) {
   const supabase = await createSupabaseServerClient();
-  return consultarPagina(pagina, (desde, hasta) =>
-    supabase
+  const criterio = filtro ? CRITERIO_FILTRO[filtro] : null;
+
+  let idsDerivadas: string[] | null = null;
+  if (criterio?.derivadaCon) {
+    const derivadas = await derivadasQueCumplen(supabase, postulanteId, criterio.derivadaCon);
+    if (!derivadas.ok) return derivadas;
+    idsDerivadas = derivadas.ids;
+  }
+
+  return consultarPagina(pagina, (desde, hasta) => {
+    let consulta = supabase
       .from("postulaciones")
       .select(
         "id, estado, created_at, retirada_en, ofertas(id, titulo, empresa_nombre, estado, vence_en, contenido_editado_en)",
         { count: "exact" }
       )
-      .eq("postulante_id", postulanteId)
+      .eq("postulante_id", postulanteId);
+
+    if (criterio) {
+      const { estados } = criterio;
+      if (idsDerivadas === null) {
+        consulta = consulta.in("estado", estados);
+      } else if (estados.length === 0 || idsDerivadas.length === 0) {
+        // Una lista vacía (in.()) no devuelve filas.
+        consulta = estados.length === 0
+          ? consulta.in("id", idsDerivadas)
+          : consulta.in("estado", estados);
+      } else {
+        consulta = consulta.or(`estado.in.(${estados.join(",")}),id.in.(${idsDerivadas.join(",")})`);
+      }
+    }
+
+    return consulta
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
-      .range(desde, hasta)
-  );
+      .range(desde, hasta);
+  });
 }
 
 type ResultadoMisPostulaciones = ReturnType<typeof consultarMisPostulaciones>;
@@ -56,16 +141,18 @@ type ResultadoMisPostulaciones = ReturnType<typeof consultarMisPostulaciones>;
 export default async function MisPostulacionesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ pagina?: string }>;
+  searchParams: Promise<{ pagina?: string; estado?: string }>;
 }) {
   const sp = await searchParams;
   const pagina = leerPagina(sp.pagina);
+  const filtro = leerFiltroMisPostulaciones(sp.estado);
   await requerirRolPagina("postulante");
   const postulante = await obtenerPostulanteActual();
   if (!postulante) redirect("/");
 
   // Una sola consulta para la bajada del encabezado y el listado.
-  const resultado = consultarMisPostulaciones(postulante.id, pagina);
+  const resultado = consultarMisPostulaciones(postulante.id, pagina, filtro);
+  const clave = `${filtro ?? "todas"}-${pagina}`;
 
   return (
     <section className="flex flex-col gap-6">
@@ -75,7 +162,7 @@ export default async function MisPostulacionesPage({
         titulo="Mis postulaciones"
         bajada={
           <Suspense
-            key={pagina}
+            key={clave}
             fallback={<span className="inline-block h-4 w-72 max-w-full rounded bg-secondary-hover" />}
           >
             <BajadaMisPostulaciones resultado={resultado} />
@@ -95,15 +182,104 @@ export default async function MisPostulacionesPage({
 
       <LeyendaEstados />
 
-      <Suspense key={pagina} fallback={<EsqueletoLista filas={3} />}>
+      <Suspense fallback={<FiltroEstados filtro={filtro} searchParams={sp} />}>
+        <FiltroEstadosConCantidades
+          postulanteId={postulante.id}
+          filtro={filtro}
+          searchParams={sp}
+        />
+      </Suspense>
+
+      <Suspense key={clave} fallback={<EsqueletoLista filas={3} />}>
         <ListadoMisPostulaciones
           postulanteId={postulante.id}
           resultado={resultado}
+          filtro={filtro}
           searchParams={sp}
         />
       </Suspense>
     </section>
   );
+}
+
+type Cantidades = Record<FiltroMisPostulaciones | "todas", number>;
+
+/**
+ * Pastillas "Todas" y una por estado. Cambiar de filtro vuelve a la página 1.
+ * Sin `cantidades` (mientras cargan o si fallan) van sin número.
+ */
+function FiltroEstados({
+  filtro,
+  searchParams,
+  cantidades,
+}: {
+  filtro: FiltroMisPostulaciones | null;
+  searchParams: ParamsUrl;
+  cantidades?: Cantidades;
+}) {
+  const opciones: { valor: FiltroMisPostulaciones | null; etiqueta: string; cantidad?: number }[] = [
+    { valor: null, etiqueta: "Todas", cantidad: cantidades?.todas },
+    ...FILTROS_MIS_POSTULACIONES.map((f) => ({
+      valor: f,
+      etiqueta: ETIQUETA_FILTRO[f],
+      cantidad: cantidades?.[f],
+    })),
+  ];
+
+  return (
+    <GrupoPastillas
+      id="filtro-estado"
+      titulo="Estado"
+      unaLinea={{ textoAnteriores: "Ver estados anteriores", textoSiguientes: "Ver más estados" }}
+    >
+      {opciones.map((o) => (
+        <PastillaFiltro
+          key={o.valor ?? "todas"}
+          href={hrefConParams(RUTA, searchParams, { estado: o.valor, pagina: null })}
+          activa={o.valor === filtro}
+        >
+          {o.etiqueta}
+          {o.cantidad !== undefined && (
+            <span className="ml-1.5 font-bold tabular-nums">{formatNumero(o.cantidad)}</span>
+          )}
+        </PastillaFiltro>
+      ))}
+    </GrupoPastillas>
+  );
+}
+
+/**
+ * Las cantidades de cada estado salen de indicadores_postulante(), los mismos
+ * números del panel; "Todas", del total de postulaciones.
+ */
+async function FiltroEstadosConCantidades({
+  postulanteId,
+  filtro,
+  searchParams,
+}: {
+  postulanteId: string;
+  filtro: FiltroMisPostulaciones | null;
+  searchParams: ParamsUrl;
+}) {
+  const supabase = await createSupabaseServerClient();
+  const [indicadores, total] = await Promise.all([
+    obtenerIndicadoresPostulante(),
+    supabase
+      .from("postulaciones")
+      .select("id", { count: "exact", head: true })
+      .eq("postulante_id", postulanteId),
+  ]);
+
+  const i = indicadores.data;
+  if (!i || total.error || total.count === null) {
+    logError("mis_postulaciones_cantidades", indicadores.error ?? total.error);
+    return <FiltroEstados filtro={filtro} searchParams={searchParams} />;
+  }
+
+  const cantidades = { todas: total.count } as Cantidades;
+  for (const f of FILTROS_MIS_POSTULACIONES) cantidades[f] = Number(i[INDICADOR_FILTRO[f]]);
+
+  return <FiltroEstados filtro={filtro} searchParams={searchParams} cantidades={cantidades} />;
 }
 
 async function BajadaMisPostulaciones({ resultado }: { resultado: ResultadoMisPostulaciones }) {
@@ -120,10 +296,12 @@ async function BajadaMisPostulaciones({ resultado }: { resultado: ResultadoMisPo
 async function ListadoMisPostulaciones({
   postulanteId,
   resultado: consulta,
+  filtro,
   searchParams,
 }: {
   postulanteId: string;
   resultado: ResultadoMisPostulaciones;
+  filtro: FiltroMisPostulaciones | null;
   searchParams: ParamsUrl;
 }) {
   const [supabase, resultado] = await Promise.all([createSupabaseServerClient(), consulta]);
@@ -139,6 +317,18 @@ async function ListadoMisPostulaciones({
   }
 
   const rawList = resultado.filas;
+
+  if (rawList.length === 0 && filtro) {
+    return (
+      <EstadoVacio
+        tipo="sin-resultados"
+        titulo={VACIO_FILTRO[filtro]}
+        descripcion="Elegí otro estado para ver el resto de tus postulaciones."
+        hrefLimpiar={hrefConParams(RUTA, searchParams, { estado: null, pagina: null })}
+        textoLimpiar="Ver todas"
+      />
+    );
+  }
 
   if (rawList.length === 0) {
     return (
