@@ -1411,9 +1411,11 @@ preferencia).
     contra el blanco: por eso cada parte lleva su nombre y su número en la
     leyenda, y está la tabla de "Ver datos".
 -   **Área** (`GraficoArea`): una serie en el tiempo. Degradé `primary`
-    de .35 a 0, línea de 2 px, curva suave, grilla horizontal tenue, eje X
-    con el mes abreviado y sin eje Y; el tooltip muestra el mes completo y
-    el valor.
+    de .35 a 0, línea de 2 px, curva suave, grilla horizontal tenue, eje Y
+    con valores redondos y eje X con fechas ("12 oct", "oct", "ene 26") en
+    13 px `muted`, cada una con una marca corta hacia su punto, siempre la
+    primera y la última; debajo, a la derecha, el rango del período en
+    12 px `muted`. El tooltip muestra la fecha completa y el valor.
 -   **Dona** (`GraficoDona`): partes de un mismo total, **hasta seis**.
     200 px, con el total (32 px 800) y la unidad (13 px `muted`) en el
     centro, 2 px de separación blanca entre partes y la leyenda al costado
