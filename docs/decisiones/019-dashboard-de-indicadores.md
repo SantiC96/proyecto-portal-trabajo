@@ -70,7 +70,7 @@ Ningún número es estático: la página es dinámica y llama a las funciones en
 
 **Gráficos**
 
-- **Postulaciones por mes:** los últimos 12 meses (incluido el actual, que puede estar incompleto) en hora de Argentina. Los meses sin postulaciones aparecen en 0 (`generate_series` + `LEFT JOIN`). No depende del período elegido.
+- **Postulaciones por mes:** los últimos 12 meses (incluido el actual, que puede estar incompleto) en hora de Argentina. Los meses sin postulaciones aparecen en 0 (`generate_series` + `LEFT JOIN`). No depende del período elegido. *Desde la migración 061 la pantalla usa `postulaciones_por_periodo`, que sigue al período (decisión [032](032-graficos-de-indicadores.md), punto 6); esta función queda sin uso.*
 - **Postulaciones por rubro:** la categoría de la oferta (`oferta_categorias`). Una oferta puede tener varias categorías y la postulación cuenta en cada una, así que **la suma puede superar** las postulaciones nuevas del período. Las ofertas sin categoría cuentan como "Sin rubro". Se muestran los 8 primeros (`p_limite`, entre 1 y 20) y el resto se suma en "Otros rubros". Empates: por nombre.
 
 ### 3. Índices

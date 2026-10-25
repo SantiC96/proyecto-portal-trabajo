@@ -2,12 +2,22 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { desdePeriodo, type Periodo } from "@/lib/indicadores-periodo";
+import { indicadoresDeEjemplo, indicadoresEmpresaDeEjemplo } from "@/lib/indicadores-ejemplo";
 import type { FilaIndicadoresEmpresa, FilaIndicadoresPorOfertaEmpresa } from "@/types/db";
 
 // Los cálculos viven en la base (migration_049, docs/decisiones/021). La
 // empresa sale de la sesión dentro de cada función: acá no se pasa ningún id.
 
 export async function obtenerIndicadoresEmpresa(periodo: Periodo) {
+  // Modo de ejemplo (decisión 032, punto 5): no se consulta la base.
+  if (indicadoresDeEjemplo()) {
+    const ejemplo = indicadoresEmpresaDeEjemplo(periodo);
+    return {
+      indicadores: { data: ejemplo.indicadores, error: null },
+      porOferta: { data: ejemplo.porOferta, error: null },
+    };
+  }
+
   const supabase = await createSupabaseServerClient();
   const desde = desdePeriodo(periodo);
 

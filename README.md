@@ -79,7 +79,14 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 
 - Postulantes, ofertas vigentes y empresas por estado.
 - Postulaciones, derivaciones, contrataciones y cursos del período elegido.
-- Tasa de contratación, días promedio hasta la derivación y gráficos por mes y por rubro.
+- Tasa de contratación, días promedio hasta la derivación, postulaciones por día, semana o mes según el período y gráfico por rubro.
+
+### Datos de ejemplo en los indicadores
+
+Para presentaciones, la variable de entorno de servidor `INDICADORES_DE_EJEMPLO=true` hace que las pantallas de indicadores de la oficina y de la empresa muestren datos ficticios de un año de uso. **La pantalla no muestra ninguna marca de que son datos de ejemplo**: se ve igual que con los datos reales, así que hay que apagar el modo después de cada presentación. No escribe en la base ni manda correos, y el resto del portal sigue con los datos reales. Sin la variable, o con otro valor, todo funciona como siempre.
+
+- **Local:** agregar `INDICADORES_DE_EJEMPLO=true` a `.env.local` y reiniciar `npm run dev`. Para apagarlo, borrar la línea y reiniciar.
+- **Vercel:** en *Settings → Environment Variables*, agregar `INDICADORES_DE_EJEMPLO` = `true` y volver a desplegar. Para apagarlo, borrar la variable y volver a desplegar: el cambio no aplica hasta el próximo deploy.
 
 ## Cómo está construido
 

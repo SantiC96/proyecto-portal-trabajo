@@ -14,6 +14,16 @@ export const PERIODO_LABEL: Record<Periodo, string> = {
   todo: "Desde el inicio",
 };
 
+/** Cómo se agrupa el gráfico de postulaciones (postulaciones_por_periodo, migration_061). */
+export type Agrupacion = "dia" | "semana" | "mes";
+
+export const AGRUPACION_POR_PERIODO: Record<Periodo, Agrupacion> = {
+  "30d": "dia",
+  "90d": "semana",
+  anio: "mes",
+  todo: "mes",
+};
+
 export function leerPeriodo(valor: string | undefined): Periodo {
   return PERIODOS.find((p) => p === valor) ?? PERIODO_POR_DEFECTO;
 }
