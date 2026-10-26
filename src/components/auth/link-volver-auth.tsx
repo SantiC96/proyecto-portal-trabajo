@@ -10,16 +10,21 @@ import { volverAPantallaAnterior } from "@/lib/navegacion-interna";
 /**
  * "Volver" de las pantallas de /auth. Como BotonVolver, lleva a la pantalla
  * anterior del sitio en esta pestaña salteando las de /auth; si no la hay, va
- * a `href` (el inicio o el login).
+ * a `href` (el inicio o el login). Con `usarHistorial={false}` es un link común
+ * a `href` (el login lo usa para "Volver al inicio").
  */
 export function LinkVolverAuth({
   href = "/",
   claro = false,
+  texto = "Volver",
+  usarHistorial = true,
   className,
 }: {
   href?: string;
   /** Sobre el panel verde (registro en el celular). */
   claro?: boolean;
+  texto?: string;
+  usarHistorial?: boolean;
   className?: string;
 }) {
   const router = useRouter();
@@ -34,12 +39,12 @@ export function LinkVolverAuth({
   return (
     <Link
       href={href}
-      onClick={alHacerClic}
-      aria-label="Volver a la pantalla anterior"
+      onClick={usarHistorial ? alHacerClic : undefined}
+      aria-label={usarHistorial ? "Volver a la pantalla anterior" : undefined}
       className={cn("auth-volver", claro && "auth-volver--claro", className)}
     >
       <ArrowLeft aria-hidden="true" />
-      Volver
+      {texto}
     </Link>
   );
 }
