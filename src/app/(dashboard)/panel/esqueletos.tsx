@@ -71,11 +71,14 @@ export function EsqueletoPerfil() {
   );
 }
 
-/** Movimientos y perfil, en dos columnas desde 768 px de ancho disponible. */
+/**
+ * Movimientos y perfil, en dos columnas desde 768 px de ancho disponible. Las
+ * dos tarjetas terminan a la misma altura: la más corta crece con su contenido arriba.
+ */
 export function ColumnasPanel({ children }: { children: React.ReactNode }) {
   return (
     <div className="@container">
-      <div className="grid grid-cols-1 items-start gap-7 @3xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 items-stretch gap-7 @3xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         {children}
       </div>
     </div>

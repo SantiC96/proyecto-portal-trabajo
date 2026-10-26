@@ -147,6 +147,9 @@ export function MisPostulacionesLista({ postulaciones }: Props) {
   );
 }
 
+/** Las aclaraciones de cada postulación miden lo que su texto, sin pasarse del ancho de la tarjeta. */
+const CLASE_FRANJA = "w-fit max-w-full";
+
 function TarjetaPostulacion({ postulacion: p }: { postulacion: Postulacion }) {
   const oferta = p.oferta;
   const badge = badgePostulacion({
@@ -164,6 +167,17 @@ function TarjetaPostulacion({ postulacion: p }: { postulacion: Postulacion }) {
     oferta?.contenido_editado_en != null && oferta.contenido_editado_en > p.created_at;
 
   const claseTitulo = "text-lg leading-snug font-bold";
+
+  const conPreEntrevista =
+    (p.estado === "recibida" || p.estado === "en_revision") &&
+    p.preEntrevista?.estado === "coordinada";
+  const hayAclaraciones =
+    conPreEntrevista ||
+    p.estado === "oferta_retirada" ||
+    (p.estado === "derivada" && p.derivacion != null) ||
+    modificada ||
+    p.estado === "retirada_postulante";
+  const puedeRetirar = sePuedeRetirar(p.estado, p.derivacion?.estado_empresa);
 
   return (
     <article
@@ -218,58 +232,68 @@ function TarjetaPostulacion({ postulacion: p }: { postulacion: Postulacion }) {
         )}
       </ul>
 
-      {(p.estado === "recibida" || p.estado === "en_revision") &&
-        p.preEntrevista?.estado === "coordinada" && (
-          <Franja
-            tono="info"
-            icono={CalendarClock}
-            titulo="Pre-entrevista con la Oficina de Empleo:"
-          >
-            {formatFechaHora(p.preEntrevista.fecha_hora)}
-            <span className="mt-0.5 block break-words">{p.preEntrevista.lugar}</span>
-          </Franja>
-        )}
+      {(hayAclaraciones || puedeRetirar) && (
+        // Aclaraciones a la izquierda y la acción a la derecha, centradas entre
+        // sí; en celular, una debajo de la otra con el botón a todo el ancho.
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+          {hayAclaraciones && (
+            <div className="flex min-w-0 flex-col gap-3">
+              {conPreEntrevista && (
+                <Franja
+                  className={CLASE_FRANJA}
+                  tono="info"
+                  icono={CalendarClock}
+                  titulo="Pre-entrevista con la Oficina de Empleo:"
+                >
+                  {formatFechaHora(p.preEntrevista!.fecha_hora)}
+                  <span className="mt-0.5 block break-words">{p.preEntrevista!.lugar}</span>
+                </Franja>
+              )}
 
-      {p.estado === "oferta_retirada" && <Franja tono="neutra">{AVISO_OFERTA_RETIRADA}</Franja>}
+              {p.estado === "oferta_retirada" && <Franja className={CLASE_FRANJA} tono="neutra">{AVISO_OFERTA_RETIRADA}</Franja>}
 
-      {p.estado === "derivada" && p.derivacion && <FranjaDerivacion derivacion={p.derivacion} />}
+              {p.estado === "derivada" && p.derivacion && <FranjaDerivacion derivacion={p.derivacion} />}
 
-      {modificada && (
-        <Franja tono="aviso" titulo="Modificada después de tu postulación">
-          ({formatFecha(oferta!.contenido_editado_en!)})
-          {ofertaActiva && (
-            <>
-              {" — "}
-              <Link href={`/ofertas/${oferta!.id}`}>Ver oferta actualizada</Link>
-            </>
+              {modificada && (
+                <Franja className={CLASE_FRANJA} tono="aviso" titulo="Modificada después de tu postulación">
+                  ({formatFecha(oferta!.contenido_editado_en!)})
+                  {ofertaActiva && (
+                    <>
+                      {" — "}
+                      <Link href={`/ofertas/${oferta!.id}`}>Ver oferta actualizada</Link>
+                    </>
+                  )}
+                </Franja>
+              )}
+
+              {p.estado === "retirada_postulante" && (
+                <Franja className={CLASE_FRANJA} tono="neutra">
+                  Retiraste esta postulación
+                  {p.retirada_en ? ` el ${formatFecha(p.retirada_en)}` : ""}.
+                  {p.puedeVolverAPostularse && oferta && (
+                    <Link
+                      href={`/ofertas/${oferta.id}`}
+                      className="mt-1 flex min-h-11 w-fit items-center text-primary sm:min-h-0"
+                    >
+                      Volver a postularme
+                    </Link>
+                  )}
+                </Franja>
+              )}
+            </div>
           )}
-        </Franja>
-      )}
 
-      {p.estado === "retirada_postulante" && (
-        <Franja tono="neutra">
-          Retiraste esta postulación
-          {p.retirada_en ? ` el ${formatFecha(p.retirada_en)}` : ""}.
-          {p.puedeVolverAPostularse && oferta && (
-            <Link
-              href={`/ofertas/${oferta.id}`}
-              className="mt-1 flex min-h-11 w-fit items-center text-primary sm:min-h-0"
-            >
-              Volver a postularme
-            </Link>
+          {puedeRetirar && (
+            <div className="sm:ml-auto sm:shrink-0">
+              <RetirarPostulacion
+                postulacionId={p.id}
+                ofertaTitulo={oferta?.titulo ?? null}
+                derivada={p.estado === "derivada"}
+                conPreEntrevista={p.preEntrevista?.estado === "coordinada"}
+                className="w-full sm:min-h-10! sm:w-auto"
+              />
+            </div>
           )}
-        </Franja>
-      )}
-
-      {sePuedeRetirar(p.estado, p.derivacion?.estado_empresa) && (
-        <div className="flex justify-end">
-          <RetirarPostulacion
-            postulacionId={p.id}
-            ofertaTitulo={oferta?.titulo ?? null}
-            derivada={p.estado === "derivada"}
-            conPreEntrevista={p.preEntrevista?.estado === "coordinada"}
-            className="w-full sm:min-h-10! sm:w-auto"
-          />
         </div>
       )}
     </article>
@@ -279,17 +303,17 @@ function TarjetaPostulacion({ postulacion: p }: { postulacion: Postulacion }) {
 /** Resultado de la empresa en una postulación derivada (nunca sus notas). */
 function FranjaDerivacion({ derivacion: d }: { derivacion: FilaEstadoDerivacionPostulante }) {
   if (d.estado_empresa === "oferta_retirada") {
-    return <Franja tono="neutra">{AVISO_OFERTA_RETIRADA}</Franja>;
+    return <Franja className={CLASE_FRANJA} tono="neutra">{AVISO_OFERTA_RETIRADA}</Franja>;
   }
   if (d.estado_empresa === "contratado") {
-    return <Franja tono="ok" titulo={TEXTO_SELECCIONADO} />;
+    return <Franja className={CLASE_FRANJA} tono="ok" titulo={TEXTO_SELECCIONADO} />;
   }
   if (d.estado_empresa === "rechazado") {
-    return <Franja tono="neutra" titulo={TEXTO_NO_SELECCIONADO} />;
+    return <Franja className={CLASE_FRANJA} tono="neutra" titulo={TEXTO_NO_SELECCIONADO} />;
   }
   if (d.estado_empresa === "en_proceso" && d.fecha_entrevista) {
     return (
-      <Franja tono="info" icono={CalendarClock} titulo="Entrevista coordinada:">
+      <Franja className={CLASE_FRANJA} tono="info" icono={CalendarClock} titulo="Entrevista coordinada:">
         {formatFechaHora(d.fecha_entrevista)}
         {d.lugar_entrevista && <span className="mt-0.5 block">{d.lugar_entrevista}</span>}
       </Franja>

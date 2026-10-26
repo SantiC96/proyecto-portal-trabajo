@@ -493,14 +493,63 @@ export function OfertaForm({
               </div>
             </div>
           </SeccionNumerada>
+
+          {error && (
+            <Aviso ref={errorRef} tono="danger">
+              <p>{error.mensaje}</p>
+              {error.ref && (
+                <p className="mt-1 text-sm">
+                  Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
+                </p>
+              )}
+            </Aviso>
+          )}
+
+          <div className="tarjeta flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+            <button
+              type="button"
+              onClick={() => {
+                marcarNavegacionDelUsuario();
+                router.push("/empresa/ofertas");
+              }}
+              disabled={isPending}
+              className="btn-neutro sm:mr-auto"
+            >
+              Cancelar
+            </button>
+            {admiteBorrador && (
+              <button
+                type="button"
+                onClick={guardarComoBorrador}
+                disabled={isPending}
+                aria-busy={isPending && modoEnCurso === "borrador"}
+                className="btn-neutro"
+              >
+                {isPending && modoEnCurso === "borrador" && <Spinner />}
+                {isPending && modoEnCurso === "borrador" ? "Guardando…" : "Guardar borrador"}
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={isPending}
+              aria-busy={isPending && modoEnCurso === "revision"}
+              className="btn-primario"
+            >
+              {isPending && modoEnCurso === "revision" && <Spinner />}
+              {isPending && modoEnCurso === "revision"
+                ? "Enviando…"
+                : ofertaId && !esBorrador
+                  ? "Guardar cambios"
+                  : "Enviar a revisión"}
+            </button>
+          </div>
         </div>
 
         {/* Vista previa: solo en escritorio. Es una copia visual (inert): el
-            formulario de la izquierda es la única fuente de los datos. */}
+            formulario de la izquierda es la única fuente de los datos. La
+            tarjeta va primero para que empiece a la altura de "1. El puesto";
+            el rótulo va debajo. */}
         <aside aria-label="Vista previa" className="hidden xl:sticky xl:top-6 xl:flex xl:flex-col xl:gap-3">
-          <h2 className="text-sm font-bold tracking-[0.06em] text-neutral uppercase">
-            Vista previa
-          </h2>
           <div inert>
             <TarjetaOferta
               href="#"
@@ -512,61 +561,14 @@ export function OfertaForm({
               lugar={UBICACION}
             />
           </div>
+          <h2 className="text-sm font-bold tracking-[0.06em] text-neutral uppercase">
+            Vista previa
+          </h2>
           <p className="flex items-start gap-2 text-sm text-muted-foreground">
             <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             La Oficina de Empleo revisa cada oferta antes de publicarla.
           </p>
         </aside>
-      </div>
-
-      {error && (
-        <Aviso ref={errorRef} tono="danger">
-          <p>{error.mensaje}</p>
-          {error.ref && (
-            <p className="mt-1 text-sm">
-              Si el problema sigue, comunicate con la Oficina de Empleo e indicá este código: {error.ref}
-            </p>
-          )}
-        </Aviso>
-      )}
-
-      <div className="tarjeta flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
-        <button
-          type="button"
-          onClick={() => {
-            marcarNavegacionDelUsuario();
-            router.push("/empresa/ofertas");
-          }}
-          disabled={isPending}
-          className="btn-neutro sm:mr-auto"
-        >
-          Cancelar
-        </button>
-        {admiteBorrador && (
-          <button
-            type="button"
-            onClick={guardarComoBorrador}
-            disabled={isPending}
-            aria-busy={isPending && modoEnCurso === "borrador"}
-            className="btn-neutro"
-          >
-            {isPending && modoEnCurso === "borrador" && <Spinner />}
-            {isPending && modoEnCurso === "borrador" ? "Guardando…" : "Guardar borrador"}
-          </button>
-        )}
-        <button
-          type="submit"
-          disabled={isPending}
-          aria-busy={isPending && modoEnCurso === "revision"}
-          className="btn-primario"
-        >
-          {isPending && modoEnCurso === "revision" && <Spinner />}
-          {isPending && modoEnCurso === "revision"
-            ? "Enviando…"
-            : ofertaId && !esBorrador
-              ? "Guardar cambios"
-              : "Enviar a revisión"}
-        </button>
       </div>
     </form>
   );
