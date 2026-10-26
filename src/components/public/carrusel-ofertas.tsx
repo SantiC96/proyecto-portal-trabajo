@@ -196,7 +196,7 @@ export function CarruselOfertas({ titulo, bajada, enlace, children }: Props) {
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <h2 id={idTitulo} className="text-[26px] leading-tight font-extrabold">
+          <h2 id={idTitulo} className="titulo-display text-[26px] leading-tight">
             {titulo}
           </h2>
           <p className="mt-1.5 text-base text-muted-foreground">{bajada}</p>
@@ -250,9 +250,11 @@ export function CarruselOfertas({ titulo, bajada, enlace, children }: Props) {
       <ul
         ref={pista}
         id={`${idTitulo}-pista`}
-        // El padding de 4 px deja ver el foco y la elevación de la tarjeta, que
-        // el desplazamiento horizontal recortaría.
-        className="sin-barra-scroll mt-5 -mx-1 flex snap-x snap-mandatory scroll-px-1 gap-4 overflow-x-auto scroll-smooth p-1 motion-reduce:scroll-auto"
+        // El padding deja ver el foco, la elevación y la sombra de la tarjeta
+        // (3 px arriba y 0 12px 28px), que el desplazamiento horizontal
+        // recortaría. Los márgenes negativos lo compensan: el espacio visible
+        // con el título y los puntos queda como con 4 px.
+        className="sin-barra-scroll -mx-1 -mb-10 flex snap-x snap-mandatory scroll-px-1 gap-4 overflow-x-auto scroll-smooth px-1 pt-6 pb-11 motion-reduce:scroll-auto"
         // Pausas del pase automático: solo sobre las tarjetas, así el botón de
         // reanudar y las flechas funcionan aunque el mouse o el foco estén ahí.
         onPointerEnter={(e) => e.pointerType === "mouse" && setConMouse(true)}
