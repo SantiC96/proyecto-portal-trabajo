@@ -52,7 +52,7 @@ export function Hero({ nombrePostulante, categorias }: Props) {
         </p>
         <h1
           id="inicio-titulo"
-          className="text-[32px] leading-[1.08] font-extrabold tracking-[-0.02em] text-white sm:text-[46px]"
+          className="titulo-portada text-[32px] leading-[1.08] text-white sm:text-[46px]"
         >
           {textos.titulo}
         </h1>

@@ -32,7 +32,7 @@ const ULTIMAS_POSTULACIONES = 2;
 function EncabezadoActividad() {
   return (
     <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-      <h2 id="tu-actividad-titulo" className="text-[26px] leading-tight font-extrabold">
+      <h2 id="tu-actividad-titulo" className="titulo-display text-[26px] leading-tight">
         Tu actividad
       </h2>
       <Link
