@@ -12,6 +12,7 @@ import type { PendientesOficina } from "@/lib/admin/pendientes";
 import type { SesionData } from "@/lib/sesion";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { useAccion } from "@/lib/use-accion";
+import { cn } from "@/lib/utils";
 
 /** Login, registro, recuperación de contraseña, verificación e invitación. */
 export function esRutaSinNavegacion(pathname: string): boolean {
@@ -170,7 +171,10 @@ export function AppShell({
         onRegistrarme={abrirRegistro}
       />
 
-      <div className="app-contenido">{children}</div>
+      {/* El inicio no lleva el fondo decorado: su decoración es el hero. */}
+      <div className={cn("app-contenido", pathname === "/" && "app-contenido--inicio")}>
+        {children}
+      </div>
       {modalRegistro}
       {registroNavegacion}
     </div>

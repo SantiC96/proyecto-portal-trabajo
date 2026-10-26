@@ -53,12 +53,12 @@ export function EmptyJobResults(props: Props) {
   return (
     <section
       aria-labelledby="empty-job-results-title"
-      className="mt-8 flex w-full flex-col items-center rounded-[var(--radius-ofertas)] border border-ofertas-border bg-white p-[clamp(1.5rem,4vw,3rem)] text-center shadow-xs"
+      className="estado-vacio mt-8 flex w-full flex-col items-center rounded-[var(--radius-ofertas)] border border-ofertas-border p-[clamp(1.5rem,4vw,3rem)] text-center shadow-xs"
     >
       <p className="sr-only" role="status" aria-live="polite">
         No se encontraron ofertas.
       </p>
-      <div className="flex size-[clamp(3.5rem,8vw,4.5rem)] items-center justify-center rounded-full bg-ofertas-icon text-ofertas-primary">
+      <div className="estado-vacio-icono flex size-[clamp(3.5rem,8vw,4.5rem)] items-center justify-center rounded-full bg-ofertas-icon text-ofertas-primary">
         <Tag className="size-[clamp(1.5rem,4vw,2rem)]" aria-hidden="true" />
       </div>
       <h3 id="empty-job-results-title" className="mt-4 text-[clamp(1.125rem,2.5vw,1.5rem)] font-bold text-ofertas-heading">

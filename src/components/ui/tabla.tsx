@@ -32,7 +32,7 @@ export function Tabla({
       className={cn("@container", className)}
       style={{ "--columnas-tabla": columnas } as CSSProperties}
     >
-      <div className="@4xl:overflow-hidden @4xl:rounded-[var(--radius-xl)] @4xl:border @4xl:border-border @4xl:bg-surface">
+      <div className="@4xl:overflow-hidden @4xl:rounded-[var(--radius-xl)] @4xl:border @4xl:border-border @4xl:bg-surface @4xl:shadow-[var(--sombra-tarjeta)]">
         <div
           aria-hidden="true"
           className="hidden bg-tabla-cabecera px-4 py-3 text-xs font-bold tracking-[0.06em] text-neutral uppercase @4xl:grid @4xl:grid-cols-(--columnas-tabla) @4xl:gap-4"
@@ -54,8 +54,8 @@ export function FilaTabla({ children, className }: { children: ReactNode; classN
   return (
     <li
       className={cn(
-        "flex flex-col gap-3 rounded-[var(--radius-xl)] border border-border bg-surface p-4 text-[15px] text-foreground transition-colors duration-150",
-        "@4xl:grid @4xl:grid-cols-(--columnas-tabla) @4xl:items-center @4xl:gap-4 @4xl:rounded-none @4xl:border-x-0 @4xl:border-t-0 @4xl:border-b-tabla-borde @4xl:px-4 @4xl:py-3.5 @4xl:last:border-b-0 @4xl:hover:bg-tabla-fila-hover",
+        "flex flex-col gap-3 rounded-[var(--radius-xl)] border border-border bg-surface p-4 text-[15px] text-foreground shadow-[var(--sombra-tarjeta)] transition-colors duration-150",
+        "@4xl:grid @4xl:grid-cols-(--columnas-tabla) @4xl:items-center @4xl:gap-4 @4xl:rounded-none @4xl:shadow-none @4xl:border-x-0 @4xl:border-t-0 @4xl:border-b-tabla-borde @4xl:px-4 @4xl:py-3.5 @4xl:last:border-b-0 @4xl:hover:bg-tabla-fila-hover",
         className,
       )}
     >

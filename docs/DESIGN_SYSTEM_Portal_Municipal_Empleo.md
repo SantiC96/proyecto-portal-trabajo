@@ -413,8 +413,9 @@ Las sombras deben ser discretas.
 
 ### Card normal
 
-Borde de 1 px `border`, sin sombra. Una tarjeta clickeable se eleva 2 px
-con `--sombra-tarjeta-hover` al pasar el mouse.
+Borde de 1 px `border` y `--sombra-tarjeta` (`0 1px 3px rgb(0 30 15 /
+.06)`). Una tarjeta clickeable se eleva 2 px con `--sombra-tarjeta-hover`
+al pasar el mouse.
 
 ### Elemento elevado
 
@@ -463,6 +464,42 @@ Las rutas de `/auth/*` no llevan navegación: solo el contenido.
 -   Para pasar de una a varias columnas dentro del contenido se prefieren
     container queries (`@container`, `@xl:`, `@4xl:`) a los breakpoints
     de la ventana: la sidebar le quita ancho al contenido.
+
+## Fondo de las pantallas
+
+Todas las pantallas con navegación (postulante, empresa, oficina y las
+públicas, como `/ofertas` y el detalle de una oferta) llevan el mismo
+fondo, aplicado una sola vez en `.app-contenido` (`globals.css`, bloque
+"Ambiente"). Ninguna página lo repite.
+
+-   Degradé: `linear-gradient(180deg, rgb(0 104 51 / .07), transparent
+    360px)` sobre `background` (240 px en celular).
+-   Puntos (`::before`): capa de 460 px de alto (300 en celular) con
+    puntos verdes al 13 % cada 24 px y el mismo degradé, enmascarada con
+    `radial-gradient(ellipse 70% 100% at 100% 0, #000 15%, transparent
+    60%)`: quedan solo en la esquina superior derecha, lejos del título.
+-   Trébol de agua (`::after`, solo desde lg): 300 px, verde al 8 %,
+    girado −12°, a 28 px de la derecha y 56 px por encima del borde.
+-   `.app-contenido` lleva `position: relative` e `isolation: isolate`:
+    la decoración va en `z-index: -1` dentro de él, detrás del contenido,
+    y no recibe clics (`pointer-events: none`).
+-   El inicio (`/`) no lo lleva: `AppShell` le pone
+    `.app-contenido--inicio`, que deja el fondo liso, porque su
+    decoración es el hero (sección 26).
+-   Las tarjetas y tablas siguen blancas. El encabezado de página, la
+    sidebar y la barra del celular no cambian.
+
+El padding del contenido es la variable `--relleno-contenido` (16 / 24 /
+32 px): la usan las bandas del inicio para llegar de borde a borde.
+
+## Trébol
+
+El trébol de Funes para las marcas de agua es una sola pieza: la variable
+`--trebol` de `globals.css`, un SVG en data URI que se usa como máscara
+(`mask: var(--trebol) center / contain no-repeat`), con el color en el
+`background` del elemento (`--color-primary` al 8 %). Lo usan el fondo de
+las pantallas y los estados vacíos. No es una imagen ni se copia en los
+componentes.
 
 Formularios: como ocupan todo el ancho, reparten los campos en grillas de
 2 columnas (3 si son cortos, como las contraseñas o los datos de la
@@ -759,7 +796,10 @@ Clase `.tarjeta`:
 -   superficie blanca;
 -   borde 1 px `border`;
 -   radius 16 px;
--   sin sombra.
+-   sombra mínima `--sombra-tarjeta` (`0 1px 3px rgb(0 30 15 / .06)`),
+    para separarla del fondo con degradé (sección 11, "Fondo de las
+    pantallas"). Las filas y el contenedor del componente `Tabla` llevan
+    la misma.
 
 `.tarjeta-clickeable` (además de `.tarjeta`): al pasar el mouse se eleva
 2 px con una sombra suave y el borde pasa a `border-strong`.
@@ -1491,11 +1531,54 @@ Cómo funciona (solo sin sesión)
 Contacto de la Oficina de Empleo
 ```
 
-Gap de 48 px entre secciones; títulos de sección de 26 px 800. El bloque
-principal es una tarjeta blanca de radio 24 (padding 56 / 56 / 48, 24 en
-celular). El buscador (`role="search"`, hasta 960 px) lleva a `/ofertas`
-con `q` y `categoria`; el rubro se elige en su `Combobox` (no hay una
-lista de rubros debajo).
+Gap de 48 px entre secciones; títulos de sección de 26 px 800. El
+buscador (`role="search"`, hasta 960 px) lleva a `/ofertas` con `q` y
+`categoria`; el rubro se elige en su `Combobox` (no hay una lista de
+rubros debajo).
+
+## Hero (bloque principal)
+
+Banda verde de radio 24 (padding 56 / 56 / 48, 24 en celular), con las
+mismas piezas que el panel verde de `/auth` (sección 27). Clases
+`.hero-*` de `globals.css`; componente `src/components/public/hero.tsx`.
+
+-   Fondo y borde `primary`, con puntos blancos al 9 % cada 28 px (24 en
+    celular).
+-   Textos: título blanco (6,9:1), volanta y bajada `sidebar-texto`
+    (`#e3f0e8`, 5,9:1; 5,2:1 en el punto más claro del brillo detrás de
+    la bajada).
+-   Buscador blanco con borde blanco y `--sombra-buscador` (`0 18px 40px
+    rgb(0 30 15 / .35)`).
+-   Capa decorativa `.hero-deco` (`aria-hidden`, `inset: 0`, `z-index:
+    -1`, `overflow: hidden`, radio heredado):
+    -   brillo: círculo de 640 px con `radial-gradient(circle, rgb(255 255
+        255 / .12), transparent 65%)`, a −120 px de la derecha y −260 px
+        de abajo, que pulsa de .6 a 1 en 8 s;
+    -   anillo: círculo de 620 px con borde de 64 px blanco al 6 %, a −200
+        px de la derecha y −260 px de arriba;
+    -   íconos flotantes (`UserPlus`, `Briefcase`, `Building`, `Search`):
+        cuadrados de 52 px, radio 14, blanco al 10 % con borde al 22 % e
+        ícono de 22 px, que suben 8 px en 6 s con demoras distintas. Van
+        en la zona libre a la derecha del texto y arriba del buscador, y
+        solo aparecen cuando el contenido del hero mide 928 px o más
+        (container query): nunca tapan el título, la bajada ni el
+        buscador, con la sidebar abierta o contraída. Comparten la base
+        con `.login-icono-flotante`.
+    -   En celular (menos de 640 px): sin brillo ni íconos; el anillo
+        pasa a 300 px con borde de 40 px, a −110 px de la derecha y −120
+        px de abajo.
+-   El hero lleva `position: relative`, `isolation: isolate` y `z-index:
+    2`. El recorte de la decoración va en `.hero-deco`, no en el hero, y
+    el popup del `Combobox` de rubro se abre en un portal: se ve entero,
+    por encima de las secciones siguientes.
+
+## Bandas entre secciones
+
+"Cómo funciona" (visitante) y "Tu actividad" (postulante con sesión) van
+en una `.banda-inicio`: a todo el ancho del contenido (margen negativo
+igual a `--relleno-contenido`, sin scroll horizontal), fondo `rgb(0 104
+51 / .07)` y borde superior de 4 px `accent`. Si la banda es la última
+sección, llega hasta el final de la página.
 
 El objetivo visual principal debe ser facilitar el acceso a las ofertas
 laborales.
@@ -1720,6 +1803,28 @@ aparecerá en este espacio.
 
 [Publicar una oferta]
 ```
+
+## Decoración
+
+`EstadoVacio` (`src/components/ui/estado-listado.tsx`) y el estado vacío
+de `/ofertas` (`empty-job-results.tsx`) llevan las clases
+`.estado-vacio` (tarjeta) y `.estado-vacio-icono` (círculo del ícono):
+
+-   tarjeta con `position: relative`, `isolation: isolate`, `overflow:
+    hidden` y fondo `linear-gradient(180deg, rgb(0 104 51 / .08),
+    transparent 220px)` sobre blanco;
+-   puntos verdes al 16 % cada 20 px, en una capa de 150 px detrás del
+    ícono, enmascarada con `radial-gradient(ellipse 300px 60px at 50%
+    100px, #000 30%, transparent 100%)`. La capa sale del ícono, así que
+    queda centrada en él sea cual sea el padding, y termina antes del
+    título;
+-   halo del ícono: `box-shadow: 0 0 0 10px rgb(0 104 51 / .10)`. El
+    tamaño y el color del círculo no cambian;
+-   trébol de agua (`--trebol`): 220 px (150 en celular), verde al 8 %,
+    girado −12°, a −40 px de la derecha y −50 px de arriba (−60 / −70 en
+    celular).
+
+`ErrorListado` y el error de carga de `/ofertas` no llevan decoración.
 
 ------------------------------------------------------------------------
 
@@ -2024,7 +2129,8 @@ Duración habitual: `150–200ms`.
 
 El movimiento va dentro de `@media (prefers-reduced-motion:
 no-preference)`; con `reduce`, `globals.css` anula transiciones y
-animaciones.
+animaciones. El brillo y los íconos del hero del inicio, además, tienen
+`animation: none` explícito con `reduce`.
 
 Evitar animaciones continuas en áreas administrativas.
 

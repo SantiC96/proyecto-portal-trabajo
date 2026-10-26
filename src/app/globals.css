@@ -109,7 +109,7 @@
   --sombra-error-campo:   0 0 0 3px rgb(180 35 24 / 0.18);
   --sombra-dialogo:       0 24px 60px rgb(0 40 20 / 0.18);
   --sombra-tarjeta-hover: 0 8px 20px rgb(15 42 27 / 0.08);
-  --sombra-buscador:      0 8px 24px rgb(0 60 30 / 0.08);
+  --sombra-buscador:      0 18px 40px rgb(0 30 15 / 0.35); /* sobre el hero verde */
 }
 
 @layer base {
@@ -231,6 +231,7 @@ h1, h2 { font-weight: 800; }
     border: 1px solid var(--color-border);
     border-radius: var(--radius-xl);
     background: var(--color-surface);
+    box-shadow: var(--sombra-tarjeta);
   }
   .tarjeta-clickeable {
     transition: border-color 180ms ease, box-shadow 180ms ease, translate 180ms ease;
@@ -306,20 +307,225 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
 
 .app-shell { min-height: 100vh; }
 .app-contenido {
+  --relleno-contenido: 16px;
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: calc(100vh - 60px);
-  padding: 16px;
+  padding: var(--relleno-contenido);
 }
-@media (min-width: 640px) { .app-contenido { padding: 24px; } }
+@media (min-width: 640px) { .app-contenido { --relleno-contenido: 24px; } }
 @media (min-width: 1024px) {
   .app-shell { display: flex; align-items: stretch; }
-  .app-contenido { flex: 1; min-height: 100vh; padding: 32px; }
+  .app-contenido { --relleno-contenido: 32px; flex: 1; min-height: 100vh; }
 }
 
 /* Las páginas ocupan todo el ancho al lado de la sidebar, sin max-width
    (decisión 033): los formularios reparten sus campos en grillas. */
+
+/* ── Ambiente: fondo del contenido, inicio y estados vacíos ──────────────────
+   Solo decoración: va detrás del contenido (z-index -1 dentro de un contexto
+   con isolation) y no recibe clics. Sin colores nuevos: el verde de marca,
+   el amarillo y el blanco con transparencia. "Celular" es menos de 640 px. */
+:root {
+  /* Trébol de Funes para las marcas de agua. Se usa como máscara: el color
+     lo pone el background del elemento. */
+  --trebol: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-100 -100 200 200' fill='none' stroke='black' stroke-width='9' stroke-linejoin='round'%3E%3Cpath transform='rotate(45)' d='M0 -12 L-30 -42 A19 19 0 0 1 -3 -69 L0 -66 L3 -69 A19 19 0 0 1 30 -42 Z'/%3E%3Cpath transform='rotate(135)' d='M0 -12 L-30 -42 A19 19 0 0 1 -3 -69 L0 -66 L3 -69 A19 19 0 0 1 30 -42 Z'/%3E%3Cpath transform='rotate(225)' d='M0 -12 L-30 -42 A19 19 0 0 1 -3 -69 L0 -66 L3 -69 A19 19 0 0 1 30 -42 Z'/%3E%3Cpath transform='rotate(315)' d='M0 -12 L-30 -42 A19 19 0 0 1 -3 -69 L0 -66 L3 -69 A19 19 0 0 1 30 -42 Z'/%3E%3C/svg%3E");
+  --sombra-tarjeta: 0 1px 3px rgb(0 30 15 / 0.06);
+}
+
+/* Trébol de agua (fondo del contenido y estados vacíos). */
+.app-contenido::after,
+.estado-vacio::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  background: var(--color-primary);
+  opacity: 0.08;
+  transform: rotate(-12deg);
+  -webkit-mask: var(--trebol) center / contain no-repeat;
+  mask: var(--trebol) center / contain no-repeat;
+  pointer-events: none;
+}
+
+/* Fondo de las pantallas con navegación: degradé verde arriba, puntos en la
+   esquina superior derecha y el trébol (solo escritorio). El inicio no lo
+   lleva (.app-contenido--inicio): su decoración es el hero. */
+.app-contenido {
+  --alto-degrade: 240px;
+  --alto-puntos: 300px;
+  --degrade-contenido: linear-gradient(180deg, rgb(0 104 51 / 0.07), transparent var(--alto-degrade));
+  position: relative;
+  isolation: isolate;
+  background: var(--degrade-contenido), var(--color-background);
+}
+@media (min-width: 640px) {
+  .app-contenido { --alto-degrade: 360px; --alto-puntos: 460px; }
+}
+.app-contenido::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 auto;
+  height: var(--alto-puntos);
+  background:
+    radial-gradient(rgb(0 104 51 / 0.13) 1px, transparent 1.6px) 0 0 / 24px 24px,
+    var(--degrade-contenido);
+  -webkit-mask-image: radial-gradient(ellipse 70% 100% at 100% 0, #000 15%, transparent 60%);
+  mask-image: radial-gradient(ellipse 70% 100% at 100% 0, #000 15%, transparent 60%);
+  pointer-events: none;
+}
+.app-contenido::after { display: none; }
+@media (min-width: 1024px) {
+  .app-contenido::after {
+    display: block;
+    top: -56px;
+    right: 28px;
+    width: 300px;
+    height: 300px;
+  }
+}
+.app-contenido--inicio { background: var(--color-background); }
+.app-contenido--inicio::before,
+.app-contenido--inicio::after { content: none; }
+
+/* Hero del inicio: banda verde con puntos, brillo, anillo e íconos flotantes
+   (las mismas piezas que el panel verde de /auth). z-index 2: el popup del
+   rubro queda sobre las secciones siguientes. El recorte va en la capa
+   decorativa y no en el hero, para no cortar nada que salga de él. */
+.hero-inicio {
+  position: relative;
+  isolation: isolate;
+  z-index: 2;
+  container-type: inline-size;
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+  background-image: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+@media (min-width: 640px) { .hero-inicio { background-size: 28px 28px; } }
+.hero-deco {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.hero-brillo {
+  position: absolute;
+  right: -120px;
+  bottom: -260px;
+  width: 640px;
+  height: 640px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(255 255 255 / 0.12), transparent 65%);
+}
+.hero-anillo {
+  position: absolute;
+  top: -260px;
+  right: -200px;
+  width: 620px;
+  height: 620px;
+  border: 64px solid rgb(255 255 255 / 0.06);
+  border-radius: 50%;
+}
+@media (max-width: 639px) {
+  .hero-brillo { display: none; }
+  .hero-anillo {
+    top: auto;
+    right: -110px;
+    bottom: -120px;
+    width: 300px;
+    height: 300px;
+    border-width: 40px;
+  }
+}
+/* Los íconos van en la zona libre a la derecha del texto (720 px + 56 de
+   padding): solo aparecen si el contenido del hero (sin el padding) mide al
+   menos 928 px, que dejan 208 px libres, sea cual sea el ancho de la ventana
+   o de la sidebar. Terminan antes del buscador. */
+.hero-iconos { display: none; }
+@container (min-width: 928px) {
+  .hero-iconos {
+    display: block;
+    position: absolute;
+    top: 28px;
+    left: 800px;
+    right: 32px;
+    height: 244px;
+  }
+}
+/* Más específico que la base compartida con el login (más abajo). */
+.hero-iconos > .hero-icono {
+  --flotar-alto: -8px;
+  width: 52px;
+  height: 52px;
+  border-color: rgb(255 255 255 / 0.22);
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgb(0 30 15 / 0.18);
+}
+.hero-icono:nth-child(1) { top: 8px; left: 10%; }
+.hero-icono:nth-child(2) { top: 60px; right: 0; animation-delay: -1.5s; }
+.hero-icono:nth-child(3) { top: 128px; left: 0; animation-delay: -3s; }
+.hero-icono:nth-child(4) { top: 184px; right: 18%; animation-delay: -4.5s; }
+
+/* "Cómo funciona" y "Tu actividad": banda a todo el ancho del contenido. El
+   margen negativo es igual al padding de .app-contenido, así que no sale de
+   él ni genera scroll horizontal. */
+.banda-inicio {
+  margin-inline: calc(-1 * var(--relleno-contenido));
+  padding: 32px var(--relleno-contenido);
+  border-top: 4px solid var(--color-accent);
+  background: rgb(0 104 51 / 0.07);
+}
+@media (min-width: 640px) { .banda-inicio { padding-block: 40px 48px; } }
+.banda-inicio:last-child {
+  flex-grow: 1;
+  margin-bottom: calc(-1 * var(--relleno-contenido));
+}
+
+/* Estados vacíos: degradé, puntos detrás del ícono, halo y trébol. Los puntos
+   salen del ícono para quedar centrados en él en cualquier estado vacío, y
+   terminan antes del título. */
+.estado-vacio {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgb(0 104 51 / 0.08), transparent 220px), #fff;
+}
+.estado-vacio-icono {
+  position: relative;
+  box-shadow: 0 0 0 10px rgb(0 104 51 / 0.1);
+}
+.estado-vacio-icono::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  left: 50%;
+  width: 600px;
+  height: 150px;
+  transform: translate(-50%, -100px);
+  background: radial-gradient(rgb(0 104 51 / 0.16) 1px, transparent 1.6px) 0 0 / 20px 20px;
+  -webkit-mask-image: radial-gradient(ellipse 300px 60px at 50% 100px, #000 30%, transparent 100%);
+  mask-image: radial-gradient(ellipse 300px 60px at 50% 100px, #000 30%, transparent 100%);
+  pointer-events: none;
+}
+.estado-vacio::after {
+  top: -70px;
+  right: -60px;
+  width: 150px;
+  height: 150px;
+}
+@media (min-width: 640px) {
+  .estado-vacio::after {
+    top: -50px;
+    right: -40px;
+    width: 220px;
+    height: 220px;
+  }
+}
 
 /* Listas que se desplazan de costado (carrusel): sin barra visible. */
 .sin-barra-scroll { scrollbar-width: none; }
@@ -789,20 +995,24 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
   border: 72px solid rgb(255 255 255 / 0.05);
   border-radius: 50%;
 }
-.login-icono-flotante {
+/* Base compartida con los íconos del hero del inicio (.hero-icono). */
+.login-icono-flotante,
+.hero-icono {
   position: absolute;
   z-index: -1;
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
   border: 1px solid rgb(255 255 255 / 0.2);
-  border-radius: 12px;
   background: rgb(255 255 255 / 0.1);
-  box-shadow: 0 10px 24px rgb(0 30 15 / 0.18);
   color: #fff;
 }
-.login-icono-flotante svg { width: 22px; height: 22px; }
+.login-icono-flotante {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgb(0 30 15 / 0.18);
+}
+:is(.login-icono-flotante, .hero-icono) svg { width: 22px; height: 22px; }
 @media (max-width: 1279px) { .login-icono-flotante--ancho { display: none; } }
 .login-panel-texto {
   display: flex;
@@ -979,8 +1189,10 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
 
   .login-entrada { animation: subir-aparecer 700ms ease-out both; }
   .login-entrada--demorada { animation-delay: 150ms; }
-  .login-icono-flotante { animation: flotar 6s ease-in-out infinite; }
-  .login-panel-brillo { animation: pulsar 8s ease-in-out infinite; }
+  .login-icono-flotante,
+  .hero-icono { animation: flotar 6s ease-in-out infinite; }
+  .login-panel-brillo,
+  .hero-brillo { animation: pulsar 8s ease-in-out infinite; }
 
   /* Cierre: 200 ms ease-in, de abajo hacia arriba (Empresa sale primero). */
   .login-registro-plegable { transition: grid-template-rows 200ms ease-in; }
@@ -1009,5 +1221,12 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
 @keyframes menu-entrada { from { opacity: 0; transform: translateY(8px) scale(0.97); } }
 @keyframes panel-entrada { from { transform: translateX(-100%); } }
 @keyframes subir-aparecer { from { opacity: 0; transform: translateY(16px); } }
-@keyframes flotar { 50% { transform: translateY(-10px); } }
+/* Íconos del login: 10 px; los del hero, 8 px (--flotar-alto). */
+@keyframes flotar { 50% { transform: translateY(var(--flotar-alto, -10px)); } }
+
+/* El hero del inicio queda quieto con movimiento reducido. */
+@media (prefers-reduced-motion: reduce) {
+  .hero-brillo,
+  .hero-icono { animation: none; }
+}
 @keyframes pulsar { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }

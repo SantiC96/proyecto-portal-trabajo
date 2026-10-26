@@ -34,7 +34,7 @@ export function BuscadorInicio({ categorias }: { categorias: string[] }) {
       action="/ofertas"
       method="get"
       onSubmit={handleSubmit}
-      className="flex w-full max-w-[960px] flex-col gap-2 rounded-2xl border border-border-tab bg-surface p-2 shadow-[var(--sombra-buscador)] md:flex-row md:items-center"
+      className="flex w-full max-w-[960px] flex-col gap-2 rounded-2xl border border-white bg-surface p-2 shadow-[var(--sombra-buscador)] md:flex-row md:items-center"
     >
       <div className="relative flex min-w-0 flex-1 items-center">
         <Search
