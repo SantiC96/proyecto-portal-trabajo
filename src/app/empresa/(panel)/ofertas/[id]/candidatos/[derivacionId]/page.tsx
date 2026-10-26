@@ -107,6 +107,112 @@ export default async function CandidatoFichaPage({
   const estadoLabel =
     DERIVACION_ESTADO_LABEL[derivacion.estado_empresa] ?? derivacion.estado_empresa;
   const estadoTono = DERIVACION_ESTADO_TONO[derivacion.estado_empresa] ?? "neutral";
+  // En escritorio, Gestión y la columna de la izquierda terminan a la misma
+  // altura (DetalleConLateral). En curso, Gestión llega hasta la última tarjeta
+  // de la izquierda. Terminado (seleccionado, no seleccionado, se retiró, oferta
+  // retirada), Gestión es un mensaje corto: queda a la par del contacto y el
+  // resto va debajo, a todo el ancho. "Ver perfil completo" siempre va debajo.
+  // En el celular, Gestión al final: el orden de siempre.
+  const procesoTerminado =
+    derivacion.estado_empresa !== "pendiente" && derivacion.estado_empresa !== "en_proceso";
+
+  const contacto = (
+    <Tarjeta titulo="Contacto">
+      {candidato ? (
+        <DatosClave
+          datos={[
+            {
+              etiqueta: "Email",
+              valor: (
+                <a href={`mailto:${candidato.email}`} className={LINK_DATO}>
+                  {candidato.email}
+                </a>
+              ),
+            },
+            {
+              etiqueta: "Teléfono",
+              valor: candidato.telefono ? (
+                <a href={`tel:${candidato.telefono.replace(/[^\d+]/g, "")}`} className={LINK_DATO}>
+                  {candidato.telefono}
+                </a>
+              ) : (
+                <span className="text-muted-foreground">Sin informar</span>
+              ),
+            },
+          ]}
+        />
+      ) : (
+        <p className="text-[15px] text-muted-foreground">Datos no disponibles.</p>
+      )}
+    </Tarjeta>
+  );
+
+  const demasTarjetas = (
+    <>
+      <Tarjeta titulo="CV con el que se postuló">
+        {cv ? (
+          <FilaArchivo
+            nombre={cv.nombre_original}
+            detalle={`Cargado el ${formatFecha(cv.subido_en)}`}
+            url={cvUrl}
+            textoBoton="Ver CV"
+          />
+        ) : (
+          <p className="text-[15px] text-muted-foreground">Sin CV disponible</p>
+        )}
+      </Tarjeta>
+
+      {derivacion.nota_municipalidad && (
+        <Tarjeta titulo="Nota de la Oficina de Empleo">
+          <Cita
+            firma={`Oficina de Empleo · ${formatFecha(derivacion.derivacion_created_at)}`}
+          >
+            {derivacion.nota_municipalidad}
+          </Cita>
+        </Tarjeta>
+      )}
+
+      {candidato && <InformacionLaboralResumen info={candidato} className="bg-surface" />}
+
+      {/* Nota del candidato guardado */}
+      {guardado?.nota && (
+        <Tarjeta titulo="Tu nota privada">
+          <p className="text-[15px] whitespace-pre-line break-words text-texto-parrafo">
+            {guardado.nota}
+          </p>
+        </Tarjeta>
+      )}
+    </>
+  );
+
+  const gestion = (
+    <section
+      aria-labelledby="gestion-titulo"
+      className="tarjeta p-5 sm:p-6"
+    >
+      <h2 id="gestion-titulo" className="mb-4 text-xl font-extrabold text-heading">
+        Gestión
+      </h2>
+      <AccionesDerivacion
+        derivacionId={derivacionId}
+        ofertaId={ofertaId}
+        estado={derivacion.estado_empresa}
+        fechaEntrevista={derivacion.fecha_entrevista}
+        lugarEntrevista={derivacion.lugar_entrevista}
+        vacantesCubiertas={vacantesCubiertas}
+      />
+    </section>
+  );
+
+  const verPerfil = (
+    <Link
+      href={`/empresa/candidatos/${derivacion.postulante_id}`}
+      className="btn-neutro w-full sm:w-fit"
+    >
+      <User aria-hidden="true" />
+      Ver perfil completo
+    </Link>
+  );
 
   return (
     <section className="w-full">
@@ -150,105 +256,21 @@ export default async function CandidatoFichaPage({
         />
       </header>
 
-      {/* Las dos columnas terminan a la misma altura: la más corta estira su
-          última tarjeta. */}
       <DetalleConLateral
         className="mt-8"
+        lateralEnCelular="al-final"
         principal={
           <>
-            <Tarjeta titulo="Contacto">
-              {candidato ? (
-                <DatosClave
-                  datos={[
-                    {
-                      etiqueta: "Email",
-                      valor: (
-                        <a href={`mailto:${candidato.email}`} className={LINK_DATO}>
-                          {candidato.email}
-                        </a>
-                      ),
-                    },
-                    {
-                      etiqueta: "Teléfono",
-                      valor: candidato.telefono ? (
-                        <a href={`tel:${candidato.telefono.replace(/[^\d+]/g, "")}`} className={LINK_DATO}>
-                          {candidato.telefono}
-                        </a>
-                      ) : (
-                        <span className="text-muted-foreground">Sin informar</span>
-                      ),
-                    },
-                  ]}
-                />
-              ) : (
-                <p className="text-[15px] text-muted-foreground">Datos no disponibles.</p>
-              )}
-            </Tarjeta>
-
-            <Tarjeta titulo="CV con el que se postuló">
-              {cv ? (
-                <FilaArchivo
-                  nombre={cv.nombre_original}
-                  detalle={`Cargado el ${formatFecha(cv.subido_en)}`}
-                  url={cvUrl}
-                  textoBoton="Ver CV"
-                />
-              ) : (
-                <p className="text-[15px] text-muted-foreground">Sin CV disponible</p>
-              )}
-            </Tarjeta>
-
-            {derivacion.nota_municipalidad && (
-              <Tarjeta titulo="Nota de la Oficina de Empleo">
-                <Cita
-                  firma={`Oficina de Empleo · ${formatFecha(derivacion.derivacion_created_at)}`}
-                >
-                  {derivacion.nota_municipalidad}
-                </Cita>
-              </Tarjeta>
-            )}
-
-            {candidato && <InformacionLaboralResumen info={candidato} className="bg-surface" />}
-
-            {/* Nota del candidato guardado */}
-            {guardado?.nota && (
-              <Tarjeta titulo="Tu nota privada">
-                <p className="text-[15px] whitespace-pre-line break-words text-texto-parrafo">
-                  {guardado.nota}
-                </p>
-              </Tarjeta>
-            )}
-
-            {/* En un div: si la columna se estira para igualar a Gestión, crece
-                el div y no el botón. */}
-            <div>
-              <Link
-                href={`/empresa/candidatos/${derivacion.postulante_id}`}
-                className="btn-neutro w-full sm:w-fit"
-              >
-                <User aria-hidden="true" />
-                Ver perfil completo
-              </Link>
-            </div>
+            {contacto}
+            {!procesoTerminado && demasTarjetas}
           </>
         }
-        lateral={
-          <section
-            aria-labelledby="gestion-titulo"
-            className="tarjeta p-5 sm:p-6"
-          >
-            <h2 id="gestion-titulo" className="mb-4 text-xl font-extrabold text-heading">
-              Gestión
-            </h2>
-            <AccionesDerivacion
-              derivacionId={derivacionId}
-              ofertaId={ofertaId}
-              estado={derivacion.estado_empresa}
-              fechaEntrevista={derivacion.fecha_entrevista}
-              lugarEntrevista={derivacion.lugar_entrevista}
-              vacantesCubiertas={vacantesCubiertas}
-            />
-          </section>
+        lateral={gestion}
+        debajo={
+          <>
+            {procesoTerminado && demasTarjetas}
+            {verPerfil}
+          </>
         }
       />
     </section>

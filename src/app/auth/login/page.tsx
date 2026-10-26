@@ -28,14 +28,14 @@ export default async function LoginPage({
           </>
         }
         bajada="Conectamos a las personas que buscan crecer con las empresas que necesitan su talento."
-        volver={<LinkVolverAuth claro />}
+        volver={<LinkVolverAuth claro texto="Volver al inicio" usarHistorial={false} />}
       />
 
       <div className="login-columna">
         <div className="w-full max-w-[460px]">
           {/* En el celular el link va dentro del panel verde. */}
           <div className="hidden lg:block">
-            <LinkVolverAuth />
+            <LinkVolverAuth texto="Volver al inicio" usarHistorial={false} />
           </div>
           <LoginForm
             confirmacionError={error === "confirmacion"}

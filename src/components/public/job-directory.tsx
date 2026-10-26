@@ -236,7 +236,7 @@ async function ResultadosOfertas({
                 esOficina && (
                   <Link
                     href={rutaBuscarPostulantes(oferta.id, { volver })}
-                    className="btn-secundario"
+                    className="btn-primario"
                   >
                     <UserSearch aria-hidden="true" />
                     Buscar postulantes

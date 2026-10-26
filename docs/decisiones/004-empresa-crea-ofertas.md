@@ -66,6 +66,6 @@ El campo `destacada` (agregado en `migration_007`) fue eliminado del código en 
 - Removido del tipo `OfertaLaboral` (`src/types/oferta.ts`).
 - Removido del select, `DbOfertaRow` y `mapRow` en `src/lib/ofertas.ts`.
 - Removido del badge visual en `job-card.tsx` y `src/app/ofertas/[id]/page.tsx`.
-- Removido de los inserts en `seed_ofertas.sql`.
+- Removido de los inserts en `seed_ofertas.sql` (ese seed se borró el 26/10/2026, después de cerrar sus ofertas, que no tenían empresa).
 
 La columna física se elimina con `migration_016_quitar_destacada.sql`, que debe ejecutarse **después** de que el código sin `destacada` esté publicado en producción (Vercel). Ejecutarla antes rompe el listado de ofertas.

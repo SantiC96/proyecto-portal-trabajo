@@ -4,7 +4,8 @@
 //
 // Reglas de compatibilidad (decisión 034): tablas con role="presentation",
 // estilos en línea, una sola media query para pantallas angostas, sin
-// imágenes de fondo ni SVG, y el logo con una URL absoluta.
+// imágenes de fondo ni SVG. El logo va embebido en los avisos (cid:) y con
+// una URL absoluta en las plantillas de Supabase.
 
 // Los clientes de correo no soportan variables CSS: son los valores de los
 // tokens de globals.css.
@@ -45,7 +46,8 @@ export function textoVistaPrevia(mensaje: string, largo = 140): string {
 /**
  * Todos los valores llegan ya escapados (o son constantes del código): esta
  * función no escapa nada. `url` es el destino del botón y del link visible;
- * sin `url` no hay botón. Sin `logoUrl`, el encabezado muestra el nombre de
+ * sin `url` no hay botón. `logoUrl` es "cid:logo-funes" (avisos) o una URL
+ * absoluta (plantillas de Supabase); sin `logoUrl`, el encabezado muestra el nombre de
  * la Municipalidad en texto.
  */
 export function htmlCorreo(datos: {

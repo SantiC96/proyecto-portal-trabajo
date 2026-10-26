@@ -47,6 +47,25 @@ export const obtenerIndicadoresPostulante = cache(
     }),
 );
 
+/** Conteo de notificaciones no leídas para decidir si el postulante está al día. */
+export const obtenerNotificacionesNoLeidasPostulante = cache(
+    (): Promise<ConError<number>> =>
+      seguro(async () => {
+        const usuario = await obtenerUsuarioActual();
+        if (!usuario) return { data: null, error: "sin sesión de usuario" };
+
+        const supabase = await createSupabaseServerClient();
+        const { count, error } = await supabase
+          .from("notificaciones")
+          .select("id", { count: "exact", head: true })
+          .eq("usuario_id", usuario.id)
+          .is("leida_en", null);
+
+        if (error) return { data: null, error };
+        return { data: count ?? 0, error: null };
+      }),
+);
+
 export const OFERTAS_RECOMENDADAS = 5;
 
 export function obtenerOfertasRecomendadas(): Promise<ConError<FilaOfertaRecomendada[]>> {

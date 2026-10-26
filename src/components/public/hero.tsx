@@ -1,3 +1,4 @@
+import { Briefcase, Building, Search, UserPlus } from "lucide-react";
 import { BuscadorInicio } from "@/components/public/buscador-inicio";
 
 type Props = {
@@ -12,6 +13,9 @@ const TEXTOS_GENERALES = {
   bajada:
     "Ofertas de empresas de la ciudad, revisadas por la Oficina de Empleo. Cargá tu perfil una vez y postulate sin llevar el CV impreso.",
 };
+
+// Decorativos, solo en escritorio: van a la derecha del texto (ver .hero-iconos).
+const ICONOS_FLOTANTES = [UserPlus, Briefcase, Building, Search];
 
 /** Bloque principal del inicio: textos y buscador de ofertas (el rubro se elige en el buscador). */
 export function Hero({ nombrePostulante, categorias }: Props) {
@@ -28,19 +32,31 @@ export function Hero({ nombrePostulante, categorias }: Props) {
   return (
     <section
       aria-labelledby="inicio-titulo"
-      className="flex flex-col gap-6 rounded-3xl border border-border bg-surface p-6 sm:px-14 sm:pt-14 sm:pb-12"
+      className="hero-inicio flex flex-col gap-6 rounded-3xl border p-6 sm:px-14 sm:pt-14 sm:pb-12"
     >
+      <div className="hero-deco" aria-hidden="true">
+        <div className="hero-brillo" />
+        <div className="hero-anillo" />
+        <div className="hero-iconos">
+          {ICONOS_FLOTANTES.map((Icono, i) => (
+            <span key={i} className="hero-icono">
+              <Icono />
+            </span>
+          ))}
+        </div>
+      </div>
+
       <div className="flex max-w-[720px] flex-col gap-4">
-        <p className="text-[13px] font-bold tracking-[0.08em] text-primary-hover uppercase">
+        <p className="text-[13px] font-bold tracking-[0.08em] text-sidebar-texto uppercase">
           {textos.volanta}
         </p>
         <h1
           id="inicio-titulo"
-          className="text-[32px] leading-[1.08] font-extrabold tracking-[-0.02em] text-heading sm:text-[46px]"
+          className="titulo-portada text-[32px] leading-[1.08] text-white sm:text-[46px]"
         >
           {textos.titulo}
         </h1>
-        <p className="text-lg leading-[1.55] text-texto-bajada">{textos.bajada}</p>
+        <p className="text-lg leading-[1.55] text-sidebar-texto">{textos.bajada}</p>
       </div>
 
       <BuscadorInicio categorias={categorias} />

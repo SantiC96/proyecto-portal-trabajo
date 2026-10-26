@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Clock, MapPin } from "lucide-react";
+import { Briefcase, Clock, MapPin } from "lucide-react";
 import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
 import { cn } from "@/lib/utils";
 
@@ -48,11 +48,15 @@ export function TarjetaOferta({
   return (
     <article
       className={cn(
-        "tarjeta tarjeta-clickeable group relative flex h-full flex-col gap-3.5 p-6",
+        "tarjeta tarjeta-oferta group flex h-full flex-col gap-3.5 p-6",
         className,
       )}
     >
-      <div className="flex flex-wrap items-center gap-2">
+      <span aria-hidden="true" className="tarjeta-oferta-icono">
+        <Briefcase size={22} strokeWidth={2} />
+      </span>
+
+      <div className="tarjeta-oferta-etiquetas flex flex-wrap items-center gap-2">
         {rubro && (
           <EtiquetaRubro verde title={rubros.join(", ")}>
             <span className="min-w-0 truncate">{rubro}</span>
@@ -67,7 +71,7 @@ export function TarjetaOferta({
         <h3 className="line-clamp-2 text-xl leading-snug font-bold text-heading" title={titulo}>
           <Link
             href={href}
-            className="rounded-[var(--radius-xl)] outline-none group-hover:text-primary after:absolute after:inset-0 after:rounded-[var(--radius-xl)] focus-visible:after:shadow-[var(--sombra-foco)]"
+            className="rounded-[var(--radius-xl)] outline-none group-hover:text-primary after:absolute after:inset-0 after:rounded-[var(--radius-xl)]"
           >
             {titulo}
           </Link>
@@ -96,7 +100,10 @@ export function TarjetaOferta({
 
       <div className="mt-auto flex flex-wrap items-center gap-2 pt-1.5">
         {accionExtra && <div className="relative z-10">{accionExtra}</div>}
-        <span aria-hidden="true" className={accionPrimaria ? "btn-primario" : "btn-secundario"}>
+        <span
+          aria-hidden="true"
+          className={accionPrimaria ? "btn-primario" : "btn-secundario tarjeta-oferta-tonal"}
+        >
           {textoAccion}
         </span>
       </div>

@@ -1606,6 +1606,13 @@ export type Database = {
           mes: string
         }[]
       }
+      postulaciones_por_periodo: {
+        Args: { p_agrupacion?: string; p_desde?: string }
+        Returns: {
+          cantidad: number
+          inicio: string
+        }[]
+      }
       postulaciones_por_rubro: {
         Args: { p_desde?: string; p_limite?: number }
         Returns: {

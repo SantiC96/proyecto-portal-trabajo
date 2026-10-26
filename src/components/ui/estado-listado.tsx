@@ -4,9 +4,9 @@ import { AlertCircle, SearchX, X, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const CONTENEDOR =
-  "flex flex-col items-center gap-3 rounded-[var(--radius-xl)] border border-dashed border-border-strong bg-surface px-4 py-12 text-center sm:px-8";
+  "estado-vacio flex flex-col items-center gap-3 rounded-[var(--radius-xl)] border border-dashed border-border-strong px-4 py-12 text-center sm:px-8";
 
-const ICONO = "flex h-12 w-12 items-center justify-center rounded-full";
+const ICONO = "estado-vacio-icono flex h-12 w-12 items-center justify-center rounded-full";
 
 type PropsVacio =
   | {

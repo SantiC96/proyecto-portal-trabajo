@@ -158,3 +158,30 @@ export function formatMesAnio(valor: string): string {
   }).format(d);
 }
 
+
+/** "12 oct": día y mes abreviado de una fecha sin hora. */
+export function formatDiaMesCorto(valor: string): string {
+  const d = fechaSinHora(valor);
+  if (!d) return "—";
+  return new Intl.DateTimeFormat("es-AR", { timeZone: "UTC", day: "numeric", month: "short" })
+    .format(d)
+    .replace(".", "");
+}
+
+const FORMATO_PARTES_DIA = new Intl.DateTimeFormat("es-AR", {
+  timeZone: "UTC",
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+/** Las partes de una fecha sin hora, para armar textos como "del 6 al 12 de octubre". */
+export function partesFechaSinHora(
+  valor: string,
+): { diaSemana: string; dia: string; mes: string; anio: string } | null {
+  const d = fechaSinHora(valor);
+  if (!d) return null;
+  const parte = partes(FORMATO_PARTES_DIA, d);
+  return { diaSemana: parte("weekday"), dia: parte("day"), mes: parte("month"), anio: parte("year") };
+}

@@ -89,12 +89,18 @@ export default async function HomePage({
         </Suspense>
 
         {postulante && (
-          <Suspense fallback={<EsqueletoTuActividad />}>
-            <TuActividad postulanteId={postulante.id} />
-          </Suspense>
+          <div className="banda-inicio">
+            <Suspense fallback={<EsqueletoTuActividad />}>
+              <TuActividad postulanteId={postulante.id} />
+            </Suspense>
+          </div>
         )}
 
-        {!usuario && <HowItWorks />}
+        {!usuario && (
+          <div className="banda-inicio">
+            <HowItWorks />
+          </div>
+        )}
 
         <ContactoOficina />
       </main>

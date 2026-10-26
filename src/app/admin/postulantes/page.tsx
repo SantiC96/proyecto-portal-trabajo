@@ -51,10 +51,15 @@ const NIVEL: Record<NivelPrioridad, { titulo: string; tono: TonoBadge }> = {
 };
 
 // Tabla desde 896 px de ancho disponible (la sidebar le quita ancho al
-// contenido); más angosto, cada postulante es una tarjeta. Encabezado y filas
-// comparten las columnas.
-const COLUMNAS =
-  "@4xl:grid @4xl:grid-cols-[minmax(0,2.2fr)_7rem_minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1.5fr)_minmax(0,1.4fr)_auto] @4xl:items-center @4xl:gap-4";
+// contenido); más angosto, cada postulante es una tarjeta. Misma técnica que
+// el componente Tabla: una sola grilla y, adentro, encabezado, grupos y filas
+// con subgrid, para que la columna `auto` de las acciones mida lo mismo en
+// todas las filas y los rótulos queden sobre su columna. No usa Tabla porque
+// las filas van agrupadas por nivel con un separador entre grupos.
+const GRILLA =
+  "@4xl:grid @4xl:grid-cols-[minmax(0,2.2fr)_7rem_minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1.5fr)_minmax(0,1.4fr)_auto] @4xl:gap-x-4 @4xl:gap-y-0";
+const SUBGRILLA =
+  "@4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:gap-x-4 @4xl:gap-y-0";
 
 type FiltrosListado = {
   q: string;
@@ -442,12 +447,17 @@ async function ListadoPostulantes({
 
   return (
     <div className="@container flex flex-col gap-6">
-      <div className="flex flex-col gap-3 @4xl:gap-0 @4xl:overflow-hidden @4xl:rounded-[var(--radius-xl)] @4xl:border @4xl:border-border @4xl:bg-surface">
+      <div
+        className={cn(
+          "flex flex-col gap-3 @4xl:overflow-hidden @4xl:rounded-[var(--radius-xl)] @4xl:border @4xl:border-border @4xl:bg-surface",
+          GRILLA,
+        )}
+      >
         <div
           aria-hidden="true"
           className={cn(
             "hidden bg-tabla-encabezado px-5 py-3 text-xs font-bold tracking-[0.06em] text-neutral uppercase",
-            COLUMNAS,
+            SUBGRILLA,
           )}
         >
           <span>Postulante</span>
@@ -463,10 +473,10 @@ async function ListadoPostulantes({
           <section
             key={grupo.nivel}
             aria-labelledby={`nivel-${grupo.nivel}`}
-            className="flex flex-col gap-3 @4xl:gap-0"
+            className={cn("flex flex-col gap-3", SUBGRILLA)}
           >
             <SeparadorNivel nivel={grupo.nivel} total={d.totalesNivel[grupo.nivel]} />
-            <ul className="flex flex-col gap-3 @4xl:gap-0">
+            <ul className={cn("flex flex-col gap-3", SUBGRILLA)}>
               {grupo.filas.map((p) => (
                 <FilaListado
                   key={p.id}
@@ -495,7 +505,7 @@ function SeparadorNivel({ nivel, total }: { nivel: NivelPrioridad; total: number
   return (
     <h2
       id={`nivel-${nivel}`}
-      className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[var(--radius-lg)] bg-tabla-separador px-4 py-2.5 text-sm leading-normal @4xl:rounded-none @4xl:border-t @4xl:border-tabla-borde @4xl:px-5"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[var(--radius-lg)] bg-tabla-separador px-4 py-2.5 text-sm leading-normal @4xl:col-span-full @4xl:rounded-none @4xl:border-t @4xl:border-tabla-borde @4xl:px-5"
     >
       <Badge tono={NIVEL[nivel].tono}>{NIVEL[nivel].titulo}</Badge>
       <span>
@@ -532,7 +542,8 @@ function FilaListado({
       className={cn(
         "flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[var(--radius-xl)] border border-border bg-surface p-4 text-sm text-foreground transition-colors",
         "@4xl:rounded-none @4xl:border-x-0 @4xl:border-b-0 @4xl:border-tabla-borde @4xl:px-5 @4xl:py-3 @4xl:hover:bg-tabla-hover",
-        COLUMNAS,
+        SUBGRILLA,
+        "@4xl:items-center",
       )}
     >
       {/* Postulante */}

@@ -8,9 +8,12 @@ import { cn } from "@/lib/utils";
  * le quita ancho al contenido) es una tabla con encabezado; más angosto, cada
  * fila es una tarjeta con los mismos datos y la acción a todo el ancho.
  *
- * Encabezado y filas comparten `columnas` (grid-template-columns). El
- * encabezado es visual (aria-hidden): cada celda lleva su rótulo para los
- * lectores de pantalla con `CeldaTabla etiqueta`.
+ * Encabezado y filas comparten una sola grilla (`columnas`) con subgrid: una
+ * columna `auto` mide lo mismo en el encabezado (vacío) que en las filas (el
+ * botón). Con una grilla por fila, cada una repartía el ancho distinto y los
+ * rótulos quedaban corridos respecto de su columna. El encabezado es visual
+ * (aria-hidden): cada celda lleva su rótulo para los lectores de pantalla con
+ * `CeldaTabla etiqueta`.
  */
 export function Tabla({
   columnas,
@@ -32,16 +35,19 @@ export function Tabla({
       className={cn("@container", className)}
       style={{ "--columnas-tabla": columnas } as CSSProperties}
     >
-      <div className="@4xl:overflow-hidden @4xl:rounded-[var(--radius-xl)] @4xl:border @4xl:border-border @4xl:bg-surface">
+      <div className="@4xl:overflow-hidden @4xl:rounded-[var(--radius-xl)] @4xl:border @4xl:border-border @4xl:bg-surface @4xl:shadow-[var(--sombra-tarjeta)] @4xl:grid @4xl:grid-cols-(--columnas-tabla) @4xl:gap-x-4">
         <div
           aria-hidden="true"
-          className="hidden bg-tabla-cabecera px-4 py-3 text-xs font-bold tracking-[0.06em] text-neutral uppercase @4xl:grid @4xl:grid-cols-(--columnas-tabla) @4xl:gap-4"
+          className="hidden bg-tabla-cabecera px-4 py-3 text-xs font-bold tracking-[0.06em] text-neutral uppercase @4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:gap-x-4"
         >
           {encabezados.map((e, i) => (
             <span key={i}>{e}</span>
           ))}
         </div>
-        <ul aria-label={etiqueta} className="flex flex-col gap-3 @4xl:gap-0">
+        <ul
+          aria-label={etiqueta}
+          className="flex flex-col gap-3 @4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:gap-x-4 @4xl:gap-y-0"
+        >
           {children}
         </ul>
       </div>
@@ -54,8 +60,8 @@ export function FilaTabla({ children, className }: { children: ReactNode; classN
   return (
     <li
       className={cn(
-        "flex flex-col gap-3 rounded-[var(--radius-xl)] border border-border bg-surface p-4 text-[15px] text-foreground transition-colors duration-150",
-        "@4xl:grid @4xl:grid-cols-(--columnas-tabla) @4xl:items-center @4xl:gap-4 @4xl:rounded-none @4xl:border-x-0 @4xl:border-t-0 @4xl:border-b-tabla-borde @4xl:px-4 @4xl:py-3.5 @4xl:last:border-b-0 @4xl:hover:bg-tabla-fila-hover",
+        "flex flex-col gap-3 rounded-[var(--radius-xl)] border border-border bg-surface p-4 text-[15px] text-foreground shadow-[var(--sombra-tarjeta)] transition-colors duration-150",
+        "@4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:items-center @4xl:gap-x-4 @4xl:rounded-none @4xl:shadow-none @4xl:border-x-0 @4xl:border-t-0 @4xl:border-b-tabla-borde @4xl:px-4 @4xl:py-3.5 @4xl:last:border-b-0 @4xl:hover:bg-tabla-fila-hover",
         className,
       )}
     >

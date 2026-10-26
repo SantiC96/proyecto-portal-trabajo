@@ -7,6 +7,7 @@ import {
   htmlCorreo,
   textoVistaPrevia,
 } from "./diseno";
+import { CID_LOGO, LOGO_CORREO_PNG_BASE64 } from "./logo-correo";
 
 const NOMBRE_PORTAL = "Portal de Empleo Funes";
 const PIE = "Recibís este correo porque tenés una cuenta en el Portal de Empleo Funes.";
@@ -42,8 +43,9 @@ export function armarEmail(datos: {
   const titulo = escaparHtml(asunto);
   const mensaje = escaparHtml(datos.mensaje.trim()).replace(/\r?\n/g, "<br>");
 
-  // El logo necesita una URL absoluta; sin la URL del sitio, el encabezado va en texto.
-  const logo = urlDelPortal("/images/logo-funes-blanco.png");
+  // El logo va embebido: transporte.ts lo adjunta con este cid. Sin logo, el
+  // encabezado va en texto.
+  const logo = LOGO_CORREO_PNG_BASE64 ? `cid:${CID_LOGO}` : null;
   const html = htmlCorreo({
     tituloHtml: titulo,
     mensajeHtml: mensaje,

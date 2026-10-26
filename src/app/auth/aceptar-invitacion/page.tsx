@@ -2,12 +2,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { AlertCircle } from "lucide-react";
-import { AuthShell } from "@/components/auth/auth-shell";
+import { PantallaAuth } from "@/components/auth/pantalla-auth";
 import { INVITACION_COOKIE } from "@/lib/session-config";
 import { NuevaContrasenaForm } from "../nueva-contrasena/form";
 
 export const metadata: Metadata = {
   title: "Activá tu cuenta | Portal de Empleo Funes",
+};
+
+const PANEL = {
+  volanta: "Oficina de Empleo",
+  titulo: "Sumate al equipo de la Oficina.",
+  bajada: "Elegí tu contraseña para entrar al panel de la Oficina de Empleo.",
 };
 
 // Link del email de invitación de la oficina:
@@ -23,27 +29,25 @@ export default async function AceptarInvitacionPage({
   const tokenHash = type === "invite" ? (token_hash ?? "") : "";
   const hayReintento = !!(await cookies()).get(INVITACION_COOKIE);
 
+  if (tokenHash || hayReintento) {
+    return (
+      <PantallaAuth panel={PANEL}>
+        <NuevaContrasenaForm tokenHash={tokenHash} variante="invitacion" />
+      </PantallaAuth>
+    );
+  }
+
   return (
-    <AuthShell>
-        {tokenHash || hayReintento ? (
-          <NuevaContrasenaForm tokenHash={tokenHash} variante="invitacion" />
-        ) : (
-          <div className="text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-danger text-white">
-              <AlertCircle className="h-7 w-7" aria-hidden="true" />
-            </div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">
-              El link de invitación no es válido
-            </h1>
-            <p className="mt-3 text-sm text-muted-foreground">
-              Puede haber vencido o ya haberse usado. Si ya elegiste tu contraseña,
-              iniciá sesión. Si no, pedí una invitación nueva a la Oficina de Empleo.
-            </p>
-            <Link href="/auth/login" className="btn-primario mt-6 min-h-11 justify-center px-6">
-              Ir a iniciar sesión
-            </Link>
-          </div>
-        )}
-    </AuthShell>
+    <PantallaAuth
+      panel={PANEL}
+      titulo="El link de invitación no es válido"
+      icono={<AlertCircle aria-hidden="true" />}
+      tonoIcono="peligro"
+      bajada="Puede haber vencido o ya haberse usado. Si ya elegiste tu contraseña, iniciá sesión. Si no, pedí una invitación nueva a la Oficina de Empleo."
+    >
+      <Link href="/auth/login" className="btn-primario login-enviar">
+        Ir a iniciar sesión
+      </Link>
+    </PantallaAuth>
   );
 }

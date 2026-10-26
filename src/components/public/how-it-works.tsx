@@ -56,7 +56,7 @@ const COLUMNAS: Columna[] = [
 export function HowItWorks() {
   return (
     <section id="como-funciona" aria-labelledby="como-funciona-titulo" className="scroll-mt-20">
-      <h2 id="como-funciona-titulo" className="text-[26px] leading-tight font-extrabold">
+      <h2 id="como-funciona-titulo" className="titulo-display text-[26px] leading-tight">
         Cómo funciona
       </h2>
       <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
