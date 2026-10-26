@@ -557,6 +557,26 @@ descripción debajo), revisión de oferta y de empresa, ficha de una
 postulación (qué tarjetas acompañan a la lateral depende del estado),
 fichas del candidato de la empresa y detalle de curso.
 
+Ficha del candidato de la empresa
+(`/empresa/ofertas/[id]/candidatos/[derivacionId]`), en escritorio:
+
+-   En curso (pendiente o en proceso): "Gestión" mide lo mismo que las
+    tarjetas de la izquierda juntas (Contacto, CV, nota de la Oficina,
+    información laboral y la nota privada si hay). "Ver perfil completo"
+    va debajo.
+-   Terminado (seleccionado, no seleccionado, se retiró, oferta retirada):
+    "Gestión" es un mensaje corto y mide lo mismo que la tarjeta de
+    Contacto; el resto de las tarjetas y "Ver perfil completo" van debajo,
+    a todo el ancho.
+-   En el celular, una columna con el orden de siempre: Gestión al final
+    (`lateralEnCelular="al-final"`).
+
+Con la misma técnica (grilla con `items-stretch`), en el panel del
+postulante "Últimos movimientos" y la tarjeta del perfil (completitud)
+terminan a la misma altura cuando están lado a lado (`ColumnasPanel`): la
+más corta crece con su contenido arriba. En una columna, una debajo de la
+otra.
+
 ## Índice de secciones (Mi perfil)
 
 `src/components/perfil/indice-secciones.tsx`: desde 768 px de ancho
@@ -919,7 +939,10 @@ depende del rubro; los rubros van solo en las etiquetas.
     coincidencia).
 -   El título es el link y cubre la tarjeta (un paso de teclado por
     oferta); el botón de abajo es visual. Una acción extra con su propio
-    link (`Buscar postulantes` de la oficina) va por encima.
+    link va por encima: `Buscar postulantes` de la oficina, en
+    `btn-primario` (verde) con el ícono `UserSearch`, porque es su acción
+    principal en la tarjeta; "Ver oferta" sigue tonal. Si no entran en una
+    fila (tarjetas angostas, 375 px), "Ver oferta" baja a la siguiente.
 -   El listado `/ofertas` también usa `TarjetaOferta` (`JobCard` se
     borró): grilla de 3, 2 o 1 columnas según el ancho del contenido
     (`@4xl:` y `@xl:`), "Te invitaron" para el postulante y "Buscar
@@ -1145,10 +1168,19 @@ Una sola marca para los dos formatos (`/admin/postulantes`):
 
 -   Desde 896 px de ancho disponible: tarjeta (radio 16, `overflow
     hidden`) con encabezado de 12 px 700 en mayúsculas, letter-spacing
-    `.06em`, color `neutral`, fondo `tabla-encabezado`. Filas en grilla
-    (las mismas columnas que el encabezado), padding 12 × 20, gap 16,
-    borde superior `tabla-borde`, hover `tabla-hover`. La acción va a la
-    derecha (botón neutro de 40 px y 14 px).
+    `.06em`, color `neutral`, fondo `tabla-encabezado`. Filas con
+    padding 12 × 20, gap 16, borde superior `tabla-borde`, hover
+    `tabla-hover`. La acción va a la derecha (botón neutro de 40 px y 14
+    px).
+-   Columnas: la misma técnica que el componente Tabla (abajo). Una sola
+    grilla para toda la lista; el encabezado, cada grupo, su lista y
+    cada fila son `subgrid` de ella, así que los rótulos quedan sobre su
+    columna y la columna `auto` de las acciones mide lo mismo en todas las
+    filas (tengan "Asignar curso" y "Ver perfil" o solo "Ver perfil"). El
+    separador de grupo ocupa todo el ancho (`col-span-full`). No usa el
+    componente `Tabla` porque las filas van agrupadas por nivel con un
+    separador entre grupos y la tarjeta angosta ordena los datos distinto
+    (DNI y localidad en el mismo renglón).
 -   Separadores de grupo: fila con fondo `tabla-separador`, el badge del
     grupo, el título en 14 px 700 y "· N" con el total del grupo según los
     filtros.
@@ -1173,8 +1205,13 @@ postulantes, con un componente para no repetir las clases:
     px 700 en mayúsculas, letter-spacing `.06em`, color `neutral`, fondo
     `tabla-cabecera`, padding 12 × 16. Filas de 15 px con padding 14 × 16,
     borde inferior `tabla-borde` y hover `tabla-fila-hover`.
--   Las columnas son un `grid-template-columns` (`columnas`) que comparten
-    el encabezado y las filas.
+-   Las columnas son un `grid-template-columns` (`columnas`) de una sola
+    grilla; el encabezado, la lista y cada fila son `subgrid` de ella, así
+    que cada rótulo queda alineado con su columna aunque haya columnas
+    `auto` (la de la acción mide lo mismo con el encabezado vacío que con
+    el botón). Encabezado y filas tienen el mismo padding a la izquierda
+    (16) y el mismo espacio entre columnas (16); el texto va a la
+    izquierda.
 -   La celda "quién" (`CeldaPersona`): foto o iniciales en un círculo de 40
     px y el nombre en 15 px 700 como link; debajo, un badge o un dato.
 -   Más angosto: cada fila es una tarjeta (radio 16, padding 16) con los
@@ -1190,7 +1227,7 @@ postulantes, con un componente para no repetir las clases:
     los lectores de pantalla y la lista tiene `aria-label`.
 
 La usan el detalle de una oferta de la empresa (candidatos derivados),
-Postulaciones y Comprobantes de la oficina.
+Ofertas, Empresas, Postulaciones y Comprobantes de la oficina.
 
 ## Lista de datos (`DatosClave`)
 
@@ -1945,8 +1982,20 @@ principio, en la misma línea que el texto.
   `error`    `danger`                                    blanco
 
 En Mis postulaciones: pre-entrevista y entrevista coordinada en `info`,
-"¡Fuiste seleccionado…!" en `ok`, "No fuiste seleccionado…" y "La
-empresa retiró la oferta…" en `neutra`.
+"¡Fuiste seleccionado…!" en `ok`, "No fuiste seleccionado…", "La
+empresa retiró la oferta…" y "Retiraste esta postulación…" en `neutra`,
+"Modificada después de tu postulación" en `aviso`. Ahí cada franja mide
+lo que ocupa su texto (`w-fit max-w-full`): no llega al borde derecho de
+la tarjeta y en el celular no se sale.
+
+Fila de aclaración y acción (Mis postulaciones): las franjas y el botón
+"Retirar postulación" van en una misma fila. Desde 640 px (`sm`), las
+franjas en una columna a la izquierda (una debajo de la otra, gap 12) y
+el botón a la derecha (`ml-auto`, 40 px), centrados entre sí
+(`items-center`): si hay varias franjas, el botón queda centrado respecto
+del grupo. Si hay solo franjas o solo el botón, el botón sigue a la
+derecha. En el celular, una debajo de la otra: primero las franjas y
+después el botón a todo el ancho (44 px).
 
 En las fichas de la empresa y de la oficina: "Entrevista coordinada:" y
 "Coordinada:" (pre-entrevista) en `info`; el resultado final del proceso
@@ -1996,19 +2045,23 @@ pastilla (`clasePastilla`). Si el envío tiene errores, arriba aparece un
 N campos marcados.") y cada campo muestra el suyo en rojo.
 
 El formulario de oferta tiene seis secciones (El puesto, Rubros,
-Condiciones, Requisitos, Beneficios y Publicación) y un pie a todo el
-ancho con Cancelar, "Guardar borrador" (neutro) y "Enviar a revisión"
-(primario). Arriba, según el caso, una `Franja` de error con el motivo del
-rechazo o una de aviso al editar una oferta publicada.
+Condiciones, Requisitos, Beneficios y Publicación) y un pie con Cancelar, "Guardar borrador" (neutro) y "Enviar a revisión"
+(primario). El pie (y el `Aviso` de error del servidor, si hay) va en la
+columna del formulario: mide lo mismo que las tarjetas de la izquierda,
+no pasa por debajo de la vista previa; en el celular, a todo el ancho.
+Arriba, según el caso, una `Franja` de error con el motivo del rechazo o
+una de aviso al editar una oferta publicada; van fuera de las columnas y
+no corren la vista previa.
 
 ### Vista previa
 
-En pantallas anchas (desde xl), una columna lateral sticky de 360 px con
-"Vista previa": la `TarjetaOferta` con lo que se va cargando (título,
-empresa, rubros, modalidad, jornada y ubicación), inerte (`inert`: no se
-enfoca ni se lee, es una copia del formulario), y la nota "La Oficina de
-Empleo revisa cada oferta antes de publicarla." En el celular y en tablet
-no se muestra.
+En pantallas anchas (desde xl), una columna lateral sticky de 360 px: la
+`TarjetaOferta` con lo que se va cargando (título, empresa, rubros,
+modalidad, jornada y ubicación), inerte (`inert`: no se enfoca ni se lee,
+es una copia del formulario), y debajo el rótulo "Vista previa" y la nota
+"La Oficina de Empleo revisa cada oferta antes de publicarla." La tarjeta
+va primero para que empiece a la misma altura que "1. El puesto". En el
+celular y en tablet no se muestra.
 
 ## Formularios dentro de una tarjeta angosta
 
