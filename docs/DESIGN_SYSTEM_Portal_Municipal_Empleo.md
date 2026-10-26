@@ -335,14 +335,32 @@ Clases de componente en `globals.css`: `.btn-primario`, `.btn-secundario`,
 
 ## Familias
 
-**Body y títulos (token `font-sans`):** Public Sans, cargada con
+**Texto general (token `font-sans`):** Public Sans, cargada con
 `next/font/google` en `src/app/layout.tsx` (pesos 400, 500, 600, 700 y
 800; subset latin; `display: swap`) y expuesta como `--font-public-sans`.
 
 **Display (token `font-display`):** `Georgia, "Times New Roman", serif`
+(fuente del sistema, no se carga). Solo para los títulos principales:
 
-Excepción documentada: solo para los títulos grandes del login. No usar
-en otros contextos ni en la interfaz autenticada.
+  Título                                    Clase              Peso   Tracking
+  ----------------------------------------- ------------------ ------ ----------
+  Hero del inicio (`hero.tsx`)              `.titulo-portada`  400    -0.02em
+  Títulos del login y de `/auth`            `.login-*-titulo`  400    -0.02em
+  `h1` de `EncabezadoPagina` (pantallas     `.titulo-display`  700    -0.01em
+  internas)
+  `h2` de las secciones del inicio (Cómo    `.titulo-display`  700    -0.01em
+  funciona, Tu actividad, título del
+  carrusel)
+
+Georgia no tiene peso 800: nunca combinar `font-display` con
+`font-extrabold`, porque el navegador simularía la negrita. Las clases
+`.titulo-display` y `.titulo-portada` están fuera de capa en
+`globals.css` para ganarle a la regla `h1, h2 { font-weight: 800 }`;
+no sumarles utilidades de peso ni de tracking.
+
+Todo lo demás queda en Public Sans: títulos de tarjetas, tablas,
+diálogos, formularios, badges, botones y el título del detalle de una
+oferta.
 
 No introducir familias tipográficas adicionales.
 
@@ -352,15 +370,17 @@ El `body` usa `-webkit-font-smoothing: antialiased`.
 
   Uso                   Tamaño       Peso   Color
   -------------------- ------------ ------ -----------
-  Título de página      24--30 px    800    `heading`
-  Título de sección     20 px        800    `heading`
+  Hero del inicio       32 / 46 px   400    blanco (Georgia, interlineado 1.08)
+  Título de página      26 / 32 px   700    `heading` (Georgia, interlineado 1.15)
+  Título de sección     26 px        700    `heading` (Georgia en el inicio, 1.25)
+  Título de sección     20 px        800    `heading` (Public Sans, resto)
   Body                  15--16 px    400    `foreground`
   Label                 15 px        600    `control-foreground`
   Botón                 15 px        700
   Badge                 13 px        700
   Caption               12--14 px    400--500
 
-Los `h1` y `h2` toman el peso 800 y el color `heading` desde
+Los `h1` y `h2` en Public Sans toman el peso 800 y el color `heading` desde
 `globals.css` aunque cada pantalla tenga sus propias clases
 (`font-bold text-foreground`). Un `h2` sin tamaño propio mide 20 px.
 
@@ -846,17 +866,53 @@ Evitar llenar la card de información secundaria.
 ## Tarjeta de oferta (inicio y panel)
 
 `src/components/ofertas/tarjeta-oferta.tsx` (`TarjetaOferta`). `.tarjeta`
-clickeable, padding 24, gap 14:
+con `.tarjeta-oferta` (decoración en `globals.css`, bloque "Ambiente"),
+padding 24, gap 14:
 
 ``` text
-┌──────────────────────────────────────┐
-│ [Gastronomía +1] [Presencial] [Te invitaron] │
-│ Ayudante de cocina                   │  20 px 700, hasta 2 renglones
-│ Restaurante El Molino                │  15 px 600 texto-bajada
-│ 📍 Funes    🕒 Jornada completa       │  14 px muted, íconos 16 px
-│ [ Ver oferta ]                       │  secundario (primario: "Postularme")
-└──────────────────────────────────────┘
+┌━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓  franja verde de 4 px
+│ [Gastronomía +1] [Presencial] [Te …]  [💼] │  ícono 44 px (tinte desde acá)
+│ Ayudante de cocina                         │  20 px 700, hasta 2 renglones
+│ Restaurante El Molino                      │  15 px 600 texto-bajada
+│ 📍 Funes    🕒 Jornada completa             │  14 px muted, íconos 16 px
+│ [ Ver oferta ]                             │  tonal (primario: "Postularme")
+└────────────────────────────────────────────┘
 ```
+
+Decoración (ronda 5, tinte verde). Todas las ofertas usan el verde
+institucional: una oferta puede tener varios rubros, así que el color no
+depende del rubro; los rubros van solo en las etiquetas.
+
+-   Fondo: `radial-gradient(circle at 100% 0, rgb(0 104 51 / .16),
+    transparent 62%)` sobre blanco. El tinte sale de la esquina superior
+    derecha y se apaga hacia abajo a la izquierda.
+-   Borde: 1 px `rgb(0 104 51 / .35)` y arriba 4 px `primary`. El radio
+    es el de `.tarjeta`. `position: relative`, `isolation: isolate` y
+    `overflow: hidden`.
+-   Ícono (`.tarjeta-oferta-icono`, `aria-hidden`, sin clics): cuadrado
+    de 44 px con radio 12, fondo `primary`, sombra `0 6px 14px rgb(0 30
+    15 / .18)`, a 16 px de arriba y de la derecha, con `Briefcase` blanco
+    de 22 px (trazo 2). La fila de etiquetas lleva 48 px de padding a la
+    derecha para no pasar por debajo; el título siempre empieza debajo
+    del ícono porque la fila tiene al menos la modalidad (26 px).
+-   Botón "Ver oferta" tonal (`.tarjeta-oferta-tonal`, variante de
+    `.btn-secundario` solo para esta tarjeta): fondo `rgb(0 104 51 /
+    .12)`, sin borde visible (queda transparente para medir lo mismo),
+    texto `primary-hover`; con el mouse sobre la tarjeta, fondo al 20 %.
+    Alto mínimo 44 px. La versión primaria ("Postularme") no cambia.
+-   Hover: sube 3 px y sombra `0 12px 28px rgb(0 30 15 / .14)`, en
+    180 ms. Sin movimiento con `prefers-reduced-motion: reduce` (la
+    sombra sí cambia).
+-   Foco del título: el anillo `--sombra-foco` se dibuja en la tarjeta
+    (`:has(h3 a:focus-visible)`), porque el `overflow: hidden` recortaría
+    el del link.
+-   Contraste (peor caso, sobre el tinte al 16 %): `muted-foreground`
+    4,75:1, `texto-bajada` 8,27:1, título 11,95:1 (5,40:1 en verde al
+    pasar el mouse); botón tonal 6,07:1 (5,39:1 con hover); las etiquetas
+    tienen su propio fondo blanco (9,25:1 y 10,35:1); ícono 6,94:1.
+-   En un contenedor con scroll (el carrusel) la elevación necesita unos
+    20 px libres arriba y 40 abajo: el carrusel los da con padding y los
+    compensa con márgenes negativos.
 
 -   Etiquetas: rubro (`EtiquetaRubro verde`, el primero y "+N"),
     modalidad (`EtiquetaRubro`) y badges extra (`Te invitaron` warning,
@@ -888,6 +944,9 @@ en los extremos).
 -   Debajo, puntos de posición (`aria-hidden`): pastilla de 24 × 8 verde
     para la página actual y puntos de 8 px `punto-carrusel`.
 -   Si todas las tarjetas entran, no hay flechas ni puntos.
+-   La lista lleva 24 px de padding arriba y 44 abajo (con `-mb-10`) para
+    que el scroll horizontal no recorte la elevación ni la sombra de las
+    tarjetas; a los costados, 4 px.
 
 ### Pase automático
 
