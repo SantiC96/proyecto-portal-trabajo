@@ -110,9 +110,24 @@ La prioridad es un criterio de la oficina para ordenar su trabajo, no un dato de
 
 - **Rediseño (2026-10-22):** la lista es una tabla (tarjetas en pantallas angostas) y cada separador de nivel muestra el total de ese nivel con los filtros actuales, con un conteo `head: true` por nivel; ya no muestra la cantidad de postulaciones, los rechazos sueltos ni la fecha de registro (los rechazos siguen en "Necesita curso · N rechazos").
 
+- **Filtro por procedencia (2026-10-27):** vuelve el filtro por nivel, ahora como pastillas (ver Actualización del 2026-10-27).
+
 ### Por qué el CV no entra en el orden
 
 La lista de postulantes es un directorio: sirve para encontrar a una persona, no para elegir candidatos. Donde el CV importa, en la búsqueda de postulantes para una oferta (decisión 028), ya suma puntaje. En la lista alcanza con el badge "Sin CV" para verlo de un vistazo.
+
+---
+
+## Actualización (2026-10-27)
+
+### Filtro por procedencia en la lista de postulantes
+
+- Reemplaza al filtro "nivel" que se quitó el 2026-10-21. `/admin/postulantes` suma pastillas "Todos", "De Funes, verificados", "De Funes, sin verificar" y "Otra localidad o sin informar", cada una con su cantidad.
+- Parámetro `?procedencia=`: `verificado` (nivel 1), `sin-verificar` (2) y `otra` (3). Sin el parámetro o con otro valor, todos. El viejo `nivel` se sigue ignorando.
+- Se aplica en la consulta paginada (`.eq("nivel_prioridad", n)`), junto con la búsqueda y los rubros y antes del `range`: "Mostrando X–Y de N" y la paginación son los de la lista filtrada. El orden no cambia.
+- Las cantidades son los conteos `head: true` por nivel que ya usaban los separadores, en paralelo con la página: respetan la búsqueda y los rubros, no la procedencia elegida. "Todos" es la suma.
+- Cambiar de pastilla vuelve a la página 1 y conserva la búsqueda y los rubros; el buscador y los rubros conservan la procedencia; "Limpiar filtros" saca todo. El link a la ficha guarda la URL de la lista con la procedencia en `volver`.
+- No hay migración ni cambios en la base: `nivel_prioridad` ya está indexada (`postulantes_nivel_prioridad_idx`).
 
 ---
 

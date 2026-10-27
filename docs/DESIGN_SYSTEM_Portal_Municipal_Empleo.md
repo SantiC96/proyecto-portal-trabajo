@@ -1183,7 +1183,8 @@ Una sola marca para los dos formatos (`/admin/postulantes`):
     (DNI y localidad en el mismo renglón).
 -   Separadores de grupo: fila con fondo `tabla-separador`, el badge del
     grupo, el título en 14 px 700 y "· N" con el total del grupo según los
-    filtros.
+    filtros. Con el filtro por procedencia (sección 23) queda solo el
+    separador del nivel elegido.
 -   Más angosto: cada fila es una tarjeta (foto y nombre arriba, datos
     debajo, badges que bajan de renglón y la acción a todo el ancho); los
     separadores quedan como franjas redondeadas.
@@ -1447,6 +1448,31 @@ la paginación y "Mostrando X de N" son los de la lista filtrada. Un
 todas. Un filtro sin resultados muestra `EstadoVacio` `sin-resultados` con un texto por
 estado ("No tenés postulaciones retiradas.") y "Ver todas". Los cambios de
 filtro no cuentan como pantallas distintas para "Volver".
+
+## Filtro por procedencia (lista de postulantes de la oficina)
+
+`GrupoPastillas` "Procedencia" con `unaLinea` (`FilaDesplazable`, flechas
+"Ver opciones de procedencia anteriores" / "Ver más opciones de
+procedencia"), debajo del buscador y de los rubros y arriba de "Limpiar
+filtros": `PastillaFiltro` "Todos", "De Funes, verificados", "De Funes, sin
+verificar" y "Otra localidad o sin informar", cada una con su cantidad al
+lado (700, números tabulares). Las de nivel llevan antes un punto de 10 px
+del color del badge de su separador (`success`, `accent`, `neutral`) con un
+aro blanco de 2 px para que se vea sobre el verde de la activa; es
+decorativo (`aria-hidden`), el nivel lo dice el texto.
+
+-   Vive en la URL (`?procedencia=verificado | sin-verificar | otra`). Un
+    valor no válido muestra todos. Cambiar de pastilla vuelve a la página
+    1 y conserva la búsqueda y los rubros; cambiar la búsqueda o los
+    rubros conserva la procedencia, y "Limpiar filtros" saca todo.
+-   Las cantidades respetan la búsqueda y los rubros, no la procedencia
+    elegida (son los mismos totales de los separadores). Mientras cargan,
+    las pastillas se ven sin número.
+-   Con un filtro, la lista muestra solo el separador de ese nivel.
+-   Sin resultados por la procedencia sola: `EstadoVacio` `sin-resultados`
+    con un texto por nivel ("No hay postulantes de Funes con el domicilio
+    verificado.") y "Ver todos". Con búsqueda o rubros, el texto de
+    siempre y "Limpiar filtros".
 
 ## Barra de progreso
 
