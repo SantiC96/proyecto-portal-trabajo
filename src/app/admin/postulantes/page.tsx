@@ -17,6 +17,7 @@ import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { Esqueleto } from "@/components/ui/esqueleto";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
+import { GrupoPastillas, PastillaFiltro } from "@/components/ui/pastilla-filtro";
 import { FiltrosPostulantes } from "./filtros-postulantes";
 import { AsignarCursoDialog } from "./asignar-curso-dialog";
 import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
@@ -50,6 +51,45 @@ const NIVEL: Record<NivelPrioridad, { titulo: string; tono: TonoBadge }> = {
   3: { titulo: "Otra localidad o sin informar", tono: "neutral" },
 };
 
+// Filtro ?procedencia=: un valor por nivel. Sin el parámetro, o con uno que no
+// está acá, se ven todos.
+const FILTROS_PROCEDENCIA: {
+  valor: string;
+  nivel: NivelPrioridad;
+  etiqueta: string;
+  vacio: string;
+}[] = [
+  {
+    valor: "verificado",
+    nivel: 1,
+    etiqueta: "De Funes, verificados",
+    vacio: "No hay postulantes de Funes con el domicilio verificado.",
+  },
+  {
+    valor: "sin-verificar",
+    nivel: 2,
+    etiqueta: "De Funes, sin verificar",
+    vacio: "No hay postulantes de Funes sin verificar.",
+  },
+  {
+    valor: "otra",
+    nivel: 3,
+    etiqueta: "Otra localidad o sin informar",
+    vacio: "No hay postulantes de otra localidad o sin localidad informada.",
+  },
+];
+
+// Punto del color del separador de cada nivel en su pastilla.
+const PUNTO_NIVEL: Record<NivelPrioridad, string> = {
+  1: "bg-success",
+  2: "bg-accent",
+  3: "bg-neutral",
+};
+
+function leerProcedencia(valor: string | undefined): NivelPrioridad | null {
+  return FILTROS_PROCEDENCIA.find((f) => f.valor === valor)?.nivel ?? null;
+}
+
 // Tabla desde 896 px de ancho disponible (la sidebar le quita ancho al
 // contenido); más angosto, cada postulante es una tarjeta. Misma técnica que
 // el componente Tabla: una sola grilla y, adentro, encabezado, grupos y filas
@@ -64,6 +104,8 @@ const SUBGRILLA =
 type FiltrosListado = {
   q: string;
   rubroIds: string[];
+  /** Nivel elegido en ?procedencia=; null = todos. */
+  nivel: NivelPrioridad | null;
   pagina: number;
 };
 
@@ -83,16 +125,26 @@ type FilaPostulante = {
   cursosPendientesIds: string[];
 };
 
+/**
+ * Total de cada nivel con la búsqueda y los rubros, sin la procedencia elegida;
+ * null si el conteo falló.
+ */
+type TotalesNivel = Record<NivelPrioridad, number | null>;
+
 type DatosListado =
   | { tipo: "error"; refError: string }
-  | { tipo: "vacio"; hayFiltros: boolean }
+  | {
+      tipo: "vacio";
+      hayFiltros: boolean;
+      nivel: NivelPrioridad | null;
+      totalesNivel: TotalesNivel;
+    }
   | {
       tipo: "ok";
       filas: FilaPostulante[];
       total: number;
       pagina: number;
-      /** Total de cada nivel con los filtros actuales; null si el conteo falló. */
-      totalesNivel: Record<NivelPrioridad, number | null>;
+      totalesNivel: TotalesNivel;
       cursosActivos: Pick<Tabla<"cursos">, "id" | "nombre" | "descripcion">[];
     };
 
@@ -100,10 +152,12 @@ export default async function PostulantesPage({
   searchParams,
 }: {
   // con_cv, nivel, comprobante, esperando_curso y curso_pendiente eran filtros
-  // que ya no existen: si llegan de un link viejo se ignoran.
+  // que ya no existen: si llegan de un link viejo se ignoran. El filtro por
+  // nivel de prioridad ahora es procedencia (verificado, sin-verificar, otra).
   searchParams: Promise<{
     q?: string;
     rubros?: string;
+    procedencia?: string;
     pagina?: string;
   }>;
 }) {
@@ -118,6 +172,7 @@ export default async function PostulantesPage({
           .map((s) => s.trim())
           .filter(Boolean)
       : [],
+    nivel: leerProcedencia(sp.procedencia),
     pagina: leerPagina(sp.pagina),
   };
 
@@ -147,6 +202,15 @@ export default async function PostulantesPage({
         opciones={opciones}
         rubros={filtros.rubroIds}
         hayBusqueda={filtros.q.length > 0}
+        hayProcedencia={filtros.nivel !== null}
+        pastillas={
+          <Suspense
+            key={clave}
+            fallback={<FiltroProcedencia nivel={filtros.nivel} searchParams={sp} />}
+          >
+            <FiltroProcedenciaConCantidades datos={datos} nivel={filtros.nivel} searchParams={sp} />
+          </Suspense>
+        }
         contador={
           <Suspense key={clave} fallback={<Esqueleto className="h-4 w-48" />}>
             <ContadorPostulantes datos={datos} />
@@ -162,7 +226,7 @@ export default async function PostulantesPage({
 }
 
 async function cargarListado(filtros: FiltrosListado): Promise<DatosListado> {
-  const { q, rubroIds, pagina } = filtros;
+  const { q, rubroIds, nivel, pagina } = filtros;
   const hayFiltros = rubroIds.length > 0 || q.length > 0;
 
   const supabase = await createSupabaseServerClient();
@@ -222,10 +286,14 @@ async function cargarListado(filtros: FiltrosListado): Promise<DatosListado> {
     (rubroPrefilterId !== undefined && rubroPrefilterId.length === 0) ||
     (textFilterIds !== undefined && textFilterIds.length === 0);
 
-  if (emptyFilter) return { tipo: "vacio", hayFiltros };
+  if (emptyFilter) {
+    return { tipo: "vacio", hayFiltros, nivel, totalesNivel: { 1: 0, 2: 0, 3: 0 } };
+  }
 
-  // Totales por nivel para los separadores: un conteo por nivel (head: true,
-  // sin traer filas) con los mismos filtros que la lista.
+  // Totales por nivel para los separadores y las pastillas de procedencia: un
+  // conteo por nivel (head: true, sin traer filas) con la búsqueda y los
+  // rubros de la lista, pero no la procedencia, para que cada pastilla diga
+  // cuántos hay en su nivel.
   const contarNivel = async (nivel: NivelPrioridad): Promise<number | null> => {
     let query = supabase
       .from("postulantes")
@@ -253,6 +321,7 @@ async function cargarListado(filtros: FiltrosListado): Promise<DatosListado> {
       if (rubroPrefilterId !== undefined)
         query = query.in("id", rubroPrefilterId);
       if (textFilterIds !== undefined) query = query.in("id", textFilterIds);
+      if (nivel !== null) query = query.eq("nivel_prioridad", nivel);
 
       // Mismo orden que postulantes_nivel_prioridad_idx (migration_055).
       return query
@@ -274,8 +343,9 @@ async function cargarListado(filtros: FiltrosListado): Promise<DatosListado> {
     return { tipo: "error", refError: logError("admin_postulantes_listado", resultado.error) };
   }
 
+  const totalesNivel: TotalesNivel = { 1: conteos[0], 2: conteos[1], 3: conteos[2] };
   const postulantes = resultado.filas;
-  if (postulantes.length === 0) return { tipo: "vacio", hayFiltros };
+  if (postulantes.length === 0) return { tipo: "vacio", hayFiltros, nivel, totalesNivel };
 
   const postulanteIds = postulantes.map((p) => p.id);
   const usuarioIds = postulantes.map((p) => p.usuario_id);
@@ -374,7 +444,7 @@ async function cargarListado(filtros: FiltrosListado): Promise<DatosListado> {
     tipo: "ok",
     total: resultado.total,
     pagina: resultado.pagina,
-    totalesNivel: { 1: conteos[0], 2: conteos[1], 3: conteos[2] },
+    totalesNivel,
     cursosActivos: cursosRes.data ?? [],
     filas: postulantes.map((p) => {
       const usuario = p.usuarios;
@@ -409,6 +479,87 @@ async function ContadorPostulantes({ datos }: { datos: Promise<DatosListado> }) 
   );
 }
 
+/** Las cantidades salen de los mismos conteos por nivel que los separadores. */
+async function FiltroProcedenciaConCantidades({
+  datos,
+  nivel,
+  searchParams,
+}: {
+  datos: Promise<DatosListado>;
+  nivel: NivelPrioridad | null;
+  searchParams: ParamsUrl;
+}) {
+  const d = await datos;
+  return (
+    <FiltroProcedencia
+      nivel={nivel}
+      searchParams={searchParams}
+      totales={d.tipo === "error" ? undefined : d.totalesNivel}
+    />
+  );
+}
+
+/**
+ * Pastillas "Todos" y una por nivel. Cambiar de pastilla vuelve a la página 1
+ * y conserva la búsqueda y los rubros. Sin `totales` (mientras cargan) o si
+ * falló un conteo, la pastilla va sin número.
+ */
+function FiltroProcedencia({
+  nivel,
+  searchParams,
+  totales,
+}: {
+  nivel: NivelPrioridad | null;
+  searchParams: ParamsUrl;
+  totales?: TotalesNivel;
+}) {
+  const todos =
+    totales && NIVELES.every((n) => totales[n] !== null)
+      ? NIVELES.reduce((suma, n) => suma + (totales[n] ?? 0), 0)
+      : null;
+
+  const opciones = [
+    { valor: null, nivel: null, etiqueta: "Todos", cantidad: todos },
+    ...FILTROS_PROCEDENCIA.map((f) => ({
+      valor: f.valor,
+      nivel: f.nivel,
+      etiqueta: f.etiqueta,
+      cantidad: totales?.[f.nivel] ?? null,
+    })),
+  ];
+
+  return (
+    <GrupoPastillas
+      id="filtro-procedencia"
+      titulo="Procedencia"
+      unaLinea={{
+        textoAnteriores: "Ver opciones de procedencia anteriores",
+        textoSiguientes: "Ver más opciones de procedencia",
+      }}
+    >
+      {opciones.map((o) => (
+        <PastillaFiltro
+          key={o.valor ?? "todos"}
+          href={hrefConParams(RUTA, searchParams, { procedencia: o.valor, pagina: null })}
+          activa={o.nivel === nivel}
+        >
+          {o.nivel !== null && (
+            // El aro blanco despega el punto del verde de la pastilla activa.
+            <span
+              aria-hidden="true"
+              className={cn("mr-2 size-2.5 shrink-0 rounded-full ring-2 ring-white", PUNTO_NIVEL[o.nivel])}
+            />
+          )}
+          {o.etiqueta}
+          {o.cantidad !== null && (
+            <span className="ml-1.5 font-bold tabular-nums">{o.cantidad}</span>
+          )}
+        </PastillaFiltro>
+      ))}
+    </GrupoPastillas>
+  );
+}
+
 async function ListadoPostulantes({
   datos,
   searchParams,
@@ -420,6 +571,18 @@ async function ListadoPostulantes({
 
   if (d.tipo === "error") return <ErrorListado refError={d.refError} />;
   if (d.tipo === "vacio") {
+    if (!d.hayFiltros && d.nivel !== null) {
+      const filtro = FILTROS_PROCEDENCIA.find((f) => f.nivel === d.nivel);
+      return (
+        <EstadoVacio
+          tipo="sin-resultados"
+          titulo={filtro?.vacio}
+          descripcion="Elegí otra procedencia para ver el resto de los postulantes."
+          hrefLimpiar={hrefConParams(RUTA, searchParams, { procedencia: null, pagina: null })}
+          textoLimpiar="Ver todos"
+        />
+      );
+    }
     return d.hayFiltros ? (
       <EstadoVacio
         tipo="sin-resultados"

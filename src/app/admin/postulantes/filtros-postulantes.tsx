@@ -17,6 +17,10 @@ type Filtros = {
 type Props = Filtros & {
   opciones: Tabla<"categorias">[];
   hayBusqueda: boolean;
+  /** Hay una procedencia elegida (?procedencia=); "Limpiar filtros" también la saca. */
+  hayProcedencia: boolean;
+  /** Pastillas de procedencia, debajo de la búsqueda y los rubros. */
+  pastillas?: ReactNode;
   /** "Mostrando X–Y de N postulantes", a la derecha de los filtros. */
   contador?: ReactNode;
 };
@@ -25,6 +29,8 @@ export function FiltrosPostulantes({
   opciones,
   rubros,
   hayBusqueda,
+  hayProcedencia,
+  pastillas,
   contador,
 }: Props) {
   const router = useRouter();
@@ -34,10 +40,11 @@ export function FiltrosPostulantes({
   // los valores que llegan desde la URL.
   const [filtros, setFiltros] = useOptimistic<Filtros>({ rubros });
 
-  const tienesFiltros = hayBusqueda || filtros.rubros.length > 0;
+  const tienesFiltros = hayBusqueda || hayProcedencia || filtros.rubros.length > 0;
 
   function aplicar(cambios: Partial<Filtros>) {
     const siguiente = { ...filtros, ...cambios };
+    // Parte de la URL actual: conserva la búsqueda (q) y la procedencia.
     const destino = hrefConParams(RUTA, new URLSearchParams(window.location.search), {
       rubros: siguiente.rubros.join(",") || null,
       // Filtros que ya no existen: no se arrastran desde un link viejo.
@@ -89,6 +96,8 @@ export function FiltrosPostulantes({
 
         {contador && <div className="shrink-0 lg:ml-auto lg:pl-2">{contador}</div>}
       </div>
+
+      {pastillas}
 
       {tienesFiltros && (
         <button
