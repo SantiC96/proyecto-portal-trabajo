@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { Esqueleto, EsqueletoTarjeta } from "@/components/ui/esqueleto";
 import { ultimasOfertasPublicas } from "@/lib/ofertas";
+import { formatAntiguedadPublicacion } from "@/lib/fechas";
 import { rutaBuscarPostulantes } from "@/lib/invitaciones";
 import { obtenerInvitacionesPendientes } from "@/lib/postulante/panel";
 
@@ -67,6 +68,8 @@ export async function UltimasOfertas({
     );
   }
 
+  const ahora = new Date();
+
   return (
     <CarruselOfertas titulo={TITULO} bajada={BAJADA} enlace={ENLACE}>
       {resultado.ofertas.map((oferta) => (
@@ -79,6 +82,7 @@ export async function UltimasOfertas({
           modalidad={oferta.modalidad}
           lugar={oferta.ubicacion}
           jornada={oferta.jornada}
+          publicada={formatAntiguedadPublicacion(oferta.fechaPublicacion, ahora)}
           badges={invitadas.has(oferta.id) && <Badge tono="warning">Te invitaron</Badge>}
           accionExtra={
             esOficina && (

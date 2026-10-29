@@ -19,8 +19,6 @@ type Props = Filtros & {
   hayBusqueda: boolean;
   /** Hay una procedencia elegida (?procedencia=); "Limpiar filtros" también la saca. */
   hayProcedencia: boolean;
-  /** Pastillas de procedencia, debajo de la búsqueda y los rubros. */
-  pastillas?: ReactNode;
   /** "Mostrando X–Y de N postulantes", a la derecha de los filtros. */
   contador?: ReactNode;
 };
@@ -30,7 +28,6 @@ export function FiltrosPostulantes({
   rubros,
   hayBusqueda,
   hayProcedencia,
-  pastillas,
   contador,
 }: Props) {
   const router = useRouter();
@@ -96,8 +93,6 @@ export function FiltrosPostulantes({
 
         {contador && <div className="shrink-0 lg:ml-auto lg:pl-2">{contador}</div>}
       </div>
-
-      {pastillas}
 
       {tienesFiltros && (
         <button

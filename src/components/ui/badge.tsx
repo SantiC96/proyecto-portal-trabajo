@@ -53,22 +53,37 @@ type Props = ComponentProps<"span"> & {
   /** Variante "estado": un punto del color del texto antes de la etiqueta. */
   estado?: boolean
   icono?: LucideIcon
+  /**
+   * El texto pasa de línea dentro de la pastilla en lugar de acortarse (un
+   * cuadro angosto donde la etiqueta es lo importante, como los indicadores
+   * del panel). Mide 26 px con una línea y crece con cada línea más.
+   */
+  multilinea?: boolean
 }
 
-/** Badge de estado: pastilla de 26 px, sin salto de línea. */
+/**
+ * Badge de estado: pastilla de 26 px, sin salto de línea. Si no entra en su
+ * contenedor, el texto se acorta con puntos suspensivos y, si es texto
+ * simple, lleva un title con el texto completo. Con `multilinea`, pasa de
+ * línea.
+ */
 function Badge({
   tono = "neutral",
   estado = false,
   icono: Icono,
+  multilinea = false,
   className,
   children,
+  title,
   ...props
 }: Props) {
   return (
     <span
       data-slot="badge"
+      title={title ?? (!multilinea && typeof children === "string" ? children : undefined)}
       className={cn(
-        "inline-flex h-[26px] w-fit max-w-full shrink-0 items-center gap-1.5 overflow-hidden rounded-[13px] px-2.5 text-[13px] leading-none font-bold whitespace-nowrap",
+        "inline-flex w-fit max-w-full min-w-0 shrink-0 items-center gap-1.5 rounded-[13px] px-2.5 text-[13px] font-bold",
+        multilinea ? "min-h-[26px] py-[5px] leading-[1.25]" : "h-[26px] leading-none whitespace-nowrap",
         CLASE_TONO[tono],
         className,
       )}
@@ -78,7 +93,7 @@ function Badge({
         <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-current" />
       )}
       {Icono && <Icono aria-hidden="true" className="size-3.5 shrink-0" />}
-      {children}
+      <span className={multilinea ? "min-w-0 break-words" : "min-w-0 truncate"}>{children}</span>
     </span>
   )
 }

@@ -99,6 +99,8 @@ type Props<T> = {
   deshabilitado?: boolean;
   /** Texto de ayuda del botón (tooltip). */
   ayudaBoton?: string;
+  /** Nombre accesible del botón cuando muestra solo un ícono. */
+  etiquetaBoton?: string;
   titulo: string;
   descripcion?: ReactNode;
   /** Contenido extra entre la descripción y los botones. */
@@ -124,6 +126,7 @@ export function DialogoConfirmacion<T>({
   claseBoton,
   deshabilitado = false,
   ayudaBoton,
+  etiquetaBoton,
   titulo,
   descripcion,
   children,
@@ -154,6 +157,7 @@ export function DialogoConfirmacion<T>({
         onClick={() => setAbierto(true)}
         disabled={deshabilitado || pendiente}
         title={ayudaBoton}
+        aria-label={etiquetaBoton}
         className={cn(
           CLASE_BOTON[estiloBoton],
           "whitespace-nowrap",

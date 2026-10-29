@@ -17,7 +17,7 @@ import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { Esqueleto } from "@/components/ui/esqueleto";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
-import { GrupoPastillas, PastillaFiltro } from "@/components/ui/pastilla-filtro";
+import { PestanasEstado } from "@/components/ui/pestanas-estado";
 import { FiltrosPostulantes } from "./filtros-postulantes";
 import { AsignarCursoDialog } from "./asignar-curso-dialog";
 import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
@@ -78,13 +78,6 @@ const FILTROS_PROCEDENCIA: {
     vacio: "No hay postulantes de otra localidad o sin localidad informada.",
   },
 ];
-
-// Punto del color del separador de cada nivel en su pastilla.
-const PUNTO_NIVEL: Record<NivelPrioridad, string> = {
-  1: "bg-success",
-  2: "bg-accent",
-  3: "bg-neutral",
-};
 
 function leerProcedencia(valor: string | undefined): NivelPrioridad | null {
   return FILTROS_PROCEDENCIA.find((f) => f.valor === valor)?.nivel ?? null;
@@ -198,27 +191,26 @@ export default async function PostulantesPage({
         bajada="Ordenados por prioridad: primero los vecinos de Funes con domicilio verificado."
       />
 
+      <Suspense
+        key={`${clave}:pestanas`}
+        fallback={<FiltroProcedencia nivel={filtros.nivel} searchParams={sp} />}
+      >
+        <FiltroProcedenciaConCantidades datos={datos} nivel={filtros.nivel} searchParams={sp} />
+      </Suspense>
+
       <FiltrosPostulantes
         opciones={opciones}
         rubros={filtros.rubroIds}
         hayBusqueda={filtros.q.length > 0}
         hayProcedencia={filtros.nivel !== null}
-        pastillas={
-          <Suspense
-            key={clave}
-            fallback={<FiltroProcedencia nivel={filtros.nivel} searchParams={sp} />}
-          >
-            <FiltroProcedenciaConCantidades datos={datos} nivel={filtros.nivel} searchParams={sp} />
-          </Suspense>
-        }
         contador={
-          <Suspense key={clave} fallback={<Esqueleto className="h-4 w-48" />}>
+          <Suspense key={`${clave}:contador`} fallback={<Esqueleto className="h-4 w-48" />}>
             <ContadorPostulantes datos={datos} />
           </Suspense>
         }
       />
 
-      <Suspense key={clave} fallback={<EsqueletoListado />}>
+      <Suspense key={`${clave}:lista`} fallback={<EsqueletoListado />}>
         <ListadoPostulantes datos={datos} searchParams={sp} />
       </Suspense>
     </div>
@@ -290,9 +282,9 @@ async function cargarListado(filtros: FiltrosListado): Promise<DatosListado> {
     return { tipo: "vacio", hayFiltros, nivel, totalesNivel: { 1: 0, 2: 0, 3: 0 } };
   }
 
-  // Totales por nivel para los separadores y las pastillas de procedencia: un
+  // Totales por nivel para los separadores y las pestañas de procedencia: un
   // conteo por nivel (head: true, sin traer filas) con la búsqueda y los
-  // rubros de la lista, pero no la procedencia, para que cada pastilla diga
+  // rubros de la lista, pero no la procedencia, para que cada pestaña diga
   // cuántos hay en su nivel.
   const contarNivel = async (nivel: NivelPrioridad): Promise<number | null> => {
     let query = supabase
@@ -500,9 +492,9 @@ async function FiltroProcedenciaConCantidades({
 }
 
 /**
- * Pastillas "Todos" y una por nivel. Cambiar de pastilla vuelve a la página 1
+ * Pestañas "Todos" y una por nivel. Cambiar de pestaña vuelve a la página 1
  * y conserva la búsqueda y los rubros. Sin `totales` (mientras cargan) o si
- * falló un conteo, la pastilla va sin número.
+ * falló un conteo, la pestaña va sin número.
  */
 function FiltroProcedencia({
   nivel,
@@ -529,34 +521,15 @@ function FiltroProcedencia({
   ];
 
   return (
-    <GrupoPastillas
-      id="filtro-procedencia"
-      titulo="Procedencia"
-      unaLinea={{
-        textoAnteriores: "Ver opciones de procedencia anteriores",
-        textoSiguientes: "Ver más opciones de procedencia",
-      }}
-    >
-      {opciones.map((o) => (
-        <PastillaFiltro
-          key={o.valor ?? "todos"}
-          href={hrefConParams(RUTA, searchParams, { procedencia: o.valor, pagina: null })}
-          activa={o.nivel === nivel}
-        >
-          {o.nivel !== null && (
-            // El aro blanco despega el punto del verde de la pastilla activa.
-            <span
-              aria-hidden="true"
-              className={cn("mr-2 size-2.5 shrink-0 rounded-full ring-2 ring-white", PUNTO_NIVEL[o.nivel])}
-            />
-          )}
-          {o.etiqueta}
-          {o.cantidad !== null && (
-            <span className="ml-1.5 font-bold tabular-nums">{o.cantidad}</span>
-          )}
-        </PastillaFiltro>
-      ))}
-    </GrupoPastillas>
+    <PestanasEstado
+      etiqueta="Procedencia de los postulantes"
+      pestanas={opciones.map((o) => ({
+        href: hrefConParams(RUTA, searchParams, { procedencia: o.valor, pagina: null }),
+        label: o.etiqueta,
+        activa: o.nivel === nivel,
+        cantidad: o.cantidad ?? undefined,
+      }))}
+    />
   );
 }
 

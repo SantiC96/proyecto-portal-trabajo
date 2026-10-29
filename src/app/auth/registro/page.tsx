@@ -49,13 +49,13 @@ export default async function RegistroPage({ searchParams }: Props) {
   // celular) y el formulario en una tarjeta de 720 px a la derecha.
   return (
     <main className="login-pantalla">
-      <PanelMarca {...panel} fijo volver={<LinkVolverAuth claro />} />
+      <PanelMarca {...panel} fijo volver={<LinkVolverAuth claro saltearAuth={false} />} />
 
       <div className="login-columna">
         <div className="w-full max-w-[720px]">
           {/* En el celular el link va dentro del panel verde. */}
           <div className="hidden lg:block">
-            <LinkVolverAuth />
+            <LinkVolverAuth saltearAuth={false} />
           </div>
           <div className="auth-tarjeta login-entrada login-entrada--demorada">
             <Image

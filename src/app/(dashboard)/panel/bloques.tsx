@@ -146,7 +146,7 @@ export async function BloqueIndicadores() {
                 aria-label={`${cantidadConEstado(filtro, valor)}. Ver lista`}
                 className="tarjeta tarjeta-clickeable flex h-full flex-col gap-2.5 p-5 outline-none focus-visible:shadow-[var(--sombra-foco)]"
               >
-                <Badge tono={tono} estado>
+                <Badge tono={tono} estado multilinea>
                   {ETIQUETA_FILTRO[filtro]}
                 </Badge>
                 {/* El ícono a la izquierda del número; arriba si el cuadro es angosto. */}

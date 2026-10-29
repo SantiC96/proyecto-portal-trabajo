@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, FileText, Upload, X } from "lucide-react";
+import { ExternalLink, FileText, Trash2, Upload } from "lucide-react";
 import { subirCV, eliminarCV } from "./actions";
 import type { CvVista } from "@/lib/cvs";
 import type { ErrorAccion } from "@/lib/resultado";
@@ -119,7 +119,7 @@ export function SeccionCvs({ cvs }: { cvs: CvVista[] }) {
                   </p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+              <div className="flex items-center gap-2">
                 {cv.url && (
                   <a
                     href={subiendo ? undefined : cv.url}
@@ -127,21 +127,21 @@ export function SeccionCvs({ cvs }: { cvs: CvVista[] }) {
                     rel="noopener noreferrer"
                     aria-disabled={subiendo}
                     tabIndex={subiendo ? -1 : undefined}
-                    className={cn("btn-neutro sm:min-h-10!", subiendo && "pointer-events-none")}
+                    className={cn(
+                      "btn-neutro flex-1 sm:flex-none",
+                      subiendo && "pointer-events-none",
+                    )}
                   >
                     <ExternalLink aria-hidden="true" />
                     Ver
                   </a>
                 )}
                 <DialogoConfirmacion
-                  textoBoton={
-                    <>
-                      <X aria-hidden="true" />
-                      Eliminar
-                    </>
-                  }
+                  textoBoton={<Trash2 aria-hidden="true" />}
+                  etiquetaBoton={`Eliminar CV «${cv.nombreOriginal}»`}
+                  ayudaBoton={`Eliminar CV «${cv.nombreOriginal}»`}
                   estiloBoton="peligroBorde"
-                  claseBoton="sm:min-h-10!"
+                  claseBoton="btn-icono"
                   deshabilitado={subiendo}
                   titulo="¿Eliminar este CV?"
                   descripcion="Las postulaciones que ya hiciste con este CV no cambian."

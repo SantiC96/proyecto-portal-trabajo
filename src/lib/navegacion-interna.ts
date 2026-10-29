@@ -111,6 +111,8 @@ export function esRutaAuth(pathname: string): boolean {
   return pathname === "/auth" || pathname.startsWith("/auth/");
 }
 
+export type OpcionesVolver = { saltearAuth?: boolean };
+
 export type DestinoVolver =
   | { tipo: "historial" }
   | { tipo: "ruta"; ruta: string; indice: number };
@@ -123,11 +125,13 @@ export type DestinoVolver =
  *   cambios de pestaña, filtro o página no cuentan como pantallas distintas.
  * - Si se llegó a ella por el redirect de una acción, se saltea la pantalla
  *   donde se hizo la acción (el formulario enviado, lo que se eliminó).
- * - Se saltean los formularios, las pantallas de /auth y la propia pantalla.
+ * - Se saltean los formularios, las pantallas de /auth (salvo con
+ *   `saltearAuth: false`, el registro: vuelve al login si vino de ahí) y la
+ *   propia pantalla.
  * - Si el destino es la entrada inmediata anterior del historial, router.back();
  *   si no, se navega a su ruta (con su query).
  */
-export function destinoVolver(): DestinoVolver | null {
+export function destinoVolver({ saltearAuth = true }: OpcionesVolver = {}): DestinoVolver | null {
   const entradas = leerPila()?.entradas ?? [];
   const ultimo = entradas.length - 1;
   if (ultimo < 1) return null;
@@ -147,7 +151,9 @@ export function destinoVolver(): DestinoVolver | null {
 
   while (i >= 0) {
     const path = sinQuery(entradas[i].ruta);
-    if (path !== pathActual && !esRutaAuth(path) && !RUTA_FORMULARIO.test(path)) break;
+    if (path !== pathActual && !(saltearAuth && esRutaAuth(path)) && !RUTA_FORMULARIO.test(path)) {
+      break;
+    }
     i--;
   }
   if (i < 0) return null;
@@ -161,8 +167,11 @@ export function destinoVolver(): DestinoVolver | null {
  * Lleva a la pantalla anterior si la pila la conoce. Devuelve false si no la
  * hay: quien llama navega a su href de respaldo.
  */
-export function volverAPantallaAnterior(router: { back: () => void; push: (href: string) => void }): boolean {
-  const destino = destinoVolver();
+export function volverAPantallaAnterior(
+  router: { back: () => void; push: (href: string) => void },
+  opciones?: OpcionesVolver,
+): boolean {
+  const destino = destinoVolver(opciones);
   if (!destino) return false;
   if (destino.tipo === "historial") {
     router.back();

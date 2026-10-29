@@ -759,6 +759,14 @@ clases sueltas de cada pantalla.
 `ghost` y `link` quedan para acciones de baja jerarquía y botones de
 ícono (44 × 44).
 
+`.btn-icono` (fuera de capa, después de las medidas comunes): botón de
+solo ícono de 44 × 44, sin padding, ícono de 20 px. Siempre con
+`aria-label` y `title` con el mismo texto. Lo usan los botones de borrar
+un archivo: "Quitar foto" (o "Quitar logo") de Mi perfil y "Eliminar CV
+«nombre»" de cada CV, con `Trash2` en `.btn-peligro-borde`
+(`DialogoConfirmacion` con `etiquetaBoton`, `ayudaBoton` y
+`claseBoton="btn-icono"`). La confirmación es la de siempre.
+
 ## Reglas
 
 -   Una sección no debe contener varios botones primarios con igual
@@ -766,8 +774,10 @@ clases sueltas de cada pantalla.
 -   "Cancelar" en los diálogos usa el botón neutro.
 -   "Cerrar sesión" y toda acción destructiva usan el botón de peligro.
     Una destructiva de menor peso que convive con otras acciones
-    ("Retirar postulación", "Eliminar" un CV) usa `.btn-peligro-borde`
-    (`estiloBoton="peligroBorde"` en `DialogoConfirmacion`).
+    ("Retirar postulación", "Quitar foto", eliminar un CV) usa
+    `.btn-peligro-borde` (`estiloBoton="peligroBorde"` en
+    `DialogoConfirmacion`); para borrar un archivo, como botón de ícono
+    (`.btn-icono`, ver arriba).
 -   El botón de acento se reserva para la navegación (rediseño, PR 2).
 -   Dentro de un aviso rojo, la acción usa el botón neutro (el verde no
     contrasta sobre el rojo).
@@ -782,7 +792,11 @@ se ven como un campo (los chips de `MultiCombobox`).
 
 -   borde 1,5 px `border-strong`, radio 12 px, fondo blanco;
 -   texto 16 px (evita el zoom automático de iOS);
--   placeholder `placeholder`;
+-   placeholder `placeholder`; desaparece cuando el campo tiene foco
+    (regla global fuera de capa en `globals.css`:
+    `input:focus::placeholder, textarea:focus::placeholder` transparente),
+    en todos los `input` y `textarea` del sistema. Por eso el placeholder
+    es solo un ejemplo: lo necesario va en el label o en la ayuda;
 -   alto mínimo 48 px en una línea;
 -   foco: borde `primary` y `--sombra-foco-campo`;
 -   error (`aria-invalid`): borde `danger` y `--sombra-error-campo`;
@@ -826,6 +840,16 @@ Teclado: Enter o flecha abajo abren con el foco en el buscador, las
 flechas recorren, Enter elige y Escape cierra; el foco vuelve al botón.
 Lo usa el rubro del buscador del inicio (botón de 52 px, sin borde desde
 md, texto de 16 px, 220 px de ancho).
+
+En los formularios del registro (rubro de la empresa y "¿De dónde sos?"
+del postulante, `CampoLocalidad` con `conCombobox`) reemplaza a los
+`<select>` nativos con el estilo del campo: `triggerClassName` con
+`.campo` (o el campo de Mi perfil en la localidad), así mide lo mismo que
+los inputs de al lado (48 px), con el mismo borde y el error en rojo.
+`aria-invalid`, `aria-describedby` y `requerido` (`aria-required`) van al
+botón: `useErroresCampo` lo enfoca y lo marca como a cualquier campo, y
+el `<label htmlFor>` le da el nombre. Mi perfil sigue con el `<select>`
+nativo.
 
 ------------------------------------------------------------------------
 
@@ -937,6 +961,13 @@ depende del rubro; los rubros van solo en las etiquetas.
 -   Etiquetas: rubro (`EtiquetaRubro verde`, el primero y "+N"),
     modalidad (`EtiquetaRubro`) y badges extra (`Te invitaron` warning,
     coincidencia).
+-   Fila de datos: lugar (`MapPin`), jornada (`Clock`) y, opcional,
+    cuándo se publicó (`publicada`, ícono `CalendarDays`, mismo estilo):
+    "Publicada hoy", "Publicada ayer", "Publicada hace 3 días", "Publicada
+    hace 2 semanas", "Publicada hace 1 mes". Se arma en el servidor con
+    `formatAntiguedadPublicacion` (`src/lib/fechas.ts`), contando días
+    calendario en Argentina, para que no cambie al hidratar. Por ahora
+    solo lo pasa el carrusel del inicio.
 -   El título es el link y cubre la tarjeta (un paso de teclado por
     oferta); el botón de abajo es visual. Una acción extra con su propio
     link va por encima: `Buscar postulantes` de la oficina, en
@@ -1031,7 +1062,13 @@ Componente único: `src/components/ui/badge.tsx`.
 ```
 
 -   pastilla de 26 px de alto, padding `0 10px`, radio 13 px;
--   13 px, 700, sin salto de línea;
+-   13 px, 700, sin salto de línea. Si no entra en su contenedor
+    (`max-w-full`), el texto se acorta con puntos suspensivos y, si es
+    texto simple, el badge lleva un `title` con el texto completo;
+-   `multilinea`: el texto pasa de línea dentro de la pastilla (mínimo
+    26 px, padding vertical 5 px, interlineado 1,25). Para cuadros
+    angostos donde la etiqueta es la información (los indicadores del
+    panel del postulante);
 -   ícono opcional de 14 px (`icono`);
 -   variante `estado`: punto de 8 px del color del texto antes de la
     etiqueta;
@@ -1051,7 +1088,11 @@ modalidad, jornada, motivos de coincidencia.
 
 -   fondo blanco, borde interno 1,5 px `muted-icon`, texto
     `muted-foreground-strong`, 13 px 600;
--   variante `verde`: borde `primary` y texto `primary-hover`.
+-   variante `verde`: borde `primary` y texto `primary-hover`;
+-   el texto pasa de línea dentro de la etiqueta (`break-words`, también
+    una palabra larga) y nunca supera el ancho del contenedor; donde
+    tiene que quedar en una línea (el rubro de `TarjetaOferta`), se acorta
+    con un `span` `truncate` y `title`.
 
 No convertir párrafos o información extensa en badges.
 
@@ -1294,7 +1335,9 @@ tocarla de nuevo.
 
 `PestanasEstado` (`src/components/ui/pestanas-estado.tsx`), con subrayado.
 Es compartido: cambia en todas las pantallas que lo usan (Mis ofertas de la
-empresa; Postulaciones, Ofertas, Empresas y Comprobantes de la oficina).
+empresa; Postulaciones, Ofertas, Empresas, Comprobantes, Postulantes
+(procedencia) y Cursos (Activos / Inactivos, con su cantidad según la
+búsqueda) de la oficina).
 
 -   contenedor con una línea inferior de 2 px `border` (sombra interna:
     un borde quedaría fuera del área de scroll y recortaría el subrayado);
@@ -1412,7 +1455,9 @@ Las métricas no deben convertirse en grandes cards sin contexto
 ## Tarjetas de indicadores (panel del postulante)
 
 Cada tarjeta es un link (`.tarjeta-clickeable`, padding 20, gap 10): el
-`Badge` del estado como etiqueta (con su tono) y, debajo, el ícono del
+`Badge` del estado como etiqueta (con su tono, `multilinea`: "Enviadas a
+la empresa" pasa de línea en los cuadros angostos en lugar de cortarse)
+y, debajo, el ícono del
 estado a la izquierda del número (36 px 800, interlineado 1, `heading`).
 Son cinco y la grilla no deja huecos: en celular, 2 por fila y el último a
 todo el ancho; desde 672 px de ancho disponible, 3 arriba y 2 abajo (grilla
@@ -1451,23 +1496,20 @@ filtro no cuentan como pantallas distintas para "Volver".
 
 ## Filtro por procedencia (lista de postulantes de la oficina)
 
-`GrupoPastillas` "Procedencia" con `unaLinea` (`FilaDesplazable`, flechas
-"Ver opciones de procedencia anteriores" / "Ver más opciones de
-procedencia"), debajo del buscador y de los rubros y arriba de "Limpiar
-filtros": `PastillaFiltro` "Todos", "De Funes, verificados", "De Funes, sin
-verificar" y "Otra localidad o sin informar", cada una con su cantidad al
-lado (700, números tabulares). Las de nivel llevan antes un punto de 10 px
-del color del badge de su separador (`success`, `accent`, `neutral`) con un
-aro blanco de 2 px para que se vea sobre el verde de la activa; es
-decorativo (`aria-hidden`), el nivel lo dice el texto.
+`PestanasEstado` ("Procedencia de los postulantes"), debajo del
+encabezado y arriba del buscador y de los rubros, como en Postulaciones,
+Empresas, Ofertas y Comprobantes: "Todos", "De Funes, verificados", "De
+Funes, sin verificar" y "Otra localidad o sin informar", cada una con su
+cantidad en la pastilla de la pestaña. Sin el punto de color de las
+pastillas que había antes: el nivel lo dice el texto.
 
 -   Vive en la URL (`?procedencia=verificado | sin-verificar | otra`). Un
-    valor no válido muestra todos. Cambiar de pastilla vuelve a la página
+    valor no válido muestra todos. Cambiar de pestaña vuelve a la página
     1 y conserva la búsqueda y los rubros; cambiar la búsqueda o los
     rubros conserva la procedencia, y "Limpiar filtros" saca todo.
 -   Las cantidades respetan la búsqueda y los rubros, no la procedencia
     elegida (son los mismos totales de los separadores). Mientras cargan,
-    las pastillas se ven sin número.
+    las pestañas se ven sin número.
 -   Con un filtro, la lista muestra solo el separador de ese nivel.
 -   Sin resultados por la procedencia sola: `EstadoVacio` `sin-resultados`
     con un texto por nivel ("No hay postulantes de Funes con el domicilio
@@ -1826,7 +1868,11 @@ de domicilio es una zona de carga con borde punteado. "Mínimo 8
 caracteres." va como ayuda de la contraseña, con un botón de 44 px para
 mostrarla u ocultarla; debajo de "Repetir contraseña", "Las contraseñas
 coinciden" en verde o "Las contraseñas no coinciden." en rojo. El CUIT
-muestra "CUIT válido" en vivo. "Crear cuenta" es primario a todo el ancho
+muestra "CUIT válido" en vivo. El rubro de la empresa y la localidad del
+postulante usan `Combobox` (sección 16). "Volver" lleva a la pantalla
+inmediatamente anterior aunque sea de /auth (login → "Registrate" →
+registro → "Volver" vuelve al login; `LinkVolverAuth saltearAuth={false}`)
+y, sin pantalla anterior, al inicio. "Crear cuenta" es primario a todo el ancho
 (52 px) y abajo va "¿Ya tenés cuenta? Iniciá sesión acá". Las piezas
 comunes están en `src/components/auth/partes-registro.tsx`.
 
@@ -1858,13 +1904,19 @@ inicio) y, para la tarjeta, `titulo`, `bajada`, `icono` y `tonoIcono`.
 -   Postulante (`/auth/verificar-email`): "Ya casi estás" / "Confirmá tu
     email y empezá a postularte." / "Te mandamos un link para activar tu
     cuenta del Portal de Empleo." Tarjeta "Revisá tu correo" con el
-    sobre, el aviso del comprobante si no se subió y el recuadro "¿Qué
-    sigue después de confirmar?".
+    sobre, el aviso de spam, el aviso del comprobante si no se subió y el
+    recuadro "¿Qué sigue después de confirmar?".
 -   Empresa (`/auth/verificar-email-empresa`): "Empresas de Funes" /
     "Confirmá tu email y esperá la aprobación." / "La Oficina de Empleo
     revisa cada empresa antes de que pueda publicar ofertas." Los dos
     pasos van numerados con círculos verdes de 28 px, título de 15 px 700
-    y texto de 14 px, como las secciones numeradas.
+    y texto de 14 px, como las secciones numeradas. Debajo, el aviso de
+    spam.
+-   Aviso de spam (`AvisoSpam`, `src/components/auth/aviso-spam.tsx`):
+    `Aviso` `info` debajo del texto principal de verificar el email (las
+    dos) y de "Revisá tu email" (reset enviado): "Si no ves el correo en
+    unos minutos, revisá la carpeta de spam o correo no deseado, y
+    marcalo como «No es spam» para recibir los próximos."
 
 ### Aceptar la invitación
 
@@ -1885,8 +1937,8 @@ mandamos un email con un link para crear una contraseña nueva."
 
 -   Títulos de la tarjeta en Georgia (`.login-titulo`), con la bajada en
     15 px debajo: "Recuperar contraseña", "Revisá tu email" (con un sobre
-    en un círculo verde claro de 56 px arriba) y "Elegí una contraseña
-    nueva".
+    en un círculo verde claro de 56 px arriba, y el aviso de spam debajo
+    de la bajada) y "Elegí una contraseña nueva".
 -   "Volver" como en el login: a la pantalla anterior y, si no la hay, al
     login.
 -   Las mismas animaciones de entrada que el login.
