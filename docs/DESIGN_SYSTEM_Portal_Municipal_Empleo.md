@@ -498,8 +498,8 @@ fondo, aplicado una sola vez en `.app-contenido` (`globals.css`, bloque
     puntos verdes al 13 % cada 24 px y el mismo degradé, enmascarada con
     `radial-gradient(ellipse 70% 100% at 100% 0, #000 15%, transparent
     60%)`: quedan solo en la esquina superior derecha, lejos del título.
--   Trébol de agua (`::after`, solo desde lg): 300 px, verde al 8 %,
-    girado −12°, a 28 px de la derecha y 56 px por encima del borde.
+-   Escudo de agua (`::after`, solo desde lg): 300 px, al 8 %, girado
+    −8°, a 28 px de la derecha y 56 px por encima del borde.
 -   `.app-contenido` lleva `position: relative` e `isolation: isolate`:
     la decoración va en `z-index: -1` dentro de él, detrás del contenido,
     y no recibe clics (`pointer-events: none`).
@@ -509,17 +509,24 @@ fondo, aplicado una sola vez en `.app-contenido` (`globals.css`, bloque
 -   Las tarjetas y tablas siguen blancas. El encabezado de página, la
     sidebar y la barra del celular no cambian.
 
-El padding del contenido es la variable `--relleno-contenido` (16 / 24 /
-32 px): la usan las bandas del inicio para llegar de borde a borde.
+El padding de la página es la variable `--relleno-contenido` (16 / 24 /
+32 px): la usan las bandas del inicio para llegar de borde a borde. Va en
+`.app-pagina`, el contenedor que `AppShell` pone alrededor de cada página
+(ver sección 41); abajo deja `--espacio-pie` (48 px) antes del footer.
 
-## Trébol
+## Escudo de agua
 
-El trébol de Funes para las marcas de agua es una sola pieza: la variable
-`--trebol` de `globals.css`, un SVG en data URI que se usa como máscara
-(`mask: var(--trebol) center / contain no-repeat`), con el color en el
-`background` del elemento (`--color-primary` al 8 %). Lo usan el fondo de
-las pantallas y los estados vacíos. No es una imagen ni se copia en los
-componentes.
+La marca de agua es el escudo de la Municipalidad, en dos imágenes de
+`public/images` de 330 × 344 px con fondo transparente:
+
+-   `escudo-verde.png`, para fondos claros: el fondo de las pantallas y
+    los estados vacíos, como `background: url(...) center / contain
+    no-repeat` en un `::after` de `globals.css`, al 8 % y girado −8°. La
+    imagen ya es verde de marca: no lleva máscara ni color propio.
+-   `escudo-blanco.png`, para fondos verdes: el footer (sección 41).
+
+No se copia en los componentes. El trébol de la sidebar contraída y de la
+barra del celular (`trebol.png`) es otra pieza y no cambia.
 
 Formularios: como ocupan todo el ancho, reparten los campos en grillas de
 2 columnas (3 si son cortos, como las contraseñas o los datos de la
@@ -2175,9 +2182,9 @@ de `/ofertas` (`empty-job-results.tsx`) llevan las clases
     título;
 -   halo del ícono: `box-shadow: 0 0 0 10px rgb(0 104 51 / .10)`. El
     tamaño y el color del círculo no cambian;
--   trébol de agua (`--trebol`): 220 px (150 en celular), verde al 8 %,
-    girado −12°, a −40 px de la derecha y −50 px de arriba (−60 / −70 en
-    celular).
+-   escudo de agua (`escudo-verde.png`): 220 px (150 en celular), al
+    8 %, girado −8°, a −40 px de la derecha y −50 px de arriba (−60 / −70
+    en celular).
 
 `ErrorListado` y el error de carga de `/ofertas` no llevan decoración.
 
@@ -2665,43 +2672,67 @@ Reglas:
 # 41. Footer
 
 `src/components/layout/footer.tsx`, clases `.pie-*` de `globals.css`.
-`AppShell` lo pone al final del contenido en todas las pantallas con
+`AppShell` lo pone debajo de la página en todas las pantallas con
 navegación (públicas y con sesión, los tres roles). Las de `/auth` no lo
 llevan.
 
--   **Ancho:** todo el ancho del área de contenido, al lado de la sidebar
-    (margen negativo igual a `--relleno-contenido`, sin scroll
-    horizontal). `margin-top: auto`: en las páginas cortas queda al pie de
-    la ventana. `.pie-espacio` (48 px, `--espacio-pie`) lo separa del
-    contenido; una `.banda-inicio` que es la última sección lo tapa y llega
-    hasta el footer.
--   **Fondo:** `primary` (#006833), el mismo verde de la sidebar, con los
-    puntos del hero más suaves: blanco al 6 % cada 24 px (28 desde 640
-    px).
--   **Texto:** títulos de columna y nombre del portal en blanco 800/700;
-    el resto en `sidebar-texto` (#E3F0E8), 15 px. Los dos pasan AA sobre
-    el fondo (6,9:1 y 5,9:1).
--   **Columnas** (container queries, porque la sidebar le quita ancho):
-    una debajo de la otra en el celular, dos desde `@2xl` y cuatro desde
-    `@4xl`:
-    1.  Marca: logo blanco, "Portal de Empleo de la Municipalidad de
-        Funes" y "Conectamos a vecinos de Funes con empresas de la
-        ciudad."
-    2.  "Oficina de Empleo": dirección (link a Google Maps en otra
-        pestaña), horario, teléfono (`tel:`) y correo (`mailto:`), con
-        `MapPin`, `Clock`, `Phone` y `Mail` de 18 px en blanco.
-    3.  "Seguinos": Instagram y Facebook en botones redondos de 44 px
-        (`.pie-red`, borde blanco al 40 %, hover blanco al 12 %, como los
-        links de la sidebar) con el
-        ícono en SVG inline (lucide no trae marcas), `aria-label`,
-        `target="_blank"` y `rel="noopener noreferrer"`.
-    4.  "Enlaces": Ofertas, Preguntas frecuentes y, sin sesión, "Iniciar
-        sesión" y "Registrarme" (abre el diálogo de registro); con sesión,
-        "Mi panel" (el panel del rol).
--   **Pie:** línea blanca al 20 % (la de los separadores de la sidebar) y "© 2026 Municipalidad de Funes" en 14
-    px.
--   Links de 44 px de alto, subrayado al pasar el mouse y foco con anillo
-    blanco al 60 %.
+-   **No se ve al abrir:** `.app-contenido` es una columna flex con la
+    página (`.app-pagina`) y el footer. `.app-pagina` lleva `flex: 1 0
+    auto` y `min-height: 100dvh` en escritorio (`calc(100dvh - 60px)` en
+    el celular, por la barra de arriba): el footer arranca justo debajo
+    del borde de la ventana y aparece al hacer scroll. En las pantallas
+    largas no cambia nada. Una `.banda-inicio` que es la última sección
+    tapa el `--espacio-pie` y llega hasta el footer.
+-   **Ancho:** todo el ancho del área de contenido, al lado de la sidebar,
+    sin scroll horizontal.
+-   **Forma y fondo:** `primary` (#006833) con puntos blancos al 9 % cada
+    24 px (`radial-gradient(rgb(255 255 255 / .09) 1px, transparent
+    1.5px)`), esquinas de arriba redondeadas de 28 px (24 en celular) y
+    un acento `accent` (#F2B705) de 64 × 4 px pegado arriba, a 48 px de
+    la izquierda (20 en celular).
+-   **Marca de agua:** `escudo-blanco.png` de 400 px de ancho (230 en
+    celular), al 9 %, girado −8°, recortado en la esquina inferior
+    derecha (`right: -60px`, `bottom: -110px`; −60 / −50 en celular). El
+    footer lleva `overflow: hidden`; la imagen, `alt=""`, `aria-hidden` y
+    `pointer-events: none`.
+-   **Columnas:** 3 desde que el footer mide 720 px (container query,
+    porque la sidebar le quita ancho): `1.5fr 1fr 1.4fr`, gap 48 px,
+    padding `56px 48px 0`. Debajo, una sobre otra con gap 40 px y padding
+    `40px 20px 0` (desde 640 px de ventana se usa el padding de
+    escritorio).
+    1.  Marca: logo blanco de 180 px (160 en celular), "PORTAL DE EMPLEO"
+        (12 px, 800, tracking .1em, `sidebar-suave` #CFE6D9) y "Ofertas de
+        empresas de la ciudad, revisadas por la Oficina de Empleo." (15
+        px, `sidebar-texto` #E3F0E8). Debajo, Instagram y Facebook en
+        botones redondos de 44 px (`.pie-red`, borde blanco al 40 %, hover
+        blanco al 12 %) con el ícono en SVG inline (lucide no trae
+        marcas), `aria-label`, `target="_blank"` y `rel="noopener
+        noreferrer"`.
+    2.  "Portal" (`<nav>`): Ofertas de trabajo, Cómo funciona
+        (`/#como-funciona`), Preguntas frecuentes y, sin sesión,
+        "Ingresar" y "Crear cuenta" (abre el diálogo de registro); con
+        sesión, "Mi panel" (el panel del rol). `.pie-link`: blanco, 15 px,
+        600, alto mínimo de 38 px (44 en celular), subrayado al pasar el
+        mouse.
+    3.  "Oficina de Empleo": dirección (link a Google Maps en otra
+        pestaña), teléfono (`tel:`), correo (`mailto:`) y horario, con
+        `MapPin`, `Phone`, `Mail` y `Clock` de 18 px en `accent`
+        (`.pie-dato`, 44 px de alto).
+-   **Títulos de columna** (`.pie-titulo`): 13 px, 800, mayúsculas,
+    tracking .1em, en blanco, con una rayita `accent` de 28 × 3 px
+    debajo. El amarillo como texto sobre este verde no pasa AA: por eso
+    el título va en blanco.
+-   **Barra inferior** (`.pie-barra`): borde de arriba blanco al 22 %; a
+    la izquierda "© 2026 Municipalidad de Funes · Santa Fe" (14 px,
+    `sidebar-suave`) y a la derecha el botón "Volver arriba" (`.pie-arriba`,
+    `ChevronUp`, 44 px de alto, borde blanco al 45 %, texto blanco). En
+    el celular el botón va arriba del texto.
+-   **Volver arriba:** scroll suave al inicio (instantáneo con
+    `prefers-reduced-motion`) y deja el foco en el `<main>` de la página
+    (o en `.app-pagina` si no tiene), con `tabindex="-1"` y sin anillo.
+-   **Contraste:** blanco 6,9:1, `sidebar-texto` 5,9:1 y `sidebar-suave`
+    5,3:1 sobre el verde. Foco de links y botones con anillo blanco al
+    60 %.
 -   Los datos de la Oficina salen de `src/lib/oficina.ts`, el único lugar
     donde están (también los usan `ContactoOficina` y las preguntas
     frecuentes).
