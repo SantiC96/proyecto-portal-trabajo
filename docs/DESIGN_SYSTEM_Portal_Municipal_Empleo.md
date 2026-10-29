@@ -827,7 +827,9 @@ Usar `Combobox` cuando:
 
 Para selección múltiple, mostrar elementos seleccionados de manera clara
 y removible (chip blanco con borde verde, como la etiqueta de rubro
-verde): `MultiCombobox`.
+verde): `MultiCombobox`. Como filtro de una sola línea (rubros de
+`/ofertas` en el celular), con `resumen` muestra un texto corto de lo
+elegido en lugar de los chips.
 
 Selección única con búsqueda: `Combobox` (`src/components/ui/combobox.tsx`).
 Un botón que muestra la opción elegida con un chevron y abre el mismo
@@ -1195,8 +1197,20 @@ Anunciar resultados vacíos con una región
 `aria-live="polite"`; los errores se presentan por separado y permiten
 reintentar.
 
-El buscador y los filtros forman una tarjeta de ancho completo; los chips
-de rubro y modalidad se envuelven en varias líneas, también en mobile.
+**Con sugerencia de modalidad.** Si hay modalidades elegidas y existen
+ofertas de los mismos rubros (y del mismo texto) en otras modalidades, el
+texto de apoyo lo dice: «No hay ofertas de Gastronomía en modalidad
+Remoto, pero hay 3 en modalidad Presencial.». Las acciones principales son
+un link por cada modalidad con ofertas («Ver las 3 en modalidad
+Presencial», mismo estilo que «Limpiar filtros»), que cambia la modalidad
+elegida por esa y conserva los rubros y el texto. «Limpiar filtros» pasa a
+ser un link de texto `primary` debajo. Sin sugerencia, el estado vacío de
+siempre.
+
+El buscador y los filtros forman una tarjeta de ancho completo. Desde sm,
+los rubros son pastillas en una sola fila (`FilaDesplazable`); en el
+celular, un `MultiCombobox` con el label «Rubros» (ver «Pastillas de
+filtro»). Las modalidades son pastillas en todos los tamaños.
 Esta superficie usa los tokens locales `ofertas-*` para la paleta solicitada
 por el módulo, sin cambiar los colores institucionales globales.
 
@@ -1328,8 +1342,21 @@ escribe.
 Cuando el filtro vive en la URL, cada pastilla es un link que mantiene los
 demás filtros y la activa se marca con `aria-current` (`aria-pressed` no
 es válido en un link). En una pastilla que es un botón, `aria-pressed`.
-Una pastilla que solo admite un valor opcional (Modalidad) se desactiva al
-tocarla de nuevo.
+
+**Selección múltiple** (Rubro y Modalidad en `/ofertas`): cada pastilla
+agrega o saca su valor de la lista (`?categoria=A&categoria=B`), así que
+puede haber varias activas a la vez; la primera pastilla («Todos» en
+Rubro, «Todas» en Modalidad) saca todos los del grupo y está activa cuando
+no hay ninguno elegido. Con algún filtro elegido aparece el link «Limpiar
+filtros». Tocar una pastilla vuelve a la página 1.
+
+**Rubros en el celular** (menos de sm): los rubros son muchos para una fila
+de pastillas, así que se eligen con un `MultiCombobox` con su buscador, el
+label «Rubros» (13 px 700, como el título de un grupo) y, en lugar de los
+chips, un resumen de lo elegido (`resumen`: «Gastronomía», «Gastronomía y
+2 más»; sin nada, el placeholder «Todos los rubros»). Se quita un rubro
+desmarcándolo en la lista. Solo cambia la URL; el filtrado sigue en el
+servidor.
 
 ## Pestañas de estado
 
