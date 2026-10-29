@@ -386,8 +386,9 @@ GRANT  EXECUTE ON FUNCTION public.buscar_candidatos_para_oferta(uuid, boolean, b
 --   contratadas              derivada con 'contratado'.
 --   no_seleccionadas         rechazada_municipalidad (la oficina) o derivada
 --                            con 'rechazado' (la empresa).
---   retiradas                retirada_postulante. Retirar una postulación
---                            'recibida' la borra (053): esas no quedan.
+--   retiradas                retirada_postulante. Desde 063 también las
+--                            retiradas cuando estaban 'recibida' (antes se
+--                            borraban y no quedaban).
 --   invitaciones_pendientes  invitaciones 'pendiente' con la oferta todavía
 --                            abierta: las que mis_invitaciones() (056)
 --                            devuelve como pendientes en /invitaciones.
