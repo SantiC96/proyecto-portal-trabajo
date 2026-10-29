@@ -162,7 +162,7 @@ export default async function MisPostulacionesPage({
         titulo="Mis postulaciones"
         bajada={
           <Suspense
-            key={clave}
+            key={`${clave}:bajada`}
             fallback={<span className="inline-block h-4 w-72 max-w-full rounded bg-secondary-hover" />}
           >
             <BajadaMisPostulaciones resultado={resultado} />
@@ -190,7 +190,7 @@ export default async function MisPostulacionesPage({
         />
       </Suspense>
 
-      <Suspense key={clave} fallback={<EsqueletoLista filas={3} />}>
+      <Suspense key={`${clave}:lista`} fallback={<EsqueletoLista filas={3} />}>
         <ListadoMisPostulaciones
           postulanteId={postulante.id}
           resultado={resultado}

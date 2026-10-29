@@ -285,13 +285,13 @@ export default async function PostulacionesPage({
             )}
           </form>
 
-          <Suspense key={clave} fallback={<Esqueleto className="h-4 w-48" />}>
+          <Suspense key={`${clave}:contador`} fallback={<Esqueleto className="h-4 w-48" />}>
             <ContadorPostulaciones datos={datos} />
           </Suspense>
         </div>
       </div>
 
-      <Suspense key={clave} fallback={<EsqueletoLista filas={5} />}>
+      <Suspense key={`${clave}:lista`} fallback={<EsqueletoLista filas={5} />}>
         <ListadoPostulaciones datos={datos} estado={estado} searchParams={sp} />
       </Suspense>
     </section>
