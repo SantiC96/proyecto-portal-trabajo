@@ -81,6 +81,10 @@ export function PopupCombobox({
  *
  * Con `name`, el valor viaja en un input oculto: el formulario lo manda igual
  * que un <select>, también sin JavaScript (con el valor inicial).
+ *
+ * En un formulario con noValidate y useErroresCampo, `aria-invalid` y
+ * `aria-describedby` van al botón: con `triggerClassName="campo"` se pinta el
+ * borde rojo y useErroresCampo lo enfoca como a cualquier otro campo.
  */
 export function Combobox({
   opciones,
@@ -95,6 +99,10 @@ export function Combobox({
   vacioTexto = "No hay opciones con ese nombre",
   triggerClassName,
   popupClassName,
+  requerido = false,
+  deshabilitado = false,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedBy,
 }: {
   opciones: OpcionCombobox[]
   valor: string
@@ -110,6 +118,11 @@ export function Combobox({
   vacioTexto?: string
   triggerClassName?: string
   popupClassName?: string
+  /** aria-required en el botón; la validación la hace el formulario. */
+  requerido?: boolean
+  deshabilitado?: boolean
+  "aria-invalid"?: boolean
+  "aria-describedby"?: string
 }) {
   const [abierto, setAbierto] = useState(false)
   const [busqueda, setBusqueda] = useState("")
@@ -130,11 +143,15 @@ export function Combobox({
         inputValue={busqueda}
         onInputValueChange={setBusqueda}
         autoComplete="none"
+        disabled={deshabilitado}
       >
         <BaseCombobox.Trigger
           id={id}
+          aria-required={requerido || undefined}
+          aria-invalid={ariaInvalid || undefined}
+          aria-describedby={ariaDescribedBy}
           className={cn(
-            "flex min-h-11 items-center justify-between gap-2 text-left text-foreground outline-none",
+            "flex min-h-11 items-center justify-between gap-2 text-left text-foreground outline-none disabled:cursor-not-allowed disabled:opacity-60",
             triggerClassName,
           )}
         >

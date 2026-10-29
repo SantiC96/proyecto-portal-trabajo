@@ -1,6 +1,7 @@
 "use client";
 
 import { MapPin } from "lucide-react";
+import { Combobox } from "@/components/ui/combobox";
 import {
   CLASE_CONTROL_INVALIDO,
   ErrorCampo,
@@ -36,7 +37,17 @@ type Props = {
   className?: string;
   /** Estilo de los campos de Mi perfil (alto 48, borde border-campo, label 15 px 700). */
   estiloPerfil?: boolean;
+  /**
+   * El desplegable es el Combobox del buscador del inicio en lugar de un
+   * <select> nativo (el registro). Mi perfil sigue con el nativo.
+   */
+  conCombobox?: boolean;
 };
+
+const OPCIONES_COMBOBOX = [
+  ...LOCALIDADES.map((l) => ({ id: l, nombre: l })),
+  { id: OTRA_LOCALIDAD, nombre: "Otra localidad" },
+];
 
 const ETIQUETA_PERFIL = "text-[15px] font-bold text-control-foreground";
 const CAMPO_PERFIL = "campo min-h-12 rounded-[var(--radius-md)] border-border-campo text-base";
@@ -59,6 +70,7 @@ export function CampoLocalidad({
   deshabilitado = false,
   className,
   estiloPerfil = false,
+  conCombobox = false,
 }: Props) {
   const idOtra = `${id}-otra`;
 
@@ -71,25 +83,42 @@ export function CampoLocalidad({
         >
           ¿De dónde sos? <Obligatorio />
         </label>
-        <select
-          id={id}
-          required
-          value={elegida}
-          disabled={deshabilitado}
-          onChange={(e) => onElegida(e.target.value)}
-          className={estiloPerfil ? CAMPO_PERFIL : claseSelect}
-          {...ariaErrorCampo(id, errorLocalidad)}
-        >
-          <option value="" disabled>
-            Elegí tu localidad
-          </option>
-          {LOCALIDADES.map((localidad) => (
-            <option key={localidad} value={localidad}>
-              {localidad}
+        {conCombobox ? (
+          <Combobox
+            id={id}
+            requerido
+            opciones={OPCIONES_COMBOBOX}
+            valor={elegida}
+            onCambiar={onElegida}
+            deshabilitado={deshabilitado}
+            placeholder="Elegí tu localidad"
+            placeholderBusqueda="Buscar localidad"
+            etiquetaBusqueda="Buscar localidad"
+            vacioTexto="No está en la lista: buscá «Otra localidad»"
+            triggerClassName={cn(estiloPerfil ? CAMPO_PERFIL : claseSelect, "cursor-pointer", CLASE_CONTROL_INVALIDO)}
+            {...ariaErrorCampo(id, errorLocalidad)}
+          />
+        ) : (
+          <select
+            id={id}
+            required
+            value={elegida}
+            disabled={deshabilitado}
+            onChange={(e) => onElegida(e.target.value)}
+            className={estiloPerfil ? CAMPO_PERFIL : claseSelect}
+            {...ariaErrorCampo(id, errorLocalidad)}
+          >
+            <option value="" disabled>
+              Elegí tu localidad
             </option>
-          ))}
-          <option value={OTRA_LOCALIDAD}>Otra localidad</option>
-        </select>
+            {LOCALIDADES.map((localidad) => (
+              <option key={localidad} value={localidad}>
+                {localidad}
+              </option>
+            ))}
+            <option value={OTRA_LOCALIDAD}>Otra localidad</option>
+          </select>
+        )}
         <ErrorCampo
           idCampo={id}
           mensaje={errorLocalidad}

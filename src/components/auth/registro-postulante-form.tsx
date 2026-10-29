@@ -277,6 +277,7 @@ export function RegistroPostulanteForm() {
               id="reg-localidad"
               className="sm:col-span-2"
               estiloPerfil
+              conCombobox
               elegida={localidad}
               escrita={otraLocalidad}
               onElegida={elegirLocalidad}
