@@ -127,9 +127,15 @@ export async function login(credentials: {
   const cookieStore = await cookies();
   cookieStore.set(LAST_ACTIVITY_COOKIE, String(Date.now()), lastActivityCookieOptions());
 
-  // Sin una ruta de vuelta, la Oficina entra a sus indicadores; los demás
-  // roles, al inicio.
-  const porDefecto = perfil?.rol === "municipalidad" ? "/admin/indicadores" : "/";
+  // Sin una ruta de vuelta, la Oficina entra a sus indicadores y la empresa a
+  // su panel (si está en revisión o rechazada, el layout de /empresa muestra
+  // esa pantalla); el postulante, al inicio.
+  const porDefecto =
+    perfil?.rol === "municipalidad"
+      ? "/admin/indicadores"
+      : perfil?.rol === "empresa"
+        ? "/empresa"
+        : "/";
   redirect(rutaInterna(credentials.redirectTo, porDefecto));
 }
 
