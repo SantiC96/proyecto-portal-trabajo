@@ -33,7 +33,7 @@ PostgreSQL `SECURITY DEFINER`** con `SET search_path = ''`:
 | `ofertas_con_candidatos_pendientes()` | Devuelve los IDs de ofertas de la empresa autenticada que tienen candidatos en estado `pendiente`. No devuelve conteos (criterio PR #38). |
 | `derivaciones_sin_resultado_empresa(dias)` | (migration_037) Derivaciones de las ofertas de la empresa con la entrevista vencida hace más de `dias` días y sin respuesta (`pendiente` o `en_proceso`), con nombre y apellido del candidato. Alimenta el recordatorio "¿los contrataste?" del panel. |
 | `avatares_de_candidatos_para_empresa(postulante_ids)` | (migration_060) Ruta y ajuste (x, y, zoom) de la foto activa de los postulantes de la lista que la empresa puede ver (derivados alguna vez a una oferta suya o guardados, el mismo criterio que `candidato_para_empresa`); los demás ids se ignoran. Hasta 100 ids, una llamada por pantalla (`fotosDeCandidatosEmpresa`, `src/lib/fotos-perfil.ts`). La URL firmada la genera la sesión de la empresa: la política "avatares: empresa lee candidatos derivados o guardados" (`empresa_puede_ver_avatar`, migration_029) ya lo permite para esas fotos, así que no hace falta `supabaseAdmin`. |
-| `estado_derivacion_postulante(postulacion_id)` | Solo para el **postulante**: devuelve `estado_empresa`, `fecha_entrevista` y `lugar_entrevista` de sus propias postulaciones. Nunca `nota_empresa` ni `nota_municipalidad`. |
+| `estado_derivacion_postulante(postulacion_id)` | Solo para el **postulante**: devuelve `estado_empresa`, `fecha_entrevista`, `lugar_entrevista`, `modalidad_entrevista` y `link_entrevista` (las dos últimas desde la 064) de sus propias postulaciones. Nunca `nota_empresa` ni `nota_municipalidad`. |
 
 ## Por qué no `supabaseAdmin`
 
@@ -49,11 +49,42 @@ El campo `estado_empresa` en `derivaciones` sigue la siguiente transición,
 aplicada por un BEFORE UPDATE trigger:
 
 ```
-pendiente → en_proceso | contratado | rechazado
+pendiente → en_proceso (coordinar) | contratado | rechazado
 en_proceso → en_proceso (reprogramar) | contratado | rechazado
 contratado → (estado final, irreversible por la empresa)
 rechazado  → (estado final, irreversible por la empresa)
 ```
+
+`oferta_retirada` (051) y `retirada_postulante` (053) también son finales y
+solo los ponen `retirar_oferta` y `retirar_postulacion`.
+
+**Seleccionar sin entrevista (migration_064).** Entre la 029 y la 063 la
+empresa no podía pasar de `pendiente` a `contratado` y solo seleccionaba
+desde `en_proceso` después de la fecha de la entrevista. Desde la 064 puede
+seleccionar en cualquier momento: sin haber coordinado una entrevista o antes
+de la fecha. El límite de vacantes (`derivaciones_limite_vacantes`, 040), el
+cierre automático de la oferta (`derivaciones_auto_cerrar_oferta`, 029) y los
+avisos de "seleccionado" (al postulante, 051) y de contratación (a la
+oficina, 038) miran solo el estado nuevo, así que funcionan igual desde
+`pendiente`. Rechazar no cambió: desde `pendiente` o `en_proceso`, con motivo.
+
+**Modalidad de la entrevista (migration_064).** `derivaciones` tiene
+`modalidad_entrevista` (`presencial` / `online`, default `presencial`) y
+`link_entrevista`. Al coordinar o reprogramar (`en_proceso`) el trigger exige
+la fecha, el lugar si es presencial y un link `https://` sin espacios si es
+online; un `CHECK` exige el link en las online y lo prohíbe en las
+presenciales. La fecha, la modalidad, el lugar y el link solo cambian en
+`en_proceso` y con una fecha futura: reprogramar puede cambiar cualquiera de
+ellos. Cada cambio avisa al postulante ("Entrevista coordinada" o
+"Entrevista reprogramada", con correo) con la fecha, la modalidad y el lugar
+o el link. `derivaciones_de_oferta_empresa` devuelve las dos columnas nuevas.
+
+**Pantalla (ficha del candidato, tarjeta "Gestión").** Sin entrevista, el
+formulario "Coordinar entrevista" (opcional). Con una coordinada, el cartel
+"Entrevista coordinada" con la fecha larga, la modalidad y el lugar o el link
+(en otra pestaña), y el botón "Reprogramar" que abre el mismo formulario
+precargado, con "Cancelar". Debajo, "Seleccionar" y "No seleccionado", con la
+aclaración de que se puede seleccionar en cualquier momento.
 
 La **Oficina de Empleo** puede corregir el estado vía
 `corregirEstadoDerivacion` (acción con verificación de rol `municipalidad`).
