@@ -1159,6 +1159,14 @@ export type Database = {
           modalidad: string
         }[]
       }
+      contar_ofertas_vigentes_por_rubro: {
+        Args: never
+        Returns: {
+          cantidad: number
+          categoria_id: string
+          rubro: string
+        }[]
+      }
       contar_postulantes_esperando_curso: { Args: never; Returns: number }
       contratados_en_oferta: { Args: { p_oferta_id: string }; Returns: number }
       coordinar_pre_entrevista: {
