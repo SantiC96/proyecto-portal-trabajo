@@ -260,7 +260,9 @@ export type Database = {
           fecha_entrevista: string | null
           fecha_respuesta: string | null
           id: string
+          link_entrevista: string | null
           lugar_entrevista: string | null
+          modalidad_entrevista: string
           municipalidad_usuario_id: string | null
           nota_empresa: string | null
           nota_municipalidad: string | null
@@ -273,7 +275,9 @@ export type Database = {
           fecha_entrevista?: string | null
           fecha_respuesta?: string | null
           id?: string
+          link_entrevista?: string | null
           lugar_entrevista?: string | null
+          modalidad_entrevista?: string
           municipalidad_usuario_id?: string | null
           nota_empresa?: string | null
           nota_municipalidad?: string | null
@@ -286,7 +290,9 @@ export type Database = {
           fecha_entrevista?: string | null
           fecha_respuesta?: string | null
           id?: string
+          link_entrevista?: string | null
           lugar_entrevista?: string | null
+          modalidad_entrevista?: string
           municipalidad_usuario_id?: string | null
           nota_empresa?: string | null
           nota_municipalidad?: string | null
@@ -880,7 +886,9 @@ export type Database = {
           estado: string
           fecha_hora: string
           id: string
-          lugar: string
+          link: string | null
+          lugar: string | null
+          modalidad: string
           nota_oficina: string | null
           postulacion_id: string
           updated_at: string
@@ -891,7 +899,9 @@ export type Database = {
           estado?: string
           fecha_hora: string
           id?: string
-          lugar: string
+          link?: string | null
+          lugar?: string | null
+          modalidad?: string
           nota_oficina?: string | null
           postulacion_id: string
           updated_at?: string
@@ -902,7 +912,9 @@ export type Database = {
           estado?: string
           fecha_hora?: string
           id?: string
-          lugar?: string
+          link?: string | null
+          lugar?: string | null
+          modalidad?: string
           nota_oficina?: string | null
           postulacion_id?: string
           updated_at?: string
@@ -1152,7 +1164,9 @@ export type Database = {
       coordinar_pre_entrevista: {
         Args: {
           p_fecha_hora: string
+          p_link?: string
           p_lugar: string
+          p_modalidad?: string
           p_nota: string
           p_postulacion_id: string
         }
@@ -1210,7 +1224,9 @@ export type Database = {
           estado_empresa: Database["public"]["Enums"]["estado_empresa"]
           fecha_entrevista: string
           fecha_respuesta: string
+          link_entrevista: string
           lugar_entrevista: string
+          modalidad_entrevista: string
           nota_municipalidad: string
           postulante_id: string
         }[]
@@ -1245,6 +1261,15 @@ export type Database = {
       desactivar_cuenta_oficina: {
         Args: { p_usuario_id: string }
         Returns: boolean
+      }
+      detalle_entrevista_aviso: {
+        Args: {
+          p_fecha_hora: string
+          p_link: string
+          p_lugar: string
+          p_modalidad: string
+        }
+        Returns: string
       }
       disponibilidad_compatible: {
         Args: { p_disponibilidad: string; p_jornada: string }
@@ -1342,7 +1367,9 @@ export type Database = {
         Returns: {
           estado_empresa: Database["public"]["Enums"]["estado_empresa"]
           fecha_entrevista: string
+          link_entrevista: string
           lugar_entrevista: string
+          modalidad_entrevista: string
         }[]
       }
       experiencia_tsv: { Args: { p_texto: string }; Returns: unknown }
@@ -1506,7 +1533,9 @@ export type Database = {
         Returns: {
           estado: string
           fecha_hora: string
+          link: string
           lugar: string
+          modalidad: string
           postulacion_id: string
         }[]
       }
@@ -1754,7 +1783,9 @@ export type Database = {
       reprogramar_pre_entrevista: {
         Args: {
           p_fecha_hora: string
+          p_link?: string
           p_lugar: string
+          p_modalidad?: string
           p_nota: string
           p_pre_entrevista_id: string
         }
@@ -1810,7 +1841,13 @@ export type Database = {
         }[]
       }
       validar_datos_pre_entrevista: {
-        Args: { p_fecha_hora: string; p_lugar: string; p_nota: string }
+        Args: {
+          p_fecha_hora: string
+          p_link: string
+          p_lugar: string
+          p_modalidad: string
+          p_nota: string
+        }
         Returns: undefined
       }
       vencer_invitaciones_de_ofertas_vencidas: { Args: never; Returns: number }
