@@ -1078,6 +1078,30 @@ export type Database = {
           ubicacion: string
         }[]
       }
+      buscar_ofertas_publicas_multiple: {
+        Args: {
+          p_categorias?: string[]
+          p_desplazamiento?: number
+          p_limite?: number
+          p_modalidades?: string[]
+          p_q?: string
+        }
+        Returns: {
+          beneficios: string[]
+          categorias: string[]
+          created_at: string
+          descripcion: string
+          empresa_nombre: string
+          id: string
+          jornada: string
+          modalidad: string
+          publicado_en: string
+          requisitos: string[]
+          titulo: string
+          total_count: number
+          ubicacion: string
+        }[]
+      }
       candidato_para_empresa: {
         Args: { p_postulante_id: string }
         Returns: {
@@ -1115,6 +1139,13 @@ export type Database = {
       confirmar_archivos_purgados: {
         Args: { p_ids: string[] }
         Returns: number
+      }
+      contar_ofertas_por_modalidad: {
+        Args: { p_categorias?: string[]; p_q?: string }
+        Returns: {
+          cantidad: number
+          modalidad: string
+        }[]
       }
       contar_postulantes_esperando_curso: { Args: never; Returns: number }
       contratados_en_oferta: { Args: { p_oferta_id: string }; Returns: number }
