@@ -1322,9 +1322,51 @@ postulantes, con un componente para no repetir las clases:
     `@4xl:hidden`.
 -   El encabezado es visual (`aria-hidden`); cada celda lleva su rótulo para
     los lectores de pantalla y la lista tiene `aria-label`.
+-   Una celda vacía muestra "—" en la tabla y se oculta en la tarjeta
+    (`hidden @4xl:block`). Si la fila no tiene acción, va un `span`
+    vacío con esas mismas clases para no correr las columnas.
+-   Varias acciones en una fila: un `div` `flex flex-col gap-2
+    @4xl:flex-row @4xl:justify-end`, cada botón con `CLASE_ACCION_FILA`,
+    de menor a mayor importancia (la principal queda a la derecha). Ver y
+    editar van en `btn-neutro`; dar de baja o retirar, en
+    `peligroBorde`; renovar o continuar, en primario.
+-   **Fila de detalle** (`FilaTabla detalle`): aclaraciones o avisos de la
+    fila (franjas, un motivo de rechazo) debajo de sus celdas, dentro de
+    la misma fila y a todo el ancho (`col-span-full`), con 12 px de
+    separación. Comparte el hover y el borde inferior de la fila; en la
+    tarjeta, va al final. Las franjas miden lo que su texto (`w-fit
+    max-w-full`).
+-   **Separador de grupo** (`SeparadorTabla`): título de 14 px 600 a todo
+    el ancho, con fondo `tabla-cabecera` en la tabla y entre dos líneas en
+    las tarjetas ("Ya invitados a esta oferta"). Las filas de ese grupo
+    pueden ir con fondo `surface-tinted`.
+-   `FilaTabla id`: ancla de la fila (`scroll-mt-20`), para los links que
+    llevan a una fila (Mis postulaciones, `anclaPostulacion`).
 
-La usan el detalle de una oferta de la empresa (candidatos derivados),
-Ofertas, Empresas, Postulaciones y Comprobantes de la oficina.
+Dónde se usa y con qué columnas:
+
+  Pantalla                                   Columnas
+  ------------------------------------------ ------------------------------------------------------------------------
+  Oficina · Postulaciones                    Postulante · Oferta y empresa · Fecha · Estado · acción
+  Oficina · Empresas                         Razón social · CUIT · Rubro · Persona responsable · Solicitud · acción
+  Oficina · Ofertas                          Oferta · Empresa · Fecha · Estado · acción
+  Oficina · Comprobantes                     Nombre · DNI · Localidad · Domicilio · Cargado el · Comprobante · Resultado o acciones
+  Oficina · Buscar postulantes (oferta)      Postulante · Procedencia · Coincidencia · Invitación · Ver ficha e Invitar; separador "Ya invitados"
+  Empresa · Mis ofertas                      Oferta (título, fecha, estado) · Rubros (+N) · Vence · acciones; motivo de rechazo en la fila de detalle
+  Empresa · Mis ofertas (Eliminadas)         Oferta · Eliminada · Restaurar
+  Empresa · Detalle de oferta (candidatos)   Candidato · Derivado el · Nota de la Oficina · Estado · acción
+  Postulante · Mis postulaciones             Oferta y empresa · Fecha · Estado · CV enviado · Retirar o Volver a postularme; aclaraciones en la fila de detalle
+
+## Datos de la oferta en el detalle de la empresa
+
+Una sola tarjeta (`tarjeta`, padding 20/24). Desde 768 px de ancho de la
+tarjeta, dos columnas (`1fr` y `1.6fr`, separadas por un borde a la
+izquierda de la segunda y 32 px): a la izquierda "Datos de la oferta" con
+`DatosClave`; a la derecha la descripción, los requisitos y los beneficios
+(estos dos lado a lado si la columna mide 576 px o más). La tarjeta mide lo
+que la columna más larga. Más angosto, una debajo de la otra con un borde
+entre las dos. La descripción se corta en 8 líneas con "Ver más" / "Ver
+menos" (botón de 44 px, solo si el texto no entra).
 
 ## Lista de datos (`DatosClave`)
 
