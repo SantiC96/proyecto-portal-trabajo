@@ -25,7 +25,6 @@ import {
 import { BajaOfertaBtn } from "./_components/baja-oferta-btn";
 import { RestaurarOfertaBtn } from "./_components/restaurar-oferta-btn";
 import { RenovarOfertaBtn } from "./_components/renovar-oferta-btn";
-import { TarjetaOferta } from "./_components/tarjeta-oferta";
 import { VencimientoOferta } from "@/components/ofertas/vencimiento-oferta";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 import { formatFecha } from "@/lib/fechas";
@@ -37,12 +36,32 @@ import {
   type EstadoOfertaEmpresa,
 } from "@/lib/oferta-estados";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import {
+  CLASE_ACCION_FILA,
+  CeldaTabla,
+  FilaTabla,
+  Tabla,
+} from "@/components/ui/tabla";
 
 export const metadata: Metadata = {
   title: "Mis ofertas | Portal de Empleo Funes",
 };
 
 const RUTA = "/empresa/ofertas";
+
+// Oferta | Rubros | Vence | acciones.
+const COLUMNAS = "minmax(0,2fr) minmax(0,1.5fr) minmax(0,1.2fr) auto";
+// Oferta | Eliminada | acción.
+const COLUMNAS_ELIMINADAS = "minmax(0,2fr) minmax(0,1.6fr) auto";
+
+/** Rubros que se ven en la fila; el resto va en "+N". */
+const RUBROS_VISIBLES = 2;
+
+const CLASE_TITULO =
+  "rounded-[var(--radius-sm)] text-[15px] leading-snug font-bold break-words text-heading no-underline outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]";
+
+/** Acciones de la fila: apiladas en la tarjeta; en la tabla, en línea y a la derecha. */
+const CLASE_ACCIONES = "flex flex-col gap-2 @4xl:flex-row @4xl:justify-end";
 
 export default async function MisOfertasPage({
   searchParams,
@@ -204,40 +223,45 @@ async function ListadoMisOfertas({
   if (eliminadas) {
     return (
       <>
-        <ul className="mt-6 space-y-3">
+        <Tabla
+          className="mt-6"
+          columnas={COLUMNAS_ELIMINADAS}
+          etiqueta="Ofertas eliminadas"
+          encabezados={["Oferta", "Eliminada", ""]}
+        >
           {lista.map((oferta) => {
             const dias = diasParaRestaurar(oferta.eliminada_en!);
             const estadoLabel = ESTADO_OFERTA_EMPRESA_LABEL[oferta.estado] ?? oferta.estado;
             return (
-              <TarjetaOferta
-                key={oferta.id}
-                titulo={oferta.titulo}
-                datos={
-                  <p className="text-xs text-muted-foreground">
-                    Eliminada el {formatFecha(oferta.eliminada_en!)} ·{" "}
-                    {dias > 0
-                      ? `${dias === 1 ? "queda 1 día" : `quedan ${dias} días`} para restaurarla`
-                      : "ya no se puede restaurar"}
-                  </p>
-                }
-                badges={
+              <FilaTabla key={oferta.id}>
+                <div className="flex min-w-0 flex-col items-start gap-1.5">
+                  <span className="text-[15px] leading-snug font-bold break-words text-heading">
+                    {oferta.titulo}
+                  </span>
                   <Badge tono={ESTADO_OFERTA_EMPRESA_TONO[oferta.estado] ?? "neutral"} estado>
                     {estadoLabel}
                   </Badge>
-                }
-                acciones={
-                  dias > 0 && (
-                    <RestaurarOfertaBtn
-                      ofertaId={oferta.id}
-                      ofertaTitulo={oferta.titulo}
-                      estadoLabel={estadoLabel}
-                    />
-                  )
-                }
-              />
+                </div>
+                <CeldaTabla etiqueta="Eliminada" className="text-sm text-muted-foreground">
+                  Eliminada el {formatFecha(oferta.eliminada_en!)} ·{" "}
+                  {dias > 0
+                    ? `${dias === 1 ? "queda 1 día" : `quedan ${dias} días`} para restaurarla`
+                    : "ya no se puede restaurar"}
+                </CeldaTabla>
+                {dias > 0 ? (
+                  <RestaurarOfertaBtn
+                    ofertaId={oferta.id}
+                    ofertaTitulo={oferta.titulo}
+                    estadoLabel={estadoLabel}
+                    claseBoton={CLASE_ACCION_FILA}
+                  />
+                ) : (
+                  <span className="hidden @4xl:block" aria-hidden="true" />
+                )}
+              </FilaTabla>
             );
           })}
-        </ul>
+        </Tabla>
         {paginacion}
       </>
     );
@@ -262,100 +286,137 @@ async function ListadoMisOfertas({
 
   return (
     <>
-        <ul className="mt-6 space-y-3">
-          {lista.map((oferta) => {
-            const categorias = oferta.oferta_categorias
-              .map((oc) => oc.categorias?.nombre)
-              .filter((n): n is string => Boolean(n));
-            const fecha = formatFecha(oferta.created_at);
-            const baja = bajas[oferta.id];
-            const { mostrarContinuar, mostrarEditar, mostrarCandidatosPorContactar } = baja.acciones;
-            const esBorrador = oferta.estado === "borrador";
+      <Tabla
+        className="mt-6"
+        columnas={COLUMNAS}
+        etiqueta="Mis ofertas"
+        encabezados={["Oferta", "Rubros", "Vence", ""]}
+      >
+        {lista.map((oferta) => {
+          const categorias = oferta.oferta_categorias
+            .map((oc) => oc.categorias?.nombre)
+            .filter((n): n is string => Boolean(n));
+          const fecha = formatFecha(oferta.created_at);
+          const baja = bajas[oferta.id];
+          const { mostrarContinuar, mostrarEditar, mostrarCandidatosPorContactar } = baja.acciones;
+          const esBorrador = oferta.estado === "borrador";
 
-            const tienePendientes = mostrarCandidatosPorContactar && ofertasConPendientesSet.has(oferta.id);
-            const { vencida } = estadoVencimiento(oferta.estado, oferta.vence_en);
-            const estadoVisible: EstadoOfertaEmpresa = vencida ? "vencida" : oferta.estado;
+          const tienePendientes = mostrarCandidatosPorContactar && ofertasConPendientesSet.has(oferta.id);
+          const { vencida } = estadoVencimiento(oferta.estado, oferta.vence_en);
+          const estadoVisible: EstadoOfertaEmpresa = vencida ? "vencida" : oferta.estado;
+          const visibles = categorias.slice(0, RUBROS_VISIBLES);
+          const otros = categorias.slice(RUBROS_VISIBLES);
+          const conVencimiento = oferta.estado === "activa" && oferta.vence_en !== null;
+          // Un borrador se completa en el formulario: el detalle lo redirige ahí.
+          const href = `/empresa/ofertas/${oferta.id}`;
 
-            return (
-              <TarjetaOferta
-                key={oferta.id}
-                titulo={oferta.titulo}
-                datos={
-                  <>
-                    <p className="text-xs text-muted-foreground">
-                      {esBorrador ? `Creado el ${fecha}` : `Publicada el ${fecha}`}
-                    </p>
-                    {categorias.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {categorias.map((cat) => (
-                          <EtiquetaRubro key={cat}>{cat}</EtiquetaRubro>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                }
-                badges={
-                  <>
-                    <Badge tono={ESTADO_OFERTA_EMPRESA_TONO[estadoVisible] ?? "neutral"} estado>
-                      {ESTADO_OFERTA_EMPRESA_LABEL[estadoVisible] ?? estadoVisible}
+          return (
+            <FilaTabla
+              key={oferta.id}
+              detalle={
+                oferta.estado === "rechazada" &&
+                oferta.motivo_rechazo && (
+                  <Aviso tono="danger" className="w-full">
+                    <span className="font-semibold">Motivo del rechazo:</span>{" "}
+                    {oferta.motivo_rechazo}
+                  </Aviso>
+                )
+              }
+            >
+              <div className="flex min-w-0 flex-col items-start gap-1.5">
+                <Link href={href} className={CLASE_TITULO}>
+                  {oferta.titulo}
+                </Link>
+                <p className="text-xs text-muted-foreground">
+                  {esBorrador ? `Creado el ${fecha}` : `Publicada el ${fecha}`}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Badge tono={ESTADO_OFERTA_EMPRESA_TONO[estadoVisible] ?? "neutral"} estado>
+                    {ESTADO_OFERTA_EMPRESA_LABEL[estadoVisible] ?? estadoVisible}
+                  </Badge>
+                  {tienePendientes && (
+                    <Badge tono="warning" estado>
+                      Candidatos por contactar
                     </Badge>
-                    {tienePendientes && (
-                      <Badge tono="warning" estado>
-                        Candidatos por contactar
-                      </Badge>
+                  )}
+                </div>
+              </div>
+              <CeldaTabla
+                etiqueta="Rubros"
+                className={categorias.length === 0 ? "hidden @4xl:block" : undefined}
+              >
+                {categorias.length > 0 ? (
+                  <ul className="flex flex-wrap gap-1.5">
+                    {visibles.map((cat) => (
+                      <li key={cat} className="max-w-full">
+                        <EtiquetaRubro>{cat}</EtiquetaRubro>
+                      </li>
+                    ))}
+                    {otros.length > 0 && (
+                      <li>
+                        <EtiquetaRubro title={otros.join(", ")}>
+                          <span aria-hidden="true">+{otros.length}</span>
+                          <span className="sr-only">{otros.join(", ")}</span>
+                        </EtiquetaRubro>
+                      </li>
                     )}
-                  </>
-                }
-                detalle={
-                  oferta.estado === "rechazada" &&
-                  oferta.motivo_rechazo && (
-                    <Aviso tono="danger">
-                      <span className="font-semibold">Motivo del rechazo:</span>{" "}
-                      {oferta.motivo_rechazo}
-                    </Aviso>
-                  )
-                }
-                info={<VencimientoOferta estado={oferta.estado} venceEn={oferta.vence_en} />}
-                acciones={
-                  <>
-                    <BajaOfertaBtn oferta={oferta} baja={baja} />
-                    {mostrarEditar && (
-                      <Link
-                        href={`/empresa/ofertas/${oferta.id}/editar`}
-                        className="btn-secundario inline-flex min-h-11 items-center px-3 text-xs font-medium sm:min-h-9"
-                      >
-                        Editar
-                      </Link>
-                    )}
-                    {oferta.estado === "activa" && (
-                      <Link
-                        href={`/empresa/ofertas/${oferta.id}`}
-                        className="btn-secundario inline-flex min-h-11 items-center px-3 text-xs font-medium sm:min-h-9"
-                      >
-                        Ver candidatos
-                      </Link>
-                    )}
-                    {vencida && (
-                      <RenovarOfertaBtn
-                        ofertaId={oferta.id}
-                        ofertaTitulo={oferta.titulo}
-                        duracionDias={oferta.duracion_dias}
-                      />
-                    )}
-                    {mostrarContinuar && (
-                      <Link
-                        href={`/empresa/ofertas/${oferta.id}/editar`}
-                        className="btn-primario inline-flex min-h-11 items-center px-3 text-xs sm:min-h-9"
-                      >
-                        Continuar
-                      </Link>
-                    )}
-                  </>
-                }
-              />
-            );
-          })}
-        </ul>
+                  </ul>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </CeldaTabla>
+              <CeldaTabla etiqueta="Vence" className={conVencimiento ? undefined : "hidden @4xl:block"}>
+                {conVencimiento ? (
+                  <VencimientoOferta estado={oferta.estado} venceEn={oferta.vence_en} />
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </CeldaTabla>
+              {/* De menor a mayor importancia: la principal queda a la derecha del todo. */}
+              <div className={CLASE_ACCIONES}>
+                <BajaOfertaBtn
+                  oferta={oferta}
+                  baja={baja}
+                  estiloBoton="peligroBorde"
+                  claseBoton={CLASE_ACCION_FILA}
+                />
+                {mostrarEditar && (
+                  <Link
+                    href={`/empresa/ofertas/${oferta.id}/editar`}
+                    className={`btn-neutro ${CLASE_ACCION_FILA}`}
+                  >
+                    Editar
+                    <span className="sr-only">: {oferta.titulo}</span>
+                  </Link>
+                )}
+                {oferta.estado === "activa" && (
+                  <Link href={href} className={`btn-neutro ${CLASE_ACCION_FILA}`}>
+                    Ver candidatos
+                    <span className="sr-only">: {oferta.titulo}</span>
+                  </Link>
+                )}
+                {vencida && (
+                  <RenovarOfertaBtn
+                    ofertaId={oferta.id}
+                    ofertaTitulo={oferta.titulo}
+                    duracionDias={oferta.duracion_dias}
+                    claseBoton={CLASE_ACCION_FILA}
+                  />
+                )}
+                {mostrarContinuar && (
+                  <Link
+                    href={`/empresa/ofertas/${oferta.id}/editar`}
+                    className={`btn-primario ${CLASE_ACCION_FILA}`}
+                  >
+                    Continuar
+                    <span className="sr-only">: {oferta.titulo}</span>
+                  </Link>
+                )}
+              </div>
+            </FilaTabla>
+          );
+        })}
+      </Tabla>
       {paginacion}
     </>
   );

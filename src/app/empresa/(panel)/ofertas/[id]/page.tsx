@@ -15,6 +15,7 @@ import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_TONO } from "@/lib/derivacio
 import { Badge } from "@/components/ui/badge";
 import { Aviso } from "@/components/ui/aviso";
 import { DatosClave } from "@/components/ui/datos-clave";
+import { DescripcionPlegable } from "./descripcion-plegable";
 import {
   CLASE_ACCION_FILA,
   CeldaPersona,
@@ -167,41 +168,44 @@ export default async function OfertaDetallePage({
         </Aviso>
       )}
 
-      <section aria-labelledby="datos-oferta" className="tarjeta mt-6 p-5 sm:p-6">
-        <h2 id="datos-oferta" className="text-xl font-extrabold text-heading">
-          Datos de la oferta
-        </h2>
-        <DatosClave
-          className="mt-4"
-          datos={[
-            { etiqueta: "Rubro", valor: rubros.length > 0 ? rubros.join(", ") : "—" },
-            { etiqueta: "Modalidad", valor: oferta.modalidad },
-            { etiqueta: "Jornada", valor: oferta.jornada },
-            { etiqueta: "Ubicación", valor: oferta.ubicacion || "—" },
-            { etiqueta: "Vencimiento", valor: oferta.vence_en ? formatFecha(oferta.vence_en) : "—" },
-            {
-              etiqueta: "Vacantes",
-              valor:
-                vacantes !== null
-                  ? `${vacantes} · ${contratados} ${contratados === 1 ? "cubierta" : "cubiertas"}`
-                  : null,
-            },
-          ]}
-        />
-        <hr className="my-6 border-border" />
-        <div className="flex flex-col gap-6">
-          <SeccionTexto titulo="Descripción">
-            <p className="text-base leading-[1.6] whitespace-pre-line break-words text-texto-parrafo">
-              {oferta.descripcion}
-            </p>
-          </SeccionTexto>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <SeccionTexto titulo="Requisitos">
-              <ListaTexto items={oferta.requisitos} />
+      {/* Dos columnas desde 768 px de ancho de la tarjeta: los datos clave y los
+          textos. La tarjeta mide lo que la columna más larga. */}
+      <section aria-labelledby="datos-oferta" className="tarjeta @container mt-6 p-5 sm:p-6">
+        <div className="grid grid-cols-1 gap-6 @3xl:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] @3xl:gap-8">
+          <div className="min-w-0">
+            <h2 id="datos-oferta" className="text-xl font-extrabold text-heading">
+              Datos de la oferta
+            </h2>
+            <DatosClave
+              className="mt-4"
+              datos={[
+                { etiqueta: "Rubro", valor: rubros.length > 0 ? rubros.join(", ") : "—" },
+                { etiqueta: "Modalidad", valor: oferta.modalidad },
+                { etiqueta: "Jornada", valor: oferta.jornada },
+                { etiqueta: "Ubicación", valor: oferta.ubicacion || "—" },
+                { etiqueta: "Vencimiento", valor: oferta.vence_en ? formatFecha(oferta.vence_en) : "—" },
+                {
+                  etiqueta: "Vacantes",
+                  valor:
+                    vacantes !== null
+                      ? `${vacantes} · ${contratados} ${contratados === 1 ? "cubierta" : "cubiertas"}`
+                      : null,
+                },
+              ]}
+            />
+          </div>
+          <div className="@container/textos flex min-w-0 flex-col gap-6 border-t border-border pt-6 @3xl:border-t-0 @3xl:border-l @3xl:pt-0 @3xl:pl-8">
+            <SeccionTexto titulo="Descripción">
+              <DescripcionPlegable texto={oferta.descripcion} />
             </SeccionTexto>
-            <SeccionTexto titulo="Beneficios">
-              <ListaTexto items={oferta.beneficios ?? []} />
-            </SeccionTexto>
+            <div className="grid grid-cols-1 gap-6 @xl/textos:grid-cols-2">
+              <SeccionTexto titulo="Requisitos">
+                <ListaTexto items={oferta.requisitos} />
+              </SeccionTexto>
+              <SeccionTexto titulo="Beneficios">
+                <ListaTexto items={oferta.beneficios ?? []} />
+              </SeccionTexto>
+            </div>
           </div>
         </div>
       </section>
