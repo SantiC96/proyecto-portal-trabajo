@@ -2,7 +2,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { Briefcase, UserSearch } from "lucide-react";
 import { TarjetaOferta } from "@/components/ofertas/tarjeta-oferta";
-import { EmptyJobResults } from "@/components/public/empty-job-results";
+import { EmptyJobResults, type SugerenciaModalidad } from "@/components/public/empty-job-results";
+import { FiltroRubrosCelular } from "@/components/public/filtro-rubros-celular";
 import { Badge } from "@/components/ui/badge";
 import { Buscador } from "@/components/ui/buscador";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
@@ -13,9 +14,12 @@ import { EsqueletoTarjeta } from "@/components/ui/esqueleto";
 import {
   MODALIDADES,
   buscarOfertasPublicas,
+  contarOfertasPorModalidad,
+  hayFiltrosOfertas,
   type FiltrosOfertasPublicas,
   type ResultadoOfertasPublicas,
 } from "@/lib/ofertas";
+import { listaConO } from "@/lib/filtros-ofertas";
 import { hrefConParams, type ParamsUrl } from "@/lib/paginacion";
 import { esOficinaActiva, obtenerUsuarioActual } from "@/lib/auth";
 import { rutaBuscarPostulantes } from "@/lib/invitaciones";
@@ -38,16 +42,26 @@ export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDir
   // muestra el esqueleto mientras llega el resultado nuevo.
   const clave = JSON.stringify(filtros);
 
-  const hasActiveFilters =
-    filtros.categoria !== null || filtros.modalidad !== null;
+  const hasActiveFilters = hayFiltrosOfertas(filtros);
   const hrefLimpiar = hrefConParams(
     ruta,
     searchParams,
     { categoria: null, modalidad: null, pagina: null },
     ANCLA,
   );
-  const hrefFiltro = (cambios: Record<string, string | null>) =>
-    hrefConParams(ruta, searchParams, { ...cambios, pagina: null });
+  // Escribe siempre las dos listas ya validadas: un valor desconocido de la URL
+  // no se arrastra al tocar una pastilla.
+  const hrefFiltro = (cambios: { categoria?: readonly string[] | null; modalidad?: readonly string[] | null }) =>
+    hrefConParams(ruta, searchParams, {
+      categoria: filtros.categorias,
+      modalidad: filtros.modalidades,
+      ...cambios,
+      pagina: null,
+    });
+  // Cada pastilla agrega o saca su valor de la lista; las demás elegidas quedan.
+  // La lista se escribe en el orden del catálogo, así la URL es siempre la misma.
+  const alternar = <T extends string>(todos: readonly T[], elegidos: readonly T[], valor: T) =>
+    todos.filter((v) => (v === valor ? !elegidos.includes(v) : elegidos.includes(v)));
 
   return (
     <section id={ANCLA} className="flex scroll-mt-20 flex-col gap-6">
@@ -58,10 +72,7 @@ export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDir
             key={clave}
             fallback={<span className="inline-block h-4 w-64 max-w-full rounded bg-secondary-hover" />}
           >
-            <ContadorOfertas
-              resultado={resultado}
-              hayFiltros={filtros.q !== "" || hasActiveFilters}
-            />
+            <ContadorOfertas resultado={resultado} filtros={filtros} />
           </Suspense>
         }
       />
@@ -73,42 +84,54 @@ export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDir
           inputClassName="min-h-[52px] border-border-campo"
         />
 
-        <GrupoPastillas
-          id="filtro-rubro"
-          titulo="Rubro"
-          unaLinea={{ textoAnteriores: "Ver rubros anteriores", textoSiguientes: "Ver más rubros" }}
-        >
-          <PastillaFiltro
-            href={hrefFiltro({ categoria: null })}
-            activa={filtros.categoria === null}
+        {/* Celular: desplegable con buscador; desde sm, las pastillas. */}
+        <div className="sm:hidden">
+          <FiltroRubrosCelular
+            ruta={ruta}
+            categorias={categorias}
+            seleccionadas={filtros.categorias}
+          />
+        </div>
+        <div className="hidden min-w-0 sm:block">
+          <GrupoPastillas
+            id="filtro-rubro"
+            titulo="Rubro"
+            unaLinea={{ textoAnteriores: "Ver rubros anteriores", textoSiguientes: "Ver más rubros" }}
           >
-            Todos
-          </PastillaFiltro>
-          {categorias.map((c) => (
             <PastillaFiltro
-              key={c}
-              href={hrefFiltro({ categoria: c })}
-              activa={filtros.categoria === c}
+              href={hrefFiltro({ categoria: null })}
+              activa={filtros.categorias.length === 0}
             >
-              {c}
+              Todos
             </PastillaFiltro>
-          ))}
-        </GrupoPastillas>
+            {categorias.map((c) => (
+              <PastillaFiltro
+                key={c}
+                href={hrefFiltro({ categoria: alternar(categorias, filtros.categorias, c) })}
+                activa={filtros.categorias.includes(c)}
+              >
+                {c}
+              </PastillaFiltro>
+            ))}
+          </GrupoPastillas>
+        </div>
 
         <GrupoPastillas id="filtro-modalidad" titulo="Modalidad">
-          {MODALIDADES.map((m) => {
-            const activa = filtros.modalidad === m;
-            return (
-              // Tocar la modalidad activa la desactiva.
-              <PastillaFiltro
-                key={m}
-                href={hrefFiltro({ modalidad: activa ? null : m })}
-                activa={activa}
-              >
-                {m}
-              </PastillaFiltro>
-            );
-          })}
+          <PastillaFiltro
+            href={hrefFiltro({ modalidad: null })}
+            activa={filtros.modalidades.length === 0}
+          >
+            Todas
+          </PastillaFiltro>
+          {MODALIDADES.map((m) => (
+            <PastillaFiltro
+              key={m}
+              href={hrefFiltro({ modalidad: alternar(MODALIDADES, filtros.modalidades, m) })}
+              activa={filtros.modalidades.includes(m)}
+            >
+              {m}
+            </PastillaFiltro>
+          ))}
         </GrupoPastillas>
 
         {hasActiveFilters && (
@@ -133,26 +156,33 @@ export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDir
   );
 }
 
+/** "de Gastronomía o Salud, en modalidad Remoto, para «mozo»"; vacío sin filtros. */
+function describirFiltros(filtros: FiltrosOfertasPublicas): string {
+  const partes: string[] = [];
+  const { categorias, modalidades, q } = filtros;
+  if (categorias.length > 0) {
+    partes.push(`de ${categorias.length <= 3 ? listaConO(categorias) : `${categorias.length} rubros`}`);
+  }
+  if (modalidades.length > 0) partes.push(`en modalidad ${listaConO(modalidades)}`);
+  if (q !== "") partes.push(`para «${q}»`);
+  return partes.join(", ");
+}
+
 async function ContadorOfertas({
   resultado,
-  hayFiltros,
+  filtros,
 }: {
   resultado: Promise<ResultadoOfertasPublicas>;
-  hayFiltros: boolean;
+  filtros: FiltrosOfertasPublicas;
 }) {
   const datos = await resultado;
   if (!datos.ok) return null;
-  if (hayFiltros) {
-    return (
-      <>
-        {datos.total} {datos.total === 1 ? "oferta" : "ofertas"} con estos filtros
-      </>
-    );
-  }
+  const descripcion = describirFiltros(filtros);
+  const sustantivo = datos.total === 1 ? "oferta" : "ofertas";
   return (
     <>
       Mostrando {datos.ofertas.length} de {datos.total}{" "}
-      {datos.total === 1 ? "oferta publicada" : "ofertas publicadas"}
+      {descripcion ? `${sustantivo} ${descripcion}` : `${sustantivo} ${datos.total === 1 ? "publicada" : "publicadas"}`}
     </>
   );
 }
@@ -184,7 +214,7 @@ async function ResultadosOfertas({
 
   if (datos.ofertas.length === 0) {
     const hayBusqueda = filtros.q !== "";
-    const hayFiltros = filtros.categoria !== null || filtros.modalidad !== null;
+    const hayFiltros = hayFiltrosOfertas(filtros);
 
     if (!hayBusqueda && !hayFiltros) {
       return (
@@ -198,8 +228,21 @@ async function ResultadosOfertas({
       );
     }
 
+    // Con modalidades elegidas, ¿hay ofertas de esos rubros (y del texto) en otra?
+    let sugerencias: SugerenciaModalidad[] = [];
+    if (filtros.modalidades.length > 0) {
+      const conteos = await contarOfertasPorModalidad(filtros.q, filtros.categorias);
+      sugerencias = conteos
+        .filter((c) => !filtros.modalidades.includes(c.modalidad))
+        .map((c) => ({
+          ...c,
+          href: hrefConParams(ruta, searchParams, { modalidad: c.modalidad, pagina: null }, ANCLA),
+        }));
+    }
+
     return (
       <EmptyJobResults
+        sugerencias={sugerencias}
         variant={
           hayBusqueda && hayFiltros
             ? "busqueda-filtros"

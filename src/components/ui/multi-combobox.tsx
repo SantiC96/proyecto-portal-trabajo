@@ -2,7 +2,7 @@
 
 import { Combobox } from "@base-ui/react/combobox"
 import { ChevronDown, X } from "lucide-react"
-import { useRef, useState } from "react"
+import { useId, useRef, useState } from "react"
 
 import { cn } from "@/lib/utils"
 import { PopupCombobox, normalizarBusqueda, type OpcionCombobox } from "@/components/ui/combobox"
@@ -17,6 +17,12 @@ interface MultiComboboxProps {
   campoClassName?: string
   /** aria-invalid / aria-describedby del input cuando el campo tiene un error. */
   ariaInput?: { "aria-invalid"?: true; "aria-describedby"?: string }
+  /**
+   * Texto corto de lo elegido ("Gastronomía y 2 más") que reemplaza a los
+   * chips, para un campo de una sola línea (filtro del celular). Se quita
+   * desmarcando en la lista.
+   */
+  resumen?: string
 }
 
 export function MultiCombobox({
@@ -28,7 +34,10 @@ export function MultiCombobox({
   vacioTexto = "No hay rubros que coincidan",
   campoClassName,
   ariaInput,
+  resumen,
 }: MultiComboboxProps) {
+  const idResumen = useId()
+  const conResumen = resumen !== undefined
   const [inputValue, setInputValue] = useState("")
   const [open, setOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -67,7 +76,12 @@ export function MultiCombobox({
       >
         {/* Chips + input en fila inline */}
         <div className="flex flex-1 flex-wrap items-center gap-1.5 pt-px">
-          {seleccionados.map((sid) => {
+          {conResumen && seleccionados.length > 0 && (
+            <span id={idResumen} className="text-base font-semibold text-foreground">
+              {resumen}
+            </span>
+          )}
+          {!conResumen && seleccionados.map((sid) => {
             const opcion = opciones.find((o) => o.id === sid)
             if (!opcion) return null
             return (
@@ -95,6 +109,7 @@ export function MultiCombobox({
             id={id}
             placeholder={seleccionados.length === 0 ? placeholder : ""}
             onKeyDown={handleKeyDown}
+            aria-describedby={conResumen && seleccionados.length > 0 ? idResumen : undefined}
             {...ariaInput}
             className="min-w-[8rem] flex-1 bg-transparent text-base text-foreground placeholder:text-placeholder focus:outline-none"
           />
