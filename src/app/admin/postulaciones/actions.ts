@@ -14,6 +14,7 @@ import {
   type ResultadoPreEntrevista,
 } from "@/lib/pre-entrevistas";
 import { programarEnvioEmails } from "@/lib/emails/cola";
+import { normalizarDatosEntrevista, type ModalidadEntrevista } from "@/lib/entrevistas";
 
 function revalidarVistas(postulacionId: string) {
   revalidatePath("/admin/postulaciones");
@@ -191,34 +192,52 @@ export async function derivarPostulacion(
   return okMsg("Postulación derivada a la empresa.");
 }
 
-// Pre-entrevista (migration_044): las funciones de la base controlan el rol,
-// el estado de la postulación, las transiciones y las fechas, y bloquean la
-// postulación para que no se crucen con una derivación.
+// Pre-entrevista (migration_044; modalidad y link desde la 064): las funciones
+// de la base controlan el rol, el estado de la postulación, las transiciones,
+// las fechas y la modalidad, y bloquean la postulación para que no se crucen
+// con una derivación.
+
+/** Lo que manda el formulario de la pre-entrevista (migration_064). */
+type DatosPreEntrevista = {
+  fechaHoraISO: string;
+  modalidad: ModalidadEntrevista;
+  lugar: string;
+  link: string;
+};
+
+function argsDatosPreEntrevista(datos: DatosPreEntrevista, nota: string | undefined) {
+  const { lugar, link } = normalizarDatosEntrevista(datos.modalidad, datos.lugar, datos.link);
+  // La base guarda NULL con lugar vacío (NULLIF) y con p_link omitido (DEFAULT NULL).
+  return {
+    p_fecha_hora: datos.fechaHoraISO,
+    p_modalidad: datos.modalidad,
+    p_lugar: lugar ?? "",
+    p_link: link ?? undefined,
+    p_nota: nota?.trim() ?? "",
+  };
+}
 
 export async function coordinarPreEntrevista(
   postulacionId: string,
-  fechaHoraISO: string,
-  lugar: string,
+  datos: DatosPreEntrevista,
   nota?: string
 ): Promise<Resultado<void>> {
   const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
 
-  if (!esUuid(postulacionId)) return err("DATOS_INVALIDOS");
-  const errDatos = validarDatosPreEntrevista(fechaHoraISO, lugar, nota);
+  if (!esUuid(postulacionId) || typeof datos !== "object" || datos === null) return err("DATOS_INVALIDOS");
+  const errDatos = validarDatosPreEntrevista(datos, nota);
   if (errDatos) return errCampo(errDatos.campo, errDatos.mensaje);
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.rpc("coordinar_pre_entrevista", {
     p_postulacion_id: postulacionId,
-    p_fecha_hora: fechaHoraISO,
-    p_lugar: lugar.trim(),
-    p_nota: nota?.trim() ?? "",
+    ...argsDatosPreEntrevista(datos, nota),
   });
 
   if (error) {
     if (error.code === "23505")
-      return err("CONFLICTO", "Esta postulación ya tiene una pre-entrevista. Si necesitás cambiar la fecha o el lugar, reprogramala.");
+      return err("CONFLICTO", "Esta postulación ya tiene una pre-entrevista. Si necesitás cambiar sus datos, reprogramala.");
     if (error.code === "P0001" || error.code === "42501") return fromSupabaseError(error);
     const ref = logError("coordinarPreEntrevista", error, { postulacionId });
     return errConRef("ERROR_INTERNO", "No se pudo coordinar la pre-entrevista. Intentá de nuevo.", ref);
@@ -232,23 +251,21 @@ export async function coordinarPreEntrevista(
 export async function reprogramarPreEntrevista(
   postulacionId: string,
   preEntrevistaId: string,
-  fechaHoraISO: string,
-  lugar: string,
+  datos: DatosPreEntrevista,
   nota?: string
 ): Promise<Resultado<void>> {
   const auth = await requerirRol("municipalidad");
   if (!auth.ok) return auth;
 
-  if (!esUuid(postulacionId) || !esUuid(preEntrevistaId)) return err("DATOS_INVALIDOS");
-  const errDatos = validarDatosPreEntrevista(fechaHoraISO, lugar, nota);
+  if (!esUuid(postulacionId) || !esUuid(preEntrevistaId) || typeof datos !== "object" || datos === null)
+    return err("DATOS_INVALIDOS");
+  const errDatos = validarDatosPreEntrevista(datos, nota);
   if (errDatos) return errCampo(errDatos.campo, errDatos.mensaje);
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.rpc("reprogramar_pre_entrevista", {
     p_pre_entrevista_id: preEntrevistaId,
-    p_fecha_hora: fechaHoraISO,
-    p_lugar: lugar.trim(),
-    p_nota: nota?.trim() ?? "",
+    ...argsDatosPreEntrevista(datos, nota),
   });
 
   if (error) {

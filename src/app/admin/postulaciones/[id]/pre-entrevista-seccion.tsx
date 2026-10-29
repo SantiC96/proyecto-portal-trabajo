@@ -1,24 +1,24 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { CalendarClock } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
-import { CampoFechaHora, fechaHoraISO, horarioYaPaso } from "@/components/ui/campo-fecha-hora";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
+import { ErrorCampo, ariaErrorCampo } from "@/components/ui/obligatorio";
 import {
-  ErrorCampo,
-  Obligatorio,
-  ariaErrorCampo,
-} from "@/components/ui/obligatorio";
+  CamposEntrevista,
+  validarEntrevistaEnCliente,
+  valoresEntrevista,
+  type ValoresEntrevista,
+} from "@/components/entrevistas/campos-entrevista";
+import { CartelEntrevista, ModalidadYLugar } from "@/components/entrevistas/cartel-entrevista";
 import { useErroresCampo } from "@/lib/use-errores-campo";
 import { mostrarAviso } from "@/lib/avisos";
 import { formatFechaHora } from "@/lib/fechas";
 import { useAccion } from "@/lib/use-accion";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
-import { badgePreEntrevista, type PreEntrevista } from "@/lib/pre-entrevistas";
+import { badgePreEntrevista, type CampoPreEntrevista, type PreEntrevista } from "@/lib/pre-entrevistas";
 import { Badge } from "@/components/ui/badge";
-import { Franja } from "@/components/ui/franja";
 import { DatosClave } from "@/components/ui/datos-clave";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -61,42 +61,49 @@ function CampoNota({
   );
 }
 
-/** Campos que puede marcar el servidor; "fechaHora" se muestra debajo del horario. */
-const CAMPOS_SERVIDOR = ["fechaHora", "lugar", "nota"] as const;
-type CampoFormulario = "dia" | "hora" | (typeof CAMPOS_SERVIDOR)[number];
+const CAMPOS_SERVIDOR = ["fechaHora", "modalidad", "lugar", "link", "nota"] as const;
 
 /**
- * Coordinar o reprogramar la pre-entrevista dentro de la tarjeta. Mismas
- * acciones y validaciones que el diálogo anterior.
+ * Coordinar o reprogramar la pre-entrevista dentro de la tarjeta. Al
+ * reprogramar una coordinada, viene precargado y con "Cancelar" para volver
+ * al cartel.
  */
 function FormularioPreEntrevista({
   postulacionId,
   preEntrevista,
+  onCancelar,
 }: {
   postulacionId: string;
   preEntrevista: PreEntrevista | null;
+  onCancelar?: () => void;
 }) {
   const { pendiente, ejecutar } = useAccion();
-  const [dia, setDia] = useState<Date | undefined>(undefined);
-  const [hora, setHora] = useState("");
-  const [lugar, setLugar] = useState(preEntrevista?.lugar ?? "");
+  const [valores, setValores] = useState<ValoresEntrevista>(() =>
+    valoresEntrevista(
+      preEntrevista
+        ? {
+            // Una "no asistió" se reprograma con una fecha nueva.
+            fechaHora: preEntrevista.estado === "coordinada" ? preEntrevista.fecha_hora : null,
+            modalidad: preEntrevista.modalidad,
+            lugar: preEntrevista.lugar,
+            link: preEntrevista.link,
+          }
+        : undefined
+    )
+  );
   const [nota, setNota] = useState(preEntrevista?.nota_oficina ?? "");
-  const campos = useErroresCampo<CampoFormulario>();
+  const campos = useErroresCampo<CampoPreEntrevista>();
 
   function confirmar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = e.currentTarget;
-    if (!campos.validar({ dia, hora, lugar }, form) || !dia) return;
-    if (horarioYaPaso(dia, hora)) {
-      campos.marcar("hora", "El horario elegido ya pasó. Elegí uno posterior.", form);
-      return;
-    }
+    const iso = validarEntrevistaEnCliente(valores, campos, e.currentTarget);
+    if (!iso) return;
 
-    const iso = fechaHoraISO(dia, hora);
+    const datos = { fechaHoraISO: iso, modalidad: valores.modalidad, lugar: valores.lugar, link: valores.link };
     ejecutar(async () => {
       const res = !preEntrevista
-        ? await coordinarPreEntrevista(postulacionId, iso, lugar, nota)
-        : await reprogramarPreEntrevista(postulacionId, preEntrevista.id, iso, lugar, nota);
+        ? await coordinarPreEntrevista(postulacionId, datos, nota)
+        : await reprogramarPreEntrevista(postulacionId, preEntrevista.id, datos, nota);
       if (!campos.tomarDelServidor(res, CAMPOS_SERVIDOR)) mostrarAviso(res);
     });
   }
@@ -108,53 +115,19 @@ function FormularioPreEntrevista({
           {preEntrevista ? "Reprogramar pre-entrevista" : "Coordinar pre-entrevista"}
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Le avisamos al postulante con la fecha, la hora y el lugar.
+          Le avisamos al postulante con la fecha, la hora y el lugar o el link.
         </p>
       </div>
-      <CampoFechaHora
-        compacto
-        idHorario="pre-entrevista-horario"
-        dia={dia}
-        hora={hora}
-        onDiaChange={(valor) => {
-          setDia(valor);
-          campos.limpiar("dia");
-          campos.limpiar("fechaHora");
-        }}
-        onHoraChange={(valor) => {
-          setHora(valor);
-          campos.limpiar("hora");
-          campos.limpiar("fechaHora");
-        }}
-        deshabilitado={pendiente}
-        errorDia={campos.errores.dia}
-        errorHora={campos.errores.hora ?? campos.errores.fechaHora}
-      />
 
-      <div>
-        <label htmlFor="pre-entrevista-lugar" className="etiqueta-campo mb-1.5 block">
-          Lugar <Obligatorio />
-        </label>
-        <input
-          id="pre-entrevista-lugar"
-          type="text"
-          value={lugar}
-          onChange={(e) => {
-            setLugar(e.target.value);
-            campos.limpiar("lugar");
-          }}
-          placeholder="Dirección de la oficina, box o link de videollamada"
-          maxLength={LARGO_MAXIMO.lugarEntrevista}
-          disabled={pendiente}
-          className="campo"
-          {...ariaErrorCampo("pre-entrevista-lugar", campos.errores.lugar)}
-        />
-        <ErrorCampo
-          idCampo="pre-entrevista-lugar"
-          mensaje={campos.errores.lugar}
-          className="mt-1.5"
-        />
-      </div>
+      <CamposEntrevista
+        idBase="pre-entrevista"
+        valores={valores}
+        onCambiar={(cambio) => setValores((v) => ({ ...v, ...cambio }))}
+        errores={campos.errores}
+        onLimpiar={campos.limpiar}
+        deshabilitado={pendiente}
+        placeholderLugar="Dirección de la oficina o box"
+      />
 
       <CampoNota
         id="pre-entrevista-nota"
@@ -167,10 +140,17 @@ function FormularioPreEntrevista({
         deshabilitado={pendiente}
       />
 
-      <button type="submit" disabled={pendiente} aria-busy={pendiente} className="btn-secundario w-full">
-        {pendiente && <Spinner />}
-        {pendiente ? "Guardando…" : "Guardar pre-entrevista"}
-      </button>
+      <div className="flex flex-col gap-2">
+        <button type="submit" disabled={pendiente} aria-busy={pendiente} className="btn-secundario w-full">
+          {pendiente && <Spinner />}
+          {pendiente ? "Guardando…" : preEntrevista ? "Guardar cambios" : "Guardar pre-entrevista"}
+        </button>
+        {onCancelar && (
+          <button type="button" onClick={onCancelar} disabled={pendiente} className="btn-neutro w-full">
+            Cancelar
+          </button>
+        )}
+      </div>
     </form>
   );
 }
@@ -191,11 +171,12 @@ export function PreEntrevistaSeccion({
   fechaPasada,
 }: Props) {
   const [notaResultado, setNotaResultado] = useState(preEntrevista?.nota_oficina ?? "");
+  // Al guardar cambia updated_at y la página vuelve a montar la sección (key):
+  // el cartel aparece de nuevo con los datos nuevos.
+  const [reprogramando, setReprogramando] = useState(false);
   const badge = badgePreEntrevista(preEntrevista);
   const estado = preEntrevista?.estado;
   const coordinada = estado === "coordinada" && preEntrevista;
-  // Una realizada no se cambia; una cancelada es final (postulación retirada).
-  const conFormulario = gestionable && (!preEntrevista || estado === "coordinada" || estado === "no_asistio");
 
   const motivoSinResultado = fechaPasada
     ? undefined
@@ -215,40 +196,68 @@ export function PreEntrevistaSeccion({
       </div>
 
       {coordinada ? (
-        <Franja tono="info" icono={CalendarClock} titulo="Coordinada:">
-          {formatFechaHora(coordinada.fecha_hora)} · {coordinada.lugar}
-        </Franja>
+        reprogramando && gestionable ? (
+          <FormularioPreEntrevista
+            postulacionId={postulacionId}
+            preEntrevista={coordinada}
+            onCancelar={() => setReprogramando(false)}
+          />
+        ) : (
+          <div className="flex flex-col gap-3">
+            <CartelEntrevista
+              titulo="Pre-entrevista coordinada"
+              datos={{
+                fechaHora: coordinada.fecha_hora,
+                modalidad: coordinada.modalidad,
+                lugar: coordinada.lugar,
+                link: coordinada.link,
+              }}
+              notas={coordinada.nota_oficina ? { etiqueta: "Nota interna", texto: coordinada.nota_oficina } : null}
+            />
+            {gestionable && (
+              <button type="button" onClick={() => setReprogramando(true)} className="btn-secundario w-full">
+                Reprogramar
+              </button>
+            )}
+          </div>
+        )
       ) : preEntrevista ? (
-        <DatosClave
-          datos={[
-            { etiqueta: "Fecha y hora", valor: formatFechaHora(preEntrevista.fecha_hora) },
-            { etiqueta: "Lugar", valor: preEntrevista.lugar },
-          ]}
-        />
+        <>
+          <DatosClave
+            datos={[
+              { etiqueta: "Fecha y hora", valor: formatFechaHora(preEntrevista.fecha_hora) },
+              {
+                etiqueta: "Modalidad",
+                valor: (
+                  <ModalidadYLugar
+                    datos={{ modalidad: preEntrevista.modalidad, lugar: preEntrevista.lugar, link: preEntrevista.link }}
+                  />
+                ),
+              },
+              {
+                etiqueta: "Nota interna",
+                valor: preEntrevista.nota_oficina ? (
+                  <span className="whitespace-pre-line">{preEntrevista.nota_oficina}</span>
+                ) : null,
+              },
+            ]}
+          />
+          {gestionable && estado === "no_asistio" && (
+            <FormularioPreEntrevista postulacionId={postulacionId} preEntrevista={preEntrevista} />
+          )}
+        </>
       ) : (
-        <p className="text-[15px] text-muted-foreground">
-          {gestionable
-            ? "Si querés conocer al postulante antes de derivarlo, coordiná una pre-entrevista. Es opcional."
-            : "Esta postulación no tuvo pre-entrevista."}
-        </p>
+        <>
+          <p className="text-[15px] text-muted-foreground">
+            {gestionable
+              ? "Si querés conocer al postulante antes de derivarlo, coordiná una pre-entrevista. Es opcional."
+              : "Esta postulación no tuvo pre-entrevista."}
+          </p>
+          {gestionable && <FormularioPreEntrevista postulacionId={postulacionId} preEntrevista={null} />}
+        </>
       )}
 
-      {preEntrevista?.nota_oficina && (
-        <DatosClave
-          datos={[
-            {
-              etiqueta: "Nota interna",
-              valor: <span className="whitespace-pre-line">{preEntrevista.nota_oficina}</span>,
-            },
-          ]}
-        />
-      )}
-
-      {conFormulario && (
-        <FormularioPreEntrevista postulacionId={postulacionId} preEntrevista={preEntrevista} />
-      )}
-
-      {gestionable && coordinada && (
+      {gestionable && coordinada && !reprogramando && (
         <>
           <hr className="border-border" />
           <div className="flex flex-col gap-3">

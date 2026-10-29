@@ -21,6 +21,7 @@ import {
   PRE_ENTREVISTA_TONO,
   esEstadoPreEntrevista,
 } from "@/lib/pre-entrevistas";
+import { ModalidadYLugar } from "@/components/entrevistas/cartel-entrevista";
 import {
   consultarPagina,
   leerPagina,
@@ -63,7 +64,7 @@ function consultaPostulaciones(supabase: ClienteSupabase, postulanteId: string) 
   return supabase
     .from("postulaciones")
     .select(
-      "id, estado, created_at, ofertas!oferta_id(id, titulo, empresa_nombre), derivaciones(estado_empresa), pre_entrevistas(estado, fecha_hora, lugar, nota_oficina), cv:archivos_usuario!cv_archivo_id(nombre_original, creado_en, eliminado_en)",
+      "id, estado, created_at, ofertas!oferta_id(id, titulo, empresa_nombre), derivaciones(estado_empresa), pre_entrevistas(estado, fecha_hora, modalidad, lugar, link, nota_oficina), cv:archivos_usuario!cv_archivo_id(nombre_original, creado_en, eliminado_en)",
       { count: "exact" }
     )
     .eq("postulante_id", postulanteId);
@@ -799,7 +800,9 @@ function PreEntrevistaHistorial({ pre }: { pre: PostulacionHistorial["pre_entrev
         {PRE_ENTREVISTA_LABEL[pre.estado]}
       </Badge>
       <p className="text-foreground">{formatFechaHoraCorta(pre.fecha_hora)}</p>
-      <p className="break-words text-muted-foreground">{pre.lugar}</p>
+      <p className="break-words text-muted-foreground">
+        <ModalidadYLugar datos={{ modalidad: pre.modalidad, lugar: pre.lugar, link: pre.link }} />
+      </p>
       {pre.nota_oficina && (
         <p className="whitespace-pre-line break-words text-muted-foreground">
           Nota interna: {pre.nota_oficina}

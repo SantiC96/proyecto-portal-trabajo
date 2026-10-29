@@ -42,6 +42,7 @@ import { Badge } from "@/components/ui/badge";
 import { Cita } from "@/components/ui/cita";
 import { DatosClave } from "@/components/ui/datos-clave";
 import { Franja } from "@/components/ui/franja";
+import { ModalidadYLugar } from "@/components/entrevistas/cartel-entrevista";
 
 type Props = {
   postulacionId: string;
@@ -57,7 +58,9 @@ type Props = {
     | "created_at"
     | "estado_empresa"
     | "fecha_entrevista"
+    | "modalidad_entrevista"
     | "lugar_entrevista"
+    | "link_entrevista"
     | "fecha_respuesta"
     | "nota_empresa"
   > | null;
@@ -440,11 +443,20 @@ function DatosDerivacion({ derivacion }: { derivacion: Derivacion }) {
           { etiqueta: "Derivada el", valor: formatFechaHora(derivacion.created_at) },
           {
             etiqueta: "Entrevista",
-            valor: derivacion.fecha_entrevista
-              ? `${formatFechaHora(derivacion.fecha_entrevista)}${
-                  derivacion.lugar_entrevista ? ` · ${derivacion.lugar_entrevista}` : ""
-                }`
-              : null,
+            valor: derivacion.fecha_entrevista ? (
+              <>
+                {formatFechaHora(derivacion.fecha_entrevista)}
+                <span className="mt-0.5 block">
+                  <ModalidadYLugar
+                    datos={{
+                      modalidad: derivacion.modalidad_entrevista,
+                      lugar: derivacion.lugar_entrevista,
+                      link: derivacion.link_entrevista,
+                    }}
+                  />
+                </span>
+              </>
+            ) : null,
           },
           {
             etiqueta: "Respuesta",

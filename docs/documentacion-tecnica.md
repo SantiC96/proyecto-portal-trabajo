@@ -262,6 +262,7 @@ Están en [`src/migrations/`](../src/migrations/) y se ejecutan **a mano, en ord
 | 059 | Mis postulaciones muestra el título y la empresa de las ofertas que el postulante ya no puede leer (`ofertas_de_mis_postulaciones()`) |
 | 061 | Gráfico de postulaciones de la oficina según el período: por día, semana o mes (`postulaciones_por_periodo()`) |
 | 063 | Retirar una postulación `recibida` la deja `retirada_postulante` en lugar de borrarla, sin aviso a la oficina |
+| 064 | Entrevistas flexibles: la empresa selecciona sin entrevista o antes de la fecha; modalidad presencial u online (con link) en la pre-entrevista y en la entrevista de la empresa; reprogramar también cambia la modalidad, el lugar o el link |
 
 El número 014 no se usó.
 
@@ -346,16 +347,16 @@ Cada función controla el rol con `rol_actual()`, toma la propiedad de `auth.uid
 | Entidad | Regla (trigger) |
 |---|---|
 | Ofertas | Una oferta en revisión no se edita; editar una oferta publicada la vuelve a `pendiente_aprobacion`; `vence_en` se fija al pasar a `activa` (`vencimiento_ofertas`). Un borrador solo pasa a `pendiente_aprobacion` y solo con todos los obligatorios; una oferta enviada no vuelve a borrador; una eliminada no se modifica (`ofertas_reglas_borrador_y_eliminacion`). |
-| Derivaciones | `pendiente → en_proceso → contratado / rechazado`; los estados finales no vuelven atrás para la empresa (`derivaciones_empresa_update`). `oferta_retirada` solo lo pone `retirar_oferta` y `retirada_postulante` solo `retirar_postulacion`; los dos son finales. |
+| Derivaciones | La empresa pasa `pendiente → en_proceso / contratado / rechazado` y `en_proceso → en_proceso (reprogramar) / contratado / rechazado`: puede seleccionar sin entrevista o antes de la fecha (migración 064). Coordinar o reprogramar exige una fecha futura y el lugar (presencial) o un link `https://` (online); los datos de la entrevista solo cambian en `en_proceso`. Los estados finales no vuelven atrás para la empresa (`derivaciones_empresa_update`). `oferta_retirada` solo lo pone `retirar_oferta` y `retirada_postulante` solo `retirar_postulacion`; los dos son finales. |
 | Cursos | El postulante pasa `asignado → en_curso → completado`; la oficina no cambia el estado (`asignaciones_curso_transicion`). |
-| Pre-entrevistas | `coordinada → realizada / no_asistio`, con fecha pasada; `no_asistio → coordinada` al reprogramar; `coordinada → cancelada` solo al retirar la postulación (final). |
+| Pre-entrevistas | `coordinada → realizada / no_asistio`, con fecha pasada; `no_asistio → coordinada` al reprogramar; la fecha, la modalidad, el lugar y el link solo cambian en una `coordinada` (reprogramar, con fecha futura, migración 064); `coordinada → cancelada` solo al retirar la postulación (final). |
 | Empresas | Al editar los datos de una empresa rechazada vuelve a `pendiente` y se registra en el historial. |
 | Postulaciones | No se aceptan postulaciones a ofertas vencidas (`postulaciones_oferta_vigente`). `oferta_retirada` solo lo pone `retirar_oferta` y no cambia después (`postulaciones_proteger_oferta_retirada`); lo mismo `retirada_postulante` con `retirar_postulacion` (`postulaciones_proteger_retiro_postulante`). |
 
 ### Restricciones
 
 - **Únicos:** DNI, CUIT, una postulación vigente (no retirada) por oferta y postulante (índice parcial, migración 053), una derivación y una pre-entrevista por postulación, un candidato guardado por empresa, una foto activa por usuario, un mismo curso pendiente por postulante, nombre de curso.
-- **`CHECK`:** `duracion_dias` en 15, 30, 45 o 60; `oferta_vacantes.cantidad >= 1`; estados de texto; lugar de pre-entrevista no vacío; tipos y links de `notificaciones`; tipo MIME y tamaño en `archivos_usuario`.
+- **`CHECK`:** `duracion_dias` en 15, 30, 45 o 60; `oferta_vacantes.cantidad >= 1`; estados de texto; modalidad de la pre-entrevista y de la entrevista (`presencial` / `online`), lugar no vacío en las presenciales y link `https://` sin espacios solo en las online (migración 064); tipos y links de `notificaciones`; tipo MIME y tamaño en `archivos_usuario`.
 - **Requisito mínimo:** toda oferta que no es borrador tiene al menos un requisito (`CHECK ofertas_requisito_minimo_check`, migración 051; el trigger de 032 da el mensaje).
 - **Borrado lógico de ofertas:** "Eliminar" marca `ofertas.eliminada_en`; un `CHECK` exige que la oferta nunca se haya publicado (borrador, rechazada o pendiente). Las políticas RLS la sacan del público, la oficina y el postulante; la empresa la ve solo en "Eliminadas" y la restaura durante 30 días. Después la purga diaria la borra con sus filas dependientes (ver [Deploy](#11-deploy-en-vercel)).
 - **Borrado lógico de archivos y máximo de CVs:** `archivos_usuario.eliminado_en` marca un CV o una foto eliminados; `activo` siempre vale `eliminado_en IS NULL` (`CHECK` y trigger `archivos_usuario_estado`). El mismo trigger bloquea al usuario y no deja tener más de 5 CVs disponibles, aunque dos subidas lleguen a la vez. `postulaciones_cv_elegido` valida que el CV elegido sea del postulante y no esté eliminado (migración 054, decisión [026](decisiones/026-cvs-y-borrado-logico-de-archivos.md)).

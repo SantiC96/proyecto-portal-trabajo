@@ -786,8 +786,8 @@ un archivo: "Quitar foto" (o "Quitar logo") de Mi perfil y "Eliminar CV
 
 # 15. Campos
 
-Clase `.campo` (la usan `Input`, `Textarea`, el select de
-`CampoFechaHora` y el `Buscador`); `.campo-grupo` para contenedores que
+Clase `.campo` (la usan `Input`, `Textarea`, el botón y las listas de
+hora de `CampoFechaHora` y el `Buscador`); `.campo-grupo` para contenedores que
 se ven como un campo (los chips de `MultiCombobox`).
 
 -   borde 1,5 px `border-strong`, radio 12 px, fondo blanco;
@@ -812,6 +812,47 @@ Texto de ayuda / error
 
 Labels: clase `.etiqueta-campo` (15 px, 600, `control-foreground`). El
 asterisco de obligatorio (`<Obligatorio />`) va en `danger`.
+
+## Fecha y hora (`CampoFechaHora`)
+
+`src/components/ui/campo-fecha-hora.tsx`, sobre `Calendar` y `Popover` de
+shadcn (`src/components/ui/calendar.tsx`, restilizado con los tokens; sin
+colores por defecto de shadcn). Un solo campo con su label ("Fecha y hora"
+con `<Obligatorio />`) y su error debajo:
+
+-   **Disparador:** un botón `.campo` de 48 px con el ícono de calendario
+    (`muted-icon`), la fecha elegida en formato largo ("Martes 3 de
+    noviembre, 10:30 h"; con el año solo si no es el actual) o el
+    placeholder "Elegí la fecha y la hora" en `placeholder`, y un chevron.
+    Abierto, borde `primary` y `--sombra-foco-campo`; con error, el borde
+    rojo de `.campo` (`aria-invalid` y `aria-describedby` van al botón, así
+    `useErroresCampo` lo enfoca).
+-   **Popover:** fondo `surface`, radio 12 (`--radius-lg`), borde `border` y
+    `--sombra-dialogo`; padding 12, alineado al inicio del campo y nunca más
+    ancho que la pantalla menos 32 px. Aparece con el fundido y la escala de
+    los popovers (sin movimiento con `prefers-reduced-motion: reduce`).
+-   **Calendario:** en español, la semana empieza el lunes, mes en 15 px 800
+    `heading` con mayúscula inicial, días de la semana en 13 px 600
+    `muted-foreground`. Celdas de 44 px (en pantallas de 320 px se achican
+    para que entren las 7 columnas), radio 10, número de 15 px. Hoy:
+    `primary` en negrita con un anillo interno de 1,5 px `primary`. El día
+    elegido: fondo `primary` (`#006833`) con texto blanco en negrita (6,94:1),
+    hover `primary-hover`. Hover de los demás: `secondary`. Días pasados
+    (cuando se pide una fecha futura, que es el caso por defecto):
+    `muted-icon` tachados, sin hover; no se puede volver a meses anteriores.
+    Días de otro mes: `muted-foreground`. Foco: `--sombra-foco`.
+-   **Hora:** debajo del calendario, separada por un borde `border`, dos
+    listas nativas `.campo` lado a lado: "Hora" (08 a 20) y "Minutos" (00,
+    15, 30 y 45; a las 20 solo 00). Se habilitan después de elegir el día;
+    los turnos que ya pasaron hoy aparecen deshabilitados. Elegir la hora
+    completa los minutos con el primer turno libre.
+-   **"Listo":** botón primario a todo el ancho que cierra el popover.
+
+Teclado: Enter o Espacio abren y el foco entra en el día elegido (o en hoy);
+las flechas recorren los días, Re Pág / Av Pág cambian de mes, Enter elige;
+Tab llega a la hora, los minutos y "Listo"; Escape cierra y el foco vuelve al
+botón. El valor que se envía no cambia: el día del calendario y "HH:MM", que
+`fechaHoraISO` convierte a ISO con el desplazamiento de Argentina (-03:00).
 
 ------------------------------------------------------------------------
 
@@ -2102,11 +2143,33 @@ del grupo. Si hay solo franjas o solo el botón, el botón sigue a la
 derecha. En el celular, una debajo de la otra: primero las franjas y
 después el botón a todo el ancho (44 px).
 
-En las fichas de la empresa y de la oficina: "Entrevista coordinada:" y
-"Coordinada:" (pre-entrevista) en `info`; el resultado final del proceso
+En las fichas de la empresa y de la oficina: el cartel de entrevista
+coordinada (abajo) en `info`; el resultado final del proceso
 en `ok` (seleccionado o contratado) o `neutra` (no seleccionado, proceso
 cerrado, retirada); "Modificada tras la postulación" y las ofertas
 vencidas del panel de la empresa en `aviso`.
+
+### Cartel de entrevista coordinada
+
+`src/components/entrevistas/cartel-entrevista.tsx` (`CartelEntrevista`): una
+`Franja` `info` con el ícono de calendario y reloj, el título en negrita
+("Entrevista coordinada" en la empresa, "Pre-entrevista coordinada" en la
+oficina) y una lista de datos con la etiqueta en 600: **Fecha** en formato
+largo ("Martes 3 de noviembre, 10:30 h"), **Modalidad** (Presencial u
+Online), **Lugar** (si hay) o **Link** (el link completo, subrayado en
+blanco, que se abre en otra pestaña y lo anuncia a los lectores de
+pantalla) y las **notas** si existen (la nota interna de la oficina; la
+entrevista de la empresa no tiene notas). Debajo del cartel, el botón
+secundario "Reprogramar" a todo el ancho.
+
+"Reprogramar" reemplaza el cartel por el mismo formulario de coordinar,
+precargado (la fecha solo si todavía no pasó), con "Guardar cambios"
+(secundario) y "Cancelar" (neutro) debajo, a todo el ancho; "Cancelar"
+vuelve al cartel. Al guardar, el cartel vuelve con los datos nuevos.
+
+En Mis postulaciones, las franjas de pre-entrevista y de entrevista muestran
+la fecha larga y debajo "Presencial · <lugar>" u "Online · <link>", con el
+link clickeable (`ModalidadYLugar`).
 
 ## Cita
 
@@ -2171,10 +2234,22 @@ celular y en tablet no se muestra.
 ## Formularios dentro de una tarjeta angosta
 
 Coordinar una entrevista (empresa) o una pre-entrevista (oficina) va en la
-tarjeta de gestión, no en un diálogo: `<CampoFechaHora compacto />` pone
-fecha (campo de fecha del navegador, desde hoy) y hora lado a lado, el
-lugar debajo a todo el ancho y el botón secundario "Guardar …" a todo el
-ancho. Mismas validaciones y mensajes que el diálogo con calendario.
+tarjeta de gestión, no en un diálogo (`CamposEntrevista`,
+`src/components/entrevistas/campos-entrevista.tsx`), a todo el ancho y en
+este orden: `CampoFechaHora` (sección 15), "Modalidad" con dos
+`OpcionRadio` lado a lado (Presencial / Online, Presencial por defecto) y,
+según la modalidad, "Lugar" o "Link de la reunión" (los dos obligatorios).
+El link usa `type="url"`, placeholder "https://meet.google.com/…" y la
+ayuda "Pegá el link de Meet, Zoom o Teams." (13 px `muted-foreground`);
+tiene que empezar con https:// y no tener espacios (el mismo control en el
+navegador, el servidor y la base). La oficina suma la nota interna. Al
+final, el botón secundario "Guardar …" a todo el ancho.
+
+En la empresa, debajo, "Resultado" con la aclaración "Podés seleccionar al
+candidato en cualquier momento, aunque no hayan tenido una entrevista o
+todavía no haya pasado la fecha.", "Seleccionar" (primario) y "No
+seleccionado" (peligro con borde). "Seleccionar" solo se deshabilita con
+las vacantes cubiertas.
 
 ## Toasts
 

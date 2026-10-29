@@ -3,7 +3,8 @@ import { CalendarClock, CalendarDays, ChevronDown, FileText } from "lucide-react
 import { RetirarPostulacion } from "@/components/postulantes/retirar-postulacion";
 import { Badge, type TonoBadge } from "@/components/ui/badge";
 import { Franja } from "@/components/ui/franja";
-import { formatFecha, formatFechaHora } from "@/lib/fechas";
+import { formatFecha, formatFechaHoraLarga } from "@/lib/fechas";
+import { ModalidadYLugar } from "@/components/entrevistas/cartel-entrevista";
 import { getOfertaEstadoBadge } from "@/lib/oferta-estados";
 import {
   AVISO_OFERTA_RETIRADA,
@@ -245,8 +246,16 @@ function TarjetaPostulacion({ postulacion: p }: { postulacion: Postulacion }) {
                   icono={CalendarClock}
                   titulo="Pre-entrevista con la Oficina de Empleo:"
                 >
-                  {formatFechaHora(p.preEntrevista!.fecha_hora)}
-                  <span className="mt-0.5 block break-words">{p.preEntrevista!.lugar}</span>
+                  {formatFechaHoraLarga(p.preEntrevista!.fecha_hora)}
+                  <span className="mt-0.5 block break-words">
+                    <ModalidadYLugar
+                      datos={{
+                        modalidad: p.preEntrevista!.modalidad,
+                        lugar: p.preEntrevista!.lugar,
+                        link: p.preEntrevista!.link,
+                      }}
+                    />
+                  </span>
                 </Franja>
               )}
 
@@ -314,8 +323,12 @@ function FranjaDerivacion({ derivacion: d }: { derivacion: FilaEstadoDerivacionP
   if (d.estado_empresa === "en_proceso" && d.fecha_entrevista) {
     return (
       <Franja className={CLASE_FRANJA} tono="info" icono={CalendarClock} titulo="Entrevista coordinada:">
-        {formatFechaHora(d.fecha_entrevista)}
-        {d.lugar_entrevista && <span className="mt-0.5 block">{d.lugar_entrevista}</span>}
+        {formatFechaHoraLarga(d.fecha_entrevista)}
+        <span className="mt-0.5 block break-words">
+          <ModalidadYLugar
+            datos={{ modalidad: d.modalidad_entrevista, lugar: d.lugar_entrevista, link: d.link_entrevista }}
+          />
+        </span>
       </Franja>
     );
   }
