@@ -34,12 +34,13 @@ export function calcularTotalPaginas(total: number, tamano = TAMANO_PAGINA) {
 
 /**
  * Arma un href a `ruta` conservando los searchParams actuales y aplicando
- * `cambios` (null o "" borra la clave). La página 1 no se escribe en la URL.
+ * `cambios` (null, "" o una lista vacía borra la clave; una lista repite la
+ * clave con cada valor). La página 1 no se escribe en la URL.
  */
 export function hrefConParams(
   ruta: string,
   actuales: ParamsUrl | URLSearchParams,
-  cambios: Record<string, string | number | null | undefined> = {},
+  cambios: Record<string, string | number | readonly string[] | null | undefined> = {},
   ancla?: string,
 ): string {
   const params = new URLSearchParams();
@@ -53,7 +54,10 @@ export function hrefConParams(
   }
   for (const clave of PARAMETROS_TRANSITORIOS) params.delete(clave);
   for (const [clave, valor] of Object.entries(cambios)) {
-    if (valor === null || valor === undefined || valor === "") params.delete(clave);
+    if (Array.isArray(valor)) {
+      params.delete(clave);
+      valor.forEach((v) => params.append(clave, v));
+    } else if (valor === null || valor === undefined || valor === "") params.delete(clave);
     else params.set(clave, String(valor));
   }
   if (params.get("pagina") === "1") params.delete("pagina");

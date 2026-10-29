@@ -12,8 +12,9 @@ export default async function OfertasPage({
 }: {
   searchParams: Promise<{
     q?: string;
-    categoria?: string;
-    modalidad?: string;
+    // Se pueden repetir: ?categoria=A&categoria=B&modalidad=Presencial.
+    categoria?: string | string[];
+    modalidad?: string | string[];
     pagina?: string;
   }>;
 }) {
