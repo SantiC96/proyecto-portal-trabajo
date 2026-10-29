@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { CalendarClock, CalendarDays, ChevronDown, FileText } from "lucide-react";
+import { CalendarClock, ChevronDown } from "lucide-react";
 import { RetirarPostulacion } from "@/components/postulantes/retirar-postulacion";
 import { Badge, type TonoBadge } from "@/components/ui/badge";
 import { Franja } from "@/components/ui/franja";
+import { CLASE_ACCION_FILA, CeldaTabla, FilaTabla, Tabla as TablaListado } from "@/components/ui/tabla";
 import { formatFecha, formatFechaHoraLarga } from "@/lib/fechas";
 import { ModalidadYLugar } from "@/components/entrevistas/cartel-entrevista";
 import { getOfertaEstadoBadge } from "@/lib/oferta-estados";
@@ -14,6 +15,7 @@ import {
   badgePostulacion,
   sePuedeRetirar,
 } from "@/lib/mis-postulaciones";
+import { cn } from "@/lib/utils";
 import type {
   FilaCvDeMiPostulacion,
   FilaEstadoDerivacionPostulante,
@@ -136,22 +138,27 @@ interface Props {
   postulaciones: Postulacion[];
 }
 
+// Oferta | Fecha | Estado | CV enviado | acción.
+const COLUMNAS = "minmax(0,2fr) 8rem minmax(0,1.2fr) minmax(0,1.5fr) auto";
+
 export function MisPostulacionesLista({ postulaciones }: Props) {
   return (
-    <ul className="flex flex-col gap-3">
+    <TablaListado
+      columnas={COLUMNAS}
+      etiqueta="Mis postulaciones"
+      encabezados={["Oferta", "Fecha", "Estado", "CV enviado", ""]}
+    >
       {postulaciones.map((p) => (
-        <li key={p.id}>
-          <TarjetaPostulacion postulacion={p} />
-        </li>
+        <FilaPostulacion key={p.id} postulacion={p} />
       ))}
-    </ul>
+    </TablaListado>
   );
 }
 
-/** Las aclaraciones de cada postulación miden lo que su texto, sin pasarse del ancho de la tarjeta. */
+/** Las aclaraciones de cada postulación miden lo que su texto, sin pasarse del ancho de la fila. */
 const CLASE_FRANJA = "w-fit max-w-full";
 
-function TarjetaPostulacion({ postulacion: p }: { postulacion: Postulacion }) {
+function FilaPostulacion({ postulacion: p }: { postulacion: Postulacion }) {
   const oferta = p.oferta;
   const badge = badgePostulacion({
     estado: p.estado,
@@ -167,12 +174,11 @@ function TarjetaPostulacion({ postulacion: p }: { postulacion: Postulacion }) {
   const modificada =
     oferta?.contenido_editado_en != null && oferta.contenido_editado_en > p.created_at;
 
-  const claseTitulo = "text-lg leading-snug font-bold";
-
   const conPreEntrevista =
     (p.estado === "recibida" || p.estado === "en_revision") &&
     p.preEntrevista?.estado === "coordinada";
   const hayAclaraciones =
+    avisoOferta !== null ||
     conPreEntrevista ||
     p.estado === "oferta_retirada" ||
     (p.estado === "derivada" && p.derivacion != null) ||
@@ -180,132 +186,118 @@ function TarjetaPostulacion({ postulacion: p }: { postulacion: Postulacion }) {
     p.estado === "retirada_postulante";
   const puedeRetirar = sePuedeRetirar(p.estado, p.derivacion?.estado_empresa);
 
-  return (
-    <article
-      id={anclaPostulacion(p.id)}
-      className="tarjeta flex scroll-mt-20 flex-col gap-3 px-4 py-[18px] sm:p-6"
-    >
-      <div className="flex flex-col-reverse items-start gap-2 sm:flex-row sm:justify-between sm:gap-4">
-        <div className="min-w-0 flex-1">
-          <h2 className={claseTitulo}>
-            {oferta ? (
-              ofertaActiva ? (
-                <Link
-                  href={`/ofertas/${oferta.id}`}
-                  className="rounded-[var(--radius-sm)] text-heading underline-offset-2 outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
-                >
-                  {oferta.titulo}
-                </Link>
-              ) : (
-                <span className="text-muted-foreground-strong">{oferta.titulo}</span>
-              )
-            ) : (
-              // Sin link: la oferta ya no se puede ver y /ofertas/[id] daría 404.
-              <span className="text-muted-foreground-strong">
-                {p.ofertaNoVisible?.titulo ?? "Oferta no disponible"}
-              </span>
-            )}
-          </h2>
-          {empresa && (
-            <p className="mt-0.5 text-[15px] font-semibold text-texto-bajada">{empresa}</p>
+  const aclaraciones = hayAclaraciones && (
+    <>
+      {avisoOferta && <p className="text-sm font-semibold text-warning-text">{avisoOferta}</p>}
+
+      {conPreEntrevista && (
+        <Franja
+          className={CLASE_FRANJA}
+          tono="info"
+          icono={CalendarClock}
+          titulo="Pre-entrevista con la Oficina de Empleo:"
+        >
+          {formatFechaHoraLarga(p.preEntrevista!.fecha_hora)}
+          <span className="mt-0.5 block break-words">
+            <ModalidadYLugar
+              datos={{
+                modalidad: p.preEntrevista!.modalidad,
+                lugar: p.preEntrevista!.lugar,
+                link: p.preEntrevista!.link,
+              }}
+            />
+          </span>
+        </Franja>
+      )}
+
+      {p.estado === "oferta_retirada" && <Franja className={CLASE_FRANJA} tono="neutra">{AVISO_OFERTA_RETIRADA}</Franja>}
+
+      {p.estado === "derivada" && p.derivacion && <FranjaDerivacion derivacion={p.derivacion} />}
+
+      {modificada && (
+        <Franja className={CLASE_FRANJA} tono="aviso" titulo="Modificada después de tu postulación">
+          ({formatFecha(oferta!.contenido_editado_en!)})
+          {ofertaActiva && (
+            <>
+              {" — "}
+              <Link href={`/ofertas/${oferta!.id}`}>Ver oferta actualizada</Link>
+            </>
           )}
-        </div>
+        </Franja>
+      )}
+
+      {p.estado === "retirada_postulante" && (
+        <Franja className={CLASE_FRANJA} tono="neutra">
+          Retiraste esta postulación
+          {p.retirada_en ? ` el ${formatFecha(p.retirada_en)}` : ""}.
+        </Franja>
+      )}
+    </>
+  );
+
+  return (
+    <FilaTabla id={anclaPostulacion(p.id)} detalle={aclaraciones}>
+      <div className="flex min-w-0 flex-col items-start gap-0.5">
+        {oferta ? (
+          ofertaActiva ? (
+            <Link
+              href={`/ofertas/${oferta.id}`}
+              className="rounded-[var(--radius-sm)] text-[15px] leading-snug font-bold break-words text-heading no-underline outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+            >
+              {oferta.titulo}
+            </Link>
+          ) : (
+            <span className="text-[15px] leading-snug font-bold break-words text-muted-foreground-strong">
+              {oferta.titulo}
+            </span>
+          )
+        ) : (
+          // Sin link: la oferta ya no se puede ver y /ofertas/[id] daría 404.
+          <span className="text-[15px] leading-snug font-bold break-words text-muted-foreground-strong">
+            {p.ofertaNoVisible?.titulo ?? "Oferta no disponible"}
+          </span>
+        )}
+        {empresa && <span className="text-sm font-semibold text-texto-bajada">{empresa}</span>}
+      </div>
+      <CeldaTabla etiqueta="Te postulaste el" rotuloVisible className="tabular-nums">
+        {formatFecha(p.created_at)}
+      </CeldaTabla>
+      <CeldaTabla etiqueta="Estado">
         <Badge tono={badge.tono} estado>
           {badge.label}
         </Badge>
-      </div>
-
-      {avisoOferta && <p className="text-sm font-semibold text-warning-text">{avisoOferta}</p>}
-
-      <ul className="flex flex-col gap-1.5 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:gap-x-5">
-        <li className="flex items-center gap-1.5">
-          <CalendarDays className="size-4 shrink-0" aria-hidden="true" />
-          Te postulaste el {formatFecha(p.created_at)}
-        </li>
-        {p.cv && (
-          <li className="flex min-w-0 items-start gap-1.5">
-            <FileText className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-            <span className="min-w-0 break-all">
-              CV enviado: <span className="font-semibold text-foreground">{p.cv.nombre_original}</span>
-              {p.cv.eliminado && " · lo eliminaste de tu perfil"}
-            </span>
-          </li>
+      </CeldaTabla>
+      <CeldaTabla
+        etiqueta="CV enviado"
+        rotuloVisible
+        className={cn("text-sm break-all", !p.cv && "hidden @4xl:block")}
+      >
+        {p.cv ? (
+          <>
+            <span className="font-semibold text-foreground">{p.cv.nombre_original}</span>
+            {p.cv.eliminado && " · lo eliminaste de tu perfil"}
+          </>
+        ) : (
+          <span className="text-muted-foreground">—</span>
         )}
-      </ul>
-
-      {(hayAclaraciones || puedeRetirar) && (
-        // Aclaraciones a la izquierda y la acción a la derecha, centradas entre
-        // sí; en celular, una debajo de la otra con el botón a todo el ancho.
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-          {hayAclaraciones && (
-            <div className="flex min-w-0 flex-col gap-3">
-              {conPreEntrevista && (
-                <Franja
-                  className={CLASE_FRANJA}
-                  tono="info"
-                  icono={CalendarClock}
-                  titulo="Pre-entrevista con la Oficina de Empleo:"
-                >
-                  {formatFechaHoraLarga(p.preEntrevista!.fecha_hora)}
-                  <span className="mt-0.5 block break-words">
-                    <ModalidadYLugar
-                      datos={{
-                        modalidad: p.preEntrevista!.modalidad,
-                        lugar: p.preEntrevista!.lugar,
-                        link: p.preEntrevista!.link,
-                      }}
-                    />
-                  </span>
-                </Franja>
-              )}
-
-              {p.estado === "oferta_retirada" && <Franja className={CLASE_FRANJA} tono="neutra">{AVISO_OFERTA_RETIRADA}</Franja>}
-
-              {p.estado === "derivada" && p.derivacion && <FranjaDerivacion derivacion={p.derivacion} />}
-
-              {modificada && (
-                <Franja className={CLASE_FRANJA} tono="aviso" titulo="Modificada después de tu postulación">
-                  ({formatFecha(oferta!.contenido_editado_en!)})
-                  {ofertaActiva && (
-                    <>
-                      {" — "}
-                      <Link href={`/ofertas/${oferta!.id}`}>Ver oferta actualizada</Link>
-                    </>
-                  )}
-                </Franja>
-              )}
-
-              {p.estado === "retirada_postulante" && (
-                <Franja className={CLASE_FRANJA} tono="neutra">
-                  Retiraste esta postulación
-                  {p.retirada_en ? ` el ${formatFecha(p.retirada_en)}` : ""}.
-                  {p.puedeVolverAPostularse && oferta && (
-                    <Link
-                      href={`/ofertas/${oferta.id}`}
-                      className="mt-1 flex min-h-11 w-fit items-center text-primary sm:min-h-0"
-                    >
-                      Volver a postularme
-                    </Link>
-                  )}
-                </Franja>
-              )}
-            </div>
-          )}
-
-          {puedeRetirar && (
-            <div className="sm:ml-auto sm:shrink-0">
-              <RetirarPostulacion
-                postulacionId={p.id}
-                ofertaTitulo={oferta?.titulo ?? null}
-                derivada={p.estado === "derivada"}
-                conPreEntrevista={p.preEntrevista?.estado === "coordinada"}
-                className="w-full sm:min-h-10! sm:w-auto"
-              />
-            </div>
-          )}
-        </div>
+      </CeldaTabla>
+      {puedeRetirar ? (
+        <RetirarPostulacion
+          postulacionId={p.id}
+          ofertaTitulo={oferta?.titulo ?? null}
+          derivada={p.estado === "derivada"}
+          conPreEntrevista={p.preEntrevista?.estado === "coordinada"}
+          className={CLASE_ACCION_FILA}
+        />
+      ) : p.puedeVolverAPostularse && oferta ? (
+        <Link href={`/ofertas/${oferta.id}`} className={`btn-neutro ${CLASE_ACCION_FILA}`}>
+          Volver a postularme
+          <span className="sr-only">: {oferta.titulo}</span>
+        </Link>
+      ) : (
+        <span className="hidden @4xl:block" aria-hidden="true" />
       )}
-    </article>
+    </FilaTabla>
   );
 }
 

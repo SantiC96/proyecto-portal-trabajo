@@ -9,9 +9,15 @@ interface Props {
   ofertaId: string;
   ofertaTitulo: string;
   estadoLabel: string;
+  claseBoton?: string;
 }
 
-export function RestaurarOfertaBtn({ ofertaId, ofertaTitulo, estadoLabel }: Props) {
+export function RestaurarOfertaBtn({
+  ofertaId,
+  ofertaTitulo,
+  estadoLabel,
+  claseBoton = "px-3 text-xs sm:min-h-9",
+}: Props) {
   const router = useRouter();
 
   return (
@@ -23,7 +29,7 @@ export function RestaurarOfertaBtn({ ofertaId, ofertaTitulo, estadoLabel }: Prop
         </>
       }
       estiloBoton="secundario"
-      claseBoton="px-3 text-xs sm:min-h-9"
+      claseBoton={claseBoton}
       titulo="¿Restaurar esta oferta?"
       descripcion={
         <>
