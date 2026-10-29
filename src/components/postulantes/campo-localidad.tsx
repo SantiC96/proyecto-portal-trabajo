@@ -37,11 +37,6 @@ type Props = {
   className?: string;
   /** Estilo de los campos de Mi perfil (alto 48, borde border-campo, label 15 px 700). */
   estiloPerfil?: boolean;
-  /**
-   * El desplegable es el Combobox del buscador del inicio en lugar de un
-   * <select> nativo (el registro). Mi perfil sigue con el nativo.
-   */
-  conCombobox?: boolean;
 };
 
 const OPCIONES_COMBOBOX = [
@@ -70,7 +65,6 @@ export function CampoLocalidad({
   deshabilitado = false,
   className,
   estiloPerfil = false,
-  conCombobox = false,
 }: Props) {
   const idOtra = `${id}-otra`;
 
@@ -83,42 +77,20 @@ export function CampoLocalidad({
         >
           ¿De dónde sos? <Obligatorio />
         </label>
-        {conCombobox ? (
-          <Combobox
-            id={id}
-            requerido
-            opciones={OPCIONES_COMBOBOX}
-            valor={elegida}
-            onCambiar={onElegida}
-            deshabilitado={deshabilitado}
-            placeholder="Elegí tu localidad"
-            placeholderBusqueda="Buscar localidad"
-            etiquetaBusqueda="Buscar localidad"
-            vacioTexto="No está en la lista: buscá «Otra localidad»"
-            triggerClassName={cn(estiloPerfil ? CAMPO_PERFIL : claseSelect, "cursor-pointer", CLASE_CONTROL_INVALIDO)}
-            {...ariaErrorCampo(id, errorLocalidad)}
-          />
-        ) : (
-          <select
-            id={id}
-            required
-            value={elegida}
-            disabled={deshabilitado}
-            onChange={(e) => onElegida(e.target.value)}
-            className={estiloPerfil ? CAMPO_PERFIL : claseSelect}
-            {...ariaErrorCampo(id, errorLocalidad)}
-          >
-            <option value="" disabled>
-              Elegí tu localidad
-            </option>
-            {LOCALIDADES.map((localidad) => (
-              <option key={localidad} value={localidad}>
-                {localidad}
-              </option>
-            ))}
-            <option value={OTRA_LOCALIDAD}>Otra localidad</option>
-          </select>
-        )}
+        <Combobox
+          id={id}
+          requerido
+          opciones={OPCIONES_COMBOBOX}
+          valor={elegida}
+          onCambiar={onElegida}
+          deshabilitado={deshabilitado}
+          placeholder="Elegí tu localidad"
+          placeholderBusqueda="Buscar localidad"
+          etiquetaBusqueda="Buscar localidad"
+          vacioTexto="No está en la lista: buscá «Otra localidad»"
+          triggerClassName={cn(estiloPerfil ? CAMPO_PERFIL : claseSelect, "cursor-pointer", CLASE_CONTROL_INVALIDO)}
+          {...ariaErrorCampo(id, errorLocalidad)}
+        />
         <ErrorCampo
           idCampo={id}
           mensaje={errorLocalidad}

@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
 import { Textarea } from "@/components/ui/textarea";
+import { Combobox } from "@/components/ui/combobox";
 import Link from "next/link";
 import { asignarCurso } from "@/app/admin/cursos/actions";
 import { mostrarAviso } from "@/lib/avisos";
@@ -19,7 +20,6 @@ import type { Tabla } from "@/types/db";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
 import {
-  CLASE_CONTROL_INVALIDO,
   ErrorCampo,
   Obligatorio,
   ariaErrorCampo,
@@ -129,26 +129,23 @@ export function AsignarCursoDialog({
                 <label htmlFor="asignar-curso" className="text-sm font-medium text-foreground">
                   Curso <Obligatorio />
                 </label>
-                <select
+                <Combobox
                   id="asignar-curso"
-                  value={cursoId}
-                  onChange={(e) => {
-                    setCursoId(e.target.value);
+                  requerido
+                  opciones={disponibles.map((c) => ({ id: c.id, nombre: c.nombre }))}
+                  valor={cursoId}
+                  onCambiar={(valor) => {
+                    setCursoId(valor);
                     campos.limpiar("cursoId");
                   }}
+                  deshabilitado={isPending}
+                  placeholder="Elegí un curso"
+                  placeholderBusqueda="Buscar curso"
+                  etiquetaBusqueda="Buscar curso"
+                  vacioTexto="No hay cursos con ese nombre"
+                  triggerClassName="campo cursor-pointer"
                   {...ariaErrorCampo("asignar-curso", campos.errores.cursoId)}
-                  className={cn(
-                    "w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30",
-                    CLASE_CONTROL_INVALIDO
-                  )}
-                  disabled={isPending}
-                >
-                  {disponibles.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombre}
-                    </option>
-                  ))}
-                </select>
+                />
                 <ErrorCampo idCampo="asignar-curso" mensaje={campos.errores.cursoId} />
                 {cursosPendientesIds.length > 0 && (
                   <p className="text-xs text-muted-foreground">

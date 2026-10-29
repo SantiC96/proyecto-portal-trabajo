@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { CalendarDays, ChevronDown } from "lucide-react";
 import { es } from "react-day-picker/locale";
 import { Calendar } from "@/components/ui/calendar";
+import { Combobox } from "@/components/ui/combobox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ErrorCampo, Obligatorio, ariaErrorCampo } from "@/components/ui/obligatorio";
 import { cn } from "@/lib/utils";
@@ -201,40 +202,41 @@ export function CampoFechaHora({
                 <label htmlFor={idHora} className="etiqueta-campo mb-1.5 block">
                   Hora
                 </label>
-                <select
+                {/* Sin buscador: son números de dos cifras y la lista entra entera. */}
+                <Combobox
                   id={idHora}
-                  value={hh}
-                  onChange={(e) => elegirHora(e.target.value)}
-                  disabled={!dia}
-                  className="campo"
-                >
-                  <option value="">--</option>
-                  {[...new Set([...HORAS, ...(hh ? [hh] : [])])].sort().map((h) => (
-                    <option key={h} value={h} disabled={horaSinTurnos(h)}>
-                      {h}
-                    </option>
-                  ))}
-                </select>
+                  buscador={false}
+                  opcionVacia="--"
+                  opciones={[...new Set([...HORAS, ...(hh ? [hh] : [])])].sort().map((h) => ({
+                    id: h,
+                    nombre: h,
+                    deshabilitada: horaSinTurnos(h),
+                  }))}
+                  valor={hh}
+                  onCambiar={elegirHora}
+                  deshabilitado={!dia}
+                  triggerClassName="campo cursor-pointer"
+                />
               </div>
               <div className="min-w-0">
                 <label htmlFor={idMinutos} className="etiqueta-campo mb-1.5 block">
                   Minutos
                 </label>
-                <select
+                {/* Un horario guardado fuera de los turnos se conserva al precargar. */}
+                <Combobox
                   id={idMinutos}
-                  value={mm}
-                  onChange={(e) => onHoraChange(`${hh}:${e.target.value}`)}
-                  disabled={!dia || !hh}
-                  className="campo"
-                >
-                  {!hh && <option value="">--</option>}
-                  {/* Un horario guardado fuera de los turnos se conserva al precargar. */}
-                  {[...new Set([...minutosDe(hh), ...(mm ? [mm] : [])])].sort().map((m) => (
-                    <option key={m} value={m} disabled={pasado(hh, m)}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
+                  buscador={false}
+                  placeholder="--"
+                  opciones={[...new Set([...minutosDe(hh), ...(mm ? [mm] : [])])].sort().map((m) => ({
+                    id: m,
+                    nombre: m,
+                    deshabilitada: pasado(hh, m),
+                  }))}
+                  valor={mm}
+                  onCambiar={(m) => onHoraChange(`${hh}:${m}`)}
+                  deshabilitado={!dia || !hh}
+                  triggerClassName="campo cursor-pointer"
+                />
               </div>
             </div>
             {!dia && <p className="text-[13px] text-muted-foreground">Elegí primero el día.</p>}
