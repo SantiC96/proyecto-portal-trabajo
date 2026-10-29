@@ -103,6 +103,25 @@ export const obtenerInvitacionesPendientes = cache(
     }),
 );
 
+// ── Rubros del perfil ───────────────────────────────────────────────────────
+
+/** ids de los rubros del perfil del postulante con sesión (postulante_categorias). */
+export function obtenerRubrosDelPerfil(): Promise<ConError<string[]>> {
+  return seguro(async () => {
+    const usuario = await obtenerUsuarioActual();
+    if (!usuario) return { data: null, error: "sin sesión de usuario" };
+
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("postulantes")
+      .select("postulante_categorias(categoria_id)")
+      .eq("usuario_id", usuario.id)
+      .maybeSingle();
+    if (error) return { data: null, error };
+    return { data: (data?.postulante_categorias ?? []).map((pc) => pc.categoria_id), error: null };
+  });
+}
+
 // ── Últimos movimientos ─────────────────────────────────────────────────────
 
 export const CANTIDAD_MOVIMIENTOS = 5;

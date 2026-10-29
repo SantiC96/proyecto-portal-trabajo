@@ -2,6 +2,7 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
 import { limpiarBusqueda } from "@/lib/busqueda";
 import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
+import type { RubroConOfertas } from "@/lib/rubros-destacados";
 import { VALORES_ENUM, type FilaOfertaPublica, type Tabla } from "@/types/db";
 import type { Modalidad, OfertaLaboral } from "@/types/oferta";
 
@@ -202,6 +203,25 @@ export async function contarOfertasPorModalidad(
     const cantidad = Number(f.cantidad);
     return esModalidad(f.modalidad) && cantidad > 0 ? [{ modalidad: f.modalidad, cantidad }] : [];
   });
+}
+
+/**
+ * Rubros con al menos una oferta vigente y cuántas tiene cada uno, por
+ * nombre. Para "Explorá por rubro" y el panel "Todos los rubros" de /ofertas.
+ */
+export async function contarOfertasVigentesPorRubro(): Promise<
+  { ok: true; rubros: RubroConOfertas[] } | { ok: false; refError: string }
+> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("contar_ofertas_vigentes_por_rubro");
+  if (error) return { ok: false, refError: logError("contar_ofertas_vigentes_por_rubro", error) };
+  return {
+    ok: true,
+    rubros: (data ?? []).flatMap((f) => {
+      const cantidad = Number(f.cantidad);
+      return cantidad > 0 ? [{ id: f.categoria_id, nombre: f.rubro, cantidad }] : [];
+    }),
+  };
 }
 
 export const OFERTAS_CARRUSEL = 10;
