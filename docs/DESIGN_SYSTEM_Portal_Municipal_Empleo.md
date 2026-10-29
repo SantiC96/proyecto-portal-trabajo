@@ -589,10 +589,47 @@ ancho. En el celular el índice no se muestra.
 
 Cada sección del perfil es una tarjeta (`SeccionPerfil` en
 `components/perfil/piezas.tsx`) con su título de 20 px 800 (18 en el
-celular), una línea de ayuda opcional, los campos en una grilla de 2
-columnas (1 en el celular) y su botón "Guardar" abajo a la derecha.
-Campos del perfil: alto 48, borde 1,5 px `border-campo`, radio 10; label
-15 px 700, ayuda 13 px, error 13 px 600 en `danger`.
+celular), una línea de ayuda opcional y su contenido. Campos del perfil:
+alto 48, borde 1,5 px `border-campo`, radio 10; label 15 px 700, ayuda
+13 px, error 13 px 600 en `danger`.
+
+### Modo lectura y edición (perfil del postulante)
+
+`components/perfil/tarjeta-editable.tsx`. Las tarjetas de datos (Datos
+personales, Procedencia, Información laboral y Rubros de interés) se ven
+en **modo lectura** al entrar:
+
+-   cada dato con `CampoLectura estiloPerfil` dentro de `GrillaLectura`
+    (`<dl>` de 2 columnas desde sm, 1 en el celular): la etiqueta en 14 px
+    700 `neutral` y el valor en 15 px `control-foreground`, como
+    `DatosClave`. Los vacíos dicen "Sin completar" en `muted-foreground`.
+    Los rubros elegidos van como `EtiquetaRubro` verde;
+-   en el encabezado, el botón **"Editar"** (`BotonEditar`: `.btn-neutro`
+    con el ícono `Pencil`, 44 px). Su nombre accesible nombra la tarjeta
+    ("Editar datos personales").
+
+Al tocar "Editar", la tarjeta muestra el formulario (el botón se oculta)
+con el pie `PieEdicion`: "Cancelar" (neutro) y "Guardar cambios"
+(primario), a la derecha; en el celular, a todo el ancho con "Guardar
+cambios" arriba. Guardar usa la misma acción, validaciones, errores y
+aviso de éxito de siempre y, si sale bien, vuelve al modo lectura con los
+datos nuevos. Cancelar descarta los cambios. El foco va al primer campo al
+abrir y vuelve a "Editar" al guardar o cancelar.
+
+-   **Una tarjeta en edición a la vez** (`EdicionPerfil`): abrir otra
+    cierra la que estaba abierta; si tenía cambios sin guardar, primero
+    pregunta "¿Descartar los cambios sin guardar?" ("Seguir editando" /
+    "Descartar cambios", destructivo), con `Dialog` y `BotonesDialogo`.
+-   **Abrir desde un link:** si la URL apunta a una tarjeta (`#id`, como
+    `hrefSeccionPerfil` del panel o el aviso "completá tu localidad") y a
+    esa tarjeta le faltan datos (los mismos criterios que la completitud
+    del panel), se abre directamente en edición.
+-   **Contraseña:** el botón "Cambiar contraseña" (secundario) despliega
+    el formulario, con "Cancelar"; cuenta como una tarjeta más en edición.
+-   La foto y los CVs no tienen modo lectura: siguen con sus botones de
+    subir y de borrar. El comprobante de domicilio de Procedencia queda
+    siempre a la vista, fuera del formulario de la localidad.
+-   Los perfiles de la empresa y de la oficina no usan `EdicionPerfil`.
 
 ## PageContainer
 
@@ -786,8 +823,9 @@ un archivo: "Quitar foto" (o "Quitar logo") de Mi perfil y "Eliminar CV
 
 # 15. Campos
 
-Clase `.campo` (la usan `Input`, `Textarea`, el botón y las listas de
-hora de `CampoFechaHora` y el `Buscador`); `.campo-grupo` para contenedores que
+Clase `.campo` (la usan `Input`, `Textarea`, el botón y los desplegables
+de hora de `CampoFechaHora`, el `Buscador` y el botón de los `Combobox` de
+los formularios); `.campo-grupo` para contenedores que
 se ven como un campo (los chips de `MultiCombobox`).
 
 -   borde 1,5 px `border-strong`, radio 12 px, fondo blanco;
@@ -842,10 +880,13 @@ con `<Obligatorio />`) y su error debajo:
     `muted-icon` tachados, sin hover; no se puede volver a meses anteriores.
     Días de otro mes: `muted-foreground`. Foco: `--sombra-foco`.
 -   **Hora:** debajo del calendario, separada por un borde `border`, dos
-    listas nativas `.campo` lado a lado: "Hora" (08 a 20) y "Minutos" (00,
-    15, 30 y 45; a las 20 solo 00). Se habilitan después de elegir el día;
-    los turnos que ya pasaron hoy aparecen deshabilitados. Elegir la hora
-    completa los minutos con el primer turno libre.
+    `Combobox` `.campo` lado a lado, sin buscador (`buscador={false}`: son
+    números de dos cifras y la lista entra entera; con el teclado se salta
+    escribiendo la cifra): "Hora" (08 a 20) y "Minutos" (00, 15, 30 y 45;
+    a las 20 solo 00). Su lista se abre en un portal encima del popover.
+    Se habilitan después de elegir el día; los turnos que ya pasaron hoy
+    aparecen en gris y no se pueden elegir. Elegir la hora completa los
+    minutos con el primer turno libre.
 -   **"Listo":** botón primario a todo el ancho que cierra el popover.
 
 Teclado: Enter o Espacio abren y el foco entra en el día elegido (o en hoy);
@@ -858,13 +899,34 @@ botón. El valor que se envía no cambia: el día del calendario y "HH:MM", que
 
 # 16. Select / Combobox
 
-Usar `Select` para conjuntos acotados.
+**Regla: todos los desplegables de selección única usan `Combobox`**
+(`src/components/ui/combobox.tsx`). No se usan `<select>` nativos.
 
-Usar `Combobox` cuando:
-
--   existen muchas opciones;
--   se requiere búsqueda;
--   se seleccionan categorías extensas.
+-   **Buscador interno solo con más de 7 opciones**
+    (`MAXIMO_SIN_BUSCADOR`). Con 7 o menos es una lista simple, con el
+    mismo botón y el mismo popup (por dentro, el `Select` de Base UI, que
+    es el control accesible cuando no hay buscador: las letras saltan a la
+    opción). `buscador` lo fuerza en un sentido u otro (la hora de
+    `CampoFechaHora` va sin buscador).
+-   **Mismo alto que los campos de la pantalla:** `triggerClassName` con
+    la clase de los inputs de al lado (`.campo` de 48 px, el campo de Mi
+    perfil o el de la pantalla) más `cursor-pointer`; nunca menos de 44 px.
+-   **Label** con `<label htmlFor>` apuntando al `id` del botón.
+-   **Error de campo en rojo:** `aria-invalid` y `aria-describedby`
+    (`ariaErrorCampo`) van al botón; `requerido` le pone `aria-required`.
+    `useErroresCampo` lo enfoca y lo marca como a cualquier campo.
+-   **Formularios:** con `name`, el valor viaja en un input oculto, así el
+    formulario lo manda igual que un `<select>` (también un GET sin
+    JavaScript, con el valor inicial).
+-   **Controlado** (`valor` + `onCambiar`) o **no controlado**
+    (`valorInicial`), por ejemplo en los filtros GET de Postulaciones de la
+    oficina, que se renderizan en el servidor; un `key` que cambia lo
+    reinicia.
+-   Opciones deshabilitadas (`deshabilitada`): en `muted-foreground`, no se
+    pueden elegir.
+-   **Enviar al elegir** (`enviarAlCambiar`, con `name`): elegir una opción
+    distinta envía el formulario que lo contiene; para filtros de un
+    listado (sección 23).
 
 Para selección múltiple, mostrar elementos seleccionados de manera clara
 y removible (chip blanco con borde verde, como la etiqueta de rubro
@@ -884,15 +946,12 @@ flechas recorren, Enter elige y Escape cierra; el foco vuelve al botón.
 Lo usa el rubro del buscador del inicio (botón de 52 px, sin borde desde
 md, texto de 16 px, 220 px de ancho).
 
-En los formularios del registro (rubro de la empresa y "¿De dónde sos?"
-del postulante, `CampoLocalidad` con `conCombobox`) reemplaza a los
-`<select>` nativos con el estilo del campo: `triggerClassName` con
-`.campo` (o el campo de Mi perfil en la localidad), así mide lo mismo que
-los inputs de al lado (48 px), con el mismo borde y el error en rojo.
-`aria-invalid`, `aria-describedby` y `requerido` (`aria-required`) van al
-botón: `useErroresCampo` lo enfoca y lo marca como a cualquier campo, y
-el `<label htmlFor>` le da el nombre. Mi perfil sigue con el `<select>`
-nativo.
+Dónde se usa: el rubro del registro de la empresa y de "Corregir
+solicitud"; "¿De dónde sos?" (`CampoLocalidad`, en el registro y en Mi
+perfil); nivel educativo, situación laboral y disponibilidad de Mi
+perfil; los filtros Oferta y Orden de Postulaciones de la oficina;
+"Corregir estado de la empresa" y "Asignar curso"; la hora y los minutos
+de `CampoFechaHora`.
 
 ------------------------------------------------------------------------
 
@@ -1461,9 +1520,15 @@ búsqueda) de la oficina).
     `pastilla-gris` y texto `control-foreground`; en la activa, fondo verde
     y texto blanco.
 
-Filtros con label arriba (Postulaciones de la oficina): cada select con su
-`.etiqueta-campo` y `.campo` de 48 px, el botón "Filtrar" neutro de 48 px y
-"Mostrando X de N" a la derecha.
+Filtros con label arriba (Postulaciones de la oficina): cada `Combobox` con su
+`.etiqueta-campo` y `.campo` de 48 px, y "Mostrando X de N" a la derecha.
+Se aplican solos al elegir una opción distinta de la actual
+(`enviarAlCambiar`: el Combobox llama a `form.requestSubmit()`), con los
+mismos parámetros de la URL, y vuelven a la página 1. El formulario es el
+`Form` de `next/form` con `scroll={false}`: navega sin recargar y el foco
+vuelve al filtro que se usó (también eligiendo con Enter). El botón
+"Filtrar" (neutro, 48 px) va dentro de `<noscript>`: solo aparece sin
+JavaScript. "Limpiar filtros" queda como link.
 
 ------------------------------------------------------------------------
 
