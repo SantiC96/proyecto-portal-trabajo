@@ -303,7 +303,7 @@ const TEXTO_VACIO: Record<EstadoFiltro, string> = {
   derivada: "No hay postulaciones derivadas esperando el resultado de la empresa.",
   contratado: "Todavía ninguna empresa marcó a un postulante como contratado.",
   rechazada_municipalidad: "No hay postulaciones no seleccionadas en este momento.",
-  retirada_postulante: "Ningún postulante retiró una postulación en revisión o derivada.",
+  retirada_postulante: "Ningún postulante retiró una postulación.",
 };
 
 type FiltrosListado = {
