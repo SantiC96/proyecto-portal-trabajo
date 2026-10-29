@@ -508,6 +508,179 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
 .hero-icono:nth-child(3) { top: 128px; left: 0; animation-delay: -3s; }
 .hero-icono:nth-child(4) { top: 184px; right: 18%; animation-delay: -4.5s; }
 
+/* Banda verde del listado de ofertas (/ofertas): título, cantidad y buscador.
+   Como el hero, el recorte va en la capa decorativa (.banda-ofertas-deco) y
+   no en la banda, para no cortar nada que salga de ella. */
+.banda-ofertas {
+  position: relative;
+  isolation: isolate;
+  z-index: 2;
+  padding: 24px 18px 20px;
+  border-radius: 20px;
+  background-color: var(--color-primary);
+  background-image: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+.banda-ofertas-deco {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.banda-ofertas-anillo {
+  position: absolute;
+  right: -110px;
+  bottom: -120px;
+  width: 300px;
+  height: 300px;
+  border: 40px solid rgb(255 255 255 / 0.06);
+  border-radius: 50%;
+}
+/* En el celular queda abajo a la derecha, detrás del buscador. */
+.banda-ofertas-escudo {
+  position: absolute;
+  right: -30px;
+  bottom: -26px;
+  width: 140px;
+  height: auto;
+  opacity: 0.14;
+  transform: rotate(-8deg);
+}
+@media (min-width: 640px) {
+  .banda-ofertas {
+    padding: 40px 44px 36px;
+    border-radius: 24px;
+    background-size: 28px 28px;
+  }
+  .banda-ofertas-anillo {
+    top: -240px;
+    right: -180px;
+    bottom: auto;
+    width: 560px;
+    height: 560px;
+    border-width: 60px;
+  }
+  .banda-ofertas-escudo {
+    top: 22px;
+    right: 56px;
+    bottom: auto;
+    width: 190px;
+  }
+}
+
+/* Tarjetas de "Explorá por rubro": 112 × 104 px en la fila desplazable;
+   cuando la sección (@container) mide 1024 px o más, ocho columnas iguales
+   (.fila-rubros pasa a grilla). */
+.tarjeta-rubro {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  flex-shrink: 0;
+  width: 112px;
+  height: 104px;
+  padding: 10px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-surface);
+  color: var(--color-heading);
+  box-shadow: var(--sombra-tarjeta);
+  text-align: left;
+  outline: none;
+  transition: border-color 150ms, box-shadow 150ms, background-color 150ms;
+}
+.tarjeta-rubro:hover { border-color: var(--color-primary); box-shadow: var(--sombra-tarjeta-hover); }
+.tarjeta-rubro:focus-visible { box-shadow: var(--sombra-foco); border-color: var(--color-primary); }
+.tarjeta-rubro-icono {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: rgb(0 104 51 / 0.12);
+  color: var(--color-primary);
+}
+.tarjeta-rubro-icono svg { width: 18px; height: 18px; }
+.tarjeta-rubro-nombre {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.tarjeta-rubro-detalle {
+  margin-top: auto;
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--color-muted-foreground);
+}
+/* Elegida (aria-current) o "Ver todos" con rubros elegidos fuera de la fila. */
+.tarjeta-rubro--elegida {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+  background-image: radial-gradient(rgb(255 255 255 / 0.1) 1px, transparent 1.5px);
+  background-size: 14px 14px;
+  color: #fff;
+}
+.tarjeta-rubro--elegida:hover { background-color: var(--color-primary-hover); }
+.tarjeta-rubro--elegida .tarjeta-rubro-icono { background: rgb(255 255 255 / 0.16); color: #fff; }
+.tarjeta-rubro--elegida .tarjeta-rubro-detalle { color: var(--color-sidebar-texto); }
+.tarjeta-rubro--elegida:focus-visible { box-shadow: 0 0 0 2px #fff, 0 0 0 5px var(--color-primary); }
+.tarjeta-rubro-tilde {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+}
+.tarjeta-rubro-tilde svg { width: 13px; height: 13px; stroke-width: 3; }
+.tarjeta-rubro--ver-todos:not(.tarjeta-rubro--elegida) {
+  border: 2px dashed var(--color-primary);
+  box-shadow: none;
+}
+@container (min-width: 64rem) {
+  .fila-rubros {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    overflow: visible;
+  }
+  .tarjeta-rubro { width: auto; height: auto; min-height: 120px; gap: 8px; padding: 12px; }
+  .tarjeta-rubro-icono { width: 36px; height: 36px; border-radius: 10px; }
+  .tarjeta-rubro-icono svg { width: 20px; height: 20px; }
+  .tarjeta-rubro-nombre { font-size: 14px; line-height: 1.2; }
+  .tarjeta-rubro-detalle { font-size: 13px; }
+}
+
+/* Panel "Todos los rubros": lateral derecho de 400 px desde sm; en el
+   celular, a pantalla completa. */
+.panel-rubros-fondo { background: rgb(8 20 13 / 0.55); }
+.panel-rubros-cabecera {
+  background-color: var(--color-primary);
+  background-image: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1.5px);
+  background-size: 20px 20px;
+  color: #fff;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .panel-rubros { transition: transform 200ms ease-out, opacity 200ms ease-out; }
+  .panel-rubros[data-starting-style],
+  .panel-rubros[data-ending-style] { transform: translateX(24px); opacity: 0; }
+  .panel-rubros-fondo { transition: opacity 200ms ease-out; }
+  .panel-rubros-fondo[data-starting-style],
+  .panel-rubros-fondo[data-ending-style] { opacity: 0; }
+}
+
 /* "Cómo funciona" y "Tu actividad": banda a todo el ancho del contenido. El
    margen negativo es igual al padding de .app-pagina, así que no sale de
    él ni genera scroll horizontal. */

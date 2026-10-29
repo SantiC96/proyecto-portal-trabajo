@@ -1,13 +1,16 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Briefcase, UserSearch } from "lucide-react";
+import { Briefcase, UserSearch, X } from "lucide-react";
 import { TarjetaOferta } from "@/components/ofertas/tarjeta-oferta";
+import { BandaOfertas } from "@/components/public/banda-ofertas";
 import { EmptyJobResults, type SugerenciaModalidad } from "@/components/public/empty-job-results";
-import { FiltroRubrosCelular } from "@/components/public/filtro-rubros-celular";
+import { EsqueletoExplorarRubros, ExplorarRubros } from "@/components/public/explorar-rubros";
+import {
+  PastillaModalidad,
+  ResultadosPendientes,
+  SeleccionFiltrosOfertas,
+} from "@/components/public/seleccion-filtros-ofertas";
 import { Badge } from "@/components/ui/badge";
-import { Buscador } from "@/components/ui/buscador";
-import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
-import { GrupoPastillas, PastillaFiltro } from "@/components/ui/pastilla-filtro";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio } from "@/components/ui/estado-listado";
 import { EsqueletoTarjeta } from "@/components/ui/esqueleto";
@@ -19,7 +22,7 @@ import {
   type FiltrosOfertasPublicas,
   type ResultadoOfertasPublicas,
 } from "@/lib/ofertas";
-import { listaConO } from "@/lib/filtros-ofertas";
+import { hrefFiltrosOfertas, listaConO } from "@/lib/filtros-ofertas";
 import { hrefConParams, type ParamsUrl } from "@/lib/paginacion";
 import { esOficinaActiva, obtenerUsuarioActual } from "@/lib/auth";
 import { rutaBuscarPostulantes } from "@/lib/invitaciones";
@@ -34,125 +37,157 @@ interface JobDirectoryProps {
   filtros: FiltrosOfertasPublicas;
 }
 
-/** Listado público de ofertas (/ofertas): encabezado, buscador con filtros, grilla y paginación. */
+/**
+ * Listado público de ofertas (/ofertas): banda verde con el buscador,
+ * "Explorá por rubro", modalidades, filtros activos, grilla y paginación.
+ * Todos los filtros viven en la URL y se aplican en el servidor; rubros y
+ * modalidades se marcan al instante (SeleccionFiltrosOfertas).
+ */
 export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDirectoryProps) {
-  // Una sola consulta compartida por el contador del encabezado y la grilla.
+  // Una sola consulta compartida por los contadores, el panel de rubros y la grilla.
   const resultado = buscarOfertasPublicas(filtros);
   // La clave cambia con cada búsqueda/página: el Suspense se vuelve a montar y
   // muestra el esqueleto mientras llega el resultado nuevo.
   const clave = JSON.stringify(filtros);
 
-  const hasActiveFilters = hayFiltrosOfertas(filtros);
-  const hrefLimpiar = hrefConParams(
-    ruta,
-    searchParams,
-    { categoria: null, modalidad: null, pagina: null },
-    ANCLA,
+  return (
+    <SeleccionFiltrosOfertas
+      ruta={ruta}
+      searchParams={searchParams}
+      catalogo={{ categorias, modalidades: MODALIDADES }}
+      seleccion={{ categorias: filtros.categorias, modalidades: filtros.modalidades }}
+    >
+      <section id={ANCLA} className="flex scroll-mt-20 flex-col gap-8">
+        <BandaOfertas
+          cantidad={
+            <Suspense
+              key={clave}
+              fallback={<span className="inline-block h-4 w-64 max-w-full rounded bg-white/20" />}
+            >
+              <ContadorOfertas resultado={resultado} filtros={filtros} />
+            </Suspense>
+          }
+        />
+
+        <Suspense fallback={<EsqueletoExplorarRubros />}>
+          <ExplorarRubros
+            categorias={categorias}
+            filtros={filtros}
+            resultado={resultado}
+          />
+        </Suspense>
+
+        <section aria-labelledby="resultados-titulo" className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <h2 id="resultados-titulo" className="text-xl text-heading sm:text-[22px]">
+              <Suspense
+                key={clave}
+                fallback={<span className="inline-block h-6 w-28 rounded bg-secondary-hover align-middle" />}
+              >
+                <CantidadResultados resultado={resultado} />
+              </Suspense>
+            </h2>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              <span id="filtro-modalidad" className="text-[13px] font-bold text-muted-foreground-strong">
+                Modalidad
+              </span>
+              <div role="group" aria-labelledby="filtro-modalidad" className="flex flex-wrap gap-2">
+                <PastillaModalidad valor={null}>Todas</PastillaModalidad>
+                {MODALIDADES.map((m) => (
+                  <PastillaModalidad key={m} valor={m}>
+                    {m}
+                  </PastillaModalidad>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <FiltrosActivos ruta={ruta} searchParams={searchParams} filtros={filtros} />
+
+          <ResultadosPendientes>
+            <Suspense key={clave} fallback={<EsqueletoResultados />}>
+              <ResultadosOfertas
+                resultado={resultado}
+                ruta={ruta}
+                searchParams={searchParams}
+                filtros={filtros}
+              />
+            </Suspense>
+          </ResultadosPendientes>
+        </section>
+      </section>
+    </SeleccionFiltrosOfertas>
   );
-  // Escribe siempre las dos listas ya validadas: un valor desconocido de la URL
-  // no se arrastra al tocar una pastilla.
-  const hrefFiltro = (cambios: { categoria?: readonly string[] | null; modalidad?: readonly string[] | null }) =>
-    hrefConParams(ruta, searchParams, {
-      categoria: filtros.categorias,
-      modalidad: filtros.modalidades,
-      ...cambios,
-      pagina: null,
-    });
-  // Cada pastilla agrega o saca su valor de la lista; las demás elegidas quedan.
-  // La lista se escribe en el orden del catálogo, así la URL es siempre la misma.
-  const alternar = <T extends string>(todos: readonly T[], elegidos: readonly T[], valor: T) =>
-    todos.filter((v) => (v === valor ? !elegidos.includes(v) : elegidos.includes(v)));
+}
+
+/** Un chip por filtro activo (rubros, modalidades y texto), cada uno con su link para quitarlo. */
+function FiltrosActivos({
+  ruta,
+  searchParams,
+  filtros,
+}: {
+  ruta: string;
+  searchParams: ParamsUrl;
+  filtros: FiltrosOfertasPublicas;
+}) {
+  if (!hayFiltrosOfertas(filtros) && filtros.q === "") return null;
+
+  const chips = [
+    ...filtros.categorias.map((c) => ({
+      clave: `categoria-${c}`,
+      texto: c,
+      quitar: `Quitar el rubro ${c}`,
+      href: hrefFiltrosOfertas(ruta, searchParams, filtros, {
+        categoria: filtros.categorias.filter((x) => x !== c),
+      }),
+    })),
+    ...filtros.modalidades.map((m) => ({
+      clave: `modalidad-${m}`,
+      texto: m,
+      quitar: `Quitar la modalidad ${m}`,
+      href: hrefFiltrosOfertas(ruta, searchParams, filtros, {
+        modalidad: filtros.modalidades.filter((x) => x !== m),
+      }),
+    })),
+    ...(filtros.q !== ""
+      ? [
+          {
+            clave: "q",
+            texto: `«${filtros.q}»`,
+            quitar: `Quitar la búsqueda «${filtros.q}»`,
+            href: hrefFiltrosOfertas(ruta, searchParams, filtros, { q: null }),
+          },
+        ]
+      : []),
+  ];
 
   return (
-    <section id={ANCLA} className="flex scroll-mt-20 flex-col gap-6">
-      <EncabezadoPagina
-        titulo="Ofertas de trabajo"
-        bajada={
-          <Suspense
-            key={clave}
-            fallback={<span className="inline-block h-4 w-64 max-w-full rounded bg-secondary-hover" />}
-          >
-            <ContadorOfertas resultado={resultado} filtros={filtros} />
-          </Suspense>
-        }
-      />
-
-      <div className="tarjeta flex flex-col gap-5 px-4 py-[18px] sm:p-6">
-        <Buscador
-          placeholder="Buscar por puesto, empresa, palabra clave o conocimiento"
-          boton="Buscar"
-          inputClassName="min-h-[52px] border-border-campo"
-        />
-
-        {/* Celular: desplegable con buscador; desde sm, las pastillas. */}
-        <div className="sm:hidden">
-          <FiltroRubrosCelular
-            ruta={ruta}
-            categorias={categorias}
-            seleccionadas={filtros.categorias}
-          />
-        </div>
-        <div className="hidden min-w-0 sm:block">
-          <GrupoPastillas
-            id="filtro-rubro"
-            titulo="Rubro"
-            unaLinea={{ textoAnteriores: "Ver rubros anteriores", textoSiguientes: "Ver más rubros" }}
-          >
-            <PastillaFiltro
-              href={hrefFiltro({ categoria: null })}
-              activa={filtros.categorias.length === 0}
+    <div className="flex flex-wrap items-center gap-2">
+      <h3 className="sr-only">Filtros activos</h3>
+      <ul className="contents">
+        {chips.map((chip) => (
+          <li key={chip.clave}>
+            <Link
+              href={chip.href}
+              scroll={false}
+              aria-label={chip.quitar}
+              className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-[22px] border-[1.5px] border-primary bg-opcion-elegida py-1 pr-3 pl-4 text-[15px] font-semibold text-primary-hover outline-none transition-colors hover:bg-primary/12 focus-visible:shadow-[var(--sombra-foco)]"
             >
-              Todos
-            </PastillaFiltro>
-            {categorias.map((c) => (
-              <PastillaFiltro
-                key={c}
-                href={hrefFiltro({ categoria: alternar(categorias, filtros.categorias, c) })}
-                activa={filtros.categorias.includes(c)}
-              >
-                {c}
-              </PastillaFiltro>
-            ))}
-          </GrupoPastillas>
-        </div>
-
-        <GrupoPastillas id="filtro-modalidad" titulo="Modalidad">
-          <PastillaFiltro
-            href={hrefFiltro({ modalidad: null })}
-            activa={filtros.modalidades.length === 0}
-          >
-            Todas
-          </PastillaFiltro>
-          {MODALIDADES.map((m) => (
-            <PastillaFiltro
-              key={m}
-              href={hrefFiltro({ modalidad: alternar(MODALIDADES, filtros.modalidades, m) })}
-              activa={filtros.modalidades.includes(m)}
-            >
-              {m}
-            </PastillaFiltro>
-          ))}
-        </GrupoPastillas>
-
-        {hasActiveFilters && (
-          <Link
-            href={hrefLimpiar}
-            className="inline-flex min-h-11 w-fit items-center rounded-[var(--radius-md)] text-[15px] font-bold text-primary underline-offset-2 outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
-          >
-            Limpiar filtros
-          </Link>
-        )}
-      </div>
-
-      <Suspense key={clave} fallback={<EsqueletoResultados />}>
-        <ResultadosOfertas
-          resultado={resultado}
-          ruta={ruta}
-          searchParams={searchParams}
-          filtros={filtros}
-        />
-      </Suspense>
-    </section>
+              <span className="truncate">{chip.texto}</span>
+              <X className="size-4 shrink-0" aria-hidden="true" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <Link
+        href={hrefFiltrosOfertas(ruta, searchParams, filtros, { categoria: null, modalidad: null, q: null })}
+        scroll={false}
+        className="inline-flex min-h-11 items-center rounded-[var(--radius-md)] px-2 text-[15px] font-bold text-primary underline-offset-2 outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+      >
+        Limpiar todo
+      </Link>
+    </div>
   );
 }
 
@@ -185,6 +220,12 @@ async function ContadorOfertas({
       {descripcion ? `${sustantivo} ${descripcion}` : `${sustantivo} ${datos.total === 1 ? "publicada" : "publicadas"}`}
     </>
   );
+}
+
+async function CantidadResultados({ resultado }: { resultado: Promise<ResultadoOfertasPublicas> }) {
+  const datos = await resultado;
+  if (!datos.ok) return <>Ofertas</>;
+  return <>{datos.total === 1 ? "1 oferta" : `${datos.total} ofertas`}</>;
 }
 
 async function ResultadosOfertas({
@@ -263,7 +304,7 @@ async function ResultadosOfertas({
 
   return (
     <div className="@container flex flex-col gap-8">
-      <ul className="grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
+      <ul className="grid grid-cols-1 gap-4 @xl:grid-cols-2">
         {datos.ofertas.map((oferta) => (
           <li key={oferta.id}>
             <TarjetaOferta
@@ -305,7 +346,7 @@ async function ResultadosOfertas({
 function EsqueletoResultados() {
   return (
     <div className="@container" aria-busy="true">
-      <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2">
         {Array.from({ length: 6 }, (_, i) => (
           <EsqueletoTarjeta key={i} />
         ))}

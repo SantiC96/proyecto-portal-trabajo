@@ -85,7 +85,7 @@ export function EmptyJobResults(props: Props) {
         <Tag className="size-[clamp(1.5rem,4vw,2rem)]" aria-hidden="true" />
       </div>
       <h3 id="empty-job-results-title" className="mt-4 text-[clamp(1.125rem,2.5vw,1.5rem)] font-bold text-ofertas-heading">
-        Aún no hay empleos que coincidan con tu búsqueda
+        No encontramos ofertas con esos filtros
       </h3>
       {haySugerencia ? (
         <>
