@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Briefcase, Clock, MapPin } from "lucide-react";
+import { Briefcase, CalendarDays, Clock, MapPin } from "lucide-react";
 import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,11 @@ type Props = {
   lugar: string;
   /** Las ofertas recomendadas no traen la jornada: sin dato no se muestra. */
   jornada?: string | null;
+  /**
+   * Cuándo se publicó, ya armado en el servidor ("Publicada hace 3 días",
+   * formatAntiguedadPublicacion). Por ahora solo lo pasa el carrusel del inicio.
+   */
+  publicada?: string | null;
   /** Badges junto a las etiquetas ("Te invitaron", coincidencia). */
   badges?: ReactNode;
   /** Texto del botón que lleva a la oferta. */
@@ -37,6 +42,7 @@ export function TarjetaOferta({
   modalidad,
   lugar,
   jornada,
+  publicada,
   badges,
   textoAccion = "Ver oferta",
   accionPrimaria = false,
@@ -65,6 +71,12 @@ export function TarjetaOferta({
         )}
         <EtiquetaRubro className="whitespace-nowrap">{modalidad}</EtiquetaRubro>
         {badges}
+        {publicada && (
+          <span className="ml-auto flex items-center gap-1.5 whitespace-nowrap text-[13px] text-muted-foreground">
+            <CalendarDays className="size-3.5 shrink-0" aria-hidden="true" />
+            {publicada}
+          </span>
+        )}
       </div>
 
       <div>
