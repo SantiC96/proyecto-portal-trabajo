@@ -1295,7 +1295,7 @@ En `/ofertas`, distinguir los resultados vacíos por búsqueda, filtros o
 ambos del error de carga. La tarjeta de estado vacío usa superficie
 blanca, borde sólido y mantiene el ancho disponible del listado, con su
 contenido centrado.
-El título es «Aún no hay empleos que coincidan con tu búsqueda» y el
+El título es «No encontramos ofertas con esos filtros» y el
 texto de apoyo es «Probá con otro rubro o modalidad, o quitá algún filtro
 para ver más ofertas laborales.».
 El texto de apoyo es de al menos 14 px y contraste AA. «Limpiar filtros» es la única acción principal y quita la búsqueda y los
@@ -1314,10 +1314,9 @@ elegida por esa y conserva los rubros y el texto. «Limpiar filtros» pasa a
 ser un link de texto `primary` debajo. Sin sugerencia, el estado vacío de
 siempre.
 
-El buscador y los filtros forman una tarjeta de ancho completo. Desde sm,
-los rubros son pastillas en una sola fila (`FilaDesplazable`); en el
-celular, un `MultiCombobox` con el label «Rubros» (ver «Pastillas de
-filtro»). Las modalidades son pastillas en todos los tamaños.
+El buscador va en la banda verde y los rubros en «Explorá por rubro»
+(ver «Listado de ofertas»). Las modalidades son botones de 44 px en todos
+los tamaños.
 Esta superficie usa los tokens locales `ofertas-*` para la paleta solicitada
 por el módulo, sin cambiar los colores institucionales globales.
 
@@ -1469,7 +1468,8 @@ No esconder filtros básicos detrás de un modal en desktop.
 `border-campo`, ícono a la izquierda y label oculto (`sr-only`); al lado,
 el botón primario "Buscar" de 52 px y padding `0 28px`. En el celular el
 botón pasa debajo, a todo el ancho. Sigue buscando sola mientras se
-escribe.
+escribe. En `/ofertas` va dentro de un contenedor blanco de radio 16 con
+`--sombra-buscador`, sobre la banda verde.
 
 ## Pastillas de filtro
 
@@ -1496,20 +1496,30 @@ Cuando el filtro vive en la URL, cada pastilla es un link que mantiene los
 demás filtros y la activa se marca con `aria-current` (`aria-pressed` no
 es válido en un link). En una pastilla que es un botón, `aria-pressed`.
 
-**Selección múltiple** (Rubro y Modalidad en `/ofertas`): cada pastilla
-agrega o saca su valor de la lista (`?categoria=A&categoria=B`), así que
-puede haber varias activas a la vez; la primera pastilla («Todos» en
-Rubro, «Todas» en Modalidad) saca todos los del grupo y está activa cuando
-no hay ninguno elegido. Con algún filtro elegido aparece el link «Limpiar
-filtros». Tocar una pastilla vuelve a la página 1.
+**Selección múltiple** (Modalidad en `/ofertas`; los rubros usan las
+tarjetas de «Explorá por rubro»): cada pastilla agrega o saca su valor de
+la lista (`?modalidad=A&modalidad=B`), así que puede haber varias activas
+a la vez; la primera («Todas») saca todas y está activa cuando no hay
+ninguna elegida. Tocar una pastilla vuelve a la página 1. Las de Modalidad
+de `/ofertas` miden 44 px también desde sm y tienen radio 22
+(`clasePastilla(activa, "rounded-[22px] sm:h-11")`).
 
-**Rubros en el celular** (menos de sm): los rubros son muchos para una fila
-de pastillas, así que se eligen con un `MultiCombobox` con su buscador, el
-label «Rubros» (13 px 700, como el título de un grupo) y, en lugar de los
-chips, un resumen de lo elegido (`resumen`: «Gastronomía», «Gastronomía y
-2 más»; sin nada, el placeholder «Todos los rubros»). Se quita un rubro
-desmarcándolo en la lista. Solo cambia la URL; el filtrado sigue en el
-servidor.
+**Selección instantánea** (rubros y Modalidad de `/ofertas`,
+`SeleccionFiltrosOfertas` en
+`src/components/public/seleccion-filtros-ofertas.tsx`): las tarjetas de
+rubro, las pastillas de Modalidad («Todos» y «Todas» incluidas) y el panel
+«Todos los rubros» comparten una selección con `useOptimistic`. Al tocar
+una opción se marca o se desmarca en el momento (fondo, tilde y
+`aria-current`) y se navega a su link con `router.push` (`scroll: false`)
+dentro de `startTransition`. Cada toque parte de la selección optimista,
+así que varios seguidos se acumulan; cuando la transición termina, manda
+la URL (si la navegación no llega, vuelve a la de la URL). Siguen siendo
+links con su `href` real: sin JavaScript, con Ctrl/Cmd/Shift + clic o con
+el botón del medio funcionan como un link común; solo se intercepta el
+clic simple. Mientras llega la página, la lista de resultados queda con
+opacidad .6 y `aria-busy="true"` (`ResultadosPendientes`; sin transición
+con movimiento reducido). Los chips de filtros activos y las cantidades
+cambian cuando llega la página. El filtrado sigue en el servidor.
 
 ## Pestañas de estado
 
@@ -1923,6 +1933,134 @@ mismas piezas que el panel verde de `/auth` (sección 27). Clases
     2`. El recorte de la decoración va en `.hero-deco`, no en el hero, y
     el popup del `Combobox` de rubro se abre en un portal: se ve entero,
     por encima de las secciones siguientes.
+
+## Listado de ofertas (`/ofertas`)
+
+`src/components/public/job-directory.tsx`, de arriba hacia abajo. Todos
+los filtros viven en la URL (`q`, `categoria` y `modalidad` repetidos,
+`pagina`) y se aplican en el servidor; los links viejos (un solo
+`?categoria=`, el buscador del inicio) siguen sirviendo.
+
+### Banda verde (`BandaOfertas`)
+
+Clases `.banda-ofertas*` de `globals.css`.
+
+-   Fondo `primary` con puntos blancos al 9 % cada 28 px (24 en celular),
+    radio 24 (20 en celular), padding `40px 44px 36px` (`24px 18px 20px`
+    en celular).
+-   Capa decorativa `.banda-ofertas-deco` (`aria-hidden`, `overflow:
+    hidden`, `pointer-events: none`), para no recortar nada que salga de
+    la banda:
+    -   anillo de 560 px con borde de 60 px blanco al 6 %, a −180 px de la
+        derecha y −240 px de arriba (en celular, 300 px con borde de 40
+        px, abajo a la derecha);
+    -   `escudo-blanco.png` de 190 px, opacidad .14, rotado −8°, a 56 px
+        de la derecha y 22 px de arriba (en celular, 140 px a −30 px de la
+        derecha y −26 px de abajo, detrás del buscador).
+-   Título «Ofertas de trabajo» en Georgia (`.titulo-display`), blanco, 48
+    px (34 en celular); la cantidad de ofertas en `sidebar-texto`
+    (`#e3f0e8`); el buscador blanco (ver «Buscador con botón»).
+
+### Explorá por rubro (`ExplorarRubros`)
+
+-   Título h2, sin texto de ayuda debajo. Con sesión de postulante, el
+    link «Editar mis rubros» a la derecha del título
+    (`hrefSeccionPerfil(SECCION_PERFIL.rubros)`).
+-   Una fila de 8 tarjetas: «Todos», 6 rubros y «Ver todos». Cuando la
+    sección mide 1024 px o más (container query), ocho columnas iguales;
+    si no, una fila con scroll horizontal (`FilaDesplazable` con
+    `fondo="background"`) de tarjetas de 112 × 104 px.
+-   Qué 6 rubros (`elegirRubrosDestacados`, `src/lib/rubros-destacados.ts`):
+    con sesión de postulante, primero los rubros de su perfil que tienen
+    ofertas vigentes, por cantidad; si son menos de 6, se completa con los
+    que tienen más ofertas; si son más, los 6 con más ofertas. Sin sesión,
+    los 6 con más ofertas. A igual cantidad, por nombre. Ninguna etiqueta
+    dice «tu perfil». Las cantidades salen de
+    `contar_ofertas_vigentes_por_rubro()` (migration_065).
+-   Cada tarjeta es un link que agrega o saca su rubro de `?categoria=`
+    (conserva el resto, vuelve a la página 1). «Todos» saca todos. Se
+    marca al instante (ver «Selección instantánea»).
+
+**Tarjeta de rubro** (`.tarjeta-rubro`): blanca, borde 1,5 px `border`,
+radio 16, `--sombra-tarjeta`; ícono de lucide en un cuadrado de 36 px
+(30 en la fila desplazable), radio 10, `primary` al 12 % con el ícono
+`primary`; el nombre en 14 px 700 (13 px en la fila desplazable; dos
+líneas como máximo) y, en los rubros, la cantidad de ofertas en 13 px
+`muted-foreground` (12 px). Hover: borde `primary`. Elegida
+(`aria-current`): fondo `primary` con puntos blancos al 10 % cada 14 px,
+texto blanco, la cantidad en `sidebar-texto` y un tilde blanco en un
+círculo de 22 px con borde blanco en la esquina superior derecha.
+
+**«Ver todos»**: botón con borde verde punteado de 2 px, el ícono `List`
+y debajo la cantidad de rubros con ofertas («10 rubros»). Si hay rubros
+elegidos que no están entre los 6 visibles, se ve como una tarjeta
+elegida y muestra el nombre del rubro o «N rubros más»; con la selección
+instantánea, también mientras llega la página.
+
+**Mapa de íconos** (`src/lib/rubros-iconos.ts`, `iconoRubro(nombre)`):
+
+| Rubro | Ícono |
+|---|---|
+| Administración | `FileText` |
+| Comercio y Ventas | `ShoppingBag` |
+| Construcción | `HardHat` |
+| Educación | `GraduationCap` |
+| Gastronomía | `UtensilsCrossed` |
+| Informática y Tecnología | `Monitor` |
+| Logística y Transporte | `Truck` |
+| Salud | `HeartPulse` |
+| Seguridad | `Shield` |
+| Servicios Generales | `Wrench` |
+| Rubro nuevo sin entrada | `BriefcaseBusiness` |
+
+«Todos» usa `LayoutGrid`; «Ver todos», `List`. Al agregar un rubro a la
+tabla `categorias`, sumarlo al mapa.
+
+### Panel «Todos los rubros» (`PanelRubros`)
+
+Client component cuya única tarea es elegir rubros y cambiar la URL; el
+filtrado sigue en el servidor. Usa el `Dialog` del proyecto (Base UI) con
+un popup propio:
+
+-   Desde sm, lateral derecho de 400 px; en el celular, pantalla
+    completa. Fondo `rgb(8 20 13 / .55)` (`.panel-rubros-fondo`). Entra
+    desde la derecha en 200 ms; sin animación con movimiento reducido.
+-   Cabecera verde con puntos (`.panel-rubros-cabecera`), el ícono `List`,
+    el título «Todos los rubros» y el botón de cerrar de 44 px.
+-   Buscador «Buscá un rubro» que filtra mientras se escribe, sin
+    importar tildes ni mayúsculas (`normalizarBusqueda`). Debajo, «10
+    rubros con ofertas vigentes» (o «N rubros con «texto»») y cuántos van
+    elegidos, en una región `aria-live`.
+-   Lista en orden alfabético agrupada por letra (sin tilde: «Á» va en
+    «A»). Cada fila mide 44 px: casilla, nombre y la cantidad de ofertas
+    en un badge (`primary` al 12 %). Marcar una fila no cierra el panel.
+    Solo aparecen los rubros con ofertas vigentes.
+-   Sin coincidencias: «No hay rubros que coincidan con «texto».»
+-   Abajo, fijos: «Limpiar rubros» (tonal: `primary` al 12 %, texto
+    `primary-hover`) y «Ver N ofertas» (primario), que aplica la selección
+    y cierra el panel. Abre con la selección instantánea vigente y aplica
+    con ella (las tarjetas se marcan al cerrar). N se muestra solo cuando se sabe sin otra
+    consulta (la misma selección de la URL, o un solo rubro sin texto ni
+    modalidad); si no, «Ver ofertas».
+-   Accesibilidad: `role="dialog"`, `aria-modal="true"`, título asociado,
+    foco atrapado, cierre con Escape o tocando afuera y el foco de vuelta
+    en «Ver todos». Al abrir con mouse o teclado el foco va al buscador;
+    con el dedo, al botón de cerrar (no abre el teclado).
+
+### Resultados
+
+-   A la izquierda, la cantidad («4 ofertas», h2). A la derecha (debajo en
+    celular), «Modalidad» con Todas, Presencial, Híbrido y Remoto: links
+    de 44 px y radio 22; apagados con borde `border-campo` y fondo
+    blanco, prendidos con fondo `primary`, texto blanco y `aria-current`.
+-   Filtros activos: un chip por rubro, modalidad y texto («texto»), de
+    44 px, radio 22, borde `primary`, fondo `opcion-elegida` y texto
+    `primary-hover`, con una cruz; cada chip es un link que quita ese
+    filtro. Al final, el link «Limpiar todo».
+-   Grilla de `TarjetaOferta` en 2 columnas desde 576 px de ancho del
+    contenedor y 1 en celular (nunca 3), con la paginación debajo.
+-   Sin resultados: el estado vacío del directorio (ver «Estado vacío del
+    directorio público de ofertas»).
 
 ## Bandas entre secciones
 

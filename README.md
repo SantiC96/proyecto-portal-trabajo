@@ -25,6 +25,7 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 
 - Panel de inicio: cómo están sus postulaciones, aviso de invitaciones para responder, últimos movimientos, qué le falta al perfil y ofertas que coinciden con su perfil (con el mismo puntaje que usa la oficina).
 - Buscar ofertas por texto, rubros y modalidades, sin necesidad de registrarse. Se pueden elegir varios rubros y varias modalidades a la vez (alcanza con que la oferta tenga uno de los rubros y una de las modalidades elegidas); si no hay resultados, el listado avisa cuántas ofertas hay de esos rubros en otra modalidad.
+- En el listado de ofertas, "Explorá por rubro": tarjetas con los rubros que tienen más ofertas vigentes (con sesión de postulante, primero los de su perfil) y un panel "Todos los rubros" con buscador para elegir varios a la vez. Los filtros activos se ven como chips que se quitan con un toque.
 - Inicio con buscador (puesto o palabra clave y rubro, lleva al listado de ofertas), accesos por rubro y un carrusel con las últimas 10 ofertas publicadas.
 - Postularse a una oferta eligiendo con cuál de sus CVs (el más reciente viene elegido) y retirarla en cualquier momento salvo si ya fue seleccionado; la retirada queda en el historial y se puede volver a postular mientras la oferta siga abierta.
 - Ver el estado de cada postulación, con qué CV se postuló, la pre-entrevista y la entrevista con la empresa.
