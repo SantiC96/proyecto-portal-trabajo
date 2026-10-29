@@ -69,6 +69,10 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 - Cierre de sesión automático después de 30 minutos sin actividad.
 - Cada rol entra solo a su panel; después de iniciar sesión se vuelve a la página pedida.
 
+### Preguntas frecuentes
+
+- Página pública `/preguntas-frecuentes` (en la navegación sin sesión y en el footer) con las preguntas agrupadas en "Postulantes", "Empresas" y "Sobre el portal", en desplegables, y al final el teléfono y el correo de la Oficina. Con sesión de postulante se ven "Postulantes" y "Sobre el portal"; con sesión de empresa, "Empresas" y "Sobre el portal" (sin sesión y para la Oficina, las tres). El link "Ver todas las preguntas" (`?ver=todas`) muestra las tres.
+
 ### Avisos y emails
 
 - Campanita con avisos para los tres roles (derivaciones, entrevistas, aprobaciones, vencimientos, cursos, invitaciones a ofertas).
@@ -96,6 +100,7 @@ Para presentaciones, la variable de entorno de servidor `INDICADORES_DE_EJEMPLO=
 - **Emails por Gmail (SMTP)** con una cola en la base y un cron diario de respaldo.
 - **Interfaz con Tailwind CSS y shadcn/ui:** verde institucional, Public Sans y estados en colores sólidos según el [design system](docs/DESIGN_SYSTEM_Portal_Municipal_Empleo.md). Los gráficos de los indicadores usan los charts de shadcn/ui sobre **Recharts**.
 - **Navegación lateral por rol:** sidebar a la izquierda (contraíble) y, en el celular, barra superior con panel; las pantallas de `/auth` van sin navegación.
+- **Footer en todas las pantallas con navegación** (no en `/auth`): marca, datos de la Oficina de Empleo (dirección con link a Google Maps, horario, teléfono y correo), Instagram y Facebook de la Municipalidad y enlaces según la sesión. Los datos de la Oficina están en un solo lugar: `src/lib/oficina.ts`.
 - **Git** con `main` (producción) y `develop` (integración), ramas `feat/`, `fix/`, `refactor/`, `docs/` y pull requests.
 
 El detalle (arquitectura, base de datos, seguridad, storage, puesta en marcha y deploy) está en la [documentación técnica](docs/documentacion-tecnica.md).

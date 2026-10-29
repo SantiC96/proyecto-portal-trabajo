@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { obtenerPendientesNavegacion } from "@/app/admin/actions";
 import { RegisterModal } from "@/components/auth/register-modal";
+import { Footer } from "@/components/layout/footer";
 import { NavegacionMovil } from "@/components/layout/navegacion-movil";
 import { RegistroNavegacion } from "@/components/layout/registro-navegacion";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -174,6 +175,7 @@ export function AppShell({
       {/* El inicio no lleva el fondo decorado: su decoración es el hero. */}
       <div className={cn("app-contenido", pathname === "/" && "app-contenido--inicio")}>
         {children}
+        <Footer sesion={sesion} onRegistrarme={abrirRegistro} />
       </div>
       {modalRegistro}
       {registroNavegacion}

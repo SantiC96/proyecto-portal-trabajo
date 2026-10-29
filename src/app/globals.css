@@ -507,9 +507,43 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
   background: rgb(0 104 51 / 0.07);
 }
 @media (min-width: 640px) { .banda-inicio { padding-block: 40px 48px; } }
+/* Si es la última sección, llega hasta el footer (tapa .pie-espacio). */
 .banda-inicio:last-child {
   flex-grow: 1;
-  margin-bottom: calc(-1 * var(--relleno-contenido));
+  margin-bottom: calc(-1 * var(--espacio-pie));
+}
+
+/* Footer (components/layout/footer.tsx): al final del contenido, a todo su
+   ancho. El margen negativo es igual al padding de .app-contenido, así que
+   llega a los bordes sin scroll horizontal; margin-top auto lo baja al pie en
+   las páginas cortas. .pie-espacio es la separación con el contenido. */
+.app-contenido { --espacio-pie: 48px; }
+.pie-espacio { flex: 0 0 var(--espacio-pie); }
+.pie-portal {
+  margin: auto calc(-1 * var(--relleno-contenido)) calc(-1 * var(--relleno-contenido));
+  padding: 40px var(--relleno-contenido) 24px;
+  background-color: var(--color-primary);
+  /* Los puntos del hero, más suaves. */
+  background-image: radial-gradient(rgb(255 255 255 / 0.06) 1px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+@media (min-width: 640px) { .pie-portal { padding-top: 48px; background-size: 28px 28px; } }
+.pie-red {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgb(255 255 255 / 0.4);
+  border-radius: 9999px;
+  color: #fff;
+  outline: none;
+}
+.pie-red svg { width: 20px; height: 20px; }
+.pie-red:hover { background: rgb(255 255 255 / 0.12); }
+.pie-red:focus-visible { box-shadow: 0 0 0 3px rgb(255 255 255 / 0.6); }
+@media (prefers-reduced-motion: no-preference) {
+  .pie-red { transition: background-color 150ms ease-out; }
 }
 
 /* Estados vacíos: degradé, puntos detrás del ícono, halo y trébol. Los puntos

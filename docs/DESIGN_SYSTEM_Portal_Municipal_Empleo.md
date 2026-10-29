@@ -154,7 +154,7 @@ En espacios reducidos se permite utilizar solamente el escudo.
 ## Archivos del logo
 
 -   `public/images/logo-funes-blanco.png` (185 × 52): sobre verde
-    (sidebar, panel de marca de las pantallas de /auth; encabezado de
+    (sidebar, panel de marca de las pantallas de /auth, footer; encabezado de
     los correos).
 -   `public/images/logo-funes-verde.png` (185 × 52): sobre fondos claros
     (tarjeta de las pantallas de /auth desde lg, contacto de la
@@ -1655,7 +1655,9 @@ dentro del `AppShell` y a todo el ancho: `EncabezadoPagina` "Hola,
     la Oficina la vuelve a revisar, y "Corregir y reenviar solicitud"
     primario (a todo el ancho en el celular).
 -   Al pie de los dos, el contacto de la Oficina (`ContactoOficina
-    enTarjeta`) en una tarjeta.
+    enTarjeta`) en una tarjeta: logo verde, "Oficina de Empleo" y la
+    dirección (link a Google Maps), el teléfono, el correo y el horario,
+    leídos de `src/lib/oficina.ts`.
 
 ------------------------------------------------------------------------
 
@@ -1760,7 +1762,7 @@ Bloque principal: volanta, título, bajada y buscador (con el rubro)
 Últimas ofertas (carrusel)
 Tu actividad (solo postulante con sesión)
 Cómo funciona (solo sin sesión)
-Contacto de la Oficina de Empleo
+Footer (sección 41; ya no hay un bloque de contacto propio)
 ```
 
 Gap de 48 px entre secciones; títulos de sección de 26 px 800. El
@@ -2546,3 +2548,82 @@ Reglas:
 -   Para ver los cambios: `npm run emails:vista-previa` y abrir
     `emails-vista-previa/index.html` (cada correo a 600 y 375 px). No
     manda correos.
+
+------------------------------------------------------------------------
+
+# 41. Footer
+
+`src/components/layout/footer.tsx`, clases `.pie-*` de `globals.css`.
+`AppShell` lo pone al final del contenido en todas las pantallas con
+navegación (públicas y con sesión, los tres roles). Las de `/auth` no lo
+llevan.
+
+-   **Ancho:** todo el ancho del área de contenido, al lado de la sidebar
+    (margen negativo igual a `--relleno-contenido`, sin scroll
+    horizontal). `margin-top: auto`: en las páginas cortas queda al pie de
+    la ventana. `.pie-espacio` (48 px, `--espacio-pie`) lo separa del
+    contenido; una `.banda-inicio` que es la última sección lo tapa y llega
+    hasta el footer.
+-   **Fondo:** `primary` (#006833), el mismo verde de la sidebar, con los
+    puntos del hero más suaves: blanco al 6 % cada 24 px (28 desde 640
+    px).
+-   **Texto:** títulos de columna y nombre del portal en blanco 800/700;
+    el resto en `sidebar-texto` (#E3F0E8), 15 px. Los dos pasan AA sobre
+    el fondo (6,9:1 y 5,9:1).
+-   **Columnas** (container queries, porque la sidebar le quita ancho):
+    una debajo de la otra en el celular, dos desde `@2xl` y cuatro desde
+    `@4xl`:
+    1.  Marca: logo blanco, "Portal de Empleo de la Municipalidad de
+        Funes" y "Conectamos a vecinos de Funes con empresas de la
+        ciudad."
+    2.  "Oficina de Empleo": dirección (link a Google Maps en otra
+        pestaña), horario, teléfono (`tel:`) y correo (`mailto:`), con
+        `MapPin`, `Clock`, `Phone` y `Mail` de 18 px en blanco.
+    3.  "Seguinos": Instagram y Facebook en botones redondos de 44 px
+        (`.pie-red`, borde blanco al 40 %, hover blanco al 12 %, como los
+        links de la sidebar) con el
+        ícono en SVG inline (lucide no trae marcas), `aria-label`,
+        `target="_blank"` y `rel="noopener noreferrer"`.
+    4.  "Enlaces": Ofertas, Preguntas frecuentes y, sin sesión, "Iniciar
+        sesión" y "Registrarme" (abre el diálogo de registro); con sesión,
+        "Mi panel" (el panel del rol).
+-   **Pie:** línea blanca al 20 % (la de los separadores de la sidebar) y "© 2026 Municipalidad de Funes" en 14
+    px.
+-   Links de 44 px de alto, subrayado al pasar el mouse y foco con anillo
+    blanco al 60 %.
+-   Los datos de la Oficina salen de `src/lib/oficina.ts`, el único lugar
+    donde están (también los usan `ContactoOficina` y las preguntas
+    frecuentes).
+
+# 42. Acordeón (`Acordeon`, `ItemAcordeon`)
+
+`src/components/ui/acordeon.tsx`. Lo usa `/preguntas-frecuentes`.
+
+-   `Acordeon`: una `.tarjeta` con los ítems separados por una línea
+    `border`.
+-   `ItemAcordeon`: `details`/`summary` nativos (teclado y lector de
+    pantalla sin JavaScript). El `summary` es la pregunta en 16 px 700
+    `heading` (hover `primary`), de al menos 44 px de alto, con padding
+    14 × 16 (24 a los costados desde 640 px) y un `ChevronDown` de 20 px
+    `muted-foreground` que gira 180° al abrirse (150 ms; sin animación con
+    `prefers-reduced-motion`). Sin el marcador del navegador.
+-   La respuesta va debajo en 15 px `texto-parrafo`, con interlineado
+    amplio.
+-   Foco: `--sombra-foco` sobre el `summary`.
+
+## Preguntas frecuentes según el rol
+
+`/preguntas-frecuentes` es pública. El servidor lee el rol de la sesión
+(`obtenerUsuarioActual()`, sin exigirla) y elige las secciones:
+
+-   sin sesión y Oficina: Postulantes, Empresas y Sobre el portal, con la
+    bajada "Lo que más nos consultan sobre el Portal de Empleo.";
+-   postulante: Postulantes y Sobre el portal ("Lo que más nos consultan
+    los postulantes sobre el Portal de Empleo.");
+-   empresa: Empresas y Sobre el portal ("Lo que más nos consultan las
+    empresas sobre el Portal de Empleo.").
+
+Si se ocultó alguna, debajo de las secciones va el link "Ver todas las
+preguntas" (`?ver=todas`, link `primary` subrayado de 44 px de alto); con
+ese parámetro se ven las tres y el link pasa a "Ver solo las mías". Las
+preguntas no cambian y el bloque de contacto se ve siempre.

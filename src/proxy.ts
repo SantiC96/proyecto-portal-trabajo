@@ -48,6 +48,7 @@ export async function proxy(request: NextRequest) {
   const isPublic =
     pathname === "/" ||
     pathname.startsWith("/ofertas") ||
+    pathname === "/preguntas-frecuentes" ||
     pathname.startsWith("/auth") ||
     // Crons (emails y mantenimiento): sin sesión, los protege CRON_SECRET en
     // la ruta (src/lib/cron.ts).
