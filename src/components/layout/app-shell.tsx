@@ -174,7 +174,7 @@ export function AppShell({
 
       {/* El inicio no lleva el fondo decorado: su decoración es el hero. */}
       <div className={cn("app-contenido", pathname === "/" && "app-contenido--inicio")}>
-        {children}
+        <div className="app-pagina">{children}</div>
         <Footer sesion={sesion} onRegistrarme={abrirRegistro} />
       </div>
       {modalRegistro}
