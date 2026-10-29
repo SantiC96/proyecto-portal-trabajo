@@ -93,11 +93,13 @@ export async function postularme(
 }
 
 /**
- * Retira una postulación propia (migration_053, retirar_postulacion): si
- * todavía estaba "Recibida" se borra; si ya la estaba revisando la oficina o
- * estaba derivada, queda "Retirada" en el historial, se cierra la derivación
- * abierta y se cancela la pre-entrevista coordinada. La base controla el
- * dueño y el estado (un seleccionado o un proceso cerrado no se retiran).
+ * Retira una postulación propia (retirar_postulacion, migrations 053 y 063):
+ * queda "Retirada" en el historial, se cierra la derivación abierta y se
+ * cancela la pre-entrevista coordinada. La base controla el dueño y el estado
+ * (un seleccionado o un proceso cerrado no se retiran).
+ * La función devuelve 'retirada'; antes de migration_063 una "Recibida" se
+ * borraba y devolvía 'eliminada'. El valor no se lee: los dos terminan con el
+ * mismo mensaje y la misma revalidación.
  */
 export async function retirarPostulacion(
   postulacionId: string,
