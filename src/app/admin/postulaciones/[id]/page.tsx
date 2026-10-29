@@ -90,7 +90,7 @@ export default async function PostulacionFichaPage({
       ? supabase
           .from("derivaciones")
           .select(
-            "id, nota_municipalidad, created_at, updated_at, estado_empresa, fecha_entrevista, lugar_entrevista, fecha_respuesta, nota_empresa"
+            "id, nota_municipalidad, created_at, updated_at, estado_empresa, fecha_entrevista, modalidad_entrevista, lugar_entrevista, link_entrevista, fecha_respuesta, nota_empresa"
           )
           .eq("postulacion_id", postulacion.id)
           .maybeSingle()
@@ -107,7 +107,7 @@ export default async function PostulacionFichaPage({
       : Promise.resolve({ data: null, error: null }),
     supabase
       .from("pre_entrevistas")
-      .select("id, estado, fecha_hora, lugar, nota_oficina, updated_at")
+      .select("id, estado, fecha_hora, modalidad, lugar, link, nota_oficina, updated_at")
       .eq("postulacion_id", postulacion.id)
       .maybeSingle(),
   ]);

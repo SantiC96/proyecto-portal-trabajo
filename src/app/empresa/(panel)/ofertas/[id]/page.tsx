@@ -354,7 +354,11 @@ async function ListadoDerivados({
                 {conEntrevista && (
                   <span className="text-[13px] text-muted-foreground">
                     Entrevista: {formatFechaHora(d.fecha_entrevista)}
-                    {d.lugar_entrevista ? ` · ${d.lugar_entrevista}` : ""}
+                    {d.modalidad_entrevista === "online"
+                      ? " · Online"
+                      : d.lugar_entrevista
+                        ? ` · ${d.lugar_entrevista}`
+                        : ""}
                   </span>
                 )}
               </CeldaTabla>

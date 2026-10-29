@@ -75,6 +75,31 @@ export function formatFechaHora(iso: string | null | undefined): string {
   return `${parte("day")} de ${parte("month")} de ${parte("year")} a las ${parte("hour")}:${parte("minute")}`;
 }
 
+const FORMATO_FECHA_HORA_LARGA = new Intl.DateTimeFormat("es-AR", {
+  timeZone: TZ,
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+/**
+ * "Martes 3 de noviembre, 10:30 h": el día de la semana con mayúscula, sin
+ * el año si es el año en curso (en Argentina). Para las entrevistas.
+ */
+export function formatFechaHoraLarga(iso: string | null | undefined, ahora: Date = new Date()): string {
+  const d = parseFecha(iso);
+  if (!d) return "—";
+  const parte = partes(FORMATO_FECHA_HORA_LARGA, d);
+  const anioActual = partes(FORMATO_FECHA_HORA_LARGA, ahora)("year");
+  const diaSemana = parte("weekday");
+  const anio = parte("year") === anioActual ? "" : ` de ${parte("year")}`;
+  return `${diaSemana.charAt(0).toUpperCase()}${diaSemana.slice(1)} ${parte("day")} de ${parte("month")}${anio}, ${parte("hour")}:${parte("minute")} h`;
+}
+
 /** "20/10 16:15": fecha y hora compactas para listados y badges. */
 export function formatFechaHoraCorta(iso: string | null | undefined): string {
   const d = parseFecha(iso);

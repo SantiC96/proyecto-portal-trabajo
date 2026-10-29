@@ -19,6 +19,7 @@ export const LARGO_MAXIMO = {
   motivo: 2000,
   nota: 2000,
   lugarEntrevista: 500,
+  linkReunion: 500,
   descripcion: 4000,
   nombreCurso: 200,
   linkCurso: 500,
