@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Upload, X } from "lucide-react";
+import { CheckCircle2, Trash2, Upload, X } from "lucide-react";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { FotoPerfilModal } from "@/components/ui/foto-perfil-modal";
 import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
@@ -236,14 +236,11 @@ export function EncabezadoPerfil({
               </button>
               {tieneFoto && (
                 <DialogoConfirmacion
-                  textoBoton={
-                    <>
-                      <X className="h-4 w-4" aria-hidden="true" />
-                      {textos.quitar}
-                    </>
-                  }
-                  estiloBoton="peligro"
-                  claseBoton="sm:min-h-9"
+                  textoBoton={<Trash2 aria-hidden="true" />}
+                  etiquetaBoton={textos.quitar}
+                  ayudaBoton={textos.quitar}
+                  estiloBoton="peligroBorde"
+                  claseBoton="btn-icono"
                   deshabilitado={guardando}
                   titulo={textos.tituloQuitar}
                   descripcion={textos.descripcionQuitar}

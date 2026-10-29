@@ -146,6 +146,11 @@ h1, h2 { font-weight: 800; }
   font-weight: 400;
   letter-spacing: -0.02em;
 }
+/* El texto de ejemplo se va al enfocar el campo, para que no se lea como un
+   valor ya cargado. Fuera de capa para ganarle a .campo::placeholder y a las
+   utilidades placeholder:text-*. Los labels y las ayudas no cambian. */
+input:focus::placeholder,
+textarea:focus::placeholder { color: transparent; }
 
 @layer components {
   /* Botones: primario, secundario, neutro, peligro y acento. Las variantes de
@@ -270,6 +275,15 @@ h1, h2 { font-weight: 800; }
   height: 18px;
   flex-shrink: 0;
 }
+/* Botón de solo ícono (borrar un archivo): 44 × 44, con aria-label y title.
+   Va después de las medidas comunes para ganarles el padding. */
+.btn-icono {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  padding: 0;
+}
+.btn-icono svg { width: 20px; height: 20px; }
 
 /* Movimiento: solo si el usuario no pidió reducirlo. */
 @media (prefers-reduced-motion: no-preference) {
