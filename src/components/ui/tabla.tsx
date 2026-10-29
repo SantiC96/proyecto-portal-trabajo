@@ -58,8 +58,10 @@ export function Tabla({
 /**
  * Una fila: tarjeta de padding 16 en angosto; en la tabla, 14 × 16 con borde inferior.
  *
- * `detalle` va debajo de las celdas, dentro de la misma fila y a todo el ancho
- * (aclaraciones, un motivo de rechazo): comparte el hover y el borde de la fila.
+ * `detalle` va debajo de las celdas, dentro de la misma fila (aclaraciones, un
+ * motivo de rechazo): comparte el hover y el borde de la fila. En la tabla
+ * ocupa solo la primera columna, para que se lea como parte de esa celda y no
+ * se mezcle con las de al lado; en la tarjeta, todo el ancho.
  */
 export function FilaTabla({
   children,
@@ -85,7 +87,9 @@ export function FilaTabla({
     >
       {children}
       {detalle && (
-        <div className="flex min-w-0 flex-col items-start gap-3 @4xl:col-span-full">{detalle}</div>
+        <div className="flex min-w-0 flex-col items-start gap-3 @4xl:col-start-1 @4xl:col-end-2">
+          {detalle}
+        </div>
       )}
     </li>
   );

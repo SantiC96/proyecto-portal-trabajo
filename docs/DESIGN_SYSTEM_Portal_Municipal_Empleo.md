@@ -1391,9 +1391,13 @@ postulantes, con un componente para no repetir las clases:
     `peligroBorde`; renovar o continuar, en primario.
 -   **Fila de detalle** (`FilaTabla detalle`): aclaraciones o avisos de la
     fila (franjas, un motivo de rechazo) debajo de sus celdas, dentro de
-    la misma fila y a todo el ancho (`col-span-full`), con 12 px de
-    separación. Comparte el hover y el borde inferior de la fila; en la
-    tarjeta, va al final. Las franjas miden lo que su texto (`w-fit
+    la misma fila, con 12 px de separación. En la tabla ocupa solo la
+    primera columna (`col-start-1 col-end-2` en la grilla compartida):
+    empieza y termina en los bordes de esa columna, el texto largo pasa de
+    línea dentro de ella y las demás columnas quedan vacías, así el aviso
+    se lee como parte de la primera celda y no de las de al lado. Comparte
+    el hover y el borde inferior de la fila; en la tarjeta, va al final y
+    a todo el ancho. Las franjas miden lo que su texto (`w-fit
     max-w-full`).
 -   **Separador de grupo** (`SeparadorTabla`): título de 14 px 600 a todo
     el ancho, con fondo `tabla-cabecera` en la tabla y entre dos líneas en

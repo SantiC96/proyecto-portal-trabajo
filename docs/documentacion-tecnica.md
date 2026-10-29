@@ -304,6 +304,7 @@ El número 014 no se usó.
 ### Redirect después del login y sesión de otro rol
 
 - El proxy guarda la ruta pedida en el encabezado `x-ruta-actual`. Sin sesión, el login recibe `?redirect=<ruta>` y, al entrar, vuelve a esa ruta.
+- Sin una ruta de vuelta válida, `login()` lleva a la Oficina a `/admin/indicadores`, a la empresa a `/empresa` (si la cuenta está en revisión o rechazada, el layout del panel muestra esa pantalla) y al postulante al inicio (`/`).
 - Toda ruta de vuelta pasa por `esRutaInterna()` / `rutaInterna()` (`src/lib/redirect.ts`): solo se aceptan rutas internas que empiezan con `/`, sin `//`, `/\`, esquema ni caracteres de control. Evita redirecciones abiertas.
 - Si la sesión es de otro rol, `requerirRolPagina` lleva al inicio con `?aviso=sesion-activa&accion=otro-rol`: un diálogo explica para qué cuenta es la página y ofrece cerrar sesión y volver a ella. Lo mismo pasa si alguien con sesión abre el login o el registro.
 
