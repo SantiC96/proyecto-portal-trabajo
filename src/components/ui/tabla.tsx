@@ -55,17 +55,54 @@ export function Tabla({
   );
 }
 
-/** Una fila: tarjeta de padding 16 en angosto; en la tabla, 14 × 16 con borde inferior. */
-export function FilaTabla({ children, className }: { children: ReactNode; className?: string }) {
+/**
+ * Una fila: tarjeta de padding 16 en angosto; en la tabla, 14 × 16 con borde inferior.
+ *
+ * `detalle` va debajo de las celdas, dentro de la misma fila y a todo el ancho
+ * (aclaraciones, un motivo de rechazo): comparte el hover y el borde de la fila.
+ */
+export function FilaTabla({
+  children,
+  detalle,
+  id,
+  className,
+}: {
+  children: ReactNode;
+  detalle?: ReactNode;
+  /** Ancla de la fila (#id): deja lugar arriba para el encabezado fijo. */
+  id?: string;
+  className?: string;
+}) {
   return (
     <li
+      id={id}
       className={cn(
-        "flex flex-col gap-3 rounded-[var(--radius-xl)] border border-border bg-surface p-4 text-[15px] text-foreground shadow-[var(--sombra-tarjeta)] transition-colors duration-150",
+        "flex flex-col gap-3 rounded-[var(--radius-xl)] border border-border bg-surface p-4 text-[15px] text-foreground shadow-[var(--sombra-tarjeta)] transition-colors duration-150 motion-reduce:transition-none",
         "@4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:items-center @4xl:gap-x-4 @4xl:rounded-none @4xl:shadow-none @4xl:border-x-0 @4xl:border-t-0 @4xl:border-b-tabla-borde @4xl:px-4 @4xl:py-3.5 @4xl:last:border-b-0 @4xl:hover:bg-tabla-fila-hover",
+        id && "scroll-mt-20",
         className,
       )}
     >
       {children}
+      {detalle && (
+        <div className="flex min-w-0 flex-col items-start gap-3 @4xl:col-span-full">{detalle}</div>
+      )}
+    </li>
+  );
+}
+
+/**
+ * Separador entre dos grupos de filas ("Ya invitados a esta oferta"): un
+ * título entre líneas, a todo el ancho de la tabla.
+ */
+export function SeparadorTabla({ children }: { children: ReactNode }) {
+  return (
+    <li className="pt-3 @4xl:col-span-full @4xl:border-b @4xl:border-b-tabla-borde @4xl:bg-tabla-cabecera @4xl:px-4 @4xl:py-2.5">
+      <h2 className="flex items-center gap-3 text-sm font-semibold text-muted-foreground-strong">
+        <span className="h-px flex-1 bg-border @4xl:hidden" aria-hidden="true" />
+        {children}
+        <span className="h-px flex-1 bg-border @4xl:hidden" aria-hidden="true" />
+      </h2>
     </li>
   );
 }
