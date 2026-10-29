@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
+import Form from "next/form";
 import { CalendarClock, ClipboardList } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
@@ -12,6 +13,7 @@ import {
   type ParamsUrl,
 } from "@/lib/paginacion";
 import { Buscador } from "@/components/ui/buscador";
+import { Combobox } from "@/components/ui/combobox";
 import { PestanasEstado } from "@/components/ui/pestanas-estado";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
@@ -228,9 +230,12 @@ export default async function PostulacionesPage({
         />
 
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <form
-            method="GET"
+          {/* Oferta y Orden se aplican solos al elegir (enviarAlCambiar). Form
+              navega sin recargar la página, así el foco vuelve al filtro; sin
+              JavaScript es un formulario GET común y aparece el botón. */}
+          <Form
             action={RUTA}
+            scroll={false}
             className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
           >
             <input type="hidden" name="estado" value={estado} />
@@ -239,42 +244,47 @@ export default async function PostulacionesPage({
               <label htmlFor="filtro-oferta" className="etiqueta-campo">
                 Oferta
               </label>
-              {/* key: las opciones cambian con la pestaña y defaultValue solo
+              {/* key: las opciones cambian con la pestaña y valorInicial solo
                   se aplica al montar. */}
-              <select
+              <Combobox
                 id="filtro-oferta"
                 key={`${estado}-${ofertaId}`}
                 name="oferta_id"
-                defaultValue={ofertaId}
-                className="campo sm:w-80"
-              >
-                <option value="">Todas las ofertas</option>
-                {ofertasDisponibles.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.empresaNombre ? `${o.titulo} — ${o.empresaNombre}` : o.titulo} ({o.cantidad})
-                  </option>
-                ))}
-              </select>
+                valorInicial={ofertaId}
+                opcionVacia="Todas las ofertas"
+                opciones={ofertasDisponibles.map((o) => ({
+                  id: o.id,
+                  nombre: `${o.empresaNombre ? `${o.titulo} — ${o.empresaNombre}` : o.titulo} (${o.cantidad})`,
+                }))}
+                placeholderBusqueda="Buscar oferta"
+                etiquetaBusqueda="Buscar oferta"
+                vacioTexto="No hay ofertas con ese nombre"
+                triggerClassName="campo cursor-pointer sm:w-80"
+                enviarAlCambiar
+              />
             </div>
             {ordenDisponible && (
               <div className="flex min-w-0 flex-col gap-1.5">
                 <label htmlFor="filtro-orden" className="etiqueta-campo">
                   Orden
                 </label>
-                <select
+                <Combobox
                   id="filtro-orden"
+                  key={`orden-${primeroFunes}`}
                   name="orden"
-                  defaultValue={primeroFunes ? "prioridad" : ""}
-                  className="campo sm:w-64"
-                >
-                  <option value="">Más recientes primero</option>
-                  <option value="prioridad">Primero verificados de Funes</option>
-                </select>
+                  valorInicial={primeroFunes ? "prioridad" : ""}
+                  opcionVacia="Más recientes primero"
+                  opciones={[{ id: "prioridad", nombre: "Primero verificados de Funes" }]}
+                  triggerClassName="campo cursor-pointer sm:w-64"
+                  enviarAlCambiar
+                />
               </div>
             )}
-            <button type="submit" className="btn-neutro min-h-12">
-              Filtrar
-            </button>
+            <noscript>
+              <button type="submit" className="btn-neutro min-h-12">
+                Filtrar
+              </button>
+            </noscript>
             {(q || ofertaId || primeroFunes) && (
               <Link
                 href={hrefConParams(RUTA, {}, { estado })}
@@ -283,7 +293,7 @@ export default async function PostulacionesPage({
                 Limpiar filtros
               </Link>
             )}
-          </form>
+          </Form>
 
           <Suspense key={`${clave}:contador`} fallback={<Esqueleto className="h-4 w-48" />}>
             <ContadorPostulaciones datos={datos} />

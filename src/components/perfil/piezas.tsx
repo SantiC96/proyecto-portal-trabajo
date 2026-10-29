@@ -41,12 +41,30 @@ export function CampoLectura({
   valor,
   vacio = "—",
   className,
+  estiloPerfil = false,
 }: {
   label: string;
   valor: string;
   vacio?: string;
   className?: string;
+  /**
+   * Modo lectura de las tarjetas de Mi perfil del postulante: label 14 px 700
+   * `neutral` y valor 15 px, como DatosClave; el vacío en `muted-foreground`.
+   */
+  estiloPerfil?: boolean;
 }) {
+  if (estiloPerfil) {
+    return (
+      <div className={`flex min-w-0 flex-col gap-0.5 ${className ?? ""}`}>
+        <dt className="text-sm leading-[1.5] font-bold text-neutral">{label}</dt>
+        <dd
+          className={`whitespace-pre-line break-words text-[15px] leading-[1.45] ${valor ? "text-control-foreground" : "text-muted-foreground"}`}
+        >
+          {valor || vacio}
+        </dd>
+      </div>
+    );
+  }
   return (
     <div className={className}>
       <p className="mb-0.5 text-xs font-medium uppercase tracking-wider text-muted-icon">{label}</p>
@@ -57,6 +75,11 @@ export function CampoLectura({
       </p>
     </div>
   );
+}
+
+/** Grilla de CampoLectura (estiloPerfil) de una tarjeta en modo lectura: 1 columna en el celular, 2 desde sm. */
+export function GrillaLectura({ children }: { children: React.ReactNode }) {
+  return <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">{children}</dl>;
 }
 
 export function MensajeError({ error }: { error: ErrorAccion }) {

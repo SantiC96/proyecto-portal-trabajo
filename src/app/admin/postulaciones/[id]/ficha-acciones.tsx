@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Dialog,
   DialogContent,
@@ -211,24 +212,22 @@ export function FichaAcciones({
               <label htmlFor="corregir-estado" className="text-sm font-medium text-foreground">
                 Nuevo estado <Obligatorio />
               </label>
-              <select
+              <Combobox
                 id="corregir-estado"
-                value={estadoCorreccion}
-                onChange={(e) => {
-                  const valor = e.target.value;
+                requerido
+                opciones={ESTADOS_CORREGUIBLES.map((e) => ({
+                  id: e,
+                  nombre: DERIVACION_ESTADO_LABEL[e],
+                }))}
+                valor={estadoCorreccion}
+                onCambiar={(valor) => {
                   if (esValorEnum("estado_empresa", valor)) setEstadoCorreccion(valor);
                   camposCorregir.limpiar("estado");
                 }}
+                deshabilitado={isPending}
+                triggerClassName="campo cursor-pointer"
                 {...ariaErrorCampo("corregir-estado", camposCorregir.errores.estado)}
-                className="campo"
-                disabled={isPending}
-              >
-                {ESTADOS_CORREGUIBLES.map((e) => (
-                  <option key={e} value={e}>
-                    {DERIVACION_ESTADO_LABEL[e]}
-                  </option>
-                ))}
-              </select>
+              />
               <ErrorCampo idCampo="corregir-estado" mensaje={camposCorregir.errores.estado} />
             </div>
             <BotonesDialogo
