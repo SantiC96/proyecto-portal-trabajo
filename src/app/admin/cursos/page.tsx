@@ -19,6 +19,7 @@ import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { UMBRAL_RECHAZOS_CURSO, VENTANA_RECHAZOS_DIAS } from "@/lib/cursos";
 import { requerirRolPagina } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
+import { PestanasEstado } from "@/components/ui/pestanas-estado";
 
 export const metadata: Metadata = {
   title: "Cursos | Panel municipal | Portal de Empleo Funes",
@@ -36,6 +37,7 @@ export default async function CursosPage({
   const soloActivos = sp.estado !== "inactivos";
   const q = limpiarBusqueda(sp.q);
   const pagina = leerPagina(sp.pagina);
+  const cantidades = await contarCursos(q);
 
   return (
     <section>
@@ -61,29 +63,24 @@ export default async function CursosPage({
         </Link>
       </div>
 
-      {/* Filtro activo / inactivo */}
-      <div className="mt-6 flex gap-2">
-        <Link
-          href={hrefConParams(RUTA, {}, { q: sp.q ?? null })}
-          className={
-            soloActivos
-              ? "btn-primario px-4 py-1.5 text-sm"
-              : "btn-secundario inline-flex items-center px-4 py-1.5 text-sm"
-          }
-        >
-          Activos
-        </Link>
-        <Link
-          href={hrefConParams(RUTA, {}, { estado: "inactivos", q: sp.q ?? null })}
-          className={
-            !soloActivos
-              ? "btn-primario px-4 py-1.5 text-sm"
-              : "btn-secundario inline-flex items-center px-4 py-1.5 text-sm"
-          }
-        >
-          Inactivos
-        </Link>
-      </div>
+      <PestanasEstado
+        className="mt-6"
+        etiqueta="Estado de los cursos"
+        pestanas={[
+          {
+            href: hrefConParams(RUTA, {}, { q: sp.q ?? null }),
+            label: "Activos",
+            activa: soloActivos,
+            cantidad: cantidades.activos ?? undefined,
+          },
+          {
+            href: hrefConParams(RUTA, {}, { estado: "inactivos", q: sp.q ?? null }),
+            label: "Inactivos",
+            activa: !soloActivos,
+            cantidad: cantidades.inactivos ?? undefined,
+          },
+        ]}
+      />
 
       <Buscador className="mt-4" placeholder="Buscar por nombre…" />
 
@@ -100,6 +97,29 @@ export default async function CursosPage({
       </Suspense>
     </section>
   );
+}
+
+/**
+ * Cantidad de cursos activos e inactivos con la búsqueda, para las pestañas.
+ * null si el conteo falló: la pestaña va sin número.
+ */
+async function contarCursos(q: string): Promise<{ activos: number | null; inactivos: number | null }> {
+  const supabase = await createSupabaseServerClient();
+  const contar = async (activo: boolean) => {
+    let query = supabase
+      .from("cursos")
+      .select("id", { count: "exact", head: true })
+      .eq("activo", activo);
+    if (q) query = query.ilike("nombre", patronIlike(q));
+    const { count, error } = await query;
+    if (error) {
+      logError("admin_cursos_conteo_estado", error);
+      return null;
+    }
+    return count ?? 0;
+  };
+  const [activos, inactivos] = await Promise.all([contar(true), contar(false)]);
+  return { activos, inactivos };
 }
 
 async function ListadoCursos({
