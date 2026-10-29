@@ -261,6 +261,7 @@ Están en [`src/migrations/`](../src/migrations/) y se ejecutan **a mano, en ord
 | 058 | Panel del postulante: `indicadores_postulante()`, `ofertas_recomendadas_para_mi()` y el puntaje de coincidencia en una función interna compartida con `buscar_candidatos_para_oferta` |
 | 059 | Mis postulaciones muestra el título y la empresa de las ofertas que el postulante ya no puede leer (`ofertas_de_mis_postulaciones()`) |
 | 061 | Gráfico de postulaciones de la oficina según el período: por día, semana o mes (`postulaciones_por_periodo()`) |
+| 063 | Retirar una postulación `recibida` la deja `retirada_postulante` en lugar de borrarla, sin aviso a la oficina |
 
 El número 014 no se usó.
 
@@ -336,7 +337,7 @@ Las acciones que escriben en más de una tabla son una sola función `SECURITY D
 | `guardarBorrador` / `enviarBorrador` | `guardar_borrador_oferta` (con `p_enviar` también manda a revisión) |
 | `retirarOferta` | `retirar_oferta` (cierra la oferta y sus procesos abiertos; también una rechazada con postulaciones, migración 052) |
 | `eliminarOferta` / `restaurarOferta` | `eliminar_oferta` / `restaurar_oferta` (borrado lógico) |
-| `retirarPostulacion` | `retirar_postulacion` (borra una `recibida`; si no, la deja `retirada_postulante`, cierra la derivación abierta y cancela la pre-entrevista coordinada, migración 053) |
+| `retirarPostulacion` | `retirar_postulacion` (la deja `retirada_postulante`, cierra la derivación abierta y cancela la pre-entrevista coordinada, migración 053; desde la 063 una `recibida` también queda retirada en lugar de borrarse) |
 
 Cada función controla el rol con `rol_actual()`, toma la propiedad de `auth.uid()`, bloquea la fila con `FOR UPDATE` y falla con un mensaje para el usuario (`P0001`). La server action traduce el error a un `Resultado`. Cuando alcanza con un solo `UPDATE`, se agrega el estado esperado al `WHERE` y se verifica que afectó una fila (por ejemplo, `aprobarOferta` exige `estado = 'pendiente_aprobacion'`).
 
