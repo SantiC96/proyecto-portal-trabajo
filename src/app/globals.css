@@ -333,18 +333,33 @@ button,input { font:inherit; }
 html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
 
 .app-shell { min-height: 100vh; }
+/* Columna principal: la página (.app-pagina) y el footer debajo. La página
+   ocupa al menos el alto de la ventana (menos la barra de 60 px en el
+   celular), así que el footer nunca se ve al abrir una pantalla corta: hay
+   que hacer scroll. En las largas no cambia nada. */
 .app-contenido {
   --relleno-contenido: 16px;
+  --espacio-pie: 48px;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  min-height: calc(100vh - 60px);
-  padding: var(--relleno-contenido);
 }
+.app-pagina {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: calc(100dvh - 60px);
+  padding: var(--relleno-contenido) var(--relleno-contenido) var(--espacio-pie);
+}
+/* Destino del foco de "Volver arriba" (tabindex -1): sin anillo. */
+.app-pagina[tabindex="-1"]:focus,
+.app-pagina main[tabindex="-1"]:focus { outline: none; }
 @media (min-width: 640px) { .app-contenido { --relleno-contenido: 24px; } }
 @media (min-width: 1024px) {
   .app-shell { display: flex; align-items: stretch; }
-  .app-contenido { --relleno-contenido: 32px; flex: 1; min-height: 100vh; }
+  .app-contenido { --relleno-contenido: 32px; flex: 1; }
+  .app-pagina { min-height: 100dvh; }
 }
 
 /* Las páginas ocupan todo el ancho al lado de la sidebar, sin max-width
@@ -355,28 +370,24 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
    con isolation) y no recibe clics. Sin colores nuevos: el verde de marca,
    el amarillo y el blanco con transparencia. "Celular" es menos de 640 px. */
 :root {
-  /* Trébol de Funes para las marcas de agua. Se usa como máscara: el color
-     lo pone el background del elemento. */
-  --trebol: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-100 -100 200 200' fill='none' stroke='black' stroke-width='9' stroke-linejoin='round'%3E%3Cpath transform='rotate(45)' d='M0 -12 L-30 -42 A19 19 0 0 1 -3 -69 L0 -66 L3 -69 A19 19 0 0 1 30 -42 Z'/%3E%3Cpath transform='rotate(135)' d='M0 -12 L-30 -42 A19 19 0 0 1 -3 -69 L0 -66 L3 -69 A19 19 0 0 1 30 -42 Z'/%3E%3Cpath transform='rotate(225)' d='M0 -12 L-30 -42 A19 19 0 0 1 -3 -69 L0 -66 L3 -69 A19 19 0 0 1 30 -42 Z'/%3E%3Cpath transform='rotate(315)' d='M0 -12 L-30 -42 A19 19 0 0 1 -3 -69 L0 -66 L3 -69 A19 19 0 0 1 30 -42 Z'/%3E%3C/svg%3E");
   --sombra-tarjeta: 0 1px 3px rgb(0 30 15 / 0.06);
 }
 
-/* Trébol de agua (fondo del contenido y estados vacíos). */
+/* Escudo de agua (fondo del contenido y estados vacíos): la imagen ya es
+   verde de marca. */
 .app-contenido::after,
 .estado-vacio::after {
   content: "";
   position: absolute;
   z-index: -1;
-  background: var(--color-primary);
+  background: url("/images/escudo-verde.png") center / contain no-repeat;
   opacity: 0.08;
-  transform: rotate(-12deg);
-  -webkit-mask: var(--trebol) center / contain no-repeat;
-  mask: var(--trebol) center / contain no-repeat;
+  transform: rotate(-8deg);
   pointer-events: none;
 }
 
 /* Fondo de las pantallas con navegación: degradé verde arriba, puntos en la
-   esquina superior derecha y el trébol (solo escritorio). El inicio no lo
+   esquina superior derecha y el escudo (solo escritorio). El inicio no lo
    lleva (.app-contenido--inicio): su decoración es el hero. */
 .app-contenido {
   --alto-degrade: 240px;
@@ -498,7 +509,7 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
 .hero-icono:nth-child(4) { top: 184px; right: 18%; animation-delay: -4.5s; }
 
 /* "Cómo funciona" y "Tu actividad": banda a todo el ancho del contenido. El
-   margen negativo es igual al padding de .app-contenido, así que no sale de
+   margen negativo es igual al padding de .app-pagina, así que no sale de
    él ni genera scroll horizontal. */
 .banda-inicio {
   margin-inline: calc(-1 * var(--relleno-contenido));
@@ -507,27 +518,141 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
   background: rgb(0 104 51 / 0.07);
 }
 @media (min-width: 640px) { .banda-inicio { padding-block: 40px 48px; } }
-/* Si es la última sección, llega hasta el footer (tapa .pie-espacio). */
+/* Si es la última sección, llega hasta el footer (tapa el padding de abajo
+   de .app-pagina). */
 .banda-inicio:last-child {
   flex-grow: 1;
   margin-bottom: calc(-1 * var(--espacio-pie));
 }
 
-/* Footer (components/layout/footer.tsx): al final del contenido, a todo su
-   ancho. El margen negativo es igual al padding de .app-contenido, así que
-   llega a los bordes sin scroll horizontal; margin-top auto lo baja al pie en
-   las páginas cortas. .pie-espacio es la separación con el contenido. */
-.app-contenido { --espacio-pie: 48px; }
-.pie-espacio { flex: 0 0 var(--espacio-pie); }
+/* Footer (components/layout/footer.tsx): debajo de .app-pagina, a todo el
+   ancho del contenido. Verde con puntos, esquinas de arriba redondeadas, un
+   acento amarillo arriba a la izquierda y el escudo blanco recortado en la
+   esquina inferior derecha. "Celular" es menos de 640 px. */
 .pie-portal {
-  margin: auto calc(-1 * var(--relleno-contenido)) calc(-1 * var(--relleno-contenido));
-  padding: 40px var(--relleno-contenido) 24px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  container-type: inline-size;
+  padding: 40px 20px 0;
+  border-radius: 24px 24px 0 0;
   background-color: var(--color-primary);
-  /* Los puntos del hero, más suaves. */
-  background-image: radial-gradient(rgb(255 255 255 / 0.06) 1px, transparent 1.5px);
+  background-image: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1.5px);
   background-size: 24px 24px;
+  color: var(--color-sidebar-texto);
 }
-@media (min-width: 640px) { .pie-portal { padding-top: 48px; background-size: 28px 28px; } }
+.pie-portal::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 20px;
+  width: 64px;
+  height: 4px;
+  background: var(--color-accent);
+}
+.pie-escudo {
+  position: absolute;
+  z-index: -1;
+  right: -60px;
+  bottom: -50px;
+  width: 230px;
+  height: auto;
+  opacity: 0.09;
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
+@media (min-width: 640px) {
+  .pie-portal { padding: 56px 48px 0; border-radius: 28px 28px 0 0; }
+  .pie-portal::before { left: 48px; }
+  .pie-escudo { bottom: -110px; width: 400px; }
+}
+.pie-columnas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 40px;
+}
+@container (min-width: 720px) {
+  .pie-columnas {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1.4fr);
+    gap: 48px;
+  }
+}
+.pie-logo { width: 160px; height: auto; }
+@media (min-width: 640px) { .pie-logo { width: 180px; } }
+/* El amarillo sobre este verde no pasa AA: el título va en blanco y el
+   amarillo queda en la rayita. */
+.pie-titulo {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+}
+.pie-titulo::after {
+  content: "";
+  display: block;
+  width: 28px;
+  height: 3px;
+  margin-top: 10px;
+  background: var(--color-accent);
+}
+.pie-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  text-align: left;
+  outline: none;
+}
+@media (min-width: 640px) { .pie-link { min-height: 38px; } }
+.pie-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.pie-link:focus-visible,
+.pie-arriba:focus-visible { box-shadow: 0 0 0 3px rgb(255 255 255 / 0.6); }
+.pie-dato {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding-block: 10px;
+  font-size: 15px;
+}
+.pie-dato svg { flex-shrink: 0; width: 18px; height: 18px; margin-top: 2px; color: var(--color-accent); }
+a.pie-dato { border-radius: var(--radius-md); outline: none; }
+a.pie-dato:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+a.pie-dato:focus-visible { box-shadow: 0 0 0 3px rgb(255 255 255 / 0.6); }
+.pie-barra {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 40px;
+  padding-block: 20px 24px;
+  border-top: 1px solid rgb(255 255 255 / 0.22);
+}
+@media (min-width: 640px) {
+  .pie-barra { flex-direction: row; align-items: center; justify-content: space-between; margin-top: 48px; }
+}
+.pie-arriba {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgb(255 255 255 / 0.45);
+  border-radius: 9999px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  outline: none;
+}
+.pie-arriba:hover { background: rgb(255 255 255 / 0.12); }
+@media (prefers-reduced-motion: no-preference) {
+  .pie-arriba { transition: background-color 150ms ease-out; }
+}
 .pie-red {
   display: inline-flex;
   align-items: center;
@@ -546,7 +671,7 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
   .pie-red { transition: background-color 150ms ease-out; }
 }
 
-/* Estados vacíos: degradé, puntos detrás del ícono, halo y trébol. Los puntos
+/* Estados vacíos: degradé, puntos detrás del ícono, halo y escudo. Los puntos
    salen del ícono para quedar centrados en él en cualquier estado vacío, y
    terminan antes del título. */
 .estado-vacio {

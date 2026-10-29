@@ -1,12 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Clock, Mail, MapPin, Phone, type LucideIcon } from "lucide-react";
+import { ChevronUp, Clock, Mail, MapPin, Phone } from "lucide-react";
 import { rutaPanel } from "@/components/layout/secciones-rol";
 import { OFICINA } from "@/lib/oficina";
 import type { SesionData } from "@/lib/sesion";
-
-const CLASE_LINK =
-  "inline-flex min-h-11 items-center gap-2.5 rounded-[var(--radius-md)] text-left outline-none hover:text-white hover:underline focus-visible:shadow-[0_0_0_3px_rgb(255_255_255/0.6)]";
 
 // lucide no trae íconos de marcas: trazos simples de 24 × 24.
 function IconoInstagram() {
@@ -29,24 +26,31 @@ function IconoFacebook() {
 
 function TituloColumna({ id, children }: { id: string; children: React.ReactNode }) {
   return (
-    <h2 id={id} className="text-base leading-snug font-extrabold text-white">
+    <h2 id={id} className="pie-titulo">
       {children}
     </h2>
   );
 }
 
-function DatoOficina({ Icono, children }: { Icono: LucideIcon; children: React.ReactNode }) {
-  return (
-    <>
-      <Icono className="size-[18px] shrink-0 text-white" aria-hidden="true" />
-      <span className="min-w-0 break-words">{children}</span>
-    </>
-  );
+/**
+ * Vuelve al inicio de la página (sin animación con prefers-reduced-motion) y
+ * deja el foco en el <main>, para que el teclado siga desde arriba.
+ */
+function volverArriba() {
+  const sinAnimacion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  window.scrollTo({ top: 0, behavior: sinAnimacion ? "instant" : "smooth" });
+  const destino =
+    document.querySelector<HTMLElement>(".app-pagina main") ??
+    document.querySelector<HTMLElement>(".app-pagina");
+  if (!destino) return;
+  if (!destino.hasAttribute("tabindex")) destino.setAttribute("tabindex", "-1");
+  destino.focus({ preventScroll: true });
 }
 
 /**
- * Pie de todas las pantallas con navegación (públicas y con sesión), al final
- * del contenido y a todo su ancho. En /auth no se muestra (AppShell).
+ * Pie de todas las pantallas con navegación (públicas y con sesión), debajo
+ * de .app-pagina y a todo el ancho del contenido. En /auth no se muestra
+ * (AppShell).
  */
 export function Footer({
   sesion,
@@ -61,52 +65,30 @@ export function Footer({
   ];
 
   return (
-    <>
-    <div className="pie-espacio" aria-hidden="true" />
-    <footer className="pie-portal @container text-[15px] text-sidebar-texto">
-      <div className="grid grid-cols-1 gap-x-10 gap-y-8 @2xl:grid-cols-2 @4xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1.5fr)_minmax(0,0.8fr)_minmax(0,0.8fr)]">
-        <div className="flex flex-col gap-3">
+    <footer className="pie-portal">
+      <Image
+        src="/images/escudo-blanco.png"
+        alt=""
+        aria-hidden="true"
+        width={330}
+        height={344}
+        className="pie-escudo"
+      />
+
+      <div className="pie-columnas">
+        <div className="flex flex-col items-start">
           <Image
             src="/images/logo-funes-blanco.png"
             alt="Municipalidad de Funes"
-            width={170}
-            height={48}
-            className="h-auto w-[150px]"
+            width={185}
+            height={52}
+            className="pie-logo"
           />
-          <p className="font-bold text-white">Portal de Empleo de la Municipalidad de Funes</p>
-          <p>Conectamos a vecinos de Funes con empresas de la ciudad.</p>
-        </div>
-
-        <section aria-labelledby="pie-oficina">
-          <TituloColumna id="pie-oficina">{OFICINA.nombre}</TituloColumna>
-          <ul className="mt-2 flex flex-col">
-            <li>
-              <a href={OFICINA.direccion.href} target="_blank" rel="noopener noreferrer" className={CLASE_LINK}>
-                <DatoOficina Icono={MapPin}>
-                  {OFICINA.direccion.texto}
-                  <span className="sr-only"> (abre Google Maps en otra pestaña)</span>
-                </DatoOficina>
-              </a>
-            </li>
-            <li className="flex min-h-11 items-center gap-2.5">
-              <DatoOficina Icono={Clock}>{OFICINA.horario.texto}</DatoOficina>
-            </li>
-            <li>
-              <a href={OFICINA.telefono.href} className={CLASE_LINK}>
-                <DatoOficina Icono={Phone}>{OFICINA.telefono.texto}</DatoOficina>
-              </a>
-            </li>
-            <li>
-              <a href={OFICINA.correo.href} className={CLASE_LINK}>
-                <DatoOficina Icono={Mail}>{OFICINA.correo.texto}</DatoOficina>
-              </a>
-            </li>
-          </ul>
-        </section>
-
-        <section aria-labelledby="pie-redes">
-          <TituloColumna id="pie-redes">Seguinos</TituloColumna>
-          <ul className="mt-3 flex gap-3">
+          <p className="mt-4 text-xs font-extrabold tracking-[0.1em] text-sidebar-suave">PORTAL DE EMPLEO</p>
+          <p className="mt-2 max-w-[34ch] text-[15px] leading-relaxed text-sidebar-texto">
+            Ofertas de empresas de la ciudad, revisadas por la Oficina de Empleo.
+          </p>
+          <ul className="mt-5 flex gap-3" aria-label="Redes sociales">
             {redes.map(({ texto, etiqueta, href, Icono }) => (
               <li key={texto}>
                 <a
@@ -121,47 +103,88 @@ export function Footer({
               </li>
             ))}
           </ul>
-        </section>
+        </div>
 
-        <nav aria-labelledby="pie-enlaces">
-          <TituloColumna id="pie-enlaces">Enlaces</TituloColumna>
-          <ul className="mt-2 flex flex-col">
+        <nav aria-labelledby="pie-portal-titulo">
+          <TituloColumna id="pie-portal-titulo">Portal</TituloColumna>
+          <ul className="mt-3 flex flex-col items-start">
             <li>
-              <Link href="/ofertas" className={CLASE_LINK}>
-                Ofertas
+              <Link href="/ofertas" className="pie-link">
+                Ofertas de trabajo
               </Link>
             </li>
             <li>
-              <Link href="/preguntas-frecuentes" className={CLASE_LINK}>
+              <Link href="/#como-funciona" className="pie-link">
+                Cómo funciona
+              </Link>
+            </li>
+            <li>
+              <Link href="/preguntas-frecuentes" className="pie-link">
                 Preguntas frecuentes
               </Link>
             </li>
             {sesion ? (
               <li>
-                <Link href={rutaPanel(sesion.rol)} className={CLASE_LINK}>
+                <Link href={rutaPanel(sesion.rol)} className="pie-link">
                   Mi panel
                 </Link>
               </li>
             ) : (
               <>
                 <li>
-                  <Link href="/auth/login" className={CLASE_LINK}>
-                    Iniciar sesión
+                  <Link href="/auth/login" className="pie-link">
+                    Ingresar
                   </Link>
                 </li>
                 <li>
-                  <button type="button" onClick={onRegistrarme} className={CLASE_LINK}>
-                    Registrarme
+                  <button type="button" onClick={onRegistrarme} className="pie-link">
+                    Crear cuenta
                   </button>
                 </li>
               </>
             )}
           </ul>
         </nav>
+
+        <section aria-labelledby="pie-oficina-titulo">
+          <TituloColumna id="pie-oficina-titulo">{OFICINA.nombre}</TituloColumna>
+          <ul className="mt-3 flex flex-col items-start">
+            <li>
+              <a href={OFICINA.direccion.href} target="_blank" rel="noopener noreferrer" className="pie-dato">
+                <MapPin aria-hidden="true" />
+                <span className="min-w-0 break-words">
+                  {OFICINA.direccion.texto}
+                  <span className="sr-only"> (abre Google Maps en otra pestaña)</span>
+                </span>
+              </a>
+            </li>
+            <li>
+              <a href={OFICINA.telefono.href} className="pie-dato">
+                <Phone aria-hidden="true" />
+                <span className="min-w-0 break-words">{OFICINA.telefono.texto}</span>
+              </a>
+            </li>
+            <li>
+              <a href={OFICINA.correo.href} className="pie-dato">
+                <Mail aria-hidden="true" />
+                <span className="min-w-0 break-words">{OFICINA.correo.texto}</span>
+              </a>
+            </li>
+            <li className="pie-dato">
+              <Clock aria-hidden="true" />
+              <span className="min-w-0 break-words">{OFICINA.horario.texto}</span>
+            </li>
+          </ul>
+        </section>
       </div>
 
-      <p className="mt-8 border-t border-white/20 pt-6 text-sm">© 2026 Municipalidad de Funes</p>
+      <div className="pie-barra">
+        <p className="text-sm text-sidebar-suave">© 2026 Municipalidad de Funes · Santa Fe</p>
+        <button type="button" onClick={volverArriba} className="pie-arriba">
+          <ChevronUp className="size-[18px]" aria-hidden="true" />
+          Volver arriba
+        </button>
+      </div>
     </footer>
-    </>
   );
 }
