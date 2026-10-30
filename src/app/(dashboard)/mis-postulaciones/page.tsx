@@ -24,7 +24,6 @@ import {
 } from "@/lib/mis-postulaciones";
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 import { obtenerIndicadoresPostulante } from "@/lib/postulante/panel";
-import { formatNumero } from "@/components/indicadores/formato";
 import { GrupoPastillas, PastillaFiltro } from "@/components/ui/pastilla-filtro";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
@@ -44,7 +43,6 @@ import type {
 import { AvisoCursoPendiente } from "@/components/cursos/aviso-curso-pendiente";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
-import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Mis postulaciones | Portal de Empleo Funes",
@@ -238,19 +236,10 @@ function FiltroEstados({
             key={o.valor ?? "todas"}
             href={hrefConParams(RUTA, searchParams, { estado: o.valor, pagina: null })}
             activa={activa}
+            cantidad={o.cantidad}
             className="sm:h-11"
           >
             {o.etiqueta}
-            {o.cantidad !== undefined && (
-              <span
-                className={cn(
-                  "-mr-2 ml-2 inline-grid h-7 min-w-7 place-items-center rounded-full px-1.5 text-[13px] font-bold tabular-nums",
-                  activa ? "bg-surface text-primary" : "bg-secondary text-control-foreground",
-                )}
-              >
-                {formatNumero(o.cantidad)}
-              </span>
-            )}
           </PastillaFiltro>
         );
       })}

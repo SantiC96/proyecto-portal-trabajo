@@ -2,13 +2,11 @@ import Link from "next/link";
 import {
   Activity,
   Briefcase,
-  ChevronRight,
   CircleCheck,
   Mail,
   Search,
   TriangleAlert,
   User,
-  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logError } from "@/lib/logger";
@@ -42,8 +40,9 @@ import { LineaDeTiempo } from "@/components/ui/linea-de-tiempo";
 import { ACENTO_ESTADO, ACENTO_FILTRO } from "@/components/postulantes/acento-estado";
 import { TarjetaOferta } from "@/components/ofertas/tarjeta-oferta";
 import { BadgeCoincidencia } from "@/components/ofertas/coincidencia";
+import { CuadroEstado } from "@/components/ui/cuadro-estado";
+import { TituloBloque } from "@/components/ui/titulo-bloque";
 import {
-  CLASE_CUADRO_ESTADO,
   CLASE_GRILLA_INDICADORES,
   CLASE_GRILLA_OFERTAS,
   claseCuadroIndicador,
@@ -54,44 +53,6 @@ import {
 
 const MIS_POSTULACIONES = "/mis-postulaciones";
 const INVITACIONES = "/invitaciones";
-
-const CLASE_LINK_TITULO =
-  "inline-flex min-h-11 items-center gap-1 rounded-[var(--radius-md)] text-[15px] font-bold whitespace-nowrap text-primary outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]";
-
-/** Título de bloque (20 px, 800) con su ícono, su bajada y un link a la derecha. */
-function TituloBloque({
-  id,
-  titulo,
-  icono,
-  bajada,
-  enlace,
-}: {
-  id: string;
-  titulo: string;
-  icono: LucideIcon;
-  bajada?: string;
-  enlace?: { href: string; texto: string };
-}) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-      <div className="flex min-w-0 items-center gap-3">
-        <IconoCuadro icono={icono} />
-        <div className="min-w-0">
-          <h2 id={id} className="text-xl leading-tight font-extrabold text-heading">
-            {titulo}
-          </h2>
-          {bajada && <p className="mt-0.5 text-[15px] text-muted-foreground">{bajada}</p>}
-        </div>
-      </div>
-      {enlace && (
-        <Link href={enlace.href} className={CLASE_LINK_TITULO}>
-          {enlace.texto}
-          <ChevronRight className="size-4" aria-hidden="true" />
-        </Link>
-      )}
-    </div>
-  );
-}
 
 /** Botones del encabezado; también los muestra loading.tsx. */
 export function AccionesPanel() {
@@ -144,26 +105,15 @@ export async function BloqueIndicadores() {
           const acento = ACENTO_FILTRO[filtro];
           return (
             <li key={filtro} className={claseCuadroIndicador(indice)}>
-              <Link
+              <CuadroEstado
                 href={`${MIS_POSTULACIONES}?estado=${filtro}`}
-                aria-label={`${cantidadConEstado(filtro, valor)}. Ver lista`}
-                className={cn(
-                  CLASE_CUADRO_ESTADO,
-                  "tarjeta-clickeable outline-none focus-visible:shadow-[var(--sombra-foco)]",
-                  acento.filete,
-                )}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <IconoCuadro icono={acento.icono} className={acento.fondo} />
-                  <ChevronRight className="size-5 shrink-0 text-muted-icon" aria-hidden="true" />
-                </div>
-                <span className="text-[38px] leading-none font-extrabold break-all text-heading tabular-nums">
-                  {formatNumero(valor)}
-                </span>
-                <span className="text-sm leading-tight font-bold break-words hyphens-auto text-heading">
-                  {ETIQUETA_FILTRO[filtro]}
-                </span>
-              </Link>
+                etiquetaAccesible={`${cantidadConEstado(filtro, valor)}. Ver lista`}
+                etiqueta={ETIQUETA_FILTRO[filtro]}
+                valor={valor}
+                icono={acento.icono}
+                claseIcono={acento.fondo}
+                claseFilete={acento.filete}
+              />
             </li>
           );
         })}

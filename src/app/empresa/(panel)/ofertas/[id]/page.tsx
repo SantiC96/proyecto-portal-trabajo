@@ -2,7 +2,20 @@ import type { Metadata } from "next";
 import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Pencil, Users } from "lucide-react";
+import {
+  Briefcase,
+  Calendar,
+  ClipboardList,
+  Clock,
+  FileText,
+  Gift,
+  MapPin,
+  Monitor,
+  Pencil,
+  Tag,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirEmpresaPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
@@ -13,8 +26,11 @@ import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_TONO } from "@/lib/derivacion-estados";
 import { Badge } from "@/components/ui/badge";
+import { BarraProgreso } from "@/components/ui/barra-progreso";
+import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
+import { IconoCuadro } from "@/components/ui/icono-cuadro";
+import { TituloBloque } from "@/components/ui/titulo-bloque";
 import { Aviso } from "@/components/ui/aviso";
-import { DatosClave } from "@/components/ui/datos-clave";
 import { DescripcionPlegable } from "./descripcion-plegable";
 import {
   CLASE_ACCION_FILA,
@@ -27,7 +43,6 @@ import type { FilaCandidatoParaEmpresa, FilaDerivacionDeOfertaEmpresa } from "@/
 import { estadoVencimiento, textoDiasRestantes } from "@/lib/ofertas-vencimiento";
 import {
   ESTADO_OFERTA_EMPRESA_LABEL,
-  ESTADO_OFERTA_EMPRESA_TONO,
   type EstadoOfertaEmpresa,
 } from "@/lib/oferta-estados";
 import { inicialesDePersona } from "@/lib/iniciales";
@@ -98,59 +113,101 @@ export default async function OfertaDetallePage({
 
   // "Corregir y reenviar" del aviso de rechazo ya lleva al formulario.
   const mostrarEditar = baja.acciones.mostrarEditar && oferta.estado !== "rechazada";
+  const tieneAcciones =
+    mostrarEditar || vencida || baja.acciones.mostrarEliminar || baja.acciones.mostrarRetirar;
+
+  const datos: { etiqueta: string; icono: LucideIcon; valor: ReactNode }[] = [
+    { etiqueta: "Rubro", icono: Tag, valor: rubros.length > 0 ? rubros.join(", ") : "—" },
+    { etiqueta: "Modalidad", icono: Monitor, valor: oferta.modalidad },
+    { etiqueta: "Jornada", icono: Clock, valor: oferta.jornada },
+    { etiqueta: "Ubicación", icono: MapPin, valor: oferta.ubicacion || "—" },
+    {
+      etiqueta: "Vencimiento",
+      icono: Calendar,
+      valor: oferta.vence_en ? formatFecha(oferta.vence_en) : "—",
+    },
+  ];
+  if (vacantes !== null) {
+    datos.push({
+      etiqueta: "Vacantes",
+      icono: Users,
+      valor: (
+        <>
+          {vacantes} {vacantes === 1 ? "vacante" : "vacantes"} · {contratados}{" "}
+          {contratados === 1 ? "cubierta" : "cubiertas"}
+          <span className="mt-2 flex items-center gap-2.5">
+            <BarraProgreso
+              fina
+              porcentaje={vacantes > 0 ? (contratados / vacantes) * 100 : 0}
+              etiqueta={`${contratados} de ${vacantes} vacantes cubiertas`}
+            />
+            <span className="shrink-0 text-sm font-bold whitespace-nowrap text-muted-foreground-strong tabular-nums">
+              {contratados} de {vacantes}
+            </span>
+          </span>
+        </>
+      ),
+    });
+  }
 
   return (
-    <section className="w-full">
+    <section className="flex w-full flex-col gap-6">
       <BotonVolver href="/empresa/ofertas" destacado />
 
-      <header className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h1 className="text-[26px] leading-[1.15] font-extrabold tracking-[-0.01em] break-words text-heading sm:text-[32px]">
-              {oferta.titulo}
-            </h1>
-            <Badge tono={ESTADO_OFERTA_EMPRESA_TONO[estadoVisible] ?? "neutral"} estado>
-              {ESTADO_OFERTA_EMPRESA_LABEL[estadoVisible] ?? estadoVisible}
-            </Badge>
-          </div>
-          <p className="mt-1.5 text-base text-muted-foreground">
+      <EncabezadoPagina
+        banda
+        botonesBlancos
+        className="-mt-2"
+        titulo={oferta.titulo}
+        junto={
+          <span className="inline-flex h-[30px] shrink-0 items-center gap-1.5 rounded-[15px] bg-surface px-3 text-sm font-bold whitespace-nowrap text-primary-hover">
+            <span aria-hidden="true" className="size-2 rounded-full bg-primary-hover" />
+            {ESTADO_OFERTA_EMPRESA_LABEL[estadoVisible] ?? estadoVisible}
+          </span>
+        }
+        bajada={
+          <>
             {fechaAlta}
             {fechaVence && ` · ${fechaVence}`}
             {porVencer && diasRestantes !== null && (
-              <span className="font-semibold text-warning-text">
+              <span className="font-bold text-primary-foreground">
                 {" · "}
                 {textoDiasRestantes(diasRestantes)}
               </span>
             )}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-3 empty:hidden *:grow *:basis-32 sm:shrink-0 sm:justify-end sm:*:grow-0 sm:*:basis-auto">
-          {mostrarEditar && (
-            <Link href={`/empresa/ofertas/${oferta.id}/editar`} className="btn-neutro">
-              <Pencil aria-hidden="true" />
-              Editar
-            </Link>
-          )}
-          {vencida && (
-            <RenovarOfertaBtn
-              ofertaId={oferta.id}
-              ofertaTitulo={oferta.titulo}
-              duracionDias={oferta.duracion_dias}
-              claseBoton=""
-            />
-          )}
-          <BajaOfertaBtn
-            oferta={oferta}
-            baja={baja}
-            volverA="/empresa/ofertas"
-            estiloBoton="peligroBorde"
-            claseBoton=""
-          />
-        </div>
-      </header>
+          </>
+        }
+        acciones={
+          tieneAcciones ? (
+            <>
+              {mostrarEditar && (
+                <Link href={`/empresa/ofertas/${oferta.id}/editar`} className="btn-neutro">
+                  <Pencil aria-hidden="true" />
+                  Editar
+                </Link>
+              )}
+              {vencida && (
+                <RenovarOfertaBtn
+                  ofertaId={oferta.id}
+                  ofertaTitulo={oferta.titulo}
+                  duracionDias={oferta.duracion_dias}
+                  claseBoton=""
+                />
+              )}
+              <BajaOfertaBtn
+                oferta={oferta}
+                baja={baja}
+                volverA="/empresa/ofertas"
+                estiloBoton="peligroBorde"
+                claseBoton=""
+              />
+            </>
+          ) : undefined
+        }
+      />
 
       {oferta.estado === "rechazada" && (
-        <Aviso tono="danger" titulo="La Oficina de Empleo rechazó esta oferta" className="mt-6">
+        <Aviso tono="danger" titulo="La Oficina de Empleo rechazó esta oferta">
           {oferta.motivo_rechazo && (
             <p className="whitespace-pre-line">
               <span className="font-semibold">Motivo del rechazo:</span>{" "}
@@ -168,52 +225,54 @@ export default async function OfertaDetallePage({
         </Aviso>
       )}
 
-      {/* Dos columnas desde 768 px de ancho de la tarjeta: los datos clave y los
-          textos. La tarjeta mide lo que la columna más larga. */}
-      <section aria-labelledby="datos-oferta" className="tarjeta @container mt-6 p-5 sm:p-6">
-        <div className="grid grid-cols-1 gap-6 @3xl:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] @3xl:gap-8">
-          <div className="min-w-0">
-            <h2 id="datos-oferta" className="text-xl font-extrabold text-heading">
-              Datos de la oferta
-            </h2>
-            <DatosClave
-              className="mt-4"
-              datos={[
-                { etiqueta: "Rubro", valor: rubros.length > 0 ? rubros.join(", ") : "—" },
-                { etiqueta: "Modalidad", valor: oferta.modalidad },
-                { etiqueta: "Jornada", valor: oferta.jornada },
-                { etiqueta: "Ubicación", valor: oferta.ubicacion || "—" },
-                { etiqueta: "Vencimiento", valor: oferta.vence_en ? formatFecha(oferta.vence_en) : "—" },
-                {
-                  etiqueta: "Vacantes",
-                  valor:
-                    vacantes !== null
-                      ? `${vacantes} · ${contratados} ${contratados === 1 ? "cubierta" : "cubiertas"}`
-                      : null,
-                },
-              ]}
-            />
-          </div>
-          <div className="@container/textos flex min-w-0 flex-col gap-6 border-t border-border pt-6 @3xl:border-t-0 @3xl:border-l @3xl:pt-0 @3xl:pl-8">
-            <SeccionTexto titulo="Descripción">
+      {/* Datos (380 px) y textos, con la misma altura; apiladas en angosto. */}
+      <div className="@container">
+        <div className="grid grid-cols-1 items-stretch gap-6 @3xl:grid-cols-[380px_minmax(0,1fr)]">
+          <section aria-labelledby="datos-oferta" className="tarjeta tarjeta-panel min-w-0">
+            <TituloBloque id="datos-oferta" titulo="Datos de la oferta" icono={Briefcase} />
+            <dl className="mt-5 flex flex-col gap-4">
+              {datos.map((d) => (
+                <div key={d.etiqueta} className="flex items-start gap-3">
+                  <IconoCuadro icono={d.icono} className="bg-primary/10 text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <dt className="text-[13px] font-bold text-muted-foreground">{d.etiqueta}</dt>
+                    <dd className="mt-0.5 text-base font-semibold break-words text-heading">
+                      {d.valor}
+                    </dd>
+                  </div>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          <section
+            aria-label="Descripción, requisitos y beneficios"
+            className="tarjeta tarjeta-panel flex min-w-0 flex-col divide-y divide-tabla-borde"
+          >
+            <SeccionTexto titulo="Descripción" icono={FileText}>
               <DescripcionPlegable texto={oferta.descripcion} />
             </SeccionTexto>
-            <div className="grid grid-cols-1 gap-6 @xl/textos:grid-cols-2">
-              <SeccionTexto titulo="Requisitos">
+            {oferta.requisitos.length > 0 && (
+              <SeccionTexto titulo="Requisitos" icono={ClipboardList}>
                 <ListaTexto items={oferta.requisitos} />
               </SeccionTexto>
-              <SeccionTexto titulo="Beneficios">
+            )}
+            {(oferta.beneficios ?? []).length > 0 && (
+              <SeccionTexto titulo="Beneficios" icono={Gift}>
                 <ListaTexto items={oferta.beneficios ?? []} />
               </SeccionTexto>
-            </div>
-          </div>
+            )}
+          </section>
         </div>
-      </section>
+      </div>
 
-      <section id="candidatos" aria-labelledby="candidatos-titulo" className="mt-10 scroll-mt-20">
-        <h2 id="candidatos-titulo" className="text-[22px] leading-tight font-extrabold text-heading">
-          Candidatos derivados por la Oficina de Empleo
-        </h2>
+      <section id="candidatos" aria-labelledby="candidatos-titulo" className="mt-4 scroll-mt-20">
+        <TituloBloque
+          id="candidatos-titulo"
+          titulo="Candidatos derivados por la Oficina de Empleo"
+          icono={Users}
+          bajada="Los perfiles que la Oficina preseleccionó para esta oferta."
+        />
         <Suspense key={pagina} fallback={<EsqueletoLista filas={3} className="mt-4" />}>
           <ListadoDerivados ofertaId={ofertaId} pagina={pagina} searchParams={sp} />
         </Suspense>
@@ -222,17 +281,27 @@ export default async function OfertaDetallePage({
   );
 }
 
-function SeccionTexto({ titulo, children }: { titulo: string; children: ReactNode }) {
+function SeccionTexto({
+  titulo,
+  icono: Icono,
+  children,
+}: {
+  titulo: string;
+  icono: LucideIcon;
+  children: ReactNode;
+}) {
   return (
-    <section className="flex min-w-0 flex-col gap-2.5">
-      <h3 className="text-lg font-extrabold text-heading">{titulo}</h3>
+    <section className="flex min-w-0 flex-col gap-2.5 py-5 first:pt-0 last:pb-0">
+      <h2 className="flex items-center gap-2 text-lg font-extrabold text-heading">
+        <Icono className="size-5 shrink-0 text-primary" aria-hidden="true" />
+        {titulo}
+      </h2>
       {children}
     </section>
   );
 }
 
 function ListaTexto({ items }: { items: string[] }) {
-  if (items.length === 0) return <p className="text-base text-texto-parrafo">-</p>;
   return (
     <ul className="flex list-disc flex-col gap-2 pl-[22px] text-base leading-[1.6] break-words text-texto-parrafo marker:text-primary">
       {items.map((item, i) => (
@@ -284,8 +353,8 @@ async function ListadoDerivados({
         tipo="sin-registros"
         className="mt-4"
         icono={Users}
-        titulo="Todavía no hay candidatos derivados"
-        descripcion="La Oficina de Empleo te enviará perfiles cuando los tenga disponibles."
+        titulo="Todavía no hay candidatos derivados."
+        descripcion="Van a aparecer acá cuando la Oficina de Empleo los derive para esta oferta."
       />
     );
   }

@@ -1,20 +1,28 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { BookmarkCheck, ChartColumn, List, Plus, UserCheck } from "lucide-react";
+import { Bookmark, ChartColumn, List, Plus, Send, UserCheck } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirEmpresaPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { AvisoUrl } from "@/components/ui/aviso-url";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { Franja } from "@/components/ui/franja";
-import { Badge, type TonoBadge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
+import { CuadroEstado, CLASE_GRILLA_CUADROS, claseCeldaCuadro } from "@/components/ui/cuadro-estado";
+import { TituloBloque } from "@/components/ui/titulo-bloque";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { TarjetaAcceso } from "@/components/ui/tarjeta-acceso";
 import { CandidatosSinResultado } from "./_components/candidatos-sin-resultado";
 import { DIAS_AVISO_VENCIMIENTO } from "@/lib/ofertas-vencimiento";
+import {
+  ACENTO_ESTADO_OFERTA,
+  aplicarFiltroOfertas,
+  type FiltroOfertas,
+} from "@/lib/empresa/filtro-ofertas";
+import type { EstadoOfertaEmpresa } from "@/lib/oferta-estados";
 import { generarAvisosVencimientoEmpresa } from "@/lib/notificaciones";
 import { dentroDeDiasISO, formatFecha } from "@/lib/fechas";
 import { inicialesDePersona } from "@/lib/iniciales";
@@ -31,6 +39,28 @@ const MIS_OFERTAS = "/empresa/ofertas";
 /** Candidatos por contactar que se muestran en el panel; el resto está en cada oferta. */
 const MAXIMO_POR_CONTACTAR = 8;
 
+/**
+ * Cuadros por estado: cada uno lleva a Mis ofertas con ese filtro y cuenta
+ * con el mismo criterio. `accesible`: singular y plural del nombre accesible.
+ */
+const CUADROS: {
+  filtro: FiltroOfertas;
+  estado: EstadoOfertaEmpresa;
+  etiqueta: string;
+  accesible: [string, string];
+}[] = [
+  { filtro: "publicada", estado: "activa", etiqueta: "Publicadas", accesible: ["publicada", "publicadas"] },
+  {
+    filtro: "pendiente",
+    estado: "pendiente_aprobacion",
+    etiqueta: "En revisión",
+    accesible: ["en revisión", "en revisión"],
+  },
+  { filtro: "rechazada", estado: "rechazada", etiqueta: "Rechazadas", accesible: ["rechazada", "rechazadas"] },
+  { filtro: "cerrada", estado: "cerrada", etiqueta: "Cerradas", accesible: ["cerrada", "cerradas"] },
+  { filtro: "vencida", estado: "vencida", etiqueta: "Vencidas", accesible: ["vencida", "vencidas"] },
+];
+
 export default async function EmpresaDashboardPage() {
   const empresa = await requerirEmpresaPagina();
   const supabase = await createSupabaseServerClient();
@@ -39,8 +69,8 @@ export default async function EmpresaDashboardPage() {
   // del render, para que la campanita ya los cuente.
   await generarAvisosVencimientoEmpresa();
 
-  // Conteo de ofertas por estado. Una oferta activa con vence_en vencido se
-  // cuenta como "Vencida": sigue en estado 'activa' pero ya no se ve en el portal.
+  // Conteo de ofertas por estado, con los mismos criterios que el filtro de
+  // Mis ofertas: una activa con vence_en pasado cuenta como "Vencida".
   const ahora = dentroDeDiasISO(0);
   const enDiasAviso = dentroDeDiasISO(DIAS_AVISO_VENCIMIENTO);
   const contar = () =>
@@ -49,42 +79,31 @@ export default async function EmpresaDashboardPage() {
       .select("*", { count: "exact", head: true })
       .eq("empresa_id", empresa.id)
       .is("eliminada_en", null);
-  const [pendientes, publicadas, vencidas, rechazadas, cerradas, porVencer] = await Promise.all([
-    contar().eq("estado", "pendiente_aprobacion"),
-    contar().eq("estado", "activa").gt("vence_en", ahora),
-    contar().eq("estado", "activa").lte("vence_en", ahora),
-    contar().eq("estado", "rechazada"),
-    contar().eq("estado", "cerrada"),
+  const [conteos, porVencer] = await Promise.all([
+    Promise.all(CUADROS.map((c) => aplicarFiltroOfertas(contar(), c.filtro, ahora))),
     contar().eq("estado", "activa").gt("vence_en", ahora).lte("vence_en", enDiasAviso),
   ]);
-
-  // Mis ofertas no filtra por estado: todas las tarjetas llevan al listado.
-  const resumen: { label: string; cantidad: number; tono: TonoBadge }[] = [
-    { label: "Publicadas", cantidad: publicadas.count ?? 0, tono: "success" },
-    { label: "En revisión", cantidad: pendientes.count ?? 0, tono: "warning" },
-    { label: "Rechazadas", cantidad: rechazadas.count ?? 0, tono: "danger" },
-    { label: "Cerradas", cantidad: cerradas.count ?? 0, tono: "neutral" },
-    { label: "Vencidas", cantidad: vencidas.count ?? 0, tono: "danger" },
-  ];
-  const cantidadVencidas = vencidas.count ?? 0;
+  const cantidadVencidas = conteos[CUADROS.findIndex((c) => c.filtro === "vencida")].count ?? 0;
   const cantidadPorVencer = porVencer.count ?? 0;
 
   return (
-    <section>
+    <section className="flex flex-col gap-7">
       <Suspense>
         <AvisoUrl />
       </Suspense>
 
       <EncabezadoPagina
+        banda
+        botonesBlancos
         titulo={`Hola, ${empresa.razon_social}`}
         bajada="Así están tus ofertas y tus candidatos."
         acciones={
           <>
-            <Link href={MIS_OFERTAS} className="btn-neutro grow sm:grow-0">
+            <Link href={MIS_OFERTAS} className="btn-neutro">
               <List aria-hidden="true" />
               Mis ofertas
             </Link>
-            <Link href="/empresa/ofertas/nueva" className="btn-primario grow sm:grow-0">
+            <Link href="/empresa/ofertas/nueva" className="btn-primario">
               <Plus aria-hidden="true" />
               Publicar oferta
             </Link>
@@ -92,15 +111,94 @@ export default async function EmpresaDashboardPage() {
         }
       />
 
+      <Suspense fallback={null}>
+        <CandidatosSinResultado />
+      </Suspense>
+
+      <section aria-labelledby="panel-ofertas" className="@container">
+        <h2 id="panel-ofertas" className="sr-only">
+          Tus ofertas
+        </h2>
+        <ul className={CLASE_GRILLA_CUADROS}>
+          {CUADROS.map((cuadro, indice) => {
+            const valor = conteos[indice].count ?? 0;
+            const acento = ACENTO_ESTADO_OFERTA[cuadro.estado];
+            const uno = valor === 1;
+            return (
+              <li key={cuadro.filtro} className={claseCeldaCuadro(indice)}>
+                <CuadroEstado
+                  href={`${MIS_OFERTAS}?estado=${cuadro.filtro}`}
+                  etiqueta={cuadro.etiqueta}
+                  etiquetaAccesible={`${valor} ${uno ? "oferta" : "ofertas"} ${cuadro.accesible[uno ? 0 : 1]}. Ver lista`}
+                  valor={valor}
+                  icono={acento.icono}
+                  claseIcono={acento.fondoIcono}
+                  claseFilete={acento.filete}
+                />
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
+      {/* Candidatos por contactar y accesos: 1.7fr / 1fr, apiladas en celular.
+          En dos columnas, las dos tarjetas de acceso ocupan el alto de la
+          izquierda y el título queda afuera, arriba (por eso el margen extra). */}
+      <div className="@container">
+        <div className="grid grid-cols-1 items-start gap-7 @3xl:mt-3 @3xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] @3xl:items-stretch">
+          <section aria-labelledby="panel-por-contactar" className="tarjeta tarjeta-panel min-w-0">
+            <TituloBloque
+              id="panel-por-contactar"
+              titulo="Candidatos por contactar"
+              icono={Send}
+              bajada="Derivados por la Oficina de Empleo y todavía pendientes."
+            />
+            <Suspense fallback={<EsqueletoLista filas={3} className="mt-4" />}>
+              <CandidatosPorContactar empresaId={empresa.id} />
+            </Suspense>
+          </section>
+
+          <section aria-labelledby="panel-accesos" className="relative flex min-w-0 flex-col gap-3">
+            <h2
+              id="panel-accesos"
+              className="text-[13px] font-extrabold tracking-[0.04em] text-neutral uppercase @3xl:absolute @3xl:bottom-[calc(100%+8px)] @3xl:left-0"
+            >
+              Más herramientas
+            </h2>
+            <div className="grid @3xl:flex-1">
+              <TarjetaAcceso
+                href="/empresa/candidatos-guardados"
+                icono={<Bookmark className="size-[22px]" />}
+                claseIcono="bg-info text-white"
+                elevable
+                titulo="Candidatos guardados"
+                descripcion="Perfiles para futuras búsquedas"
+              />
+            </div>
+            <div className="grid @3xl:flex-1">
+              <TarjetaAcceso
+                href="/empresa/indicadores"
+                icono={<ChartColumn className="size-[22px]" />}
+                claseIcono="bg-teal text-white"
+                elevable
+                titulo="Indicadores"
+                descripcion="Derivaciones, entrevistas y vacantes cubiertas"
+              />
+            </div>
+          </section>
+        </div>
+      </div>
+
+      {/* Aviso de vencimientos: el panel ya lo tenía; queda debajo de los bloques nuevos. */}
       {(cantidadVencidas > 0 || cantidadPorVencer > 0) && (
-        <Franja tono="aviso" className="mt-6">
+        <Franja tono="aviso">
           {cantidadVencidas > 0 && (
             <>
               {cantidadVencidas === 1
                 ? "Tenés 1 oferta vencida"
                 : `Tenés ${cantidadVencidas} ofertas vencidas`}
               {" · "}
-              <Link href={MIS_OFERTAS}>
+              <Link href={`${MIS_OFERTAS}?estado=vencida`}>
                 {cantidadVencidas === 1 ? "Renovala" : "Renovalas"} desde Mis ofertas
               </Link>
               {cantidadPorVencer > 0 && ". "}
@@ -122,66 +220,6 @@ export default async function EmpresaDashboardPage() {
           )}
         </Franja>
       )}
-
-      <section aria-labelledby="panel-ofertas" className="@container mt-8">
-        <h2 id="panel-ofertas" className="sr-only">
-          Tus ofertas
-        </h2>
-        <ul className="grid grid-cols-2 gap-4 @2xl:grid-cols-3 @5xl:grid-cols-5">
-          {resumen.map((item) => (
-            <li key={item.label}>
-              <Link
-                href={MIS_OFERTAS}
-                className="tarjeta tarjeta-clickeable flex h-full flex-col gap-2.5 p-5 no-underline outline-none focus-visible:shadow-[var(--sombra-foco)]"
-              >
-                <Badge tono={item.tono} estado>
-                  {item.label}
-                </Badge>
-                <span className="text-[36px] leading-none font-extrabold text-heading tabular-nums">
-                  {item.cantidad}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section aria-labelledby="panel-por-contactar" className="mt-10">
-        <h2 id="panel-por-contactar" className="text-[22px] leading-tight font-extrabold text-heading">
-          Candidatos por contactar
-        </h2>
-        <p className="mt-1 text-[15px] text-muted-foreground">
-          Derivados por la Oficina de Empleo y todavía pendientes.
-        </p>
-        <Suspense fallback={<EsqueletoLista filas={3} className="mt-4" />}>
-          <CandidatosPorContactar empresaId={empresa.id} />
-        </Suspense>
-      </section>
-
-      <Suspense fallback={null}>
-        <CandidatosSinResultado />
-      </Suspense>
-
-      {/* Accesos que el panel ya tenía y no están en el encabezado. */}
-      <section aria-labelledby="panel-accesos" className="mt-10">
-        <h2 id="panel-accesos" className="text-[22px] leading-tight font-extrabold text-heading">
-          Más herramientas
-        </h2>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <TarjetaAcceso
-            href="/empresa/candidatos-guardados"
-            icono={<BookmarkCheck className="size-[22px]" />}
-            titulo="Candidatos guardados"
-            descripcion="Perfiles para futuras búsquedas"
-          />
-          <TarjetaAcceso
-            href="/empresa/indicadores"
-            icono={<ChartColumn className="size-[22px]" />}
-            titulo="Indicadores"
-            descripcion="Derivaciones, entrevistas y vacantes cubiertas"
-          />
-        </div>
-      </section>
     </section>
   );
 }
@@ -265,7 +303,7 @@ async function CandidatosPorContactar({ empresaId }: { empresaId: string }) {
 
   return (
     <>
-      <ul className="tarjeta mt-4 divide-y divide-tabla-borde overflow-hidden">
+      <ul className="mt-4 divide-y divide-tabla-borde">
         {visibles.map((d) => {
           const persona = nombres.get(d.postulante_id);
           const nombre = persona ? `${persona.nombre} ${persona.apellido}` : "Candidato";
@@ -273,7 +311,7 @@ async function CandidatosPorContactar({ empresaId }: { empresaId: string }) {
           return (
             <li
               key={d.derivacion_id}
-              className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-4 sm:px-5"
+              className="flex flex-col gap-3 py-3.5 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:gap-4"
             >
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 <AvatarAjustado
@@ -296,7 +334,7 @@ async function CandidatosPorContactar({ empresaId }: { empresaId: string }) {
                 </Badge>
                 <Link
                   href={`/empresa/ofertas/${d.ofertaId}/candidatos/${d.derivacion_id}`}
-                  className="btn-neutro w-full whitespace-nowrap sm:w-auto"
+                  className="btn-secundario btn-chico w-full whitespace-nowrap sm:w-auto"
                 >
                   Ver candidato
                   <span className="sr-only">: {nombre}</span>
