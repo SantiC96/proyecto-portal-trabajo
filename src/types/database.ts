@@ -1380,6 +1380,16 @@ export type Database = {
           modalidad_entrevista: string
         }[]
       }
+      estado_postulaciones_periodo: {
+        Args: { p_desde?: string }
+        Returns: {
+          de_ofertas_retiradas: number
+          derivadas: number
+          en_revision: number
+          rechazadas: number
+          retiradas: number
+        }[]
+      }
       experiencia_tsv: { Args: { p_texto: string }; Returns: unknown }
       generar_avisos_vencimiento_empresa: {
         Args: { p_dias_aviso: number }
@@ -1402,6 +1412,25 @@ export type Database = {
           p_ubicacion: string
         }
         Returns: string
+      }
+      indicadores_comparados: {
+        Args: { p_desde?: string }
+        Returns: {
+          contrataciones: number
+          contrataciones_anterior: number
+          derivaciones: number
+          derivaciones_anterior: number
+          ofertas_publicadas: number
+          ofertas_publicadas_anterior: number
+          ofertas_vigentes: number
+          postulaciones_nuevas: number
+          postulaciones_nuevas_anterior: number
+          postulantes_nuevos: number
+          postulantes_nuevos_anterior: number
+          postulantes_registrados: number
+          tasa_contratacion: number
+          tasa_contratacion_anterior: number
+        }[]
       }
       indicadores_empresa: {
         Args: { p_desde?: string }
@@ -1834,6 +1863,16 @@ export type Database = {
       rol_actual: {
         Args: never
         Returns: Database["public"]["Enums"]["rol_usuario"]
+      }
+      series_indicadores: {
+        Args: { p_agrupacion?: string; p_desde?: string }
+        Returns: {
+          contrataciones: number
+          inicio: string
+          ofertas_publicadas: number
+          postulaciones: number
+          postulantes_nuevos: number
+        }[]
       }
       ultimos_movimientos_postulante: {
         Args: { p_limite?: number }
