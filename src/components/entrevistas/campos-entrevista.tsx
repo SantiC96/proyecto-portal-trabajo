@@ -2,6 +2,7 @@
 
 import { CampoFechaHora, diaYHoraFuturos, fechaHoraISO, horarioYaPaso } from "@/components/ui/campo-fecha-hora";
 import { OpcionRadio } from "@/components/ui/opcion-radio";
+import { GrupoOpciones } from "@/components/ui/grupo-opciones";
 import { ErrorCampo, Obligatorio, ariaErrorCampo } from "@/components/ui/obligatorio";
 import {
   AYUDA_LINK_REUNION,
@@ -83,6 +84,10 @@ type Props = {
   onLimpiar: (campo: CampoEntrevista) => void;
   deshabilitado?: boolean;
   placeholderLugar?: string;
+  /** La modalidad en pastillas tipo radio (pre-entrevista de la oficina) en lugar de filas. */
+  modalidadEnPastillas?: boolean;
+  etiquetaLink?: string;
+  placeholderLink?: string;
 };
 
 /**
@@ -98,6 +103,9 @@ export function CamposEntrevista({
   onLimpiar,
   deshabilitado = false,
   placeholderLugar = "Dirección, piso u oficina",
+  modalidadEnPastillas = false,
+  etiquetaLink = "Link de la reunión",
+  placeholderLink = "https://meet.google.com/…",
 }: Props) {
   const idFecha = `${idBase}-fecha`;
   const idLugar = `${idBase}-lugar`;
@@ -123,30 +131,48 @@ export function CamposEntrevista({
         error={errores.fechaHora}
       />
 
-      <fieldset disabled={deshabilitado} className="flex min-w-0 flex-col gap-1.5">
-        <legend className="etiqueta-campo mb-1.5">
-          Modalidad <Obligatorio />
-        </legend>
-        <div className="grid grid-cols-2 gap-2">
-          {MODALIDADES_ENTREVISTA.map((modalidad) => (
-            <OpcionRadio
-              key={modalidad}
-              name={`${idBase}-modalidad`}
-              value={modalidad}
-              checked={valores.modalidad === modalidad}
-              onChange={() => {
-                onCambiar({ modalidad });
-                onLimpiar("modalidad");
-                onLimpiar("lugar");
-                onLimpiar("link");
-              }}
-            >
-              <span className="text-[15px] font-semibold text-heading">{MODALIDAD_LABEL[modalidad]}</span>
-            </OpcionRadio>
-          ))}
-        </div>
-        <ErrorCampo idCampo={`${idBase}-modalidad`} mensaje={errores.modalidad} />
-      </fieldset>
+      {modalidadEnPastillas ? (
+        <GrupoOpciones
+          id={`${idBase}-modalidad`}
+          titulo="Modalidad"
+          opciones={MODALIDADES_ENTREVISTA}
+          etiquetaOpcion={(o) => MODALIDAD_LABEL[modalidadDe(o)]}
+          valor={valores.modalidad}
+          onElegir={(o) => {
+            onCambiar({ modalidad: modalidadDe(o) });
+            onLimpiar("modalidad");
+            onLimpiar("lugar");
+            onLimpiar("link");
+          }}
+          error={errores.modalidad}
+          deshabilitado={deshabilitado}
+        />
+      ) : (
+        <fieldset disabled={deshabilitado} className="flex min-w-0 flex-col gap-1.5">
+          <legend className="etiqueta-campo mb-1.5">
+            Modalidad <Obligatorio />
+          </legend>
+          <div className="grid grid-cols-2 gap-2">
+            {MODALIDADES_ENTREVISTA.map((modalidad) => (
+              <OpcionRadio
+                key={modalidad}
+                name={`${idBase}-modalidad`}
+                value={modalidad}
+                checked={valores.modalidad === modalidad}
+                onChange={() => {
+                  onCambiar({ modalidad });
+                  onLimpiar("modalidad");
+                  onLimpiar("lugar");
+                  onLimpiar("link");
+                }}
+              >
+                <span className="text-[15px] font-semibold text-heading">{MODALIDAD_LABEL[modalidad]}</span>
+              </OpcionRadio>
+            ))}
+          </div>
+          <ErrorCampo idCampo={`${idBase}-modalidad`} mensaje={errores.modalidad} />
+        </fieldset>
+      )}
 
       {valores.modalidad === "presencial" ? (
         <div>
@@ -173,7 +199,7 @@ export function CamposEntrevista({
       ) : (
         <div>
           <label htmlFor={idLink} className="etiqueta-campo mb-1.5 block">
-            Link de la reunión <Obligatorio />
+            {etiquetaLink} <Obligatorio />
           </label>
           <input
             id={idLink}
@@ -184,7 +210,7 @@ export function CamposEntrevista({
               onCambiar({ link: e.target.value });
               onLimpiar("link");
             }}
-            placeholder="https://meet.google.com/…"
+            placeholder={placeholderLink}
             maxLength={LARGO_MAXIMO.linkReunion}
             disabled={deshabilitado}
             autoComplete="off"

@@ -55,6 +55,7 @@ export function BotonesDialogo({
   destructivo = false,
   deshabilitado = false,
   textoCancelar = "Cancelar",
+  iconoConfirmar: IconoConfirmar,
   children,
 }: {
   pendiente: boolean;
@@ -66,6 +67,8 @@ export function BotonesDialogo({
   textoPendiente?: string;
   destructivo?: boolean;
   deshabilitado?: boolean;
+  /** Ícono a la izquierda del texto de confirmar (Send en "Derivar candidato"). */
+  iconoConfirmar?: LucideIcon;
 }) {
   return (
     <DialogFooter>
@@ -85,7 +88,7 @@ export function BotonesDialogo({
           aria-busy={pendiente}
           variant={destructivo ? "destructive" : "default"}
         >
-          {pendiente && <Spinner />}
+          {pendiente ? <Spinner /> : IconoConfirmar && <IconoConfirmar aria-hidden="true" />}
           {pendiente ? (textoPendiente ?? "Guardando…") : textoConfirmar}
         </Button>
       )}

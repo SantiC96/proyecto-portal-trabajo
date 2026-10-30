@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CircleCheck, CircleX, Scale } from "lucide-react";
+import { CircleCheck, CircleX, Scale, Send, Undo2, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconoCuadro } from "@/components/ui/icono-cuadro";
 
@@ -7,13 +7,18 @@ const FILETE = {
   pendiente: "before:bg-accent",
   aprobada: "before:bg-primary",
   rechazada: "before:bg-danger",
+  /** Postulación derivada a la empresa, esperando su resultado. */
+  derivada: "before:bg-teal",
+  /** Cerrada sin decisión (retirada por el postulante o por la empresa). */
+  cerrada: "before:bg-muted-icon",
 } as const;
 
 export type EstadoDecision = keyof typeof FILETE;
 
 /**
  * Tarjeta "Decisión" del detalle de la oficina: filete superior de 4 px del
- * color de `estado` (amarillo pendiente, verde aprobada, rojo rechazada), el
+ * color de `estado` (amarillo pendiente, verde aprobada, rojo rechazada, teal
+ * derivada y gris claro cerrada), el
  * título con Scale, una bajada opcional y las acciones (`children`): los
  * botones a todo el ancho, el principal arriba y el de rechazo abajo. Una
  * decisión ya tomada va arriba de las acciones con ResultadoDecision.
@@ -54,29 +59,40 @@ export function TarjetaDecision({
   );
 }
 
+const RESULTADO = {
+  aprobada: { clase: "bg-primary/8 text-primary-hover", icono: CircleCheck },
+  rechazada: { clase: "bg-danger/7 text-motivo-rechazo", icono: CircleX },
+  derivada: { clase: "bg-teal/8 text-teal", icono: Send },
+  cerrada: { clase: "bg-secondary text-muted-foreground-strong", icono: Undo2 },
+} satisfies Record<string, { clase: string; icono: LucideIcon }>;
+
 /**
  * La decisión ya tomada, dentro de TarjetaDecision: recuadro verde suave con
- * CircleCheck (aprobada) o rojo suave con CircleX (rechazada), el texto en
- * 15 px 700 y, debajo, el motivo u otro detalle.
+ * CircleCheck (aprobada), rojo suave con CircleX (rechazada), teal suave con
+ * Send (derivada) o gris con Undo2 (cerrada), el texto en 15 px 700 y, debajo,
+ * el motivo u otro detalle.
  */
 export function ResultadoDecision({
   tono,
+  icono,
   children,
   detalle,
   className,
 }: {
-  tono: "aprobada" | "rechazada";
+  tono: keyof typeof RESULTADO;
+  /** Otro ícono que el del tono. */
+  icono?: LucideIcon;
   /** "Aprobada el 12/10/2026 por Ana Pérez". */
   children: ReactNode;
   detalle?: ReactNode;
   className?: string;
 }) {
-  const Icono = tono === "aprobada" ? CircleCheck : CircleX;
+  const Icono = icono ?? RESULTADO[tono].icono;
   return (
     <div
       className={cn(
         "flex gap-2.5 rounded-[14px] px-4 py-3 text-[15px] leading-snug",
-        tono === "aprobada" ? "bg-primary/8 text-primary-hover" : "bg-danger/7 text-motivo-rechazo",
+        RESULTADO[tono].clase,
         className,
       )}
     >

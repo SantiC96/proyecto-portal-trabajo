@@ -4,6 +4,7 @@ import type { ErrorAccion } from "@/lib/resultado";
 import { IconoCuadro } from "@/components/ui/icono-cuadro";
 import { CLASE_CONTROL_INVALIDO } from "@/components/ui/obligatorio";
 import { Aviso } from "@/components/ui/aviso";
+import { cn } from "@/lib/utils";
 
 // Piezas comunes de las páginas "Mi perfil" de los tres roles.
 
@@ -109,16 +110,26 @@ export function ChipSinCompletar({ children }: { children: ReactNode }) {
 export function FilaArchivoPerfil({
   nombre,
   detalle,
+  nota,
   badge,
   acciones,
+  className,
 }: {
   nombre: string;
   detalle: string;
+  /** Debajo del detalle: una aclaración o la revisión del comprobante (oficina). */
+  nota?: ReactNode;
   badge?: ReactNode;
   acciones?: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border bg-surface px-4 py-3 sm:flex-row sm:items-center">
+    <div
+      className={cn(
+        "flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border bg-surface px-4 py-3 sm:flex-row sm:items-center",
+        className,
+      )}
+    >
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <span
           aria-hidden="true"
@@ -129,6 +140,7 @@ export function FilaArchivoPerfil({
         <div className="min-w-0">
           <p className="text-[15px] font-bold break-all text-heading">{nombre}</p>
           <p className="text-[13px] text-muted-foreground">{detalle}</p>
+          {nota && <div className="mt-0.5 text-[13px] text-muted-foreground">{nota}</div>}
         </div>
       </div>
       {(badge || acciones) && (

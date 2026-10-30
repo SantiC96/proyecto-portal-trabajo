@@ -84,6 +84,8 @@
   /* Pantallas de la empresa y de la oficina (PR 5 del rediseño) */
   --color-tabla-cabecera:   #f3f5f4; /* encabezado del componente Tabla */
   --color-tabla-fila-hover: #fafbfa; /* hover de fila del componente Tabla */
+  --color-numero-fondo:     #f7f9f8; /* números de "Rechazos y cursos" en el perfil del postulante (oficina) */
+  --color-sin-comprobante:  #7a5a00; /* "Sin comprobante" en la lista de postulantes (6,3:1 sobre blanco) */
   --color-texto-pestana:    #3d4a43; /* pestañas inactivas; cantidad en cero */
   --color-pastilla-gris:    #dde3df; /* cantidad de pestañas y tarjetas de pendiente */
   --color-aviso-borde:      #e6cf86; /* aviso de candidatos esperando respuesta (panel de la empresa) */
