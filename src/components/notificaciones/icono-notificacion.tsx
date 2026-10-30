@@ -73,6 +73,11 @@ const ESTILO_POR_TIPO: Record<string, EstiloTipo> = {
 
 const ESTILO_POR_DEFECTO: EstiloTipo = { Icono: Bell, className: NEUTRO };
 
+/** El ícono del tipo, sin su color (la lista del postulante usa sus propios colores). */
+export function iconoTipoNotificacion(tipo: string): LucideIcon {
+  return (ESTILO_POR_TIPO[tipo] ?? ESTILO_POR_DEFECTO).Icono;
+}
+
 export function IconoNotificacion({ tipo, className }: { tipo: string; className?: string }) {
   const { Icono, className: color } = ESTILO_POR_TIPO[tipo] ?? ESTILO_POR_DEFECTO;
   return (
