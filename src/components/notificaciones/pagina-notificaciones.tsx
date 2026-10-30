@@ -14,6 +14,7 @@ import { abrirNotificacion } from "@/app/(dashboard)/notificaciones/actions";
 import { MarcarLeidasAlEntrar } from "./acciones-notificaciones";
 import { IconoNotificacion } from "./icono-notificacion";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 
 /**
  * Listado paginado de las notificaciones del usuario. Lo usan las páginas de
@@ -26,6 +27,7 @@ export async function PaginaNotificaciones({
   volverA,
   textoVacio,
   searchParams,
+  banda = false,
 }: {
   usuarioId: string;
   /** Ruta de esta página (para la paginación). */
@@ -34,6 +36,8 @@ export async function PaginaNotificaciones({
   volverA: string;
   textoVacio: string;
   searchParams: ParamsUrl;
+  /** Encabezado con banda verde (solo el postulante). */
+  banda?: boolean;
 }) {
   const pagina = leerPagina(searchParams.pagina);
   const supabase = await createSupabaseServerClient();
@@ -48,22 +52,25 @@ export async function PaginaNotificaciones({
     .limit(1);
   const masNueva = nuevas?.[0]?.created_at ?? null;
 
+  const bajada =
+    (noLeidas ?? 0) > 0 ? `${noLeidas} ${noLeidas === 1 ? "nueva" : "nuevas"}` : "Estás al día.";
+
   return (
     <section>
-      <BotonVolver href={volverA} />
+      <BotonVolver href={volverA} destacado={banda} />
 
-      <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Notificaciones
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {(noLeidas ?? 0) > 0
-              ? `${noLeidas} ${noLeidas === 1 ? "nueva" : "nuevas"}`
-              : "Estás al día."}
-          </p>
+      {banda ? (
+        <EncabezadoPagina banda className="mt-4" titulo="Notificaciones" bajada={bajada} />
+      ) : (
+        <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              Notificaciones
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">{bajada}</p>
+          </div>
         </div>
-      </div>
+      )}
 
       <Suspense key={pagina} fallback={<EsqueletoLista filas={5} className="mt-6" />}>
         <ListadoNotificaciones

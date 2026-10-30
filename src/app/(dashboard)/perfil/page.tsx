@@ -73,7 +73,7 @@ export default async function PerfilPage() {
   if (!postulante) {
     return (
       <section className="flex w-full flex-col gap-6">
-        <EncabezadoPagina titulo={TITULO} />
+        <EncabezadoPagina banda titulo={TITULO} />
         <Aviso tono="danger" titulo="No pudimos cargar tu perfil">
           Intentá de nuevo más tarde. Si el problema persiste, comunicate con la oficina de empleo.
         </Aviso>
@@ -109,7 +109,7 @@ export default async function PerfilPage() {
   return (
     <section className="@container flex flex-col gap-6">
       <BotonVolver href="/" destacado />
-      <EncabezadoPagina className="-mt-2" titulo={TITULO} bajada={BAJADA} />
+      <EncabezadoPagina banda className="-mt-2" titulo={TITULO} bajada={BAJADA} />
 
       <div className="grid grid-cols-1 items-start gap-8 @3xl:grid-cols-[220px_minmax(0,1fr)]">
         <aside className="sticky top-6 hidden @3xl:block">
