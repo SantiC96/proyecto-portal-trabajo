@@ -1,8 +1,20 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { CreditCard, Mail, MapPin, Phone, Plus, User, X } from "lucide-react";
+import {
+  Briefcase,
+  CreditCard,
+  IdCard,
+  Lock,
+  Mail,
+  MapPin,
+  Phone,
+  Plus,
+  Tag,
+  User,
+  X,
+} from "lucide-react";
 import { actualizarPerfil, actualizarRubros } from "./actions";
 import { SeccionCvs } from "./seccion-cvs";
 import { SeccionProcedencia, type ComprobantePerfil } from "./seccion-procedencia";
@@ -13,7 +25,7 @@ import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
 import { ErrorCampo, Obligatorio, ariaErrorCampo } from "@/components/ui/obligatorio";
 import { Combobox } from "@/components/ui/combobox";
-import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
+import { iconoRubro } from "@/lib/rubros-iconos";
 import {
   CLASE_AYUDA_PERFIL,
   CLASE_CAMPO_CON_ICONO,
@@ -21,6 +33,7 @@ import {
   CLASE_ERROR_PERFIL,
   CLASE_ETIQUETA_PERFIL,
   CampoLectura,
+  ChipSinCompletar,
   FieldIcon,
   GrillaLectura,
   InputWrapper,
@@ -94,6 +107,8 @@ interface PerfilFormProps {
   email: string;
   categorias: Pick<Tabla<"categorias">, "id" | "nombre">[];
   categoriasSeleccionadas: string[];
+  /** Recuadro con el anillo de completitud, a la derecha de la foto. */
+  resumenPerfil?: ReactNode;
 }
 
 // ─── componente ──────────────────────────────────────────────────────────────
@@ -114,6 +129,7 @@ export function PerfilForm({
   email,
   categorias,
   categoriasSeleccionadas,
+  resumenPerfil,
 }: PerfilFormProps) {
   const router = useRouter();
 
@@ -137,6 +153,8 @@ export function PerfilForm({
         <div id={SECCION_PERFIL.foto} className="scroll-mt-20">
           <EncabezadoPerfil
             tituloSeccion="Foto"
+            destacado
+            lateral={resumenPerfil}
             avatarActivo={usuario.avatarActivo}
             titulo={`${usuario.nombre} ${usuario.apellido}`}
             subtitulo="Postulante"
@@ -181,7 +199,11 @@ export function PerfilForm({
 
         <SeccionCvs cvs={postulante.cvs} />
 
-        <SeccionContrasena id={SECCION_PERFIL.contrasena} />
+        <SeccionContrasena
+          id={SECCION_PERFIL.contrasena}
+          icono={Lock}
+          claseBoton="btn-secundario btn-chico self-start sm:self-auto"
+        />
       </div>
     </EdicionPerfil>
   );
@@ -218,6 +240,7 @@ function SeccionDatosPersonales({
     <SeccionPerfil
       id={SECCION_PERFIL.datos}
       titulo="Datos personales"
+      icono={IdCard}
       acciones={
         !tarjeta.editando && <BotonEditar tarjeta={tarjeta} etiqueta="Editar datos personales" />
       }
@@ -470,6 +493,7 @@ function SeccionInformacionLaboral({
     <SeccionPerfil
       id={SECCION_PERFIL.informacionLaboral}
       titulo="Información laboral"
+      icono={Briefcase}
       ayuda="Opcional. La ven la Oficina de Empleo y las empresas a las que te deriven."
       acciones={
         !tarjeta.editando && <BotonEditar tarjeta={tarjeta} etiqueta="Editar información laboral" />
@@ -608,6 +632,7 @@ function SeccionRubros({
     <SeccionPerfil
       id={SECCION_PERFIL.rubros}
       titulo="Rubros de interés"
+      icono={Tag}
       ayuda="Seleccioná los rubros en los que te gustaría trabajar."
       acciones={
         !tarjeta.editando && <BotonEditar tarjeta={tarjeta} etiqueta="Editar rubros de interés" />
@@ -622,16 +647,28 @@ function SeccionRubros({
         />
       ) : elegidas.length > 0 ? (
         <ul className="flex flex-wrap gap-2" aria-label="Rubros elegidos">
-          {elegidas.map((c) => (
-            <li key={c.id} className="max-w-full">
-              <EtiquetaRubro verde className="min-h-8 px-3 text-sm">
+          {elegidas.map((c) => {
+            const Icono = iconoRubro(c.nombre);
+            return (
+              <li
+                key={c.id}
+                className="inline-flex max-w-full min-h-9 items-center gap-2 rounded-full bg-primary/10 py-1 pr-3.5 pl-1 text-[15px] font-semibold break-words text-primary-hover"
+              >
+                <span
+                  aria-hidden="true"
+                  className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"
+                >
+                  <Icono className="size-4" />
+                </span>
                 {c.nombre}
-              </EtiquetaRubro>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       ) : (
-        <p className="text-[15px] text-muted-foreground">{SIN_COMPLETAR}</p>
+        <p>
+          <ChipSinCompletar>{SIN_COMPLETAR}</ChipSinCompletar>
+        </p>
       )}
     </SeccionPerfil>
   );

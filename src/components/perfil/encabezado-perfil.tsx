@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Trash2, Upload, X } from "lucide-react";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
@@ -65,6 +65,8 @@ export function EncabezadoPerfil({
   iniciales,
   variante = "foto",
   tituloSeccion,
+  destacado = false,
+  lateral,
 }: {
   avatarActivo: FotoPerfil | null;
   /** Nombre grande: la persona, o la empresa en su perfil. */
@@ -76,6 +78,14 @@ export function EncabezadoPerfil({
   variante?: keyof typeof TEXTOS;
   /** Título de la tarjeta cuando es una sección del perfil con índice ("Foto"). */
   tituloSeccion?: string;
+  /**
+   * Tarjeta de la foto del postulante: foto de 96 px (76 en el celular),
+   * nombre en Georgia, "Cambiar foto" con borde verde y `lateral` a la
+   * derecha. El título de la sección queda solo para lectores de pantalla.
+   */
+  destacado?: boolean;
+  /** Recuadro a la derecha (debajo en angosto), solo con `destacado`. */
+  lateral?: ReactNode;
 }) {
   const router = useRouter();
   const textos = TEXTOS[variante];
@@ -166,102 +176,94 @@ export function EncabezadoPerfil({
       ajuste={preview ? undefined : ajusteActual}
       iniciales={iniciales}
       size="lg"
+      className={destacado ? "h-[76px] w-[76px] sm:h-24 sm:w-24" : undefined}
     />
   );
+  const claseBoton = destacado ? "btn-secundario" : CLASE_BOTON;
 
-  return (
-    <section
-      aria-label={tituloSeccion}
-      className="tarjeta flex flex-col gap-5 px-4 py-[18px] sm:p-6"
+  const fotoInteractiva = puedeVer ? (
+    <button
+      type="button"
+      className="block cursor-zoom-in rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+      aria-label={textos.ver}
+      onClick={() => abrirModal("ver")}
     >
-      {tituloSeccion && (
-        <h2 className="text-lg font-extrabold text-heading sm:text-xl">{tituloSeccion}</h2>
-      )}
-      <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:gap-6 sm:text-left">
-        <div className="shrink-0">
-          {puedeVer ? (
+      {avatar}
+    </button>
+  ) : (
+    avatar
+  );
+
+  const botones = (
+    <>
+      {preview ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-muted-foreground">
+            Vista previa lista. Guardá los cambios o cancelá.
+          </p>
+          <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
             <button
               type="button"
-              className="block cursor-zoom-in rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
-              aria-label={textos.ver}
-              onClick={() => abrirModal("ver")}
+              onClick={guardar}
+              disabled={guardando}
+              aria-busy={guardando}
+              className="btn-primario min-h-11 sm:min-h-9"
             >
-              {avatar}
+              {guardando ? <Spinner /> : <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
+              {guardando ? "Guardando…" : textos.guardar}
             </button>
-          ) : (
-            avatar
-          )}
-        </div>
-
-        <div className="flex min-w-0 flex-1 flex-col gap-3">
-          <div>
-            <p className="break-words text-xl font-bold tracking-tight text-foreground">
-              {nombreCompleto || "Sin nombre"}
-            </p>
-            <p className="mt-0.5 break-words text-sm font-medium text-primary">{subtitulo}</p>
+            <button type="button" onClick={cancelar} disabled={guardando} className={claseBoton}>
+              <X className="h-4 w-4" aria-hidden="true" />
+              Cancelar
+            </button>
           </div>
-
-          {preview ? (
-            <div className="flex flex-col gap-2">
-              <p className="text-sm text-muted-foreground">
-                Vista previa lista. Guardá los cambios o cancelá.
-              </p>
-              <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
-                <button
-                  type="button"
-                  onClick={guardar}
-                  disabled={guardando}
-                  aria-busy={guardando}
-                  className="btn-primario min-h-11 sm:min-h-9"
-                >
-                  {guardando ? <Spinner /> : <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
-                  {guardando ? "Guardando…" : textos.guardar}
-                </button>
-                <button type="button" onClick={cancelar} disabled={guardando} className={CLASE_BOTON}>
-                  <X className="h-4 w-4" aria-hidden="true" />
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
-              <button
-                type="button"
-                onClick={() => inputRef.current?.click()}
-                disabled={guardando}
-                className={CLASE_BOTON}
-              >
-                <Upload className="h-4 w-4" aria-hidden="true" />
-                {tieneFoto ? textos.cambiar : textos.subir}
-              </button>
-              {tieneFoto && (
-                <DialogoConfirmacion
-                  textoBoton={<Trash2 aria-hidden="true" />}
-                  etiquetaBoton={textos.quitar}
-                  ayudaBoton={textos.quitar}
-                  estiloBoton="peligroBorde"
-                  claseBoton="btn-icono"
-                  deshabilitado={guardando}
-                  titulo={textos.tituloQuitar}
-                  descripcion={textos.descripcionQuitar}
-                  textoConfirmar="Sí, quitar"
-                  textoPendiente="Quitando…"
-                  destructivo
-                  accion={quitarAvatar}
-                  onExito={() => router.refresh()}
-                />
-              )}
-            </div>
-          )}
-
-          <p className="text-xs text-muted-icon">
-            {AVATAR_HELP_TEXT} Los archivos eliminados se conservan 90 días por seguridad y
-            luego se borran definitivamente.
-          </p>
-          {error && <MensajeError error={error} />}
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={guardando}
+            className={claseBoton}
+          >
+            <Upload className="h-4 w-4" aria-hidden="true" />
+            {tieneFoto ? textos.cambiar : textos.subir}
+          </button>
+          {tieneFoto && (
+            <DialogoConfirmacion
+              textoBoton={<Trash2 aria-hidden="true" />}
+              etiquetaBoton={textos.quitar}
+              ayudaBoton={textos.quitar}
+              estiloBoton="peligroBorde"
+              claseBoton="btn-icono"
+              deshabilitado={guardando}
+              titulo={textos.tituloQuitar}
+              descripcion={textos.descripcionQuitar}
+              textoConfirmar="Sí, quitar"
+              textoPendiente="Quitando…"
+              destructivo
+              accion={quitarAvatar}
+              onExito={() => router.refresh()}
+            />
+          )}
+        </div>
+      )}
+    </>
+  );
 
+  const ayudaYError = (
+    <>
+      {/* muted-icon no llega a AA como texto: en la tarjeta del postulante va en muted-foreground. */}
+      <p className={destacado ? "text-[13px] text-muted-foreground" : "text-xs text-muted-icon"}>
+        {AVATAR_HELP_TEXT} Los archivos eliminados se conservan 90 días por seguridad y
+        luego se borran definitivamente.
+      </p>
+      {error && <MensajeError error={error} />}
+    </>
+  );
+
+  const extras = (
+    <>
       <input
         ref={inputRef}
         type="file"
@@ -289,6 +291,64 @@ export function EncabezadoPerfil({
           }}
         />
       )}
+    </>
+  );
+
+  if (destacado) {
+    return (
+      <section
+        aria-labelledby="perfil-foto-titulo"
+        className="tarjeta tarjeta-panel flex flex-col gap-5"
+      >
+        <h2 id="perfil-foto-titulo" className="sr-only">
+          {tituloSeccion ?? textos.ver}
+        </h2>
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:gap-6 sm:text-left">
+            <div className="shrink-0">{fotoInteractiva}</div>
+            <div className="flex min-w-0 flex-col gap-3">
+              <div>
+                <p className="titulo-display text-[26px] leading-[1.15] break-words text-heading sm:text-[32px]">
+                  {nombreCompleto || "Sin nombre"}
+                </p>
+                <p className="mt-1 text-[15px] font-semibold break-words text-primary">{subtitulo}</p>
+              </div>
+              {botones}
+            </div>
+          </div>
+          {lateral}
+        </div>
+        <div className="flex flex-col gap-3">{ayudaYError}</div>
+        {extras}
+      </section>
+    );
+  }
+
+  return (
+    <section
+      aria-label={tituloSeccion}
+      className="tarjeta flex flex-col gap-5 px-4 py-[18px] sm:p-6"
+    >
+      {tituloSeccion && (
+        <h2 className="text-lg font-extrabold text-heading sm:text-xl">{tituloSeccion}</h2>
+      )}
+      <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:gap-6 sm:text-left">
+        <div className="shrink-0">{fotoInteractiva}</div>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <div>
+            <p className="break-words text-xl font-bold tracking-tight text-foreground">
+              {nombreCompleto || "Sin nombre"}
+            </p>
+            <p className="mt-0.5 break-words text-sm font-medium text-primary">{subtitulo}</p>
+          </div>
+
+          {botones}
+          {ayudaYError}
+        </div>
+      </div>
+
+      {extras}
     </section>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff, KeyRound } from "lucide-react";
+import { Eye, EyeOff, KeyRound, type LucideIcon } from "lucide-react";
 import { cambiarContrasena } from "@/app/(dashboard)/perfil/actions";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
@@ -42,13 +42,23 @@ const CLASE_VER_CONTRASENA =
  * "Cambiar contraseña" despliega el formulario. En el perfil del postulante
  * (dentro de EdicionPerfil) cuenta como una tarjeta más en edición.
  */
-export function SeccionContrasena({ id = "contrasena" }: { id?: string }) {
+export function SeccionContrasena({
+  id = "contrasena",
+  icono,
+  claseBoton = "btn-secundario",
+}: {
+  id?: string;
+  /** Ícono junto al título (perfil del postulante). */
+  icono?: LucideIcon;
+  claseBoton?: string;
+}) {
   const tarjeta = useTarjetaEditable(id, { titulo: "Contraseña" });
 
   return (
     <SeccionPerfil
       id={id}
       titulo="Contraseña"
+      icono={icono}
       ayuda="Cambiá tu contraseña de acceso."
       acciones={
         !tarjeta.editando && (
@@ -56,7 +66,7 @@ export function SeccionContrasena({ id = "contrasena" }: { id?: string }) {
             tarjeta={tarjeta}
             texto="Cambiar contraseña"
             icono={KeyRound}
-            className="btn-secundario"
+            className={claseBoton}
           />
         )
       }

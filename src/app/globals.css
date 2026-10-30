@@ -79,6 +79,7 @@
   --color-opcion-elegida:   #f3f8f5; /* fondo de la opción tipo radio elegida */
   --color-texto-parrafo:    #22332a; /* párrafos del detalle de la oferta */
   --color-texto-vence:      #8a1a12; /* "Vence el …" de las invitaciones */
+  --color-pendiente-icono:  #b07a00; /* CircleAlert del índice de Mi perfil (3,7:1 sobre blanco) */
 
   /* Pantallas de la empresa y de la oficina (PR 5 del rediseño) */
   --color-tabla-cabecera:   #f3f5f4; /* encabezado del componente Tabla */
@@ -674,6 +675,45 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
 }
 @keyframes llenar-anillo {
   from { --progreso: 0; }
+}
+/* Anillo chico (64 px): la tarjeta de la foto de Mi perfil. */
+.anillo-progreso-64 { width: 64px; height: 64px; }
+.anillo-progreso-64 .anillo-progreso-numero { font-size: 16px; }
+
+/* Botón chico ("Editar" de las tarjetas de Mi perfil): 36 px desde sm; en
+   el celular, 44 px como todos. Después de las medidas comunes para ganarles. */
+.btn-chico { padding-inline: 12px; font-size: 14px; }
+.btn-chico svg { width: 16px; height: 16px; }
+@media (min-width: 640px) { .btn-chico { min-height: 36px; } }
+
+/* Banda de resumen (Mis cursos): el verde con puntos de la banda del
+   encabezado y un aro blanco decorativo a la derecha. */
+.banda-resumen {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 18px 16px;
+  border-radius: var(--radius-indicador);
+  background-color: var(--color-primary);
+  background-image: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1.5px);
+  background-size: 24px 24px;
+  color: var(--color-primary-foreground);
+}
+.banda-resumen::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: -90px;
+  right: -70px;
+  width: 220px;
+  height: 220px;
+  border: 34px solid rgb(255 255 255 / 0.08);
+  border-radius: 50%;
+  pointer-events: none;
+}
+@media (min-width: 640px) {
+  .banda-resumen { padding: 22px 24px; background-size: 28px 28px; }
+  .banda-resumen::after { top: -120px; right: -40px; width: 300px; height: 300px; border-width: 44px; }
 }
 
 /* Tarjetas de "Explorá por rubro": 112 × 104 px en la fila desplazable;
