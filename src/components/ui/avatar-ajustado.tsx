@@ -8,6 +8,8 @@ const sizeMap = {
   lista: { wrapper: "h-10 w-10", icon: "h-5 w-5", texto: "text-sm", px: 40 },
   md: { wrapper: "h-14 w-14", icon: "h-7 w-7",   texto: "text-lg",  px: 56 },
   ficha: { wrapper: "h-[72px] w-[72px]", icon: "h-9 w-9", texto: "text-2xl", px: 72 },
+  // Banda verde del detalle de la oficina: 56 px en el celular y 72 px desde sm.
+  banda: { wrapper: "h-14 w-14 sm:h-[72px] sm:w-[72px]", icon: "h-7 w-7 sm:h-9 sm:w-9", texto: "text-lg sm:text-2xl", px: 72 },
   lg: { wrapper: "h-24 w-24", icon: "h-12 w-12", texto: "text-3xl", px: 96 },
   // Candidatos guardados: 52 px y 64 px cuando la tarjeta (un @container) es ancha.
   tarjeta: { wrapper: "h-[52px] w-[52px] @2xl:h-16 @2xl:w-16", icon: "h-7 w-7", texto: "text-lg", px: 64 },
@@ -23,6 +25,8 @@ interface AvatarAjustadoProps {
   className?: string;
   /** Sin foto (o si no carga) se muestran estas iniciales en lugar del ícono. */
   iniciales?: string;
+  /** Círculo blanco con las iniciales en verde (sobre la banda verde). */
+  claro?: boolean;
 }
 
 export function AvatarAjustado({
@@ -32,10 +36,12 @@ export function AvatarAjustado({
   size = "md",
   className,
   iniciales,
+  claro = false,
 }: AvatarAjustadoProps) {
+  const fondo = claro ? "bg-surface text-primary" : "bg-primary text-primary-foreground";
   const { wrapper, icon, texto, px } = sizeMap[size];
   const relleno = iniciales ? (
-    <span aria-hidden="true" className={cn("font-semibold leading-none", texto)}>
+    <span aria-hidden="true" className={cn("leading-none", claro ? "font-extrabold" : "font-semibold", texto)}>
       {iniciales}
     </span>
   ) : (
@@ -50,7 +56,7 @@ export function AvatarAjustado({
   if (src) {
     return (
       <div
-        className={cn("shrink-0 rounded-full overflow-hidden", wrapper, className)}
+        className={cn("shrink-0 rounded-full overflow-hidden", claro && "bg-surface", wrapper, className)}
       >
         <FotoPrivada
           src={src}
@@ -68,7 +74,7 @@ export function AvatarAjustado({
           fallback={
             <div
               {...etiqueta}
-              className="flex h-full w-full items-center justify-center bg-primary text-primary-foreground"
+              className={cn("flex h-full w-full items-center justify-center", fondo)}
             >
               {relleno}
             </div>
@@ -82,7 +88,8 @@ export function AvatarAjustado({
     <div
       {...etiqueta}
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground",
+        "flex shrink-0 items-center justify-center rounded-full",
+        fondo,
         wrapper,
         className
       )}
