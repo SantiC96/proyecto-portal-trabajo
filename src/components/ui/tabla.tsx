@@ -19,12 +19,18 @@ import { cn } from "@/lib/utils";
  * (Últimas postulaciones de los indicadores): sin el borde ni la sombra de
  * tarjeta, y es tabla desde 320 px de ancho (más angosta, filas apiladas
  * separadas por una línea). Las filas van con la misma variante.
+ *
+ * `semantica="tabla"` (Mis ofertas): roles ARIA de tabla (`table`, `row`,
+ * `columnheader`, `cell`) en lugar de una lista. El encabezado deja de ser
+ * `aria-hidden`: en angosto queda solo para lectores de pantalla. Las celdas
+ * llevan `role="cell"` (las pone la página) y las filas, la misma semántica.
  */
 export function Tabla({
   columnas,
   encabezados,
   etiqueta,
   variante = "tarjeta",
+  semantica = "lista",
   children,
   className,
 }: {
@@ -34,50 +40,77 @@ export function Tabla({
   /** Nombre accesible de la lista: "Candidatos derivados". */
   etiqueta: string;
   variante?: VarianteTabla;
+  semantica?: SemanticaTabla;
   children: ReactNode;
   className?: string;
 }) {
   const incrustada = variante === "incrustada";
+  const comoTabla = semantica === "tabla";
   return (
     <div
       className={cn("@container", className)}
       style={{ "--columnas-tabla": columnas } as CSSProperties}
     >
       <div
+        role={comoTabla ? "table" : undefined}
+        aria-label={comoTabla ? etiqueta : undefined}
         className={
           incrustada
             ? "@xs:grid @xs:grid-cols-(--columnas-tabla) @xs:gap-x-3"
             : "@4xl:overflow-hidden @4xl:rounded-[var(--radius-xl)] @4xl:border @4xl:border-border @4xl:bg-surface @4xl:shadow-[var(--sombra-tarjeta)] @4xl:grid @4xl:grid-cols-(--columnas-tabla) @4xl:gap-x-4"
         }
       >
-        <div
-          aria-hidden="true"
-          className={
-            incrustada
-              ? "hidden rounded-[var(--radius-sm)] bg-tabla-cabecera px-3 py-2.5 text-xs font-bold tracking-[0.06em] text-neutral uppercase @xs:col-span-full @xs:grid @xs:grid-cols-subgrid @xs:gap-x-3"
-              : "hidden bg-tabla-cabecera px-4 py-3 text-xs font-bold tracking-[0.06em] text-neutral uppercase @4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:gap-x-4"
-          }
-        >
-          {encabezados.map((e, i) => (
-            <span key={i}>{e}</span>
-          ))}
-        </div>
-        <ul
-          aria-label={etiqueta}
-          className={
-            incrustada
-              ? "flex flex-col @xs:col-span-full @xs:grid @xs:grid-cols-subgrid @xs:gap-x-3"
-              : "flex flex-col gap-3 @4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:gap-x-4 @4xl:gap-y-0"
-          }
-        >
-          {children}
-        </ul>
+        {comoTabla ? (
+          <div
+            role="row"
+            className="sr-only @4xl:not-sr-only @4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:gap-x-4 @4xl:bg-tabla-cabecera @4xl:py-3 @4xl:pr-4 @4xl:pl-[21px] @4xl:text-xs @4xl:font-extrabold @4xl:tracking-[0.06em] @4xl:text-neutral @4xl:uppercase"
+          >
+            {encabezados.map((e, i) => (
+              <span key={i} role="columnheader">
+                {e}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <div
+            aria-hidden="true"
+            className={
+              incrustada
+                ? "hidden rounded-[var(--radius-sm)] bg-tabla-cabecera px-3 py-2.5 text-xs font-bold tracking-[0.06em] text-neutral uppercase @xs:col-span-full @xs:grid @xs:grid-cols-subgrid @xs:gap-x-3"
+                : "hidden bg-tabla-cabecera px-4 py-3 text-xs font-bold tracking-[0.06em] text-neutral uppercase @4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:gap-x-4"
+            }
+          >
+            {encabezados.map((e, i) => (
+              <span key={i}>{e}</span>
+            ))}
+          </div>
+        )}
+        {comoTabla ? (
+          <div
+            role="rowgroup"
+            className="flex flex-col gap-3 @4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:gap-x-4 @4xl:gap-y-0"
+          >
+            {children}
+          </div>
+        ) : (
+          <ul
+            aria-label={etiqueta}
+            className={
+              incrustada
+                ? "flex flex-col @xs:col-span-full @xs:grid @xs:grid-cols-subgrid @xs:gap-x-3"
+                : "flex flex-col gap-3 @4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:gap-x-4 @4xl:gap-y-0"
+            }
+          >
+            {children}
+          </ul>
+        )}
       </div>
     </div>
   );
 }
 
 export type VarianteTabla = "tarjeta" | "incrustada";
+export type SemanticaTabla = "lista" | "tabla";
 
 /**
  * Una fila: tarjeta de padding 16 en angosto; en la tabla, 14 × 16 con borde inferior.
@@ -86,12 +119,17 @@ export type VarianteTabla = "tarjeta" | "incrustada";
  * motivo de rechazo): comparte el hover y el borde de la fila. En la tabla
  * ocupa solo la primera columna, para que se lea como parte de esa celda y no
  * se mezcle con las de al lado; en la tarjeta, todo el ancho.
+ *
+ * `filete` (`before:bg-*`): filete izquierdo de 5 px del color del estado,
+ * en la tarjeta y en la tabla (Mis ofertas).
  */
 export function FilaTabla({
   children,
   detalle,
   id,
   variante = "tarjeta",
+  semantica = "lista",
+  filete,
   className,
 }: {
   children: ReactNode;
@@ -100,11 +138,16 @@ export function FilaTabla({
   id?: string;
   /** La misma de su Tabla. */
   variante?: VarianteTabla;
+  /** La misma de su Tabla. */
+  semantica?: SemanticaTabla;
+  filete?: string;
   className?: string;
 }) {
+  const Fila = semantica === "tabla" ? "div" : "li";
   return (
-    <li
+    <Fila
       id={id}
+      role={semantica === "tabla" ? "row" : undefined}
       className={cn(
         variante === "incrustada"
           ? "flex flex-col gap-1.5 border-b border-tabla-borde px-1 py-3 text-[15px] text-foreground transition-colors duration-150 last:border-b-0 motion-reduce:transition-none @xs:col-span-full @xs:grid @xs:grid-cols-subgrid @xs:items-center @xs:gap-x-3 @xs:px-3"
@@ -113,16 +156,23 @@ export function FilaTabla({
               "@4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:items-center @4xl:gap-x-4 @4xl:rounded-none @4xl:shadow-none @4xl:border-x-0 @4xl:border-t-0 @4xl:border-b-tabla-borde @4xl:px-4 @4xl:py-3.5 @4xl:last:border-b-0 @4xl:hover:bg-tabla-fila-hover",
             ],
         id && "scroll-mt-20",
+        filete && [
+          "relative overflow-hidden pl-[21px] before:absolute before:inset-y-0 before:left-0 before:w-[5px] @4xl:pl-[21px]",
+          filete,
+        ],
         className,
       )}
     >
       {children}
       {detalle && (
-        <div className="flex min-w-0 flex-col items-start gap-3 @4xl:col-start-1 @4xl:col-end-2">
+        <div
+          role={semantica === "tabla" ? "cell" : undefined}
+          className="flex min-w-0 flex-col items-start gap-3 @4xl:col-start-1 @4xl:col-end-2"
+        >
           {detalle}
         </div>
       )}
-    </li>
+    </Fila>
   );
 }
 

@@ -16,6 +16,14 @@ type Props = {
    * transparentes con borde blanco; en el celular, a todo el ancho.
    */
   banda?: boolean;
+  /**
+   * Solo con `banda` (pantallas de la empresa): todos los botones de las
+   * acciones van blancos con texto `primary`, también los secundarios y los
+   * de baja.
+   */
+  botonesBlancos?: boolean;
+  /** Solo con `banda`: algo al lado del título, como el badge del estado. */
+  junto?: ReactNode;
   className?: string;
 };
 
@@ -26,9 +34,16 @@ export function EncabezadoPagina({
   acciones,
   grande = false,
   banda = false,
+  botonesBlancos = false,
+  junto,
   className,
 }: Props) {
   if (banda) {
+    const h1 = (
+      <h1 className="titulo-portada min-w-0 text-[34px] leading-[1.1] break-words text-primary-foreground sm:text-5xl">
+        {titulo}
+      </h1>
+    );
     return (
       <header
         className={cn(
@@ -38,9 +53,14 @@ export function EncabezadoPagina({
       >
         <DecoracionBanda />
         <div className="min-w-0">
-          <h1 className="titulo-portada text-[34px] leading-[1.1] break-words text-primary-foreground sm:text-5xl">
-            {titulo}
-          </h1>
+          {junto ? (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              {h1}
+              {junto}
+            </div>
+          ) : (
+            h1
+          )}
           {bajada && (
             <p className="mt-2 text-[15px] leading-normal text-sidebar-texto sm:text-[17px]">
               {bajada}
@@ -48,7 +68,12 @@ export function EncabezadoPagina({
           )}
         </div>
         {acciones && (
-          <div className="encabezado-banda-acciones flex shrink-0 flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <div
+            className={cn(
+              "encabezado-banda-acciones flex shrink-0 flex-col gap-3 sm:flex-row sm:flex-wrap",
+              botonesBlancos && "encabezado-banda-acciones--blancos",
+            )}
+          >
             {acciones}
           </div>
         )}

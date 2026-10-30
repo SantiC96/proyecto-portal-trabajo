@@ -86,6 +86,9 @@
   --color-tabla-fila-hover: #fafbfa; /* hover de fila del componente Tabla */
   --color-texto-pestana:    #3d4a43; /* pestañas inactivas; cantidad en cero */
   --color-pastilla-gris:    #dde3df; /* cantidad de pestañas y tarjetas de pendiente */
+  --color-aviso-borde:      #e6cf86; /* aviso de candidatos esperando respuesta (panel de la empresa) */
+  --color-aviso-fila-borde: #eaddb0; /* filas de ese aviso */
+  --color-separador-filtro: #c9d4cd; /* línea entre los estados y "Eliminadas" en Mis ofertas */
 
   /* Navegación lateral y barra del celular (sobre --color-primary) */
   --color-sidebar-texto: #e3f0e8; /* secciones; bajada del login */
@@ -633,6 +636,20 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
 .encabezado-banda-acciones :is(.btn-primario, .btn-secundario, .btn-neutro):focus-visible {
   box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 5px var(--color-surface);
 }
+/* Banda de la empresa (EncabezadoPagina botonesBlancos): todos los botones
+   blancos con texto verde, también los secundarios y los de baja. */
+.encabezado-banda-acciones--blancos :is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-peligro-borde) {
+  background: var(--color-surface);
+  border-color: var(--color-surface);
+  color: var(--color-primary);
+}
+.encabezado-banda-acciones--blancos :is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-peligro-borde):not(:disabled, [aria-disabled="true"]):hover {
+  background: var(--color-sidebar-texto);
+  border-color: var(--color-sidebar-texto);
+}
+.encabezado-banda-acciones--blancos :is(.btn-peligro, .btn-peligro-borde):focus-visible {
+  box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 5px var(--color-surface);
+}
 /* Con banda, el escudo de agua del fondo sobra: la banda ya lleva el suyo. */
 .app-contenido:has(.encabezado-banda)::after { display: none; }
 
@@ -685,6 +702,29 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
 .btn-chico { padding-inline: 12px; font-size: 14px; }
 .btn-chico svg { width: 16px; height: 16px; }
 @media (min-width: 640px) { .btn-chico { min-height: 36px; } }
+
+/* Aviso de candidatos esperando respuesta (panel de la empresa): amarillo
+   suave sobre blanco, borde dorado y filete izquierdo de 5 px. */
+.aviso-respuesta {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--color-aviso-borde);
+  border-radius: var(--radius-indicador);
+  background-color: var(--color-surface);
+  background-image: linear-gradient(180deg, rgb(242 183 5 / 0.18), rgb(242 183 5 / 0.07));
+  padding: 18px 16px 18px 21px;
+}
+.aviso-respuesta::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 5px;
+  background: var(--color-accent);
+}
+@media (min-width: 640px) {
+  .aviso-respuesta { padding: 22px 24px 22px 29px; }
+}
 
 /* Banda de resumen (Mis cursos): el verde con puntos de la banda del
    encabezado y un aro blanco decorativo a la derecha. */

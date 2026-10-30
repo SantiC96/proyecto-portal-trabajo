@@ -1,25 +1,18 @@
 import { cn } from "@/lib/utils";
 import { Esqueleto, EsqueletoTarjeta } from "@/components/ui/esqueleto";
+import {
+  CLASE_CUADRO_ESTADO,
+  CLASE_GRILLA_CUADROS,
+  claseCeldaCuadro,
+} from "@/components/ui/cuadro-estado";
 
 // Misma forma que cada bloque de /panel: los usan los Suspense de la página y
 // loading.tsx.
 
-/**
- * Grilla de los cinco cuadros de estado, sin huecos en ningún ancho:
- * en celular 2 por fila y el último a todo el ancho; desde 672 px, 3 arriba
- * y 2 abajo (sobre 6 columnas); desde 1024 px, los cinco en una fila.
- */
-export const CLASE_GRILLA_INDICADORES = "grid grid-cols-2 gap-4 @2xl:grid-cols-6 @5xl:grid-cols-5";
-
-export function claseCuadroIndicador(indice: number): string {
-  if (indice < 3) return "@2xl:col-span-2 @5xl:col-span-1";
-  if (indice === 3) return "@2xl:col-span-3 @5xl:col-span-1";
-  return "col-span-2 @2xl:col-span-3 @5xl:col-span-1";
-}
-
-/** Cuadro de estado: tarjeta con un filete superior de 4 px (el color va en `before:bg-*`). */
-export const CLASE_CUADRO_ESTADO =
-  "tarjeta tarjeta-panel relative flex h-full min-w-0 flex-col gap-3 overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-1";
+// La grilla y el cuadro de estado son los del componente compartido con el
+// panel de la empresa.
+export const CLASE_GRILLA_INDICADORES = CLASE_GRILLA_CUADROS;
+export const claseCuadroIndicador = claseCeldaCuadro;
 
 /** "Ofertas para vos": dos columnas como máximo, para que las tarjetas respiren. */
 export const CLASE_GRILLA_OFERTAS = "grid grid-cols-1 gap-4 @xl:grid-cols-2";
