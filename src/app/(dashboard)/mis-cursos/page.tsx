@@ -14,6 +14,7 @@ import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
 import { aMisCursos, type MiCurso } from "@/lib/cursos";
 import { AccionesMiCurso } from "./acciones-mi-curso";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 
 export const metadata: Metadata = {
   title: "Mis cursos | Portal de Empleo Funes",
@@ -33,15 +34,13 @@ export default async function MisCursosPage({
   return (
     <section>
       <div className="space-y-6">
-        <BotonVolver href="/perfil" />
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Mis cursos
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Ante cualquier duda, comunicate con la Oficina de Empleo.
-          </p>
-        </div>
+        <BotonVolver href="/perfil" destacado />
+        <EncabezadoPagina
+          banda
+          className="-mt-2"
+          titulo="Mis cursos"
+          bajada="Ante cualquier duda, comunicate con la Oficina de Empleo."
+        />
 
         <Suspense key={pagina} fallback={<EsqueletoLista filas={3} />}>
           <ListadoMisCursos pagina={pagina} searchParams={sp} />

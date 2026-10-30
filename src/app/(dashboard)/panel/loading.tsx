@@ -1,4 +1,4 @@
-import { Esqueleto } from "@/components/ui/esqueleto";
+import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { AccionesPanel } from "./bloques";
 import {
   ColumnasPanel,
@@ -11,15 +11,20 @@ import {
 export default function Loading() {
   return (
     <div className="flex flex-col gap-7">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <Esqueleto className="h-9 w-56" />
-          <Esqueleto className="mt-3 h-4 w-72 max-w-full" />
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <AccionesPanel />
-        </div>
-      </div>
+      <EncabezadoPagina
+        banda
+        titulo={
+          <>
+            <span className="sr-only">Panel</span>
+            <span
+              aria-hidden="true"
+              className="inline-block h-[38px] w-56 max-w-full animate-pulse rounded-md bg-primary-foreground/20 align-middle sm:h-[52px]"
+            />
+          </>
+        }
+        bajada="Este es el resumen de tus postulaciones."
+        acciones={<AccionesPanel />}
+      />
       <EsqueletoIndicadores />
       <ColumnasPanel>
         <EsqueletoMovimientos />

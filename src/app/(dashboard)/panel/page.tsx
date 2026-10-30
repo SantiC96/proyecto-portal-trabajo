@@ -34,6 +34,7 @@ export default async function PanelPostulantePage() {
   return (
     <div className="flex flex-col gap-7">
       <EncabezadoPagina
+        banda
         titulo={nombre ? `Hola, ${nombre}` : "Hola"}
         bajada="Este es el resumen de tus postulaciones."
         acciones={<AccionesPanel />}

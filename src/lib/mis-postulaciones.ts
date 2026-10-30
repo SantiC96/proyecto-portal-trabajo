@@ -7,7 +7,17 @@ import type { Enum, FilaIndicadoresPostulante } from "@/types/db";
 
 export type EstadoPostulacion = Enum<"estado_postulacion">;
 
-export type BadgeMiPostulacion = { label: string; tono: TonoBadge };
+/** Estado que muestra el badge; las pantallas lo usan para su color de acento y su ícono. */
+export type ClaveEstadoMiPostulacion =
+  | "retirada"
+  | "seleccionado"
+  | "no-seleccionado"
+  | "oferta-cerrada"
+  | "en-revision"
+  | "derivada"
+  | "recibida";
+
+export type BadgeMiPostulacion = { label: string; tono: TonoBadge; clave: ClaveEstadoMiPostulacion };
 
 /**
  * Único badge de cada postulación en Mis postulaciones y en el panel. Combina
@@ -35,13 +45,13 @@ export function badgePostulacion({
   ofertaNoVisible?: boolean;
 }): BadgeMiPostulacion {
   if (estado === "retirada_postulante") {
-    return { label: "Retirada", tono: "neutral" };
+    return { label: "Retirada", tono: "neutral", clave: "retirada" };
   }
   if (estadoEmpresa === "contratado") {
-    return { label: "Seleccionado", tono: "success" };
+    return { label: "Seleccionado", tono: "success", clave: "seleccionado" };
   }
   if (estado === "rechazada_municipalidad" || estadoEmpresa === "rechazado") {
-    return { label: "No seleccionado", tono: "neutral" };
+    return { label: "No seleccionado", tono: "neutral", clave: "no-seleccionado" };
   }
   if (
     estado === "oferta_retirada" ||
@@ -49,15 +59,15 @@ export function badgePostulacion({
     ofertaEstado === "cerrada" ||
     ofertaNoVisible
   ) {
-    return { label: "Oferta cerrada", tono: "neutral" };
+    return { label: "Oferta cerrada", tono: "neutral", clave: "oferta-cerrada" };
   }
   switch (estado) {
     case "en_revision":
-      return { label: "En revisión", tono: "info" };
+      return { label: "En revisión", tono: "info", clave: "en-revision" };
     case "derivada":
-      return { label: "Enviada a la empresa", tono: "teal" };
+      return { label: "Enviada a la empresa", tono: "teal", clave: "derivada" };
     default:
-      return { label: "Recibida", tono: "neutral" };
+      return { label: "Recibida", tono: "neutral", clave: "recibida" };
   }
 }
 

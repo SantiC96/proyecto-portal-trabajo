@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { CalendarClock, ChevronDown } from "lucide-react";
+import { Calendar, CalendarClock, ChevronDown, FileText } from "lucide-react";
 import { RetirarPostulacion } from "@/components/postulantes/retirar-postulacion";
 import { Badge, type TonoBadge } from "@/components/ui/badge";
 import { Franja } from "@/components/ui/franja";
-import { CLASE_ACCION_FILA, CeldaTabla, FilaTabla, Tabla as TablaListado } from "@/components/ui/tabla";
 import { formatFecha, formatFechaHoraLarga } from "@/lib/fechas";
 import { ModalidadYLugar } from "@/components/entrevistas/cartel-entrevista";
 import { getOfertaEstadoBadge } from "@/lib/oferta-estados";
@@ -16,6 +15,7 @@ import {
   sePuedeRetirar,
 } from "@/lib/mis-postulaciones";
 import { cn } from "@/lib/utils";
+import { ACENTO_ESTADO } from "@/components/postulantes/acento-estado";
 import type {
   FilaCvDeMiPostulacion,
   FilaEstadoDerivacionPostulante,
@@ -138,20 +138,23 @@ interface Props {
   postulaciones: Postulacion[];
 }
 
-// Oferta | Fecha | Estado | CV enviado | acción.
-const COLUMNAS = "minmax(0,2fr) 8rem minmax(0,1.2fr) minmax(0,1.5fr) auto";
-
+/**
+ * Una tarjeta por postulación. Desde 768 px de ancho disponible, tres columnas
+ * (oferta | estado, fecha y CV | acción) que comparten la grilla de la lista
+ * (subgrid): la columna de la acción mide lo mismo en todas las tarjetas.
+ */
 export function MisPostulacionesLista({ postulaciones }: Props) {
   return (
-    <TablaListado
-      columnas={COLUMNAS}
-      etiqueta="Mis postulaciones"
-      encabezados={["Oferta", "Fecha", "Estado", "CV enviado", ""]}
-    >
-      {postulaciones.map((p) => (
-        <FilaPostulacion key={p.id} postulacion={p} />
-      ))}
-    </TablaListado>
+    <div className="@container">
+      <ul
+        aria-label="Mis postulaciones"
+        className="flex flex-col gap-4 @3xl:grid @3xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_auto] @3xl:gap-x-6"
+      >
+        {postulaciones.map((p) => (
+          <FilaPostulacion key={p.id} postulacion={p} />
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -236,70 +239,82 @@ function FilaPostulacion({ postulacion: p }: { postulacion: Postulacion }) {
   );
 
   return (
-    <FilaTabla id={anclaPostulacion(p.id)} detalle={aclaraciones}>
-      <div className="flex min-w-0 flex-col items-start gap-0.5">
-        {oferta ? (
-          ofertaActiva ? (
-            <Link
-              href={`/ofertas/${oferta.id}`}
-              className="rounded-[var(--radius-sm)] text-[15px] leading-snug font-bold break-words text-heading no-underline outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
-            >
-              {oferta.titulo}
-            </Link>
-          ) : (
-            <span className="text-[15px] leading-snug font-bold break-words text-muted-foreground-strong">
-              {oferta.titulo}
-            </span>
-          )
+    <li
+      id={anclaPostulacion(p.id)}
+      className={cn(
+        "tarjeta tarjeta-panel relative flex scroll-mt-20 flex-col gap-4 overflow-hidden pl-[21px] sm:pl-[29px]",
+        "before:absolute before:inset-y-0 before:left-0 before:w-[5px]",
+        "@3xl:col-span-full @3xl:grid @3xl:grid-cols-subgrid @3xl:items-center @3xl:gap-y-4",
+        ACENTO_ESTADO[badge.clave].filete,
+      )}
+    >
+      <div className="flex min-w-0 flex-col items-start gap-1">
+        {oferta && ofertaActiva ? (
+          <Link
+            href={`/ofertas/${oferta.id}`}
+            className="rounded-[var(--radius-sm)] text-lg leading-snug font-extrabold break-words text-heading no-underline outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+          >
+            {oferta.titulo}
+          </Link>
         ) : (
-          // Sin link: la oferta ya no se puede ver y /ofertas/[id] daría 404.
-          <span className="text-[15px] leading-snug font-bold break-words text-muted-foreground-strong">
-            {p.ofertaNoVisible?.titulo ?? "Oferta no disponible"}
+          // Sin link: la oferta no está activa o ya no se puede ver (/ofertas/[id] daría 404).
+          <span className="text-lg leading-snug font-extrabold break-words text-muted-foreground-strong">
+            {oferta?.titulo ?? p.ofertaNoVisible?.titulo ?? "Oferta no disponible"}
           </span>
         )}
-        {empresa && <span className="text-sm font-semibold text-texto-bajada">{empresa}</span>}
+        {empresa && <span className="text-[15px] font-semibold text-texto-bajada">{empresa}</span>}
       </div>
-      <CeldaTabla etiqueta="Te postulaste el" rotuloVisible className="tabular-nums">
-        {formatFecha(p.created_at)}
-      </CeldaTabla>
-      <CeldaTabla etiqueta="Estado">
+
+      <div className="flex min-w-0 flex-col items-start gap-2 text-sm text-muted-foreground-strong">
         <Badge tono={badge.tono} estado>
+          <span className="sr-only">Estado: </span>
           {badge.label}
         </Badge>
-      </CeldaTabla>
-      <CeldaTabla
-        etiqueta="CV enviado"
-        rotuloVisible
-        className={cn("text-sm break-all", !p.cv && "hidden @4xl:block")}
-      >
-        {p.cv ? (
-          <>
-            <span className="font-semibold text-foreground">{p.cv.nombre_original}</span>
-            {p.cv.eliminado && " · lo eliminaste de tu perfil"}
-          </>
-        ) : (
-          <span className="text-muted-foreground">—</span>
+        <p className="flex items-center gap-1.5 tabular-nums">
+          <Calendar className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span className="sr-only">Te postulaste el </span>
+          {formatFecha(p.created_at)}
+        </p>
+        {p.cv && (
+          <p className="flex min-w-0 items-start gap-1.5">
+            <FileText className="mt-px size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="min-w-0 break-all">
+              <span className="sr-only">CV enviado: </span>
+              <span className="font-semibold text-foreground">{p.cv.nombre_original}</span>
+              {p.cv.eliminado && " · lo eliminaste de tu perfil"}
+            </span>
+          </p>
         )}
-      </CeldaTabla>
+      </div>
+
       {puedeRetirar ? (
         <RetirarPostulacion
           postulacionId={p.id}
           ofertaTitulo={oferta?.titulo ?? null}
           derivada={p.estado === "derivada"}
           conPreEntrevista={p.preEntrevista?.estado === "coordinada"}
-          className={CLASE_ACCION_FILA}
+          className={CLASE_ACCION}
         />
       ) : p.puedeVolverAPostularse && oferta ? (
-        <Link href={`/ofertas/${oferta.id}`} className={`btn-neutro ${CLASE_ACCION_FILA}`}>
+        <Link href={`/ofertas/${oferta.id}`} className={`btn-neutro ${CLASE_ACCION}`}>
           Volver a postularme
           <span className="sr-only">: {oferta.titulo}</span>
         </Link>
       ) : (
-        <span className="hidden @4xl:block" aria-hidden="true" />
+        <span className="hidden @3xl:block" aria-hidden="true" />
       )}
-    </FilaTabla>
+
+      {aclaraciones && (
+        <div className="flex min-w-0 flex-col items-start gap-3 @3xl:col-span-full @3xl:max-w-[680px]">
+          {aclaraciones}
+        </div>
+      )}
+    </li>
   );
 }
+
+/** La acción de la tarjeta: a todo el ancho en angosto. */
+const CLASE_ACCION = "w-full whitespace-nowrap @3xl:w-auto";
 
 /** Resultado de la empresa en una postulación derivada (nunca sus notas). */
 function FranjaDerivacion({ derivacion: d }: { derivacion: FilaEstadoDerivacionPostulante }) {

@@ -20,6 +20,7 @@ export default async function NotificacionesPostulantePage({
       usuarioId={user.id}
       ruta={rutaNotificaciones("postulante")}
       volverA="/perfil"
+      banda
       textoVacio="Te avisamos acá cuando deriven tu postulación, te coordinen una entrevista o te asignen un curso."
       searchParams={sp}
     />

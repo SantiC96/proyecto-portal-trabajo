@@ -531,6 +531,9 @@ La marca de agua es el escudo de la Municipalidad, en dos imágenes de
     imagen ya es verde de marca: no lleva máscara ni color propio.
 -   `escudo-blanco.png`, para fondos verdes: el footer (sección 41).
 
+En las pantallas con encabezado de banda verde (sección 13) el escudo del
+fondo no se muestra: la banda ya lleva el suyo.
+
 No se copia en los componentes. El trébol de la sidebar contraída y de la
 barra del celular (`trebol.png`) es otra pieza y no cambia.
 
@@ -761,6 +764,40 @@ Gestioná las búsquedas activas de tu empresa.
 
 En mobile las acciones pasan debajo del título.
 
+## Con banda verde (pantallas del postulante)
+
+`EncabezadoPagina banda`: solo en las seis pantallas del postulante
+(Panel, Mis postulaciones, Invitaciones, Mis cursos, Notificaciones y Mi
+perfil). Sin la prop, el encabezado de siempre en el resto. Clases
+`.encabezado-banda*` de `globals.css`.
+
+-   Banda: `position: relative`, `isolation: isolate`, `overflow:
+    hidden`, radio 24 (20 en celular), padding `34px 40px` (`22px 18px`
+    en celular), fondo `primary` con puntos blancos al 9 %
+    (`radial-gradient(rgb(255 255 255 / .09) 1px, transparent 1.5px)`)
+    cada 28 px (24 en celular).
+-   Decoración: `DecoracionBanda` (`src/components/ui/decoracion-banda.tsx`),
+    la misma pieza que la banda del listado de ofertas (anillo de 560 px
+    con borde de 60 px y `escudo-blanco.png` de 190 px, rotado −8°, dentro
+    del hueco del aro). Cambia solo en el celular: anillo a −120 px de la
+    derecha y −140 px de abajo, y el escudo al 12 % (13 % desde `sm`).
+-   Título en Georgia 400 (`.titulo-portada`, tracking −.02em), blanco,
+    48 px (34 en celular); bajada en `sidebar-texto` (`#E3F0E8`), 17 px
+    (15 en celular). Contraste sobre `primary`: blanco 7,4:1 y
+    `sidebar-texto` 6,4:1.
+-   Acciones a la derecha, alineadas abajo; en el celular, debajo y a todo
+    el ancho. Las páginas pasan los botones de siempre y la banda los
+    adapta: `.btn-primario` con fondo blanco y texto `primary` (hover
+    `sidebar-texto`); `.btn-secundario` y `.btn-neutro` transparentes, con
+    borde blanco al 75 % y texto blanco (hover blanco al 12 %). El foco,
+    un anillo blanco por fuera de un borde verde.
+-   "Volver", si la pantalla lo tiene, va arriba y fuera de la banda
+    (`BotonVolver destacado`, en verde).
+-   Con banda no se muestra el escudo de agua del fondo
+    (`.app-contenido:has(.encabezado-banda)::after`).
+-   Mientras carga (`loading.tsx`), la banda ya está con su título; lo que
+    falta va en una barra blanca al 20 %.
+
 ## "Volver"
 
 Arriba del título, `BotonVolver` (`src/components/ui/boton-volver.tsx`);
@@ -982,6 +1019,17 @@ Clase `.tarjeta`:
 
 `.tarjeta-clickeable` (además de `.tarjeta`): al pasar el mouse se eleva
 2 px con una sombra suave y el borde pasa a `border-strong`.
+
+`.tarjeta-panel` (además de `.tarjeta`), en las pantallas del postulante:
+radio 18 (`radius-indicador`) y padding `22px 24px` (`18px 16px` en el
+celular).
+
+Ícono de sección (`IconoCuadro`, `src/components/ui/icono-cuadro.tsx`):
+ícono blanco de lucide en un cuadrado de color (`primary` por defecto),
+`aria-hidden`. Tamaños: 40 px (radio 11, ícono de 20), 44 px (radio 12,
+ícono de 22) y 56 px (radio 16, ícono de 28). Va junto a los títulos de
+bloque del panel, en los cuadros de estado, en la línea de tiempo y en las
+invitaciones.
 
 Una card debe agrupar información relacionada.
 
@@ -1415,8 +1463,9 @@ postulantes, con un componente para no repetir las clases:
     el ancho, con fondo `tabla-cabecera` en la tabla y entre dos líneas en
     las tarjetas ("Ya invitados a esta oferta"). Las filas de ese grupo
     pueden ir con fondo `surface-tinted`.
--   `FilaTabla id`: ancla de la fila (`scroll-mt-20`), para los links que
-    llevan a una fila (Mis postulaciones, `anclaPostulacion`).
+-   `FilaTabla id`: ancla de la fila (`scroll-mt-20`). Hoy no la usa
+    ninguna pantalla: Mis postulaciones pasó a tarjetas propias (sección
+    25).
 
 Dónde se usa y con qué columnas:
 
@@ -1430,7 +1479,6 @@ Dónde se usa y con qué columnas:
   Empresa · Mis ofertas                      Oferta (título, fecha, estado) · Rubros (+N) · Vence · acciones; motivo de rechazo en la fila de detalle
   Empresa · Mis ofertas (Eliminadas)         Oferta · Eliminada · Restaurar
   Empresa · Detalle de oferta (candidatos)   Candidato · Derivado el · Nota de la Oficina · Estado · acción
-  Postulante · Mis postulaciones             Oferta y empresa · Fecha · Estado · CV enviado · Retirar o Volver a postularme; aclaraciones en la fila de detalle
 
 ## Datos de la oferta en el detalle de la empresa
 
@@ -1654,40 +1702,66 @@ Puede incluir:
 Las métricas no deben convertirse en grandes cards sin contexto
 únicamente para llenar espacio.
 
-## Tarjetas de indicadores (panel del postulante)
+## Cuadros de estado (panel del postulante)
 
-Cada tarjeta es un link (`.tarjeta-clickeable`, padding 20, gap 10): el
-`Badge` del estado como etiqueta (con su tono, `multilinea`: "Enviadas a
-la empresa" pasa de línea en los cuadros angostos en lugar de cortarse)
-y, debajo, el ícono del
-estado a la izquierda del número (36 px 800, interlineado 1, `heading`).
-Son cinco y la grilla no deja huecos: en celular, 2 por fila y el último a
-todo el ancho; desde 672 px de ancho disponible, 3 arriba y 2 abajo (grilla
-de 6 columnas: cada cuadro de arriba ocupa 2 y cada uno de abajo, 3); desde
-1024 px, los cinco en una fila. No hay cuadro de "Activas": repetía la suma
-de En revisión y Enviadas a la empresa. Al pasar el mouse se eleva (sin movimiento con movimiento reducido); el foco, con
-`sombra-foco`.
+Cinco cuadros: En revisión, Enviadas a la empresa, Seleccionadas, No
+seleccionadas y Retiradas. Cada uno es un link a Mis postulaciones
+filtrada por su estado (`/mis-postulaciones?estado=en-revision`,
+`derivadas`, `seleccionadas`, `no-seleccionadas`, `retiradas`), con el
+nombre accesible "3 postulaciones en revisión. Ver lista". No hay cuadro
+de "Activas": repetía la suma de En revisión y Enviadas a la empresa.
 
--   ícono de lucide de 20 px en un cuadrado de 40 px, radio 10
-    (`radius-md`), fondo `secondary` (`#EEF1EF`), en el color de texto del
-    tono de su badge (`claseTextoTono`), `aria-hidden`: En revisión
-    `Search` (`info`), Enviadas a la empresa `Send` (`teal`), Seleccionadas `BadgeCheck` (`success`), No
-    seleccionadas `CircleX` (`neutral`) y Retiradas `Undo2` (`neutral`);
--   si el contenido del cuadro mide menos de 7,5 rem (cuadros angostos,
-    celulares de 320 px), el ícono va arriba del número (container query);
--   cada tarjeta lleva a Mis postulaciones filtrada por su estado
-    (`/mis-postulaciones?estado=en-revision`, `derivadas`,
-    `seleccionadas`, `no-seleccionadas`, `retiradas`), con el nombre
-    accesible "3 postulaciones en revisión. Ver lista".
+-   `.tarjeta .tarjeta-panel .tarjeta-clickeable` con un filete superior
+    de 4 px del color del estado (`CLASE_CUADRO_ESTADO`,
+    `src/app/(dashboard)/panel/esqueletos.tsx`).
+-   Arriba, el ícono en un cuadrado de 40 px del color del estado y un
+    `ChevronRight` `muted-icon` a la derecha; debajo, el número (38 px
+    800, `heading`) y el nombre (14 px 700). Los textos pasan de línea
+    dentro del cuadro: nunca se salen.
+-   Colores e íconos (`ACENTO_FILTRO`,
+    `src/components/postulantes/acento-estado.ts`): En revisión `info`
+    `Search`, Enviadas a la empresa `teal` `Send`, Seleccionadas `success`
+    `CircleCheck`, No seleccionadas `neutral` `CircleX` y Retiradas
+    `muted-icon` (`#8A988F`) `Undo2`.
+-   Grilla sin huecos: en celular, 2 por fila y el último a todo el ancho;
+    desde 672 px de ancho disponible, 3 arriba y 2 abajo; desde 1024 px,
+    los cinco en una fila.
+-   Al pasar el mouse sube 2 px con sombra (sin movimiento con movimiento
+    reducido); el foco, con `sombra-foco`.
+
+## Bloques del panel del postulante
+
+Título de bloque de 20 px 800 con su `IconoCuadro` de 40 px a la
+izquierda y, si tiene, el link a la derecha ("Ver mis postulaciones",
+"Ver todas las ofertas", 15 px 700 `primary` con `ChevronRight`).
+
+-   **Últimos movimientos** (`Activity`) y **Completá tu perfil** (`User`)
+    en una fila `1.7fr / 1fr` (apiladas en celular), con la misma altura
+    (`ColumnasPanel`), en `.tarjeta .tarjeta-panel`.
+-   Últimos movimientos: `LineaDeTiempo` con íconos (sección 30). Cada
+    movimiento lleva el ícono de su estado (`ACENTO_ESTADO`), el puesto
+    (800) · la empresa (500), el mensaje (14 px `muted-foreground-strong`)
+    y "hace X" (13 px `muted-foreground`); el badge a la derecha (debajo
+    en angosto). Todo el movimiento es un link a su postulación.
+-   Completá tu perfil: anillo de progreso (abajo, «Anillo de progreso»)
+    con el texto de prioridad al lado, y el checklist con lo pendiente
+    primero: cada pendiente es un link en una fila resaltada (fondo
+    `accent` al 18 %, texto `accent-foreground` 700, `TriangleAlert`,
+    radio 10, 44 px de alto); lo completo, con `CircleCheck` `primary`.
+    "Completar perfil" (`.btn-secundario`) al pie, al primer pendiente.
+-   **Ofertas para vos** (`Briefcase`): `TarjetaOferta` en 2 columnas como
+    máximo (1 en angosto), con el badge de coincidencia (`success` sólido
+    para "Alta coincidencia") y "Postularme".
 
 ## Filtro por estado (Mis postulaciones)
 
-`GrupoPastillas` "Estado" con `unaLinea` (`FilaDesplazable`: una sola
-fila con scroll horizontal y flechas "Ver estados anteriores" / "Ver más
-estados"), arriba de la lista y debajo de la leyenda de estados:
-`PastillaFiltro` "Todas" y una por cada estado de las tarjetas del panel
-(no hay pastilla "Activas"), con las mismas etiquetas y su cantidad al
-lado (700, números tabulares). Las cantidades de cada estado son las de `indicadores_postulante()` y los
+`GrupoPastillas` "Estado" (en el celular, una fila con scroll horizontal;
+desde `sm`, bajan de renglón), arriba de la lista y debajo de la leyenda
+de estados: `PastillaFiltro` de 44 px en todos los anchos, "Todas" y una
+por cada cuadro del panel (no hay pastilla "Activas"), con las mismas
+etiquetas. La cantidad va dentro, en un círculo de 28 px (13 px 700,
+números tabulares) con fondo `secondary` (`#EEF1EF`); en la elegida
+(verde sólida), fondo blanco y texto `primary`. Las cantidades de cada estado son las de `indicadores_postulante()` y los
 criterios de la lista filtrada son los mismos (`CRITERIO_FILTRO`,
 `src/lib/mis-postulaciones.ts`). Cambiar de filtro vuelve a la página 1;
 la paginación y "Mostrando X de N" son los de la lista filtrada. Un
@@ -1695,6 +1769,29 @@ la paginación y "Mostrando X de N" son los de la lista filtrada. Un
 todas. Un filtro sin resultados muestra `EstadoVacio` `sin-resultados` con un texto por
 estado ("No tenés postulaciones retiradas.") y "Ver todas". Los cambios de
 filtro no cuentan como pantallas distintas para "Volver".
+
+## Tarjetas de Mis postulaciones
+
+`MisPostulacionesLista`
+(`src/app/(dashboard)/mis-postulaciones/mis-postulaciones-lista.tsx`): una
+`.tarjeta .tarjeta-panel` por postulación (no usa `Tabla`), con el id de
+`anclaPostulacion` (`scroll-mt-20`) para los links del panel.
+
+-   Filete izquierdo de 5 px del color de su estado (`ACENTO_ESTADO`): en
+    revisión y recibida `info`, enviada a la empresa `teal`, seleccionado
+    `success`, no seleccionado `neutral`, retirada y oferta cerrada
+    `muted-icon`.
+-   Desde 768 px de ancho disponible, tres columnas `1.6fr / 1fr / auto`
+    compartidas por toda la lista (subgrid: la acción mide lo mismo en
+    todas): el puesto (18 px 800; link a la oferta solo si está activa) y
+    la empresa; el badge del estado, la fecha (`Calendar`) y el CV
+    enviado (`FileText`); y la acción ("Retirar postulación" o "Volver a
+    postularme"). En el celular, apiladas y la acción a todo el ancho.
+-   Los avisos (franjas de retiro, seleccionado, pre-entrevista,
+    entrevista coordinada, oferta retirada y modificada) van debajo, a
+    todo el ancho de la tarjeta y con un máximo de 680 px desde 768 px.
+-   Paginación `numeros`: "Página X de Y" a la izquierda y los botones a la
+    derecha.
 
 ## Filtro por procedencia (lista de postulantes de la oficina)
 
@@ -1725,10 +1822,44 @@ pastillas que había antes: el nivel lo dice el texto.
 `aria-label` ("Perfil completo al 70%") y `aria-valuenow`. El porcentaje
 visible va al lado, en 14 px 700.
 
+## Anillo de progreso
+
+`AnilloProgreso` (`src/components/ui/anillo-progreso.tsx`, clases
+`.anillo-progreso*`): anillo de 96 px con trazo de 10 px, fondo
+`secondary-hover` (`#E3E9E5`) y progreso `primary` con extremos
+redondeados (en 0 % no se dibuja el progreso). El porcentaje en el
+centro, 22 px 800. Es `role="img"` con el valor real en el `aria-label`
+("Perfil completo al 71%") desde el primer render.
+
+Al abrir la página el anillo se llena de 0 al valor y el número cuenta a
+la par (1,4 s, `cubic-bezier(.2,.7,.2,1)`, .2 s de demora). Es solo CSS:
+una variable registrada (`@property --progreso`, entera) que mueve el
+trazo (`stroke-dashoffset` con `pathLength="100"`) y el número
+(`counter`). Sin movimiento con movimiento reducido. Lo usa "Completá tu
+perfil" en el panel; el cálculo del porcentaje es el de
+`obtenerCompletitudPerfil`.
+
 ## Invitaciones
 
 Borde de 2 px `accent` sobre blanco, título `invitacion-titulo`, badge
 warning y botón `.btn-oscuro` (fondo `accent-foreground`, texto blanco).
+
+Pantalla `/invitaciones` (`seccion-invitaciones.tsx`):
+
+-   Pendientes en `.tarjeta .tarjeta-panel`, en dos columnas desde `md`.
+-   Sin pendientes: una tarjeta centrada con fondo en degradé verde muy
+    suave (`surface-tinted` a blanco), el sobre (`Mail`) en un
+    `IconoCuadro` de 56 px con halo (`0 0 0 8px rgb(0 104 51 / .10)`),
+    el título y "Cuando la Oficina de Empleo te proponga una oferta, la
+    vas a ver acá." Sin ninguna invitación, la misma tarjeta con "No tenés
+    invitaciones por ahora." y "Ver ofertas".
+-   Respondidas: el título y, a la derecha (debajo en el celular), el
+    resumen de todo el historial en chips con un punto de color ("4
+    aceptadas", "1 no me interesa", "1 vencida"; solo los que hay). Cada
+    fila: el ícono del resultado en un cuadrado de 40 px (`MailCheck`
+    `primary` si aceptó; `CircleX` o `Clock` en `neutral` si no le
+    interesó o venció), el título, "empresa · respondida el …" (o "venció
+    el …"), el badge y "Ver oferta ›" si la oferta todavía se puede ver.
 
 ## Tarjeta de pendiente (panel de la oficina)
 
@@ -2462,14 +2593,10 @@ empresa retiró la oferta…" y "Retiraste esta postulación…" en `neutra`,
 lo que ocupa su texto (`w-fit max-w-full`): no llega al borde derecho de
 la tarjeta y en el celular no se sale.
 
-Fila de aclaración y acción (Mis postulaciones): las franjas y el botón
-"Retirar postulación" van en una misma fila. Desde 640 px (`sm`), las
-franjas en una columna a la izquierda (una debajo de la otra, gap 12) y
-el botón a la derecha (`ml-auto`, 40 px), centrados entre sí
-(`items-center`): si hay varias franjas, el botón queda centrado respecto
-del grupo. Si hay solo franjas o solo el botón, el botón sigue a la
-derecha. En el celular, una debajo de la otra: primero las franjas y
-después el botón a todo el ancho (44 px).
+En las tarjetas de Mis postulaciones, las franjas van debajo de las tres
+columnas, a todo el ancho de la tarjeta (680 px como máximo desde 768 px
+de ancho disponible), una debajo de la otra con 12 px de separación; la
+acción queda en su columna (sección 25, «Tarjetas de Mis postulaciones»).
 
 En las fichas de la empresa y de la oficina: el cartel de entrevista
 coordinada (abajo) en `info`; el resultado final del proceso
@@ -2520,6 +2647,13 @@ Para mostrar pasos, cada evento puede llevar `estado`: "hecho" (punto
 `muted-icon`), "actual" (el resaltado, con `aria-current="step"`) y
 "pendiente" (punto hueco con borde de 2 px `muted-icon` y título en
 `muted-foreground`). Lo usa la cuenta de empresa en revisión.
+
+Con ícono (`icono` y `claseIcono` en el evento): en lugar del punto, el
+ícono blanco en un cuadrado de 44 px del color del estado, unido al
+siguiente por una línea de 2 px `secondary-hover` (`#E3E9E5`); `extra`
+(un badge) va a la derecha del texto, o debajo si el contenedor mide
+menos de 28 rem. Lo usan los últimos movimientos del panel del
+postulante. Los demás usos no cambian.
 
 ## Archivo en una tarjeta
 

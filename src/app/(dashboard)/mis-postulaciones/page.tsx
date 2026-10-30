@@ -44,6 +44,7 @@ import type {
 import { AvisoCursoPendiente } from "@/components/cursos/aviso-curso-pendiente";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Mis postulaciones | Portal de Empleo Funes",
@@ -158,12 +159,13 @@ export default async function MisPostulacionesPage({
     <section className="flex flex-col gap-6">
       <BotonVolver href="/perfil" destacado />
       <EncabezadoPagina
+        banda
         className="-mt-2"
         titulo="Mis postulaciones"
         bajada={
           <Suspense
             key={`${clave}:bajada`}
-            fallback={<span className="inline-block h-4 w-72 max-w-full rounded bg-secondary-hover" />}
+            fallback={<span className="inline-block h-4 w-72 max-w-full rounded bg-primary-foreground/20" />}
           >
             <BajadaMisPostulaciones resultado={resultado} />
           </Suspense>
@@ -227,23 +229,31 @@ function FiltroEstados({
   ];
 
   return (
-    <GrupoPastillas
-      id="filtro-estado"
-      titulo="Estado"
-      unaLinea={{ textoAnteriores: "Ver estados anteriores", textoSiguientes: "Ver más estados" }}
-    >
-      {opciones.map((o) => (
-        <PastillaFiltro
-          key={o.valor ?? "todas"}
-          href={hrefConParams(RUTA, searchParams, { estado: o.valor, pagina: null })}
-          activa={o.valor === filtro}
-        >
-          {o.etiqueta}
-          {o.cantidad !== undefined && (
-            <span className="ml-1.5 font-bold tabular-nums">{formatNumero(o.cantidad)}</span>
-          )}
-        </PastillaFiltro>
-      ))}
+    // En el celular, una fila con scroll horizontal; desde sm bajan de renglón.
+    <GrupoPastillas id="filtro-estado" titulo="Estado">
+      {opciones.map((o) => {
+        const activa = o.valor === filtro;
+        return (
+          <PastillaFiltro
+            key={o.valor ?? "todas"}
+            href={hrefConParams(RUTA, searchParams, { estado: o.valor, pagina: null })}
+            activa={activa}
+            className="sm:h-11"
+          >
+            {o.etiqueta}
+            {o.cantidad !== undefined && (
+              <span
+                className={cn(
+                  "-mr-2 ml-2 inline-grid h-7 min-w-7 place-items-center rounded-full px-1.5 text-[13px] font-bold tabular-nums",
+                  activa ? "bg-surface text-primary" : "bg-secondary text-control-foreground",
+                )}
+              >
+                {formatNumero(o.cantidad)}
+              </span>
+            )}
+          </PastillaFiltro>
+        );
+      })}
     </GrupoPastillas>
   );
 }

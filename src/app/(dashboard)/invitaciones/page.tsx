@@ -28,10 +28,11 @@ export default async function InvitacionesPage() {
     <section className="flex flex-col gap-6">
       <BotonVolver href="/perfil" destacado />
       <EncabezadoPagina
+        banda
         className="-mt-2"
         titulo="Invitaciones"
         bajada={
-          <Suspense fallback={<span className="inline-block h-4 w-64 rounded bg-secondary-hover" />}>
+          <Suspense fallback={<span className="inline-block h-4 w-64 max-w-full rounded bg-primary-foreground/20" />}>
             <BajadaInvitaciones consulta={consulta} />
           </Suspense>
         }

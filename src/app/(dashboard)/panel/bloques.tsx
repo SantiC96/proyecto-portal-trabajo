@@ -1,15 +1,13 @@
 import Link from "next/link";
 import {
-  BadgeCheck,
+  Activity,
   Briefcase,
-  CheckCircle2,
   ChevronRight,
-  Circle,
-  CircleX,
+  CircleCheck,
   Mail,
   Search,
-  Send,
-  Undo2,
+  TriangleAlert,
+  User,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,12 +16,12 @@ import { formatFechaHora, formatFechaRelativa } from "@/lib/fechas";
 import {
   AVISO_OFERTA_RETIRADA,
   ETIQUETA_FILTRO,
+  FILTROS_MIS_POSTULACIONES,
   INDICADOR_FILTRO,
   TEXTO_NO_SELECCIONADO,
   TEXTO_SELECCIONADO,
   badgePostulacion,
   cantidadConEstado,
-  type FiltroMisPostulaciones,
 } from "@/lib/mis-postulaciones";
 import { hrefSeccionPerfil, SECCION_PERFIL } from "@/lib/perfil-secciones";
 import { textoInvitacionReciente } from "@/lib/invitaciones";
@@ -37,11 +35,19 @@ import {
 } from "@/lib/postulante/panel";
 import { formatNumero } from "@/components/indicadores/formato";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { Badge, claseTextoTono, type TonoBadge } from "@/components/ui/badge";
-import { BarraProgreso } from "@/components/ui/barra-progreso";
+import { Badge } from "@/components/ui/badge";
+import { AnilloProgreso } from "@/components/ui/anillo-progreso";
+import { IconoCuadro } from "@/components/ui/icono-cuadro";
+import { LineaDeTiempo } from "@/components/ui/linea-de-tiempo";
+import { ACENTO_ESTADO, ACENTO_FILTRO } from "@/components/postulantes/acento-estado";
 import { TarjetaOferta } from "@/components/ofertas/tarjeta-oferta";
 import { BadgeCoincidencia } from "@/components/ofertas/coincidencia";
-import { CLASE_GRILLA_INDICADORES, claseCuadroIndicador } from "./esqueletos";
+import {
+  CLASE_CUADRO_ESTADO,
+  CLASE_GRILLA_INDICADORES,
+  CLASE_GRILLA_OFERTAS,
+  claseCuadroIndicador,
+} from "./esqueletos";
 
 // Bloques de /panel. Cada uno carga sus datos dentro de su propio Suspense y,
 // si falla, muestra su error sin afectar a los demás (docs/decisiones/029).
@@ -52,25 +58,30 @@ const INVITACIONES = "/invitaciones";
 const CLASE_LINK_TITULO =
   "inline-flex min-h-11 items-center gap-1 rounded-[var(--radius-md)] text-[15px] font-bold whitespace-nowrap text-primary outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]";
 
-/** Título de bloque (20 px, 800) con su bajada y un link a la derecha. */
+/** Título de bloque (20 px, 800) con su ícono, su bajada y un link a la derecha. */
 function TituloBloque({
   id,
   titulo,
+  icono,
   bajada,
   enlace,
 }: {
   id: string;
   titulo: string;
+  icono: LucideIcon;
   bajada?: string;
   enlace?: { href: string; texto: string };
 }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
-      <div className="min-w-0">
-        <h2 id={id} className="text-xl leading-tight font-extrabold">
-          {titulo}
-        </h2>
-        {bajada && <p className="mt-1 text-[15px] text-muted-foreground">{bajada}</p>}
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+      <div className="flex min-w-0 items-center gap-3">
+        <IconoCuadro icono={icono} />
+        <div className="min-w-0">
+          <h2 id={id} className="text-xl leading-tight font-extrabold text-heading">
+            {titulo}
+          </h2>
+          {bajada && <p className="mt-0.5 text-[15px] text-muted-foreground">{bajada}</p>}
+        </div>
       </div>
       {enlace && (
         <Link href={enlace.href} className={CLASE_LINK_TITULO}>
@@ -99,17 +110,8 @@ export function AccionesPanel() {
 
 // ── Indicadores ────────────────────────────────────────────────────────────
 
-type Indicador = { filtro: FiltroMisPostulaciones; tono: TonoBadge; icono: LucideIcon };
-
-// El tono es el del badge de cada estado (badgePostulacion). La grilla y el
-// esqueleto (esqueletos.tsx) están pensados para estos cinco cuadros.
-const INDICADORES: Indicador[] = [
-  { filtro: "en-revision", tono: "info", icono: Search },
-  { filtro: "derivadas", tono: "teal", icono: Send },
-  { filtro: "seleccionadas", tono: "success", icono: BadgeCheck },
-  { filtro: "no-seleccionadas", tono: "neutral", icono: CircleX },
-  { filtro: "retiradas", tono: "neutral", icono: Undo2 },
-];
+// El color y el ícono de cada cuadro son los de su estado (ACENTO_FILTRO). La
+// grilla y el esqueleto (esqueletos.tsx) están pensados para estos cinco.
 
 export async function BloqueIndicadores() {
   const { data: i, error } = await obtenerIndicadoresPostulante();
@@ -137,32 +139,30 @@ export async function BloqueIndicadores() {
         Tus postulaciones
       </h2>
       <ul className={CLASE_GRILLA_INDICADORES}>
-        {INDICADORES.map(({ filtro, tono, icono: Icono }, indice) => {
+        {FILTROS_MIS_POSTULACIONES.map((filtro, indice) => {
           const valor = Number(i[INDICADOR_FILTRO[filtro]]);
+          const acento = ACENTO_FILTRO[filtro];
           return (
             <li key={filtro} className={claseCuadroIndicador(indice)}>
               <Link
                 href={`${MIS_POSTULACIONES}?estado=${filtro}`}
                 aria-label={`${cantidadConEstado(filtro, valor)}. Ver lista`}
-                className="tarjeta tarjeta-clickeable flex h-full flex-col gap-2.5 p-5 outline-none focus-visible:shadow-[var(--sombra-foco)]"
+                className={cn(
+                  CLASE_CUADRO_ESTADO,
+                  "tarjeta-clickeable outline-none focus-visible:shadow-[var(--sombra-foco)]",
+                  acento.filete,
+                )}
               >
-                <Badge tono={tono} estado multilinea>
-                  {ETIQUETA_FILTRO[filtro]}
-                </Badge>
-                {/* El ícono a la izquierda del número; arriba si el cuadro es angosto. */}
-                <div className="@container">
-                  <div className="flex flex-col items-start gap-2.5 @[7.5rem]:flex-row @[7.5rem]:items-center @[7.5rem]:gap-3">
-                    <span
-                      aria-hidden="true"
-                      className="grid size-10 shrink-0 place-items-center rounded-[var(--radius-md)] bg-secondary"
-                    >
-                      <Icono className={cn("size-5", claseTextoTono(tono))} />
-                    </span>
-                    <span className="text-[36px] leading-none font-extrabold text-heading">
-                      {formatNumero(valor)}
-                    </span>
-                  </div>
+                <div className="flex items-start justify-between gap-2">
+                  <IconoCuadro icono={acento.icono} className={acento.fondo} />
+                  <ChevronRight className="size-5 shrink-0 text-muted-icon" aria-hidden="true" />
                 </div>
+                <span className="text-[38px] leading-none font-extrabold break-all text-heading tabular-nums">
+                  {formatNumero(valor)}
+                </span>
+                <span className="text-sm leading-tight font-bold break-words hyphens-auto text-heading">
+                  {ETIQUETA_FILTRO[filtro]}
+                </span>
               </Link>
             </li>
           );
@@ -240,6 +240,7 @@ export async function BloqueMovimientos({ postulanteId }: { postulanteId: string
     <TituloBloque
       id="panel-movimientos"
       titulo="Últimos movimientos"
+      icono={Activity}
       enlace={{ href: MIS_POSTULACIONES, texto: "Ver mis postulaciones" }}
     />
   );
@@ -271,51 +272,57 @@ export async function BloqueMovimientos({ postulanteId }: { postulanteId: string
     );
   } else {
     contenido = (
-      <ul className="mt-2">
-        {movimientos.map((m) => {
+      <LineaDeTiempo
+        className="mt-5"
+        eventos={movimientos.map((m) => {
           const badge = badgePostulacion({
             estado: m.estado,
             estadoEmpresa: m.estadoEmpresa,
             ofertaEstado: m.ofertaEstado,
             ofertaNoVisible: m.ofertaNoVisible,
           });
+          const acento = ACENTO_ESTADO[badge.clave];
           const detalle = detalleMovimiento(m);
-          return (
-            <li key={m.postulacionId} className="border-t border-tabla-borde first:border-t-0">
+          return {
+            clave: m.postulacionId,
+            icono: acento.icono,
+            claseIcono: acento.fondo,
+            // El link cubre todo el movimiento, como antes.
+            titulo: (
               <Link
                 href={m.href}
-                className="-mx-2 flex items-start gap-3 rounded-[var(--radius-lg)] px-2 py-3 outline-none transition-colors hover:bg-tabla-hover focus-visible:shadow-[var(--sombra-foco)]"
+                className="rounded-[var(--radius-sm)] outline-none after:absolute after:inset-0 after:rounded-[var(--radius-lg)] hover:underline focus-visible:after:shadow-[var(--sombra-foco)]"
               >
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-white">
-                  <Briefcase className="size-5" aria-hidden="true" />
-                </span>
-                <div className="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-x-3 gap-y-1.5">
-                  <div className="min-w-[12rem] flex-1 text-[15px] leading-[1.45] text-foreground">
-                    <p className="break-words">
-                      <span className="font-bold">{m.oferta.titulo}</span>
-                      {m.oferta.empresaNombre && (
-                        <span className="text-muted-foreground-strong"> · {m.oferta.empresaNombre}</span>
-                      )}
-                    </p>
-                    {detalle && <p className="text-muted-foreground-strong">{detalle}</p>}
-                    <time dateTime={m.fecha} className="text-[13px] text-muted-foreground">
-                      {formatFechaRelativa(m.fecha)}
-                    </time>
-                  </div>
-                  <Badge tono={badge.tono} estado>
-                    {badge.label}
-                  </Badge>
-                </div>
+                <span className="font-extrabold text-heading">{m.oferta.titulo}</span>
+                {m.oferta.empresaNombre && (
+                  <span className="font-medium text-muted-foreground-strong">
+                    {" "}
+                    · {m.oferta.empresaNombre}
+                  </span>
+                )}
               </Link>
-            </li>
-          );
+            ),
+            detalle: (
+              <>
+                {detalle && <p className="text-muted-foreground-strong">{detalle}</p>}
+                <time dateTime={m.fecha} className="block text-[13px] text-muted-foreground">
+                  {formatFechaRelativa(m.fecha)}
+                </time>
+              </>
+            ),
+            extra: (
+              <Badge tono={badge.tono} estado>
+                {badge.label}
+              </Badge>
+            ),
+          };
         })}
-      </ul>
+      />
     );
   }
 
   return (
-    <section aria-labelledby="panel-movimientos" className="tarjeta p-6">
+    <section aria-labelledby="panel-movimientos" className="tarjeta tarjeta-panel @container">
       {titulo}
       {contenido}
     </section>
@@ -338,54 +345,56 @@ export async function BloquePerfil() {
   }
 
   const completo = perfil.pendientes.length === 0;
+  const completos = perfil.items.filter((item) => item.completo);
 
   return (
-    <section aria-labelledby="panel-perfil" className="tarjeta flex flex-col gap-4 p-6">
-      <div>
-        <h2 id="panel-perfil" className="text-xl leading-tight font-extrabold">
+    <section aria-labelledby="panel-perfil" className="tarjeta tarjeta-panel flex flex-col gap-5">
+      <div className="flex min-w-0 items-center gap-3">
+        <IconoCuadro icono={User} />
+        <h2 id="panel-perfil" className="text-xl leading-tight font-extrabold text-heading">
           {completo ? "Tu perfil está completo" : "Completá tu perfil"}
         </h2>
-        <p className="mt-1.5 text-[15px] leading-[1.45] text-muted-foreground">
+      </div>
+
+      <div className="flex items-center gap-4">
+        <AnilloProgreso
+          porcentaje={perfil.porcentaje}
+          etiqueta={`Perfil completo al ${perfil.porcentaje}%`}
+        />
+        <p className="min-w-0 text-[15px] leading-[1.45] text-muted-foreground">
           Los perfiles completos y con domicilio verificado en Funes tienen prioridad en la Oficina
           de Empleo.
         </p>
       </div>
 
-      <div className="flex items-center gap-3">
-        <BarraProgreso
-          porcentaje={perfil.porcentaje}
-          etiqueta={`Perfil completo al ${perfil.porcentaje}%`}
-        />
-        <span aria-hidden="true" className="shrink-0 text-sm font-bold text-foreground">
-          {perfil.porcentaje}%
-        </span>
-      </div>
-
-      <ul className="flex flex-col">
-        {perfil.items.map((item) =>
-          item.completo ? (
-            <li key={item.clave} className="flex min-h-11 items-center gap-2.5 text-[15px] text-foreground">
-              <CheckCircle2 className="size-5 shrink-0 text-primary" aria-hidden="true" />
-              <span className="sr-only">Completo: </span>
+      {/* Lo pendiente primero, resaltado. */}
+      <ul className="flex flex-col gap-1.5">
+        {perfil.pendientes.map((item) => (
+          <li key={item.clave}>
+            <Link
+              href={item.href}
+              className="flex min-h-11 items-center gap-2.5 rounded-[var(--radius-md)] bg-accent/18 px-3 py-2 text-[15px] leading-snug font-bold text-accent-foreground outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+            >
+              <TriangleAlert className="size-5 shrink-0" aria-hidden="true" />
+              <span className="sr-only">Pendiente: </span>
               {item.texto}
-            </li>
-          ) : (
-            <li key={item.clave}>
-              <Link
-                href={item.href}
-                className="flex min-h-11 items-center gap-2.5 rounded-[var(--radius-md)] py-1 text-[15px] font-bold text-primary outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
-              >
-                <Circle className="size-5 shrink-0 text-muted-icon" aria-hidden="true" />
-                <span className="sr-only">Pendiente: </span>
-                {item.texto}
-              </Link>
-            </li>
-          ),
-        )}
+            </Link>
+          </li>
+        ))}
+        {completos.map((item) => (
+          <li
+            key={item.clave}
+            className="flex min-h-11 items-center gap-2.5 px-3 text-[15px] leading-snug text-foreground"
+          >
+            <CircleCheck className="size-5 shrink-0 text-primary" aria-hidden="true" />
+            <span className="sr-only">Completo: </span>
+            {item.texto}
+          </li>
+        ))}
       </ul>
 
       {!completo && (
-        <Link href={perfil.pendientes[0].href} className="btn-secundario self-start">
+        <Link href={perfil.pendientes[0].href} className="btn-secundario mt-auto self-start">
           Completar perfil
         </Link>
       )}
@@ -405,6 +414,7 @@ export async function BloqueOfertas() {
     <TituloBloque
       id="panel-ofertas"
       titulo="Ofertas para vos"
+      icono={Briefcase}
       bajada={
         rubros.length > 0
           ? `Según tus rubros: ${rubros.join(", ")}`
@@ -445,7 +455,7 @@ export async function BloqueOfertas() {
     );
   } else {
     contenido = (
-      <ul className="mt-5 grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
+      <ul className={cn("mt-5", CLASE_GRILLA_OFERTAS)}>
         {ofertas.map((o) => (
           <li key={o.id}>
             <TarjetaOferta
