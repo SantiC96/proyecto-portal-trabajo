@@ -24,6 +24,8 @@ type Props = {
   botonesBlancos?: boolean;
   /** Solo con `banda`: algo al lado del título, como el badge del estado. */
   junto?: ReactNode;
+  /** Solo con `banda`: el logo o las iniciales a la izquierda del título (AvatarAjustado `claro`). */
+  avatar?: ReactNode;
   className?: string;
 };
 
@@ -36,6 +38,7 @@ export function EncabezadoPagina({
   banda = false,
   botonesBlancos = false,
   junto,
+  avatar,
   className,
 }: Props) {
   if (banda) {
@@ -52,20 +55,23 @@ export function EncabezadoPagina({
         )}
       >
         <DecoracionBanda />
-        <div className="min-w-0">
-          {junto ? (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              {h1}
-              {junto}
-            </div>
-          ) : (
-            h1
-          )}
-          {bajada && (
-            <p className="mt-2 text-[15px] leading-normal text-sidebar-texto sm:text-[17px]">
-              {bajada}
-            </p>
-          )}
+        <div className={cn("min-w-0", avatar && "flex items-center gap-4 sm:gap-5")}>
+          {avatar}
+          <div className="min-w-0">
+            {junto ? (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                {h1}
+                {junto}
+              </div>
+            ) : (
+              h1
+            )}
+            {bajada && (
+              <p className="mt-2 text-[15px] leading-normal text-sidebar-texto sm:text-[17px]">
+                {bajada}
+              </p>
+            )}
+          </div>
         </div>
         {acciones && (
           <div

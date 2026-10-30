@@ -7,7 +7,7 @@ import {
   type NivelPrioridad,
   type VarianteLocalidad,
 } from "@/lib/procedencia";
-import { Badge } from "@/components/ui/badge";
+import { Badge, Chip, type TonoChip } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -60,16 +60,16 @@ export function BadgeProcedencia({ nivel, localidad, comprobante, className }: P
   );
 }
 
-const CHIP_LOCALIDAD: Record<VarianteLocalidad, { clase: string; icono: LucideIcon }> = {
-  verificado: { clase: "bg-primary/12 text-primary-hover", icono: CircleCheck },
-  "sin-verificar": { clase: "bg-accent/22 text-invitacion-titulo", icono: Clock },
-  "otra-localidad": { clase: "bg-secondary text-muted-foreground-strong", icono: MapPin },
+const CHIP_LOCALIDAD: Record<VarianteLocalidad, { tono: TonoChip; icono: LucideIcon }> = {
+  verificado: { tono: "verde", icono: CircleCheck },
+  "sin-verificar": { tono: "amarillo", icono: Clock },
+  "otra-localidad": { tono: "gris", icono: MapPin },
 };
 
 /**
- * Chip de localidad de las pantallas de la oficina (ronda 9): 26 px, radio
- * 13, 13 px 700 y un ícono de 14 px. La variante sale del nivel de prioridad
- * (varianteLocalidad), igual que BadgeProcedencia.
+ * Chip de localidad de las pantallas de la oficina (ronda 9): un Chip de
+ * 26 px. La variante sale del nivel de prioridad (varianteLocalidad), igual
+ * que BadgeProcedencia.
  */
 export function ChipLocalidad({
   nivel,
@@ -80,19 +80,11 @@ export function ChipLocalidad({
   localidad: string | null;
   className?: string;
 }) {
-  const { clase, icono: Icono } = CHIP_LOCALIDAD[varianteLocalidad(nivel)];
+  const { tono, icono } = CHIP_LOCALIDAD[varianteLocalidad(nivel)];
   const texto = textoChipLocalidad(nivel, localidad);
   return (
-    <span
-      title={texto}
-      className={cn(
-        "inline-flex h-[26px] max-w-full min-w-0 items-center gap-1.5 rounded-[13px] px-2.5 text-[13px] leading-none font-bold whitespace-nowrap",
-        clase,
-        className,
-      )}
-    >
-      <Icono aria-hidden="true" className="size-3.5 shrink-0" />
-      <span className="min-w-0 truncate">{texto}</span>
-    </span>
+    <Chip tono={tono} icono={icono} title={texto} className={className}>
+      {texto}
+    </Chip>
   );
 }

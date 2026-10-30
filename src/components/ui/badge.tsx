@@ -143,3 +143,44 @@ export function BadgeBanda({
     </span>
   )
 }
+
+const CLASE_CHIP = {
+  verde: "bg-primary/12 text-primary-hover",
+  amarillo: "bg-accent/22 text-invitacion-titulo",
+  gris: "bg-secondary text-muted-foreground-strong",
+} as const
+
+export type TonoChip = keyof typeof CLASE_CHIP
+
+/**
+ * Chip suave de las pantallas de la oficina (ronda 9): 26 px, radio 13,
+ * 13 px 700, ícono de 14 px y fondo claro del tono (no es un estado: los
+ * estados van en Badge). Lo usan ChipLocalidad y "Email confirmado".
+ */
+export function Chip({
+  tono,
+  icono: Icono,
+  title,
+  children,
+  className,
+}: {
+  tono: TonoChip
+  icono?: LucideIcon
+  title?: string
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <span
+      title={title}
+      className={cn(
+        "inline-flex h-[26px] max-w-full min-w-0 shrink-0 items-center gap-1.5 rounded-[13px] px-2.5 text-[13px] leading-none font-bold whitespace-nowrap",
+        CLASE_CHIP[tono],
+        className,
+      )}
+    >
+      {Icono && <Icono aria-hidden="true" className="size-3.5 shrink-0" />}
+      <span className="min-w-0 truncate">{children}</span>
+    </span>
+  )
+}

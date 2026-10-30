@@ -2237,11 +2237,23 @@ de 40 px y el nombre como link. Con `secundario`, el nombre va en 800 y
 debajo una línea de 13 px `muted-foreground` (DNI, teléfono o CUIT);
 `secundario={null}` da el estilo sin la segunda línea. Sin `secundario`,
 el estilo anterior (700), que siguen usando la empresa y el postulante.
+Con `secundarioSoloTarjeta`, la segunda línea se ve solo en la tarjeta
+del celular, cuando el dato tiene su propia columna en la tabla (el CUIT
+en Empresas).
+
+### Chip suave (`Chip`)
+
+`src/components/ui/badge.tsx`. 26 px, radio 13, 13 px 700, ícono de
+14 px y fondo claro: `verde` (`primary` al 12 %, texto `#00532A`),
+`amarillo` (`accent` al 22 %, `#3A2A00`) y `gris` (`secondary`,
+`#33443A`). No es un estado (los estados van en `Badge`): marca un dato
+verificado o una característica. Lo usan `ChipLocalidad` y "Email
+confirmado" en el detalle de la empresa.
 
 ### Chip de localidad (`ChipLocalidad`)
 
-`src/components/postulantes/badge-procedencia.tsx`. 26 px, radio 13, 13 px
-700, ícono de 14 px. La variante sale del nivel de prioridad
+`src/components/postulantes/badge-procedencia.tsx`. Un `Chip` (26 px,
+radio 13, 13 px 700, ícono de 14 px). La variante sale del nivel de prioridad
 (`varianteLocalidad` en `lib/procedencia.ts`, la misma lógica que
 `BadgeProcedencia`):
 
@@ -2262,10 +2274,15 @@ columna en el celular. La lateral no es sticky.
 ### Tarjeta "Decisión" (`TarjetaDecision`)
 
 `src/components/ui/tarjeta-decision.tsx`: filete superior de 4 px
-(`accent` si la decisión está pendiente, `primary` con `resuelta`),
+del color de `estado`: `accent` pendiente, `primary` aprobada,
+`danger` rechazada),
 `Scale` en un cuadrado de 40 px, el título de 20 px 800, la bajada y las
 acciones a todo el ancho: la principal (verde) arriba y la de rechazo
-(`btn-peligro-borde`) abajo.
+(`btn-peligro-borde`) abajo. Una decisión ya tomada va arriba de las
+acciones con `ResultadoDecision`: recuadro radio 14 verde suave
+(`primary` al 8 %, texto `#00532A`, `CircleCheck`) o rojo suave
+(`danger` al 7 %, texto `motivo-rechazo`, `CircleX`), el texto en 15 px
+700 ("Aprobada el … por …") y debajo, en 14 px, el motivo.
 
 ### Historial de revisión
 
@@ -2286,6 +2303,16 @@ celular, gap 12). Cada mosaico: borde `secondary-hover`, radio 14, fondo
 (`primary` al 10 %), la etiqueta de 12 px y el valor de 15 px 700. Con
 `ancho`, ocupa toda la fila (los rubros). Los datos sin valor no se
 muestran.
+
+`variante="lista"` (detalle de la empresa): los mismos datos uno debajo
+del otro, separados por una línea `tabla-borde`, con el mismo ícono de
+38 px, la etiqueta de 12 px y el valor en 15 px 600.
+
+### Banda con logo o iniciales
+
+`EncabezadoPagina banda` con `avatar`: a la izquierda del título, un
+`AvatarAjustado size="banda" claro`: círculo blanco de 72 px (56 en el
+celular) con el logo o las iniciales en `primary` 800.
 
 ### Panel (`/admin`)
 
@@ -2331,6 +2358,95 @@ muestran.
 -   Diálogo "Rechazar oferta": ícono `X` rojo, una sola explicación, el
     resumen (título, empresa y fecha de envío), el motivo obligatorio con
     contador y "Rechazar oferta" en rojo sólido.
+
+### Empresas (`/admin/empresas`)
+
+-   Banda con el título y la bajada.
+-   Pendientes, Aprobadas y Rechazadas como `PastillaFiltro` con cantidad
+    (`?estado=`) y, al lado, el `Buscador` por razón social o CUIT
+    (debajo y a todo el ancho por debajo de lg). Las cantidades aplican la
+    misma búsqueda que la lista y excluyen las empresas que no confirmaron
+    el email (`aplicarFiltroEmpresas`, `lib/admin/filtro-empresas.ts`).
+-   Tabla con filete (`accent` pendiente, `primary` aprobada, `danger`
+    rechazada): Razón social (`CeldaPersona` con logo o iniciales y el
+    badge "Reenviada" si corresponde) 1.6fr · CUIT (`formatearCUIT`,
+    `tabular-nums`) 1fr · Rubro 1.2fr · Persona responsable 1.2fr ·
+    Solicitud (fecha; la del último reenvío, si lo hay) .8fr · "Revisar"
+    (secundario chico, `aria-label` con la razón social) .6fr.
+-   En el celular, tarjetas: las iniciales con el CUIT debajo del nombre
+    y el rubro, el responsable y la fecha con `Tag`, `User` y `Calendar`.
+-   Sin empresas: E1 con `Building2` y el texto de cada pestaña; con
+    búsqueda, el estado vacío de búsqueda con "Limpiar búsqueda".
+
+### Detalle de la empresa (`/admin/empresas/[id]`)
+
+-   "Volver" arriba de la banda. Banda con el logo o las iniciales (círculo
+    blanco de 72 px, 56 en el celular), la razón social, el `BadgeBanda`
+    del estado y "Solicitud enviada el …" o "Solicitud reenviada el …".
+-   Izquierda: "Datos de la empresa" (`Building2`) con `MosaicosDatos
+    variante="lista"` (Razón social `Building2`, CUIT `Hash`, Rubro `Tag`
+    y Descripción `AlignLeft`, si hay) y "Persona responsable" (`User`):
+    Nombre `User`, Teléfono `Phone` y Email `Mail` con el `Chip` verde
+    "Email confirmado" al lado.
+-   Derecha: `TarjetaDecision` y "Historial de la solicitud" (`History`,
+    `LineaDeTiempo variante="historial"`: enviada `Send`, reenviada `Clock`
+    teal, aprobada y rechazada con el autor, y el motivo en
+    `MotivoRechazo`).
+    -   Pendiente: "Si la aprobás, …", "Aprobar" y "Rechazar".
+    -   Aprobada: filete verde, `ResultadoDecision` "Aprobada el … por …"
+        (el autor sale del último evento "aprobada" del historial) y
+        "Rechazar" debajo.
+    -   Rechazada: filete rojo, `ResultadoDecision` "Rechazada el … por …"
+        con el motivo, y "Aprobar".
+-   Diálogos: "Rechazar empresa" con `X` rojo, el resumen (razón social y
+    CUIT), el motivo obligatorio con su contador y "Rechazar empresa" en
+    rojo; "Aprobar empresa" con `CircleCheck` verde y el mismo resumen.
+
+### Comprobantes de domicilio (`/admin/comprobantes`)
+
+-   Banda con el título y la bajada.
+-   "Por revisar" y "Revisados" como `PastillaFiltro` con cantidad y, a la
+    derecha, "N comprobantes" de la pestaña. Las cantidades usan el mismo
+    filtro que la lista (`aplicarFiltroComprobantes`,
+    `lib/admin/filtro-comprobantes.ts`). No hay búsqueda.
+-   Tabla con filete (`accent` por revisar, `primary` aprobado, `danger`
+    rechazado): Postulante (`CeldaPersona` con iniciales, nombre y DNI)
+    1.5fr · Localidad (`ChipLocalidad`) .8fr · Domicilio declarado (o
+    "Sin informar" en gris) 1fr · Cargado el .9fr · "Ver comprobante" con
+    `ExternalLink` 1fr · acciones 1.6fr.
+-   Por revisar: "Aprobar" (principal chico con `Check`) y "Rechazar"
+    (`btn-peligro-borde`), con `aria-label` "Aprobar el comprobante de
+    {nombre}". Revisados: el badge "Aprobado" o "Rechazado", la fecha y
+    quién lo revisó debajo (y el motivo del rechazo), alineado a la
+    derecha.
+-   En el celular, tarjetas con el mismo filete: los rótulos "Domicilio
+    declarado" y "Cargado el" a la vista, "Ver comprobante" a todo el
+    ancho y los dos botones en dos columnas.
+-   Diálogo "Rechazar el comprobante": `XCircle` rojo, el resumen del
+    postulante (iniciales, nombre, DNI y fecha de carga), el motivo
+    obligatorio con un ejemplo en el placeholder y el contador (500), y
+    "Rechazar comprobante" en rojo. El de aprobar, con `CircleCheck`
+    verde y el mismo resumen. La ficha del postulante usa el mismo
+    componente, sin resumen.
+
+### Cuentas de la oficina (`/admin/cuentas`)
+
+-   Sin "Volver" (es una sección de la sidebar). Banda con el título, la
+    bajada y el botón blanco "Invitar cuenta" (`UserPlus`).
+-   Cada cuenta, una `.tarjeta .tarjeta-panel`: la foto o las iniciales en
+    un círculo de 56 px, el nombre (17 px 800), "Vos" (`EtiquetaRubro
+    verde`, borde verde) en la propia, el badge del estado (Activa verde,
+    Desactivada gris), el email con `Mail` y "Alta: …" (`Calendar`) ·
+    "Último ingreso: …" o "Todavía no ingresó" (`Clock`).
+-   A la derecha (abajo y a todo el ancho en el celular): "Desactivar"
+    (rojo, `X`) o "Reactivar" (`RotateCcw`), con `aria-label` con el
+    nombre. En la propia, el texto gris "No podés desactivar tu propia
+    cuenta.".
+-   Diálogo "Invitar una cuenta de la oficina": `UserPlus` verde, la
+    explicación, Nombre y Apellido lado a lado (uno debajo del otro en el
+    celular), Email, Teléfono "(opcional)" y "Enviar invitación" con
+    `Send`. Desactivar y Reactivar llevan su ícono (`X` rojo,
+    `RotateCcw` verde).
 
 ## Panel de la empresa
 

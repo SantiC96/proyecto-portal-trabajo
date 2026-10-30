@@ -225,7 +225,9 @@ export function CeldaTabla({
 /**
  * Celda "quién": foto, logo o iniciales en un círculo de 40 px y el nombre
  * (link) en 15 px 700. Con `secundario` (pantallas de la oficina), el nombre
- * va en 800 y debajo una línea gris de 13 px: DNI, teléfono o CUIT.
+ * va en 800 y debajo una línea gris de 13 px: DNI, teléfono o CUIT. Con
+ * `secundarioSoloTarjeta`, esa línea se ve solo en la tarjeta del celular
+ * (el dato tiene su propia columna en la tabla, como el CUIT en Empresas).
  */
 export function CeldaPersona({
   nombre,
@@ -233,6 +235,7 @@ export function CeldaPersona({
   iniciales,
   foto,
   secundario,
+  secundarioSoloTarjeta = false,
   children,
   className,
 }: {
@@ -241,6 +244,7 @@ export function CeldaPersona({
   iniciales?: string;
   foto?: { url: string | null; ajuste?: { x: number; y: number; zoom: number } };
   secundario?: ReactNode;
+  secundarioSoloTarjeta?: boolean;
   /** Algo debajo del nombre (un badge, la empresa). */
   children?: ReactNode;
   className?: string;
@@ -270,7 +274,12 @@ export function CeldaPersona({
           <span className={cn("text-[15px] leading-snug break-words text-heading", peso)}>{nombre}</span>
         )}
         {secundario !== undefined && secundario !== null && (
-          <span className="-mt-0.5 text-[13px] break-words text-muted-foreground tabular-nums">
+          <span
+            className={cn(
+              "-mt-0.5 text-[13px] break-words text-muted-foreground tabular-nums",
+              secundarioSoloTarjeta && "@4xl:hidden",
+            )}
+          >
             {secundario}
           </span>
         )}
