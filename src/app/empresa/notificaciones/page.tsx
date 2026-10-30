@@ -26,6 +26,8 @@ export default async function NotificacionesEmpresaPage({
           volverA="/empresa"
           textoVacio="Te avisamos acá sobre tu solicitud, la revisión de tus ofertas, los candidatos derivados y los vencimientos."
           searchParams={sp}
+          banda
+          rol="empresa"
         />
       </main>
     </>

@@ -13,7 +13,7 @@ import { BotonFormulario } from "@/components/ui/boton-formulario";
 import { abrirNotificacion } from "@/app/(dashboard)/notificaciones/actions";
 import { MarcarLeidasAlEntrar } from "./acciones-notificaciones";
 import { IconoNotificacion } from "./icono-notificacion";
-import { ListaNotificacionesAgrupada } from "./lista-agrupada";
+import { ListaNotificacionesAgrupada, type RolListaNotificaciones } from "./lista-agrupada";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 
@@ -29,6 +29,7 @@ export async function PaginaNotificaciones({
   textoVacio,
   searchParams,
   banda = false,
+  rol = "postulante",
 }: {
   usuarioId: string;
   /** Ruta de esta página (para la paginación). */
@@ -37,8 +38,10 @@ export async function PaginaNotificaciones({
   volverA: string;
   textoVacio: string;
   searchParams: ParamsUrl;
-  /** Encabezado con banda verde (solo el postulante). */
+  /** Encabezado con banda verde y lista agrupada por fecha (postulante y empresa). */
   banda?: boolean;
+  /** Con `banda`: los íconos y colores de cada tipo. */
+  rol?: RolListaNotificaciones;
 }) {
   const pagina = leerPagina(searchParams.pagina);
   const supabase = await createSupabaseServerClient();
@@ -82,6 +85,7 @@ export async function PaginaNotificaciones({
           searchParams={searchParams}
           masNueva={masNueva}
           agrupada={banda}
+          rol={rol}
         />
       </Suspense>
     </section>
@@ -96,6 +100,7 @@ async function ListadoNotificaciones({
   searchParams,
   masNueva,
   agrupada,
+  rol,
 }: {
   usuarioId: string;
   pagina: number;
@@ -104,8 +109,9 @@ async function ListadoNotificaciones({
   searchParams: ParamsUrl;
   /** La más nueva sin leer al cargar la página; null si no había. */
   masNueva: string | null;
-  /** Agrupada por fecha, en tarjetas (solo el postulante). */
+  /** Agrupada por fecha, en tarjetas (postulante y empresa). */
   agrupada: boolean;
+  rol: RolListaNotificaciones;
 }) {
   const supabase = await createSupabaseServerClient();
   const resultado = await consultarPagina(pagina, (desde, hasta) =>
@@ -141,7 +147,7 @@ async function ListadoNotificaciones({
       {masNueva && <MarcarLeidasAlEntrar hasta={masNueva} />}
       {agrupada ? (
         <div className="mt-6">
-          <ListaNotificacionesAgrupada filas={resultado.filas} ahora={new Date()} />
+          <ListaNotificacionesAgrupada filas={resultado.filas} ahora={new Date()} rol={rol} />
         </div>
       ) : (
         <ul className="mt-6 space-y-3">

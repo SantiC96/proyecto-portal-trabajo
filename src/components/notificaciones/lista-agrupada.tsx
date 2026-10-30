@@ -3,6 +3,7 @@ import {
   CalendarClock,
   ChevronRight,
   CircleCheck,
+  CircleX,
   Send,
   type LucideIcon,
 } from "lucide-react";
@@ -17,6 +18,9 @@ import { iconoTipoNotificacion } from "./icono-notificacion";
 
 type Estilo = { icono: LucideIcon; fondo: string };
 
+/** De qué rol es la lista: cambia el ícono y el color de cada tipo. */
+export type RolListaNotificaciones = "postulante" | "empresa";
+
 // Colores de la lista del postulante; los demás tipos van en neutro con su ícono.
 const ESTILO_POSTULANTE: Record<string, Estilo> = {
   seleccionado: { icono: CircleCheck, fondo: "bg-success" },
@@ -27,9 +31,28 @@ const ESTILO_POSTULANTE: Record<string, Estilo> = {
   postulacion_cerrada: { icono: Archive, fondo: "bg-neutral" },
 };
 
-function estiloDe(tipo: string): Estilo {
+// Colores de la lista de la empresa. Sus tipos están en el CHECK
+// notificaciones_tipo_check (migration_056); los que no tienen un ícono
+// propio en el diseño toman el más cercano.
+const ESTILO_EMPRESA: Record<string, Estilo> = {
+  candidato_derivado: { icono: Send, fondo: "bg-teal" },
+  oferta_aprobada: { icono: CircleCheck, fondo: "bg-success" },
+  oferta_rechazada: { icono: CircleX, fondo: "bg-danger" },
+  oferta_vencida: { icono: Archive, fondo: "bg-neutral" },
+  solicitud_aprobada: { icono: CircleCheck, fondo: "bg-success" },
+  solicitud_rechazada: { icono: CircleX, fondo: "bg-danger" },
+  oferta_por_vencer: { icono: CalendarClock, fondo: "bg-info" },
+  candidato_retirado: { icono: Archive, fondo: "bg-neutral" },
+};
+
+const ESTILOS: Record<RolListaNotificaciones, Record<string, Estilo>> = {
+  postulante: ESTILO_POSTULANTE,
+  empresa: ESTILO_EMPRESA,
+};
+
+function estiloDe(tipo: string, rol: RolListaNotificaciones): Estilo {
   return (
-    ESTILO_POSTULANTE[tipo] ?? {
+    ESTILOS[rol][tipo] ?? {
       icono: iconoTipoNotificacion(tipo),
       fondo: "bg-secondary text-neutral",
     }
@@ -44,9 +67,11 @@ function estiloDe(tipo: string): Estilo {
 export function ListaNotificacionesAgrupada({
   filas,
   ahora,
+  rol = "postulante",
 }: {
   filas: Notificacion[];
   ahora: Date;
+  rol?: RolListaNotificaciones;
 }) {
   const grupos = agruparNotificaciones(filas, ahora);
 
@@ -63,7 +88,7 @@ export function ListaNotificacionesAgrupada({
           <ul className="flex flex-col gap-3">
             {delGrupo.map((n) => (
               <li key={n.id}>
-                <TarjetaNotificacion notificacion={n} ahora={ahora} />
+                <TarjetaNotificacion notificacion={n} ahora={ahora} rol={rol} />
               </li>
             ))}
           </ul>
@@ -73,9 +98,17 @@ export function ListaNotificacionesAgrupada({
   );
 }
 
-function TarjetaNotificacion({ notificacion: n, ahora }: { notificacion: Notificacion; ahora: Date }) {
+function TarjetaNotificacion({
+  notificacion: n,
+  ahora,
+  rol,
+}: {
+  notificacion: Notificacion;
+  ahora: Date;
+  rol: RolListaNotificaciones;
+}) {
   const nueva = !n.leida_en;
-  const { icono, fondo } = estiloDe(n.tipo);
+  const { icono, fondo } = estiloDe(n.tipo, rol);
 
   return (
     <article
