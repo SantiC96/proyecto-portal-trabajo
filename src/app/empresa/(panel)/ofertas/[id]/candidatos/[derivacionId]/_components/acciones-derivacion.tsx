@@ -334,7 +334,7 @@ export function AccionesDerivacion({
           if (!v && !isPending) cerrarRechazo();
         }}
       >
-        <DialogContent tamano="amplio">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>No seleccionar candidato</DialogTitle>
             <DialogDescription>

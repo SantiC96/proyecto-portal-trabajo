@@ -54,7 +54,7 @@ export function DialogoElegirCv({
 
   return (
     <Dialog open={abierto} onOpenChange={cambiar}>
-      <DialogContent tamano="amplio">
+      <DialogContent>
         {cvs.length === 0 ? (
           <>
             <DialogHeader>
