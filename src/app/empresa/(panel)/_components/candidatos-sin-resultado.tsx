@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { ChevronRight, UserCheck } from "lucide-react";
+import { Calendar, ChevronRight, UserCheck } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
 import { formatFechaHora } from "@/lib/fechas";
+import { inicialesDePersona } from "@/lib/iniciales";
 import { DIAS_SIN_RESULTADO } from "@/lib/derivacion-estados";
+import { IconoCuadro } from "@/components/ui/icono-cuadro";
 
 /**
  * Recordatorio de contratación: candidatos cuya entrevista pasó hace más de
@@ -27,52 +29,62 @@ export async function CandidatosSinResultado() {
   const visibles = filas.slice(0, 10);
 
   return (
-    <section
-      aria-labelledby="sin-resultado-titulo"
-      className="mt-8 rounded-[var(--radius-lg)] bg-accent p-4 text-accent-foreground sm:p-5"
-    >
-      <div className="flex items-start gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white">
-          <UserCheck className="h-4.5 w-4.5" aria-hidden="true" />
-        </div>
+    <section aria-labelledby="sin-resultado-titulo" className="aviso-respuesta text-accent-foreground">
+      <div className="flex items-start gap-3.5">
+        <IconoCuadro icono={UserCheck} tamano={44} className="bg-accent text-accent-foreground" />
         <div className="min-w-0">
-          <h2 id="sin-resultado-titulo" className="text-lg font-bold text-accent-foreground">
+          <h2 id="sin-resultado-titulo" className="text-lg leading-snug font-extrabold text-accent-foreground">
             {filas.length === 1
-              ? "Tenés 1 candidato esperando tu respuesta: ¿lo contrataste?"
-              : `Tenés ${filas.length} candidatos esperando tu respuesta: ¿los contrataste?`}
+              ? "Tenés 1 candidato esperando tu respuesta"
+              : `Tenés ${filas.length} candidatos esperando tu respuesta`}
           </h2>
-          <p className="mt-0.5 text-[15px] leading-[1.45]">
+          <p className="mt-0.5 text-[15px] leading-[1.45] text-invitacion-detalle">
             La entrevista fue hace más de {DIAS_SIN_RESULTADO} días. Indicá si lo
             seleccionaste o no para que la Oficina de Empleo pueda seguir acompañándolo.
           </p>
         </div>
       </div>
 
-      <ul className="mt-4 divide-y divide-border overflow-hidden rounded-[var(--radius-md)] bg-white">
-        {visibles.map((f) => (
-          <li key={f.derivacion_id}>
-            <Link
-              href={`/empresa/ofertas/${f.oferta_id}/candidatos/${f.derivacion_id}`}
-              className="flex min-h-11 items-center justify-between gap-3 px-3 py-3 transition hover:bg-surface-tinted"
+      <ul className="mt-4 flex flex-col gap-2.5">
+        {visibles.map((f) => {
+          const nombre = `${f.nombre} ${f.apellido}`;
+          return (
+            <li
+              key={f.derivacion_id}
+              className="flex flex-col gap-3 rounded-[14px] border border-aviso-fila-borde bg-surface p-3.5 sm:flex-row sm:items-center sm:gap-4 sm:px-4"
             >
-              <span className="min-w-0">
-                <span className="block font-medium text-foreground">
-                  {f.nombre} {f.apellido}
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <span
+                  aria-hidden="true"
+                  className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-[15px] font-bold text-primary-foreground"
+                >
+                  {inicialesDePersona(f.nombre, f.apellido)}
                 </span>
-                <span className="block text-xs text-muted-foreground">
-                  {f.oferta_titulo} · Entrevista: {formatFechaHora(f.fecha_entrevista)}
-                </span>
-              </span>
-              <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-primary">
+                <div className="min-w-0">
+                  <p className="text-base leading-snug break-words text-heading">
+                    <span className="font-extrabold">{nombre}</span>
+                    <span className="text-muted-foreground-strong"> · {f.oferta_titulo}</span>
+                  </p>
+                  <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground-strong">
+                    <Calendar className="size-4 shrink-0 text-info" aria-hidden="true" />
+                    Entrevista: {formatFechaHora(f.fecha_entrevista)}
+                  </p>
+                </div>
+              </div>
+              <Link
+                href={`/empresa/ofertas/${f.oferta_id}/candidatos/${f.derivacion_id}`}
+                aria-label={`Responder: ${nombre}, ${f.oferta_titulo}`}
+                className="btn-secundario btn-chico w-full shrink-0 sm:w-auto"
+              >
                 Responder
-                <ChevronRight className="h-4 w-4" aria-hidden="true" />
-              </span>
-            </Link>
-          </li>
-        ))}
+                <ChevronRight aria-hidden="true" />
+              </Link>
+            </li>
+          );
+        })}
       </ul>
       {filas.length > visibles.length && (
-        <p className="mt-2 text-sm">
+        <p className="mt-3 text-sm text-invitacion-detalle">
           Y {filas.length - visibles.length} más. Los encontrás en cada oferta, en Mis ofertas.
         </p>
       )}
