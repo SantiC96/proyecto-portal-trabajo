@@ -1,62 +1,44 @@
-import { ExternalLink, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import type { CvVista } from "@/lib/cvs";
 import { CV_MAXIMOS, textoTamanoArchivo } from "@/lib/archivos";
 import { formatFecha } from "@/lib/fechas";
+import { FilaArchivoPerfil } from "@/components/perfil/piezas";
+import { TituloBloque } from "@/components/ui/titulo-bloque";
+import { BotonVerArchivo } from "@/components/admin/boton-ver-archivo";
+import { cn } from "@/lib/utils";
 
-function FilaCv({ cv, nota }: { cv: CvVista; nota?: string }) {
+/**
+ * "Currículum vitae" en el perfil del postulante de la oficina: "N de 5 CVs"
+ * a la derecha y cada CV como fila de archivo con "Ver CV".
+ */
+export function CvsDelPostulante({ cvs, className }: { cvs: CvVista[]; className?: string }) {
   return (
-    <div className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-border bg-surface-tinted px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex min-w-0 items-start gap-3">
-        <FileText className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-        <div className="min-w-0">
-          <p className="break-all text-sm font-medium text-foreground">{cv.nombreOriginal}</p>
-          <p className="text-xs text-muted-foreground">
-            {cv.tamano > 0 ? `${textoTamanoArchivo(cv.tamano)} · ` : ""}
-            Subido el {formatFecha(cv.subidoEn)}
-          </p>
-          {nota && <p className="mt-0.5 text-xs text-muted-foreground">{nota}</p>}
-        </div>
-      </div>
-      {cv.url ? (
-        <a
-          href={cv.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-primario h-11 shrink-0 sm:h-9"
-        >
-          Ver CV
-          <ExternalLink className="h-4 w-4" aria-hidden="true" />
-        </a>
-      ) : (
-        <span className="text-xs text-muted-foreground">El archivo ya no está disponible.</span>
-      )}
-    </div>
-  );
-}
-
-/** CVs disponibles del postulante en su ficha de la oficina. */
-export function CvsDelPostulante({ cvs }: { cvs: CvVista[] }) {
-  return (
-    <div className="tarjeta p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-semibold text-foreground">Currículum vitae</h2>
+    <section aria-labelledby="titulo-cvs" className={cn("tarjeta tarjeta-panel min-w-0", className)}>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <TituloBloque id="titulo-cvs" titulo="Currículum vitae" icono={FileText} />
         {cvs.length > 0 && (
-          <span className="text-sm text-muted-foreground">
+          <span className="text-sm font-semibold text-muted-foreground-strong">
             {cvs.length} de {CV_MAXIMOS} CVs
           </span>
         )}
       </div>
       {cvs.length === 0 ? (
-        <p className="mt-3 text-sm text-muted-foreground">No tiene CVs cargados.</p>
+        <p className="mt-4 text-[15px] text-muted-foreground">No tiene CVs cargados.</p>
       ) : (
-        <ul className="mt-3 flex flex-col gap-2">
+        <ul className="mt-5 flex flex-col gap-2.5">
           {cvs.map((cv) => (
             <li key={cv.id}>
-              <FilaCv cv={cv} />
+              <FilaArchivoPerfil
+                nombre={cv.nombreOriginal}
+                detalle={`${cv.tamano > 0 ? `${textoTamanoArchivo(cv.tamano)} · ` : ""}Subido el ${formatFecha(cv.subidoEn)}`}
+                acciones={
+                  <BotonVerArchivo url={cv.url} texto="Ver CV" etiqueta={`Ver CV ${cv.nombreOriginal}`} />
+                }
+              />
             </li>
           ))}
         </ul>
       )}
-    </div>
+    </section>
   );
 }
