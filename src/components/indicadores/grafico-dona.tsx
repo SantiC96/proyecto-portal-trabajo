@@ -30,19 +30,36 @@ type Props = {
   resaltada?: string;
   /** Texto del estado vacío, cuando el total es 0. */
   vacio: string;
+  /**
+   * "resumen" (Estado de postulaciones de la oficina): 190 px, el total en
+   * 38 px y la leyenda con el porcentaje en 800 y la cantidad entre
+   * paréntesis. Por defecto, la dona de siempre.
+   */
+  variante?: "estandar" | "resumen";
 };
 
-const RADIO_EXTERNO = 94;
-const RADIO_INTERNO = 66;
+const MEDIDAS = {
+  estandar: { tamano: 200, externo: 94, interno: 66 },
+  resumen: { tamano: 190, externo: 89, interno: 63 },
+} as const;
 
 /**
  * Dona de 200 px con el total en el centro y la leyenda al costado (debajo
  * cuando la tarjeta es angosta), con color, nombre, cantidad y porcentaje.
  * Solo para pocas partes de un mismo total (hasta seis).
  */
-export function GraficoDona({ partes, unidad, resumen, resaltada, vacio }: Props) {
+export function GraficoDona({
+  partes,
+  unidad,
+  resumen,
+  resaltada,
+  vacio,
+  variante = "estandar",
+}: Props) {
   const reducido = useMovimientoReducido();
   const total = partes.reduce((suma, p) => suma + p.cantidad, 0);
+  const medidas = MEDIDAS[variante];
+  const esResumen = variante === "resumen";
 
   if (total === 0) {
     return (
@@ -64,9 +81,25 @@ export function GraficoDona({ partes, unidad, resumen, resaltada, vacio }: Props
 
   return (
     <div className="@container">
-      <div className="flex flex-col items-center gap-5 @md:flex-row @md:items-center @md:gap-6">
-        <div role="img" aria-label={resumen} className="relative size-[200px] shrink-0">
-          <ChartContainer config={config} className="aspect-square size-[200px]">
+      <div
+        className={cn(
+          "flex flex-col items-center gap-5",
+          esResumen
+            ? "@sm:flex-row @sm:items-center @sm:gap-6"
+            : "@md:flex-row @md:items-center @md:gap-6",
+        )}
+      >
+        <div
+          role="img"
+          aria-label={resumen}
+          className="relative shrink-0"
+          style={{ width: medidas.tamano, height: medidas.tamano }}
+        >
+          <ChartContainer
+            config={config}
+            className="aspect-square"
+            style={{ width: medidas.tamano, height: medidas.tamano }}
+          >
             <PieChart accessibilityLayer margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
               {/* Por encima del total del centro (un div posterior en el DOM,
                   sin eventos del puntero). */}
@@ -96,8 +129,8 @@ export function GraficoDona({ partes, unidad, resumen, resaltada, vacio }: Props
                 data={datos}
                 dataKey="cantidad"
                 nameKey="nombre"
-                innerRadius={RADIO_INTERNO}
-                outerRadius={RADIO_EXTERNO}
+                innerRadius={medidas.interno}
+                outerRadius={medidas.externo}
                 stroke="var(--color-surface)"
                 strokeWidth={2}
                 isAnimationActive={!reducido}
@@ -122,7 +155,12 @@ export function GraficoDona({ partes, unidad, resumen, resaltada, vacio }: Props
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center"
           >
-            <span className="text-[32px] leading-none font-extrabold text-heading tabular-nums">
+            <span
+              className={cn(
+                "leading-none font-extrabold text-heading tabular-nums",
+                esResumen ? "text-[38px]" : "text-[32px]",
+              )}
+            >
               {formatNumero(total)}
             </span>
             <span className="mt-1 max-w-[110px] text-[13px] leading-tight text-muted-foreground">
@@ -131,6 +169,28 @@ export function GraficoDona({ partes, unidad, resumen, resaltada, vacio }: Props
           </div>
         </div>
 
+        {esResumen ? (
+          <ul className="flex w-full min-w-0 flex-col gap-1">
+            {datos.map((d) => (
+              <li key={d.clave} className="flex items-center gap-2.5 px-1 py-1.5 text-sm">
+                <span
+                  aria-hidden="true"
+                  className="size-3 shrink-0 rounded-full"
+                  style={{ backgroundColor: d.fill }}
+                />
+                <span className="min-w-0 flex-1 font-semibold break-words text-control-foreground">
+                  {d.nombre}
+                </span>
+                <span className="text-right whitespace-nowrap tabular-nums">
+                  <span className="font-extrabold text-heading">
+                    {formatPorcentaje(d.cantidad, total)}
+                  </span>{" "}
+                  <span className="text-muted-foreground">({formatNumero(d.cantidad)})</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
         <ul className="flex w-full min-w-0 flex-col gap-1">
           {datos.map((d) => {
             const destacada = d.clave === resaltada;
@@ -166,6 +226,7 @@ export function GraficoDona({ partes, unidad, resumen, resaltada, vacio }: Props
             );
           })}
         </ul>
+        )}
       </div>
     </div>
   );
