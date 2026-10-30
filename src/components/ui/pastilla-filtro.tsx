@@ -22,17 +22,19 @@ export function PastillaFiltro({
   href,
   activa,
   children,
+  className,
 }: {
   href: string;
   activa: boolean;
   children: ReactNode;
+  className?: string;
 }) {
   return (
     <Link
       href={href}
       scroll={false}
       aria-current={activa ? "true" : undefined}
-      className={clasePastilla(activa)}
+      className={clasePastilla(activa, className)}
     >
       {children}
     </Link>

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import Image from "next/image";
 import { Buscador } from "@/components/ui/buscador";
+import { DecoracionBanda } from "@/components/ui/decoracion-banda";
 
 /**
  * Banda verde de /ofertas: título, cantidad de ofertas y buscador (q). La
@@ -10,16 +10,7 @@ import { Buscador } from "@/components/ui/buscador";
 export function BandaOfertas({ cantidad }: { cantidad: ReactNode }) {
   return (
     <section aria-labelledby="ofertas-titulo" className="banda-ofertas flex flex-col gap-5 sm:gap-6">
-      <div className="banda-ofertas-deco" aria-hidden="true">
-        <div className="banda-ofertas-anillo" />
-        <Image
-          src="/images/escudo-blanco.png"
-          alt=""
-          width={330}
-          height={344}
-          className="banda-ofertas-escudo"
-        />
-      </div>
+      <DecoracionBanda />
 
       <div className="flex flex-col gap-2">
         <h1

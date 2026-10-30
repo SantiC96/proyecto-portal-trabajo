@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { IconoCuadro } from "@/components/ui/icono-cuadro";
 
 export type EventoLinea = {
   /** Clave estable del evento. */
@@ -12,6 +14,14 @@ export type EventoLinea = {
    * estado, el último evento es el resaltado.
    */
   estado?: "hecho" | "actual" | "pendiente";
+  /**
+   * Con ícono, el evento va con su ícono en un cuadrado de 44 px del color
+   * de `claseIcono` en lugar del punto (últimos movimientos del panel).
+   */
+  icono?: LucideIcon;
+  claseIcono?: string;
+  /** A la derecha del texto (un badge); en angosto, debajo. Solo con ícono. */
+  extra?: ReactNode;
 };
 
 /**
@@ -25,6 +35,7 @@ export function LineaDeTiempo({ eventos, className }: { eventos: EventoLinea[]; 
     <ol className={cn("flex flex-col", className)}>
       {eventos.map((e, i) => {
         const ultimo = i === eventos.length - 1;
+        if (e.icono) return <EventoConIcono key={e.clave} evento={e} ultimo={ultimo} />;
         const actual = e.estado ? e.estado === "actual" : ultimo;
         const pendiente = e.estado === "pendiente";
         return (
@@ -68,5 +79,31 @@ export function LineaDeTiempo({ eventos, className }: { eventos: EventoLinea[]; 
         );
       })}
     </ol>
+  );
+}
+
+/**
+ * Evento con ícono de 44 px; la línea de 2 px (`secondary-hover`) lo une con
+ * el siguiente. El texto y `extra` van lado a lado desde 28 rem de ancho
+ * disponible (container query de la lista: la usa quien la contenga).
+ */
+function EventoConIcono({ evento: e, ultimo }: { evento: EventoLinea; ultimo: boolean }) {
+  return (
+    <li className="relative flex gap-3.5 pb-5 last:pb-0">
+      {!ultimo && (
+        <span
+          aria-hidden="true"
+          className="absolute top-12 bottom-1 left-[21px] w-0.5 rounded-full bg-secondary-hover"
+        />
+      )}
+      {e.icono && <IconoCuadro icono={e.icono} tamano={44} className={e.claseIcono} />}
+      <div className="flex min-w-0 flex-1 flex-col items-start gap-2 @md:flex-row @md:justify-between @md:gap-4">
+        <div className="min-w-0 text-[15px] leading-[1.45] text-foreground">
+          <p className="break-words">{e.titulo}</p>
+          {e.detalle && <div className="mt-0.5 break-words">{e.detalle}</div>}
+        </div>
+        {e.extra && <div className="shrink-0">{e.extra}</div>}
+      </div>
+    </li>
   );
 }
