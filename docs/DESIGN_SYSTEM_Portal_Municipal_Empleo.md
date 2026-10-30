@@ -293,6 +293,9 @@ Texto de estado suelto sobre blanco (sin fondo):
   Token               Valor       Uso
   ------------------- ----------- ---------------------------------------------
   `tabla-cabecera`    `#F3F5F4`   encabezado del componente `Tabla`
+  `borde-campo-oferta` `#7F9488`  borde de los campos del formulario de oferta
+  `campo-lectura`     `#F3F5F4`   ubicación de solo lectura del formulario de oferta
+  `texto-ejemplo`     `#6E7D74`   título de ejemplo de la vista previa de la oferta (solo texto grande)
   `tabla-fila-hover`  `#FAFBFA`   hover de fila del componente `Tabla`
   `texto-pestana`     `#3D4A43`   pestañas inactivas; cantidad en cero de la tarjeta de pendiente (9,3:1 sobre blanco)
   `pastilla-gris`     `#DDE3DF`   fondo de la cantidad de las pestañas y de la tarjeta de pendiente en cero
@@ -844,7 +847,8 @@ En mobile las acciones pasan debajo del título.
 
 `EncabezadoPagina banda`: en las seis pantallas del postulante (Panel,
 Mis postulaciones, Invitaciones, Mis cursos, Notificaciones y Mi perfil) y
-en tres de la empresa (Panel, Mis ofertas y el detalle de la oferta). Sin
+en cinco de la empresa (Panel, Mis ofertas, el detalle de la oferta,
+Publicar oferta y Editar oferta). Sin
 la prop, el encabezado de siempre en el resto. Clases `.encabezado-banda*`
 de `globals.css`.
 
@@ -2919,33 +2923,108 @@ en el celular), que abre la URL firmada en otra pestaña.
 ## Formulario en secciones numeradas
 
 `src/components/ui/seccion-numerada.tsx` (`SeccionNumerada`): el número en
-un círculo `primary` de 28 px (14 px 800 blanco) y el título de 18 px 800;
-los campos debajo. Variante "tarjeta" (cada sección en su `.tarjeta`,
-padding 24; 20 × 16 en el celular) para el formulario de oferta y "plana"
-para el registro. Los campos usan `.campo` y `.etiqueta-campo`; las
-opciones cortas (modalidad, jornada, duración) son radios con forma de
-pastilla (`clasePastilla`). Si el envío tiene errores, arriba aparece un
-`Aviso` de error enfocado ("Faltan datos para enviar la oferta. Revisá los
-N campos marcados.") y cada campo muestra el suyo en rojo.
+un círculo `primary` y el título 800, con una bajada opcional
+(`descripcion`) y los campos debajo. Variante "tarjeta" (cada sección en
+su `.tarjeta`, padding 24; 20 × 16 en el celular): círculo de 34 px
+(15 px 800 blanco), título de 19 px y bajada de 14 px `muted-foreground`;
+la usa el formulario de oferta. Variante "plana" (registro): círculo de
+28 px y título de 18 px. `classNameCuerpo` da clases al contenedor de los
+campos (por ejemplo, para que crezca con la sección).
 
-El formulario de oferta tiene seis secciones (El puesto, Rubros,
-Condiciones, Requisitos, Beneficios y Publicación) y un pie con Cancelar, "Guardar borrador" (neutro) y "Enviar a revisión"
-(primario). El pie (y el `Aviso` de error del servidor, si hay) va en la
-columna del formulario: mide lo mismo que las tarjetas de la izquierda,
-no pasa por debajo de la vista previa; en el celular, a todo el ancho.
-Arriba, según el caso, una `Franja` de error con el motivo del rechazo o
-una de aviso al editar una oferta publicada; van fuera de las columnas y
-no corren la vista previa.
+## Formulario de oferta (Publicar y Editar)
 
-### Vista previa
+`src/app/empresa/(panel)/ofertas/_components/oferta-form.tsx`, un solo
+componente para `/empresa/ofertas/nueva` y `/empresa/ofertas/[id]/editar`.
 
-En pantallas anchas (desde xl), una columna lateral sticky de 360 px: la
-`TarjetaOferta` con lo que se va cargando (título, empresa, rubros,
-modalidad, jornada y ubicación), inerte (`inert`: no se enfoca ni se lee,
-es una copia del formulario), y debajo el rótulo "Vista previa" y la nota
-"La Oficina de Empleo revisa cada oferta antes de publicarla." La tarjeta
-va primero para que empiece a la misma altura que "1. El puesto". En el
-celular y en tablet no se muestra.
+### Encabezado
+
+-   `BotonVolver destacado` arriba y `EncabezadoPagina banda botonesBlancos`.
+-   Publicar: "Publicar oferta" y la bajada de siempre.
+-   Editar: "Editar oferta" ("Completar borrador" si es un borrador) y la
+    bajada "{título} · {estado} el {fecha}": "Publicada el …" (o
+    "Vencida el …"), "Rechazada el …" o "Borrador guardado el …".
+-   Debajo de la banda, la `Franja` amarilla "Al guardar, la oferta vuelve
+    a revisión…" (oferta publicada) o la `Franja` roja del rechazo, con
+    "Corregir y reenviar".
+
+### Campos
+
+Clase `.formulario-oferta` en el `<form>`: dentro, `.campo` y
+`.campo-grupo` llevan borde de 1,5 px `borde-campo-oferta` (`#7F9488`),
+radio 12 y 48 px de alto mínimo; el foco, borde `primary` y outline de
+3 px `rgb(0 104 51 / .35)`. El error sigue en `danger`. El asterisco de
+obligatorio, `<Obligatorio />` en `danger` (`#B42318`).
+
+### Secciones
+
+1.  **El puesto**: título y descripción con su contador.
+2.  **Rubros**: los elegidos como chips de 44 px (fondo
+    `rgb(0 104 51 / .10)`, borde 1,5 px `rgb(0 104 51 / .35)`, texto
+    `primary-hover` 15 px 600), cada uno con un "×" de 36 px
+    (`aria-label="Quitar {rubro}"`). Al final, "+ Agregar rubro" (44 px,
+    borde punteado `primary`), que muestra el `MultiCombobox` (`sinChips`,
+    `abrirAlMontar`) con la lista abierta; al cerrarla, el buscador se
+    oculta y el foco vuelve a "Agregar rubro". Sin rubros, el buscador
+    queda a la vista (ahí va el foco del error). Al quitar un chip, el
+    foco pasa al "×" siguiente o al buscador.
+3.  **Condiciones**: modalidad y jornada en pastillas de 44 px
+    (`clasePastilla`; la elegida en `primary` sólido) con
+    `role="radiogroup"` y `role="radio"` + `aria-checked`, un solo paso de
+    tabulación y las flechas, Inicio y Fin para cambiar. El valor viaja en
+    un `input type="hidden"` con el `name` de siempre. Debajo, la ubicación
+    de solo lectura: fondo `campo-lectura` (`#F3F5F4`), borde punteado
+    `borde-campo-oferta`, con su ayuda.
+4.  **Requisitos** (obligatorio, como siempre) y 5. **Beneficios
+    (opcional)**, lado a lado desde `@4xl`.
+6.  **Publicación**: vacantes (input de 160 px) y la duración en
+    pastillas (15, 30, 45 y 60 días). Debajo, un recuadro
+    `rgb(0 104 51 / .07)` con `Info`: en Publicar (y en borradores y
+    rechazadas) "Si la Oficina la aprueba hoy, vence el …", que se
+    recalcula al cambiar la duración (`venceSiSeApruebaEn`, con
+    `aria-live="polite"`); al editar una publicada, "Vence el …" (o
+    "Venció el …") con su `vence_en`, y que cambiar la duración no
+    modifica el vencimiento actual.
+
+### Distribución
+
+-   Escritorio (desde xl): grid `minmax(0,1fr) 360px`, gap 20 × 28 px.
+-   Fila 1: a la izquierda, El puesto y Rubros; a la derecha, la vista
+    previa y la tarjeta de progreso. Las dos columnas miden lo mismo: la
+    fila estira (`align-items: stretch`), El puesto y su textarea crecen
+    (`flex: 1`, mínimo 132 px, sin `resize` en escritorio) y la vista
+    previa también.
+-   Rótulo "Vista previa" (12 px 800, mayúsculas, `neutral`): en
+    escritorio, `position: absolute` con `bottom: calc(100% + 8px)`, para
+    que no sume altura y los bordes de las dos columnas coincidan.
+-   Fila 2, a todo el ancho: Condiciones; Requisitos y Beneficios lado a
+    lado; Publicación.
+-   Fila 3: los botones, sin tarjeta, a la derecha: "Cancelar" (`ghost`),
+    "Guardar borrador" (`.btn-secundario`, solo en Publicar y en
+    borradores) y "Enviar a revisión" (`.btn-primario` con `Send`); al
+    editar una oferta enviada, "Cancelar" y "Guardar cambios". El `Aviso`
+    de error del servidor va encima, a todo el ancho.
+-   La vista previa ya no es sticky.
+-   Celular: una columna en este orden: puesto, rubros, vista previa (con
+    el rótulo arriba), progreso, condiciones, requisitos, beneficios,
+    publicación y botones a todo el ancho (el principal arriba).
+
+### Vista previa y progreso
+
+-   `TarjetaOferta` inerte (`inert`) con lo que se va cargando. Lo que
+    falta va como ejemplo en itálica: el título ("Título del puesto") en
+    `texto-ejemplo` (`#6E7D74`, 4,3:1: alcanza por ser texto grande, 20 px
+    700) y el rubro ("Rubro", 13 px) en `placeholder` para llegar a 4,5:1
+    (clase `.vista-previa-oferta` con `data-sin-titulo` y `data-sin-rubro`).
+-   Tarjeta "N de 6 secciones completas": `CircleCheck` `primary` en las
+    completas y `Circle` `muted-foreground` en las pendientes, con
+    "completa"/"pendiente" para lectores de pantalla. "Completa" usa las
+    reglas de `validarOferta` (título de 5 caracteres o más, descripción
+    de 30 o más, 1 a 5 rubros, al menos un requisito, vacantes y
+    duración válidas); Beneficios, opcional, cuenta siempre como completa.
+
+Si el envío tiene errores, arriba aparece un `Aviso` de error enfocado
+("Faltan datos para enviar la oferta. Revisá los N campos marcados.") y
+cada campo muestra el suyo en rojo.
 
 ## Formularios dentro de una tarjeta angosta
 
