@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
+import { CalendarClock, CircleCheck, UserX } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
@@ -17,10 +18,16 @@ import { mostrarAviso } from "@/lib/avisos";
 import { formatFechaHora } from "@/lib/fechas";
 import { useAccion } from "@/lib/use-accion";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
-import { badgePreEntrevista, type CampoPreEntrevista, type PreEntrevista } from "@/lib/pre-entrevistas";
+import {
+  PRE_ENTREVISTA_LABEL,
+  badgePreEntrevista,
+  type CampoPreEntrevista,
+  type PreEntrevista,
+} from "@/lib/pre-entrevistas";
 import { Badge } from "@/components/ui/badge";
 import { DatosClave } from "@/components/ui/datos-clave";
 import { Spinner } from "@/components/ui/spinner";
+import { TituloBloque } from "@/components/ui/titulo-bloque";
 import {
   coordinarPreEntrevista,
   registrarResultadoPreEntrevista,
@@ -127,6 +134,9 @@ function FormularioPreEntrevista({
         onLimpiar={campos.limpiar}
         deshabilitado={pendiente}
         placeholderLugar="Dirección de la oficina o box"
+        modalidadEnPastillas
+        etiquetaLink="Link de la videollamada"
+        placeholderLink="https://…"
       />
 
       <CampoNota
@@ -162,6 +172,8 @@ type Props = {
   gestionable: boolean;
   /** La fecha de la pre-entrevista ya pasó (calculado en el servidor). */
   fechaPasada: boolean;
+  /** Resumen de los diálogos (ResumenPostulacion). */
+  resumen: ReactNode;
 };
 
 export function PreEntrevistaSeccion({
@@ -169,6 +181,7 @@ export function PreEntrevistaSeccion({
   preEntrevista,
   gestionable,
   fechaPasada,
+  resumen,
 }: Props) {
   const [notaResultado, setNotaResultado] = useState(preEntrevista?.nota_oficina ?? "");
   // Al guardar cambia updated_at y la página vuelve a montar la sección (key):
@@ -183,16 +196,13 @@ export function PreEntrevistaSeccion({
     : "Podés registrar el resultado después de la fecha de la pre-entrevista.";
 
   return (
-    <section aria-labelledby="pre-entrevista-titulo" className="tarjeta flex flex-col gap-5 p-5 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="pre-entrevista-titulo" className="text-xl font-extrabold text-heading">
-          Pre-entrevista
-        </h2>
-        {!coordinada && (
-          <Badge tono={badge.tono} estado>
-            {badge.label}
-          </Badge>
-        )}
+    <section aria-labelledby="pre-entrevista-titulo" className="tarjeta tarjeta-panel flex flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <TituloBloque id="pre-entrevista-titulo" titulo="Pre-entrevista" icono={CalendarClock} />
+        {/* La coordinada lleva la fecha en el cartel: el badge, solo el estado. */}
+        <Badge tono={badge.tono} estado>
+          {coordinada ? PRE_ENTREVISTA_LABEL.coordinada : badge.label}
+        </Badge>
       </div>
 
       {coordinada ? (
@@ -270,6 +280,9 @@ export function PreEntrevistaSeccion({
                 deshabilitado={!fechaPasada}
                 titulo="Marcar la pre-entrevista como realizada"
                 descripcion="Una pre-entrevista realizada no se puede cambiar."
+                icono={CircleCheck}
+                tonoIcono="primario"
+                resumen={resumen}
                 textoConfirmar="Marcar como realizada"
                 textoPendiente="Guardando…"
                 accion={() =>
@@ -294,6 +307,9 @@ export function PreEntrevistaSeccion({
                 deshabilitado={!fechaPasada}
                 titulo="El postulante no asistió"
                 descripcion="Después vas a poder reprogramar la pre-entrevista con una fecha nueva."
+                icono={UserX}
+                tonoIcono="peligro"
+                resumen={resumen}
                 textoConfirmar="Confirmar"
                 textoPendiente="Guardando…"
                 accion={() =>

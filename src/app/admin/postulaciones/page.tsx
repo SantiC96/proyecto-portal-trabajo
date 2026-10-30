@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import Form from "next/form";
-import { CalendarClock, ClipboardList } from "lucide-react";
+import { Calendar, CalendarClock, ClipboardList } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
-import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
+import { limpiarBusqueda } from "@/lib/busqueda";
 import {
   consultarPagina,
   hrefConParams,
@@ -14,40 +14,47 @@ import {
 } from "@/lib/paginacion";
 import { Buscador } from "@/components/ui/buscador";
 import { Combobox } from "@/components/ui/combobox";
-import { PestanasEstado } from "@/components/ui/pestanas-estado";
+import { PastillaFiltro } from "@/components/ui/pastilla-filtro";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { Esqueleto, EsqueletoLista } from "@/components/ui/esqueleto";
+import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import {
   CLASE_ACCION_FILA,
   CeldaPersona,
-  CeldaTabla,
   FilaTabla,
   Tabla as TablaListado,
 } from "@/components/ui/tabla";
 import { Badge } from "@/components/ui/badge";
 import {
   BADGE_ESTADO_VISIBLE,
-  badgePostulacion,
-  type BadgePostulacion,
+  FILETE_ESTADO_VISIBLE,
+  estadoVisiblePostulacion,
+  type EstadoVisiblePostulacion,
 } from "@/lib/admin/postulacion-estados";
 import {
-  DERIVACION_ABIERTA,
+  cantidadesPorPestana,
   filtrarContratados,
+  filtrarOfertaYBusqueda,
   filtrarPestanaPostulaciones,
   ofertasDePestana,
+  postulantesDeBusqueda,
+  type FiltrosPostulaciones,
   type PestanaPostulaciones,
 } from "@/lib/admin/postulaciones-pestanas";
 import type { FilaPostulacionNoSeleccionada, Tabla } from "@/types/db";
 import { formatFechaCorta, formatFechaHoraCorta } from "@/lib/fechas";
 import { requerirRolPagina } from "@/lib/auth";
-import { cn } from "@/lib/utils";
 import { inicialesDePersona } from "@/lib/iniciales";
-import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
+import { ChipLocalidad } from "@/components/postulantes/badge-procedencia";
 import { BadgePorInvitacion } from "@/components/admin/badge-por-invitacion";
 import { estadosDeComprobantes } from "@/lib/comprobantes";
-import { nivelDe, type EstadoComprobante, type NivelPrioridad } from "@/lib/procedencia";
+import {
+  detalleSinVerificar,
+  nivelDe,
+  type EstadoComprobante,
+  type NivelPrioridad,
+} from "@/lib/procedencia";
 
 export const metadata: Metadata = {
   title: "Postulaciones | Panel municipal | Portal de Empleo Funes",
@@ -89,8 +96,6 @@ type Procedencia = {
   comprobante: EstadoComprobante | null;
 };
 
-const ID_INEXISTENTE = "00000000-0000-0000-0000-000000000000";
-
 type PostulanteEmbebido =
   | (Pick<Tabla<"postulantes">, "id" | "usuario_id" | "dni"> & {
       usuarios: Pick<Tabla<"usuarios">, "nombre" | "apellido"> | null;
@@ -101,13 +106,13 @@ type OfertaEmbebida = Pick<Tabla<"ofertas">, "id" | "titulo" | "empresa_nombre">
 
 type PreEntrevistaEmbebida = Pick<Tabla<"pre_entrevistas">, "estado" | "fecha_hora"> | null;
 
-/** Fila común a las cuatro secciones. */
+/** Fila común a las cinco pestañas. */
 type Fila = {
   postulacionId: string;
   postulante: PostulanteEmbebido;
   oferta: OfertaEmbebida;
   fecha: string;
-  badge: BadgePostulacion;
+  visible: EstadoVisiblePostulacion;
   /** Solo en Pendientes (migration_044). */
   preEntrevista?: PreEntrevistaEmbebida;
 };
@@ -138,44 +143,26 @@ export default async function PostulacionesPage({
 
   const supabase = await createSupabaseServerClient();
 
-  // Cantidad de cada pestaña: conteos sin filas (head: true), en paralelo, con
-  // las mismas condiciones que el listado (postulaciones-pestanas.ts).
-  const [
-    { count: cRecibidas },
-    { count: cRevision },
-    { count: cDerivadas },
-    { count: cContratados },
-    { count: cRechazadas },
-    { count: cRetiradas },
-  ] = await Promise.all([
-    supabase
-      .from("postulaciones")
-      .select("*", { count: "exact", head: true })
-      .eq("estado", "recibida"),
-    supabase
-      .from("postulaciones")
-      .select("*", { count: "exact", head: true })
-      .eq("estado", "en_revision"),
-    supabase
-      .from("postulaciones")
-      .select("id, derivaciones!inner(estado_empresa)", { count: "exact", head: true })
-      .eq("estado", "derivada")
-      .in("derivaciones.estado_empresa", DERIVACION_ABIERTA),
-    supabase
-      .from("derivaciones")
-      .select("*", { count: "exact", head: true })
-      .eq("estado_empresa", "contratado"),
-    supabase.rpc("postulaciones_no_seleccionadas", undefined, {
-      count: "exact",
-      head: true,
-    }),
-    supabase
-      .from("postulaciones")
-      .select("*", { count: "exact", head: true })
-      .eq("estado", "retirada_postulante"),
-  ]);
+  // La búsqueda se resuelve una vez: la usan las cantidades y la lista.
+  const busqueda = await postulantesDeBusqueda(supabase, q);
+  const errorBusqueda = busqueda.ok
+    ? null
+    : logError("admin_postulaciones_busqueda", busqueda.error);
+  const filtrosConsulta: FiltrosPostulaciones = {
+    ofertaId,
+    postulanteIds: busqueda.ok ? busqueda.valor : null,
+  };
 
-  const resOfertas = await ofertasDePestana(supabase, estado, ofertaId);
+  // Cada pastilla cuenta con la oferta y la búsqueda elegidas y las mismas
+  // condiciones que la lista (postulaciones-pestanas.ts). Si un conteo falla,
+  // esa pastilla va sin número.
+  const [cantidades, resOfertas] = await Promise.all([
+    errorBusqueda ? Promise.resolve(null) : cantidadesPorPestana(supabase, filtrosConsulta),
+    ofertasDePestana(supabase, estado, ofertaId),
+  ]);
+  if (cantidades && Object.values(cantidades).some((c) => c === null)) {
+    logError("admin_postulaciones_cantidades", { message: "Falló el conteo de una pestaña" });
+  }
   if (!resOfertas.ok) logError("admin_postulaciones_ofertas_filtro", resOfertas.error, { estado });
   const ofertasDisponibles = resOfertas.ok ? resOfertas.valor : [];
   const ofertaSinPostulaciones =
@@ -183,61 +170,65 @@ export default async function PostulacionesPage({
     ofertaId !== "" &&
     (ofertasDisponibles.find((o) => o.id === ofertaId)?.cantidad ?? 0) === 0;
 
-  const cantidades: Record<EstadoFiltro, number> = {
-    pendiente: (cRecibidas ?? 0) + (cRevision ?? 0),
-    derivada: cDerivadas ?? 0,
-    contratado: cContratados ?? 0,
-    rechazada_municipalidad: cRechazadas ?? 0,
-    retirada_postulante: cRetiradas ?? 0,
+  const filtros: FiltrosListado = {
+    estado,
+    filtros: filtrosConsulta,
+    primeroFunes,
+    pagina,
+    ofertaSinPostulaciones,
+    errorBusqueda,
+    conFiltros: Boolean(q || ofertaId),
   };
-
-  // Una sola carga compartida por el contador de los filtros y la lista. La
-  // clave cambia con cada filtro o página: los Suspense se vuelven a montar y
-  // muestran el esqueleto mientras llega el resultado nuevo.
-  const filtros: FiltrosListado = { estado, ofertaId, q, primeroFunes, pagina, ofertaSinPostulaciones };
-  const datos = cargarListado(filtros);
-  const clave = JSON.stringify(filtros);
+  // La clave cambia con cada filtro o página: el Suspense se vuelve a montar
+  // y muestra el esqueleto mientras llega el resultado nuevo.
+  const clave = JSON.stringify({ estado, ofertaId, q, primeroFunes, pagina });
 
   return (
     <section className="flex flex-col gap-6">
       <EncabezadoPagina
+        banda
+        botonesBlancos
         titulo="Postulaciones"
         bajada="Revisá cada postulación antes de derivarla a la empresa."
       />
 
-      <PestanasEstado
-        etiqueta="Estado de las postulaciones"
-        pestanas={ESTADOS_FILTRO.map((tab) => ({
-          href: hrefConParams(RUTA, {}, {
-            estado: tab,
-            oferta_id: ofertaId || null,
-            q: sp.q ?? null,
-            orden: sp.orden === "prioridad" ? "prioridad" : null,
-          }),
-          label: LABEL_FILTRO[tab],
-          activa: tab === estado,
-          cantidad: cantidades[tab],
-        }))}
-      />
+      <nav aria-label="Estado de las postulaciones" className="min-w-0">
+        <div className="sin-barra-scroll -mx-4 -my-1 flex gap-2 overflow-x-auto px-4 py-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+          {ESTADOS_FILTRO.map((tab) => (
+            <PastillaFiltro
+              key={tab}
+              href={hrefConParams(RUTA, {}, {
+                estado: tab,
+                oferta_id: ofertaId || null,
+                q: sp.q ?? null,
+                orden: sp.orden === "prioridad" ? "prioridad" : null,
+              })}
+              activa={tab === estado}
+              cantidad={cantidades?.[tab] ?? undefined}
+            >
+              {LABEL_FILTRO[tab]}
+            </PastillaFiltro>
+          ))}
+        </div>
+      </nav>
 
-      <div className="flex flex-col gap-4">
-        {/* Mide lo mismo que los desplegables de abajo: Oferta (w-80) y, si
-            se muestra, Orden (w-64) con la separación entre ellos (gap-3). */}
-        <Buscador
-          className={cn("w-full min-w-0", ordenDisponible ? "sm:w-[36.75rem]" : "sm:w-80")}
-          inputClassName="rounded-xl"
-          placeholder="Buscar por nombre, apellido o DNI"
-        />
+      <div className="flex flex-col gap-3">
+        {/* Buscador, Oferta y Orden en una fila (1.4fr / 1fr / 1fr), los tres
+            de 48 px con el label arriba; uno debajo del otro por debajo de md. */}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)] md:items-end">
+          <Buscador
+            etiquetaVisible
+            etiqueta="Buscar"
+            className="min-w-0"
+            inputClassName="rounded-xl"
+            placeholder="Buscar por nombre, apellido o DNI"
+          />
 
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           {/* Oferta y Orden se aplican solos al elegir (enviarAlCambiar). Form
               navega sin recargar la página, así el foco vuelve al filtro; sin
-              JavaScript es un formulario GET común y aparece el botón. */}
-          <Form
-            action={RUTA}
-            scroll={false}
-            className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
-          >
+              JavaScript es un formulario GET común y aparece el botón. El form
+              es "contents": sus campos son celdas de la grilla. */}
+          <Form action={RUTA} scroll={false} className="contents">
             <input type="hidden" name="estado" value={estado} />
             {sp.q && <input type="hidden" name="q" value={sp.q} />}
             <div className="flex min-w-0 flex-col gap-1.5">
@@ -259,7 +250,7 @@ export default async function PostulacionesPage({
                 placeholderBusqueda="Buscar oferta"
                 etiquetaBusqueda="Buscar oferta"
                 vacioTexto="No hay ofertas con ese nombre"
-                triggerClassName="campo cursor-pointer sm:w-80"
+                triggerClassName="campo w-full cursor-pointer"
                 enviarAlCambiar
               />
             </div>
@@ -275,7 +266,7 @@ export default async function PostulacionesPage({
                   valorInicial={primeroFunes ? "prioridad" : ""}
                   opcionVacia="Más recientes primero"
                   opciones={[{ id: "prioridad", nombre: "Primero verificados de Funes" }]}
-                  triggerClassName="campo cursor-pointer sm:w-64"
+                  triggerClassName="campo w-full cursor-pointer"
                   enviarAlCambiar
                 />
               </div>
@@ -285,24 +276,21 @@ export default async function PostulacionesPage({
                 Filtrar
               </button>
             </noscript>
-            {(q || ofertaId || primeroFunes) && (
-              <Link
-                href={hrefConParams(RUTA, {}, { estado })}
-                className="inline-flex min-h-12 items-center rounded-[var(--radius-sm)] px-1 text-[15px] font-semibold text-primary underline-offset-2 outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
-              >
-                Limpiar filtros
-              </Link>
-            )}
           </Form>
-
-          <Suspense key={`${clave}:contador`} fallback={<Esqueleto className="h-4 w-48" />}>
-            <ContadorPostulaciones datos={datos} />
-          </Suspense>
         </div>
+
+        {(q || ofertaId || primeroFunes) && (
+          <Link
+            href={hrefConParams(RUTA, {}, { estado })}
+            className="inline-flex min-h-11 w-fit items-center rounded-[var(--radius-sm)] px-1 text-[15px] font-semibold text-primary underline-offset-2 outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+          >
+            Limpiar filtros
+          </Link>
+        )}
       </div>
 
-      <Suspense key={`${clave}:lista`} fallback={<EsqueletoLista filas={5} />}>
-        <ListadoPostulaciones datos={datos} estado={estado} searchParams={sp} />
+      <Suspense key={clave} fallback={<EsqueletoLista filas={5} />}>
+        <ListadoPostulaciones datos={cargarListado(filtros)} estado={estado} searchParams={sp} />
       </Suspense>
     </section>
   );
@@ -318,12 +306,14 @@ const TEXTO_VACIO: Record<EstadoFiltro, string> = {
 
 type FiltrosListado = {
   estado: EstadoFiltro;
-  ofertaId: string;
-  q: string;
+  filtros: FiltrosPostulaciones;
   primeroFunes: boolean;
   pagina: number;
   /** La oferta de la URL no tiene postulaciones en esta pestaña. */
   ofertaSinPostulaciones: boolean;
+  /** Código del error si falló la búsqueda de postulantes. */
+  errorBusqueda: string | null;
+  conFiltros: boolean;
 };
 
 type Avatar = { url: string; ajuste: { x: number; y: number; zoom: number } };
@@ -344,97 +334,57 @@ type DatosListado =
 
 async function cargarListado({
   estado,
-  ofertaId,
-  q,
+  filtros,
   primeroFunes,
   pagina,
   ofertaSinPostulaciones,
+  errorBusqueda,
+  conFiltros,
 }: FiltrosListado): Promise<DatosListado> {
+  if (errorBusqueda) return { tipo: "error", refError: errorBusqueda };
   if (ofertaSinPostulaciones) return { tipo: "oferta-sin-postulaciones" };
 
   const supabase = await createSupabaseServerClient();
-
-  // Pre-filtro por texto: buscar postulante_ids que coincidan
-  let filtroPostulanteIds: string[] | null = null;
-  if (q) {
-    const patron = patronIlike(q);
-    const [usuariosRes, postulantesRes] = await Promise.all([
-      supabase
-        .from("usuarios")
-        .select("id")
-        .or(`nombre.ilike.${patron},apellido.ilike.${patron}`),
-      supabase.from("postulantes").select("id").ilike("dni", patron),
-    ]);
-
-    const errorPrefiltro = usuariosRes.error ?? postulantesRes.error;
-    if (errorPrefiltro) {
-      return { tipo: "error", refError: logError("admin_postulaciones_busqueda", errorPrefiltro) };
-    }
-
-    const idsFromNombre = usuariosRes.data?.map((u) => u.id) ?? [];
-    let idsFromDni = postulantesRes.data?.map((p) => p.id) ?? [];
-
-    // Agregar postulantes cuyo usuario_id coincide con un nombre/apellido
-    if (idsFromNombre.length > 0) {
-      const { data: postulantesPorUsuario } = await supabase
-        .from("postulantes")
-        .select("id")
-        .in("usuario_id", idsFromNombre);
-      const idsExtra = postulantesPorUsuario?.map((p) => p.id) ?? [];
-      idsFromDni = [...new Set([...idsFromDni, ...idsExtra])];
-    }
-
-    filtroPostulanteIds = idsFromDni;
-  }
-
-  // Si la búsqueda no encontró coincidencias, forzar resultado vacío
-  const idsBusqueda =
-    filtroPostulanteIds === null
-      ? null
-      : filtroPostulanteIds.length > 0
-        ? filtroPostulanteIds
-        : [ID_INEXISTENTE];
 
   let filas: Fila[];
   let paginaActual: number;
   let total: number;
 
   if (estado === "contratado") {
-    const resultado = await consultarPagina(pagina, (desde, hasta) => {
-      let query = filtrarContratados(
-        supabase.from("derivaciones").select(
-          `
-          id,
-          fecha_respuesta,
-          updated_at,
-          postulaciones!inner(
+    const resultado = await consultarPagina(pagina, (desde, hasta) =>
+      filtrarOfertaYBusqueda(
+        filtrarContratados(
+          supabase.from("derivaciones").select(
+            `
             id,
-            postulante_id,
-            oferta_id,
-            postulantes!postulante_id(
+            fecha_respuesta,
+            updated_at,
+            postulaciones!inner(
               id,
-              usuario_id,
-              dni,
-              usuarios!usuario_id(nombre, apellido)
-            ),
-            ofertas!oferta_id(id, titulo, empresa_nombre)
+              postulante_id,
+              oferta_id,
+              postulantes!postulante_id(
+                id,
+                usuario_id,
+                dni,
+                usuarios!usuario_id(nombre, apellido)
+              ),
+              ofertas!oferta_id(id, titulo, empresa_nombre)
+            )
+          `,
+            { count: "exact" }
           )
-        `,
-          { count: "exact" }
-        )
-      );
-
-      if (ofertaId) query = query.eq("postulaciones.oferta_id", ofertaId);
-      if (idsBusqueda) query = query.in("postulaciones.postulante_id", idsBusqueda);
-
-      // fecha_respuesta es la fecha de contratación (la fija el trigger de
-      // derivaciones); updated_at cubre filas viejas que no la tengan.
-      return query
+        ),
+        "contratado",
+        filtros
+      )
+        // fecha_respuesta es la fecha de contratación (la fija el trigger de
+        // derivaciones); updated_at cubre filas viejas que no la tengan.
         .order("fecha_respuesta", { ascending: false, nullsFirst: false })
         .order("updated_at", { ascending: false })
         .order("id", { ascending: false })
-        .range(desde, hasta);
-    });
+        .range(desde, hasta)
+    );
 
     if (!resultado.ok) {
       return { tipo: "error", refError: logError("admin_postulaciones_contratados", resultado.error) };
@@ -445,20 +395,17 @@ async function cargarListado({
       postulante: d.postulaciones.postulantes,
       oferta: d.postulaciones.ofertas,
       fecha: d.fecha_respuesta ?? d.updated_at,
-      badge: BADGE_ESTADO_VISIBLE.contratado,
+      visible: "contratado",
     }));
     paginaActual = resultado.pagina;
     total = resultado.total;
   } else if (estado === "rechazada_municipalidad") {
     const resultado = await consultarPagina(pagina, async (desde, hasta) => {
-      let query = supabase.rpc("postulaciones_no_seleccionadas", undefined, {
-        count: "exact",
-      });
-
-      if (ofertaId) query = query.eq("oferta_id", ofertaId);
-      if (idsBusqueda) query = query.in("postulante_id", idsBusqueda);
-
-      const respuesta = await query
+      const respuesta = await filtrarOfertaYBusqueda(
+        supabase.rpc("postulaciones_no_seleccionadas", undefined, { count: "exact" }),
+        "rechazada_municipalidad",
+        filtros
+      )
         .order("fecha_rechazo", { ascending: false })
         .order("postulacion_id", { ascending: false })
         .range(desde, hasta);
@@ -492,10 +439,8 @@ async function cargarListado({
         empresa_nombre: r.empresa_nombre ?? "",
       },
       fecha: r.fecha_rechazo,
-      badge:
-        BADGE_ESTADO_VISIBLE[
-          r.rechazado_por === "empresa" ? "no_seleccionado_empresa" : "no_seleccionado_oficina"
-        ],
+      visible:
+        r.rechazado_por === "empresa" ? "no_seleccionado_empresa" : "no_seleccionado_oficina",
     }));
     paginaActual = resultado.pagina;
     total = resultado.total;
@@ -519,20 +464,21 @@ async function cargarListado({
       `;
 
       // "Derivadas" se filtra por el estado de la derivación (relación 1 a 1).
-      let query = filtrarPestanaPostulaciones(
-        supabase
-          .from("postulaciones")
-          .select(
-            estado === "derivada"
-              ? `${columnas}, derivaciones!inner(estado_empresa)`
-              : `${columnas}, derivaciones(estado_empresa)`,
-            { count: "exact" }
-          ),
-        estado
+      let query = filtrarOfertaYBusqueda(
+        filtrarPestanaPostulaciones(
+          supabase
+            .from("postulaciones")
+            .select(
+              estado === "derivada"
+                ? `${columnas}, derivaciones!inner(estado_empresa)`
+                : `${columnas}, derivaciones(estado_empresa)`,
+              { count: "exact" }
+            ),
+          estado
+        ),
+        estado,
+        filtros
       );
-
-      if (ofertaId) query = query.eq("oferta_id", ofertaId);
-      if (idsBusqueda) query = query.in("postulante_id", idsBusqueda);
 
       // Nivel 1, 2, 3 y dentro de cada nivel el orden de siempre. El id
       // desempata, así cada página es estable.
@@ -561,21 +507,21 @@ async function cargarListado({
       postulante: r.postulantes,
       oferta: r.ofertas,
       fecha: estado === "retirada_postulante" ? (r.retirada_en ?? r.created_at) : r.created_at,
-      badge: badgePostulacion(r.estado, r.derivaciones?.estado_empresa),
+      visible: estadoVisiblePostulacion(r.estado, r.derivaciones?.estado_empresa),
       preEntrevista: estado === "pendiente" ? r.pre_entrevistas : undefined,
     }));
     paginaActual = resultado.pagina;
     total = resultado.total;
   }
 
-  if (filas.length === 0) return { tipo: "vacio", conFiltros: Boolean(q || ofertaId) };
+  if (filas.length === 0) return { tipo: "vacio", conFiltros };
 
   // Avatares en batch
   const usuarioIds = filas
     .map((f) => f.postulante?.usuario_id)
     .filter((id): id is string => Boolean(id));
 
-  // Procedencia de cada candidato (badge; solo la oficina la ve)
+  // Procedencia de cada candidato (chip; solo la oficina la ve)
   const postulanteIds = filas
     .map((f) => f.postulante?.id)
     .filter((id): id is string => Boolean(id));
@@ -656,18 +602,9 @@ async function cargarListado({
   };
 }
 
-async function ContadorPostulaciones({ datos }: { datos: Promise<DatosListado> }) {
-  const d = await datos;
-  if (d.tipo !== "ok") return null;
-  return (
-    <p className="text-sm whitespace-nowrap text-muted-foreground-strong" aria-live="polite">
-      Mostrando {d.filas.length} de {d.total} {d.total === 1 ? "postulación" : "postulaciones"}
-    </p>
-  );
-}
-
 // Postulante | Oferta y empresa | Fecha | Estado | acción.
-const COLUMNAS = "minmax(0,1.6fr) minmax(0,1.6fr) 7rem minmax(0,1.4fr) auto";
+const COLUMNAS =
+  "minmax(0,1.7fr) minmax(0,1.5fr) minmax(max-content,.7fr) minmax(0,1.2fr) minmax(max-content,.6fr)";
 
 const ENCABEZADO_FECHA: Record<EstadoFiltro, string> = {
   pendiente: "Fecha",
@@ -717,103 +654,115 @@ async function ListadoPostulaciones({
   const etiquetaFecha = ENCABEZADO_FECHA[estado];
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <TablaListado
         columnas={COLUMNAS}
         etiqueta="Postulaciones"
-        encabezados={["Postulante", "Oferta y empresa", etiquetaFecha, "Estado", ""]}
+        semantica="tabla"
+        encabezados={[
+          "Postulante",
+          "Oferta y empresa",
+          etiquetaFecha,
+          "Estado",
+          <span key="a" className="sr-only">
+            Acciones
+          </span>,
+        ]}
       >
         {d.filas.map((fila) => {
           const usuario = fila.postulante?.usuarios;
           const nombre = usuario ? `${usuario.nombre} ${usuario.apellido}` : "—";
           const avatar = d.avatarMap.get(fila.postulante?.usuario_id ?? "");
+          const procedencia = d.procedenciaMap.get(fila.postulacionId);
           const href = `/admin/postulaciones/${fila.postulacionId}`;
+          const badge = BADGE_ESTADO_VISIBLE[fila.visible];
+          const preCoordinada =
+            fila.preEntrevista?.estado === "coordinada" ? fila.preEntrevista : null;
+          const titulo = fila.oferta?.titulo ?? "—";
           return (
-            <FilaTabla key={fila.postulacionId}>
-              <CeldaPersona
-                nombre={nombre}
-                href={href}
-                foto={avatar}
-                iniciales={usuario ? inicialesDePersona(usuario.nombre, usuario.apellido) : undefined}
-              >
-                {fila.postulante?.dni && (
-                  <span className="text-[13px] text-muted-foreground tabular-nums">
-                    DNI {fila.postulante.dni}
-                  </span>
-                )}
-                <ProcedenciaFila procedencia={d.procedenciaMap.get(fila.postulacionId)} />
-              </CeldaPersona>
-              <CeldaTabla etiqueta="Oferta y empresa">
-                <span className="block text-[15px] leading-snug font-bold text-heading">
-                  {fila.oferta?.titulo ?? "—"}
+            <FilaTabla
+              key={fila.postulacionId}
+              semantica="tabla"
+              // Con una pre-entrevista coordinada, azul como "en revisión".
+              filete={preCoordinada ? "before:bg-info" : FILETE_ESTADO_VISIBLE[fila.visible]}
+            >
+              <div role="cell" className="min-w-0">
+                <CeldaPersona
+                  nombre={nombre}
+                  href={href}
+                  foto={avatar}
+                  iniciales={usuario ? inicialesDePersona(usuario.nombre, usuario.apellido) : undefined}
+                  secundario={fila.postulante?.dni ? `DNI ${fila.postulante.dni}` : null}
+                >
+                  {procedencia && (
+                    <>
+                      <ChipLocalidad nivel={procedencia.nivel} localidad={procedencia.localidad} />
+                      {procedencia.nivel === 2 && (
+                        <span className="text-[13px] font-semibold text-sin-comprobante">
+                          {detalleSinVerificar(procedencia.comprobante)}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </CeldaPersona>
+              </div>
+              <div role="cell" className="min-w-0 break-words">
+                <span className="block text-[15px] leading-snug font-extrabold text-heading">
+                  {titulo}
                 </span>
                 <span className="mt-0.5 block text-sm text-muted-foreground">
                   {fila.oferta?.empresa_nombre || "—"}
                 </span>
-              </CeldaTabla>
-              <CeldaTabla etiqueta={etiquetaFecha} rotuloVisible className="tabular-nums">
-                {formatFechaCorta(fila.fecha)}
-              </CeldaTabla>
-              <CeldaTabla etiqueta="Estado" className="flex flex-col items-start gap-1.5">
-                <Badge tono={fila.badge.tono} estado>
-                  {fila.badge.label}
+              </div>
+              <div
+                role="cell"
+                className="flex items-center gap-2 text-sm whitespace-nowrap text-muted-foreground-strong tabular-nums @4xl:block @4xl:text-[15px] @4xl:text-foreground"
+              >
+                <Calendar aria-hidden="true" className="size-4 shrink-0 text-muted-icon @4xl:hidden" />
+                <span>
+                  <span className="@4xl:sr-only">{etiquetaFecha}: </span>
+                  {formatFechaCorta(fila.fecha)}
+                </span>
+              </div>
+              {/* En la tarjeta del celular, el estado va arriba. */}
+              <div
+                role="cell"
+                className="order-first flex min-w-0 flex-col items-start gap-1.5 @4xl:order-none"
+              >
+                <Badge tono={badge.tono} estado multilinea>
+                  {badge.label}
                 </Badge>
                 {d.porInvitacion.has(fila.postulacionId) && <BadgePorInvitacion />}
-                <PreEntrevistaCoordinada pre={fila.preEntrevista} />
-              </CeldaTabla>
-              <Link href={href} className={`btn-neutro ${CLASE_ACCION_FILA}`}>
-                Ver ficha
-                <span className="sr-only">: {nombre}</span>
-              </Link>
+                {preCoordinada && (
+                  <p className="flex items-center gap-1.5 text-[13px] font-semibold text-info">
+                    <CalendarClock aria-hidden="true" className="size-4 shrink-0" />
+                    Pre-entrevista: {formatFechaHoraCorta(preCoordinada.fecha_hora)}
+                  </p>
+                )}
+              </div>
+              <div role="cell" className="@4xl:text-right">
+                <Link
+                  href={href}
+                  aria-label={`Ver ficha de ${nombre}, postulación a ${titulo}`}
+                  className={`btn-secundario ${CLASE_ACCION_FILA}`}
+                >
+                  Ver ficha
+                </Link>
+              </div>
             </FilaTabla>
           );
         })}
       </TablaListado>
 
       <Paginacion
+        className="mt-2"
         ruta={RUTA}
         searchParams={searchParams}
         pagina={d.pagina}
         total={d.total}
         variante="numeros"
+        elemento={{ singular: "postulación", plural: "postulaciones" }}
       />
     </div>
-  );
-}
-
-function ProcedenciaFila({
-  procedencia,
-  className,
-}: {
-  procedencia: Procedencia | undefined;
-  className?: string;
-}) {
-  if (!procedencia) return null;
-  return (
-    <BadgeProcedencia
-      nivel={procedencia.nivel}
-      localidad={procedencia.localidad}
-      comprobante={procedencia.comprobante}
-      className={className}
-    />
-  );
-}
-
-/** Solo la pre-entrevista coordinada; el resto del detalle está en la ficha. */
-function PreEntrevistaCoordinada({
-  pre,
-  className,
-}: {
-  pre: PreEntrevistaEmbebida | undefined;
-  className?: string;
-}) {
-  if (pre?.estado !== "coordinada") return null;
-  return (
-    <p
-      className={cn("flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground", className)}
-    >
-      <CalendarClock className="h-3.5 w-3.5 flex-shrink-0 text-primary" aria-hidden="true" />
-      Pre-entrevista: {formatFechaHoraCorta(pre.fecha_hora)}
-    </p>
   );
 }
