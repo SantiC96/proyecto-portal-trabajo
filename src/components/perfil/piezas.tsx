@@ -1,4 +1,7 @@
+import type { ReactNode } from "react";
+import { FileText, TriangleAlert, type LucideIcon } from "lucide-react";
 import type { ErrorAccion } from "@/lib/resultado";
+import { IconoCuadro } from "@/components/ui/icono-cuadro";
 import { CLASE_CONTROL_INVALIDO } from "@/components/ui/obligatorio";
 import { Aviso } from "@/components/ui/aviso";
 
@@ -48,19 +51,17 @@ export function CampoLectura({
   vacio?: string;
   className?: string;
   /**
-   * Modo lectura de las tarjetas de Mi perfil del postulante: label 14 px 700
-   * `neutral` y valor 15 px, como DatosClave; el vacío en `muted-foreground`.
+   * Modo lectura de las tarjetas de Mi perfil del postulante: label 13 px 700
+   * `neutral` arriba y valor 16 px abajo; el vacío, un ChipSinCompletar.
    */
   estiloPerfil?: boolean;
 }) {
   if (estiloPerfil) {
     return (
-      <div className={`flex min-w-0 flex-col gap-0.5 ${className ?? ""}`}>
-        <dt className="text-sm leading-[1.5] font-bold text-neutral">{label}</dt>
-        <dd
-          className={`whitespace-pre-line break-words text-[15px] leading-[1.45] ${valor ? "text-control-foreground" : "text-muted-foreground"}`}
-        >
-          {valor || vacio}
+      <div className={`flex min-w-0 flex-col gap-1 ${className ?? ""}`}>
+        <dt className="text-[13px] leading-[1.4] font-bold text-neutral">{label}</dt>
+        <dd className="text-base leading-[1.45] whitespace-pre-line break-words text-control-foreground">
+          {valor || <ChipSinCompletar>{vacio}</ChipSinCompletar>}
         </dd>
       </div>
     );
@@ -80,6 +81,56 @@ export function CampoLectura({
 /** Grilla de CampoLectura (estiloPerfil) de una tarjeta en modo lectura: 1 columna en el celular, 2 desde sm. */
 export function GrillaLectura({ children }: { children: React.ReactNode }) {
   return <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">{children}</dl>;
+}
+
+/** Un dato sin completar en el modo lectura de Mi perfil: chip amarillo con TriangleAlert. */
+export function ChipSinCompletar({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex min-h-7 items-center gap-1.5 rounded-[var(--radius-sm)] bg-accent/20 px-2.5 py-0.5 text-sm font-bold text-invitacion-titulo">
+      <TriangleAlert className="size-4 shrink-0" aria-hidden="true" />
+      {children}
+    </span>
+  );
+}
+
+/**
+ * Un archivo del perfil (CV o comprobante): FileText en un cuadrado verde al
+ * 10 %, el nombre, sus datos ("120 KB · PDF · Cargado el …"), el badge si
+ * tiene y las acciones a la derecha (debajo en el celular).
+ */
+export function FilaArchivoPerfil({
+  nombre,
+  detalle,
+  badge,
+  acciones,
+}: {
+  nombre: string;
+  detalle: string;
+  badge?: ReactNode;
+  acciones?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border bg-surface px-4 py-3 sm:flex-row sm:items-center">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <span
+          aria-hidden="true"
+          className="grid size-11 shrink-0 place-items-center rounded-[var(--radius-md)] bg-primary/10 text-primary"
+        >
+          <FileText className="size-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[15px] font-bold break-all text-heading">{nombre}</p>
+          <p className="text-[13px] text-muted-foreground">{detalle}</p>
+        </div>
+      </div>
+      {(badge || acciones) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {badge}
+          {acciones}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function MensajeError({ error }: { error: ErrorAccion }) {
@@ -132,6 +183,7 @@ export function SeccionPerfil({
   titulo,
   ayuda,
   acciones,
+  icono,
   children,
 }: {
   id: string;
@@ -139,9 +191,19 @@ export function SeccionPerfil({
   ayuda?: React.ReactNode;
   /** A la derecha del título (por ejemplo "Cambiar contraseña"). */
   acciones?: React.ReactNode;
+  /** Ícono de la sección junto al título (perfil del postulante). */
+  icono?: LucideIcon;
   children?: React.ReactNode;
 }) {
   const idTitulo = `${id}-titulo`;
+  const encabezado = (
+    <div className="min-w-0">
+      <h2 id={idTitulo} className="text-lg font-extrabold text-heading sm:text-xl">
+        {titulo}
+      </h2>
+      {ayuda && <p className="mt-1 text-sm text-muted-foreground">{ayuda}</p>}
+    </div>
+  );
   return (
     <section
       id={id}
@@ -149,12 +211,14 @@ export function SeccionPerfil({
       className="tarjeta flex scroll-mt-20 flex-col gap-5 px-4 py-[18px] sm:p-6"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h2 id={idTitulo} className="text-lg font-extrabold text-heading sm:text-xl">
-            {titulo}
-          </h2>
-          {ayuda && <p className="mt-1 text-sm text-muted-foreground">{ayuda}</p>}
-        </div>
+        {icono ? (
+          <div className="flex min-w-0 items-center gap-3">
+            <IconoCuadro icono={icono} />
+            {encabezado}
+          </div>
+        ) : (
+          encabezado
+        )}
         {acciones}
       </div>
       {children}

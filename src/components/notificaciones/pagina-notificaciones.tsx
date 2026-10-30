@@ -13,6 +13,7 @@ import { BotonFormulario } from "@/components/ui/boton-formulario";
 import { abrirNotificacion } from "@/app/(dashboard)/notificaciones/actions";
 import { MarcarLeidasAlEntrar } from "./acciones-notificaciones";
 import { IconoNotificacion } from "./icono-notificacion";
+import { ListaNotificacionesAgrupada } from "./lista-agrupada";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 
@@ -80,6 +81,7 @@ export async function PaginaNotificaciones({
           textoVacio={textoVacio}
           searchParams={searchParams}
           masNueva={masNueva}
+          agrupada={banda}
         />
       </Suspense>
     </section>
@@ -93,6 +95,7 @@ async function ListadoNotificaciones({
   textoVacio,
   searchParams,
   masNueva,
+  agrupada,
 }: {
   usuarioId: string;
   pagina: number;
@@ -101,6 +104,8 @@ async function ListadoNotificaciones({
   searchParams: ParamsUrl;
   /** La más nueva sin leer al cargar la página; null si no había. */
   masNueva: string | null;
+  /** Agrupada por fecha, en tarjetas (solo el postulante). */
+  agrupada: boolean;
 }) {
   const supabase = await createSupabaseServerClient();
   const resultado = await consultarPagina(pagina, (desde, hasta) =>
@@ -134,53 +139,59 @@ async function ListadoNotificaciones({
     <>
       {/* Se marca después de leer el listado, así las nuevas se ven resaltadas. */}
       {masNueva && <MarcarLeidasAlEntrar hasta={masNueva} />}
-      <ul className="mt-6 space-y-3">
-        {resultado.filas.map((n) => {
-          const nueva = !n.leida_en;
-          return (
-            <li
-              key={n.id}
-              className={cn(
-                "flex flex-col gap-3 rounded-[var(--radius-lg)] border bg-surface p-4 sm:flex-row sm:items-start sm:justify-between",
-                nueva ? "border-primary/30 bg-secondary/40" : "border-border",
-              )}
-            >
-              <div className="flex min-w-0 items-start gap-3">
-                <IconoNotificacion tipo={n.tipo} />
-                <div className="min-w-0">
-                  <p className="flex items-center gap-2 font-medium text-foreground">
-                    {nueva && (
-                      <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-accent" />
-                    )}
-                    {n.titulo}
-                    {nueva && <span className="sr-only"> (nueva)</span>}
-                  </p>
-                  <p className="break-words text-sm text-muted-foreground-strong">{n.mensaje}</p>
-                  <time
-                    dateTime={n.created_at}
-                    title={formatFechaHora(n.created_at)}
-                    className="mt-0.5 block text-xs text-muted-foreground"
-                  >
-                    {formatFechaRelativa(n.created_at)}
-                  </time>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2 sm:flex-none sm:justify-end">
-                {n.link && (
-                  <form action={abrirNotificacion.bind(null, n.id)}>
-                    <BotonFormulario
-                      textoPendiente="Abriendo…"
-                      className="btn-secundario inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap px-4 text-sm font-medium"
-                    >
-                      Ver detalle
-                    </BotonFormulario>
-                  </form>
+      {agrupada ? (
+        <div className="mt-6">
+          <ListaNotificacionesAgrupada filas={resultado.filas} ahora={new Date()} />
+        </div>
+      ) : (
+        <ul className="mt-6 space-y-3">
+          {resultado.filas.map((n) => {
+            const nueva = !n.leida_en;
+            return (
+              <li
+                key={n.id}
+                className={cn(
+                  "flex flex-col gap-3 rounded-[var(--radius-lg)] border bg-surface p-4 sm:flex-row sm:items-start sm:justify-between",
+                  nueva ? "border-primary/30 bg-secondary/40" : "border-border",
                 )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+              >
+                <div className="flex min-w-0 items-start gap-3">
+                  <IconoNotificacion tipo={n.tipo} />
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 font-medium text-foreground">
+                      {nueva && (
+                        <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-accent" />
+                      )}
+                      {n.titulo}
+                      {nueva && <span className="sr-only"> (nueva)</span>}
+                    </p>
+                    <p className="break-words text-sm text-muted-foreground-strong">{n.mensaje}</p>
+                    <time
+                      dateTime={n.created_at}
+                      title={formatFechaHora(n.created_at)}
+                      className="mt-0.5 block text-xs text-muted-foreground"
+                    >
+                      {formatFechaRelativa(n.created_at)}
+                    </time>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 sm:flex-none sm:justify-end">
+                  {n.link && (
+                    <form action={abrirNotificacion.bind(null, n.id)}>
+                      <BotonFormulario
+                        textoPendiente="Abriendo…"
+                        className="btn-secundario inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap px-4 text-sm font-medium"
+                      >
+                        Ver detalle
+                      </BotonFormulario>
+                    </form>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       <Paginacion
         className="mt-6"

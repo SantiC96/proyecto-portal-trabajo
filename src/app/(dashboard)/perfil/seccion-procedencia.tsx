@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Clock, ExternalLink, FileText, Upload, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, ExternalLink, MapPin, Upload, XCircle } from "lucide-react";
 import { actualizarLocalidad, subirComprobanteDomicilio } from "./actions";
 import type { ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
@@ -20,6 +20,7 @@ import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
 import {
   CLASE_AYUDA_PERFIL,
   CampoLectura,
+  FilaArchivoPerfil,
   GrillaLectura,
   MensajeError,
   PieSeccion,
@@ -161,6 +162,7 @@ export function SeccionProcedencia({
     <SeccionPerfil
       id={SECCION_PERFIL.procedencia}
       titulo="Procedencia"
+      icono={MapPin}
       acciones={
         !tarjeta.editando && <BotonEditar tarjeta={tarjeta} etiqueta="Editar procedencia" />
       }
@@ -186,38 +188,30 @@ export function SeccionProcedencia({
           <h3 className="text-base font-bold text-heading">Comprobante de domicilio</h3>
 
           {comprobante && estado ? (
-            <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border bg-surface px-4 py-3 sm:flex-row sm:items-center">
-              <div className="flex min-w-0 flex-1 items-start gap-3">
-                <FileText className="mt-0.5 size-6 shrink-0 text-primary" aria-hidden="true" />
-                <div className="min-w-0 flex-1">
-                  <p className="break-all text-[15px] font-bold text-heading">
-                    {comprobante.nombreOriginal}
-                  </p>
-                  <p className="text-[13px] text-muted-foreground">
-                    {comprobante.tamano > 0 ? `${textoTamanoArchivo(comprobante.tamano)} · ` : ""}
-                    Cargado el {formatFecha(comprobante.subidoEn)}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
+            <FilaArchivoPerfil
+              nombre={comprobante.nombreOriginal}
+              detalle={`${comprobante.tamano > 0 ? `${textoTamanoArchivo(comprobante.tamano)} · ` : ""}Cargado el ${formatFecha(comprobante.subidoEn)}`}
+              badge={
                 <Badge tono={estado.tono} icono={estado.Icono}>
                   {estado.texto}
                 </Badge>
-                {comprobante.url && (
+              }
+              acciones={
+                comprobante.url && (
                   <a
                     href={subiendo ? undefined : comprobante.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-disabled={subiendo}
                     tabIndex={subiendo ? -1 : undefined}
-                    className={cn("btn-neutro sm:min-h-10!", subiendo && "pointer-events-none")}
+                    className={cn("btn-neutro", subiendo && "pointer-events-none")}
                   >
                     <ExternalLink aria-hidden="true" />
                     Ver
                   </a>
-                )}
-              </div>
-            </div>
+                )
+              }
+            />
           ) : (
             <p className="text-[15px] text-muted-foreground">Todavía no subiste un comprobante.</p>
           )}

@@ -223,13 +223,13 @@ export function useInformarCambios(tarjeta: TarjetaEditable, hay: boolean) {
   }, [informarCambios, hay]);
 }
 
-/** Botón del encabezado de la tarjeta que la abre en edición (neutro, con lápiz). */
+/** Botón del encabezado de la tarjeta que la abre en edición (neutro y chico, con lápiz). */
 export function BotonEditar({
   tarjeta,
   etiqueta,
   texto = "Editar",
   icono: Icono = Pencil,
-  className = "btn-neutro self-start sm:self-auto",
+  className = "btn-neutro btn-chico self-start sm:self-auto",
 }: {
   tarjeta: TarjetaEditable;
   /** Nombre accesible: empieza con el texto visible ("Editar datos personales"). */
