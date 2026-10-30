@@ -222,12 +222,17 @@ export function CeldaTabla({
   );
 }
 
-/** Celda "quién": foto o iniciales en 40 px y el nombre (link) en 15 px 700. */
+/**
+ * Celda "quién": foto, logo o iniciales en un círculo de 40 px y el nombre
+ * (link) en 15 px 700. Con `secundario` (pantallas de la oficina), el nombre
+ * va en 800 y debajo una línea gris de 13 px: DNI, teléfono o CUIT.
+ */
 export function CeldaPersona({
   nombre,
   href,
   iniciales,
   foto,
+  secundario,
   children,
   className,
 }: {
@@ -235,10 +240,12 @@ export function CeldaPersona({
   href?: string;
   iniciales?: string;
   foto?: { url: string | null; ajuste?: { x: number; y: number; zoom: number } };
+  secundario?: ReactNode;
   /** Algo debajo del nombre (un badge, la empresa). */
   children?: ReactNode;
   className?: string;
 }) {
+  const peso = secundario !== undefined ? "font-extrabold" : "font-bold";
   return (
     <div className={cn("flex min-w-0 items-center gap-3", className)}>
       <AvatarAjustado
@@ -252,12 +259,20 @@ export function CeldaPersona({
         {href ? (
           <Link
             href={href}
-            className="rounded-[var(--radius-sm)] text-[15px] leading-snug font-bold break-words text-heading no-underline outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+            className={cn(
+              "rounded-[var(--radius-sm)] text-[15px] leading-snug break-words text-heading no-underline outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]",
+              peso,
+            )}
           >
             {nombre}
           </Link>
         ) : (
-          <span className="text-[15px] leading-snug font-bold break-words text-heading">{nombre}</span>
+          <span className={cn("text-[15px] leading-snug break-words text-heading", peso)}>{nombre}</span>
+        )}
+        {secundario !== undefined && secundario !== null && (
+          <span className="-mt-0.5 text-[13px] break-words text-muted-foreground tabular-nums">
+            {secundario}
+          </span>
         )}
         {children}
       </div>

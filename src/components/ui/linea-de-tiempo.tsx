@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { LucideIcon } from "lucide-react";
+import { CircleCheck, CircleX, Clock, Search, Send, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconoCuadro } from "@/components/ui/icono-cuadro";
 
@@ -22,7 +22,27 @@ export type EventoLinea = {
   claseIcono?: string;
   /** A la derecha del texto (un badge); en angosto, debajo. Solo con ícono. */
   extra?: ReactNode;
+  /** Debajo del detalle: el motivo de un rechazo (MotivoRechazo). Solo con ícono. */
+  nota?: ReactNode;
 };
+
+/** Ícono y color de cada tipo de evento del historial de revisión (variante "historial"). */
+export const ICONO_HISTORIAL = {
+  enviado: { icono: Send, claseIcono: "bg-neutral" },
+  revisado: { icono: Search, claseIcono: "bg-info" },
+  aprobado: { icono: CircleCheck, claseIcono: "bg-primary" },
+  rechazado: { icono: CircleX, claseIcono: "bg-danger" },
+  actualizado: { icono: Clock, claseIcono: "bg-teal" },
+} satisfies Record<string, { icono: LucideIcon; claseIcono: string }>;
+
+/** Motivo de un rechazo dentro del historial: recuadro rojo suave con "Motivo:" en negrita. */
+export function MotivoRechazo({ children }: { children: ReactNode }) {
+  return (
+    <p className="mt-2 rounded-[10px] bg-danger/7 px-3 py-2 text-sm leading-normal break-words whitespace-pre-line text-motivo-rechazo">
+      <strong className="font-bold">Motivo:</strong> {children}
+    </p>
+  );
+}
 
 /**
  * Historial en orden: un punto de 12 px por evento unido por una línea
@@ -30,11 +50,25 @@ export type EventoLinea = {
  * `estado`, el resaltado es el paso "actual" y los "pendiente" van con el
  * punto hueco y el texto en gris.
  */
-export function LineaDeTiempo({ eventos, className }: { eventos: EventoLinea[]; className?: string }) {
+export function LineaDeTiempo({
+  eventos,
+  variante,
+  className,
+}: {
+  eventos: EventoLinea[];
+  /**
+   * "historial" (revisión de la oficina): cada evento con ícono en un
+   * cuadrado de 40 px (ICONO_HISTORIAL), el título en 800 y la fecha y el
+   * autor en gris debajo.
+   */
+  variante?: "historial";
+  className?: string;
+}) {
   return (
     <ol className={cn("flex flex-col", className)}>
       {eventos.map((e, i) => {
         const ultimo = i === eventos.length - 1;
+        if (variante === "historial") return <EventoHistorial key={e.clave} evento={e} ultimo={ultimo} />;
         if (e.icono) return <EventoConIcono key={e.clave} evento={e} ultimo={ultimo} />;
         const actual = e.estado ? e.estado === "actual" : ultimo;
         const pendiente = e.estado === "pendiente";
@@ -103,6 +137,28 @@ function EventoConIcono({ evento: e, ultimo }: { evento: EventoLinea; ultimo: bo
           {e.detalle && <div className="mt-0.5 break-words">{e.detalle}</div>}
         </div>
         {e.extra && <div className="shrink-0">{e.extra}</div>}
+      </div>
+    </li>
+  );
+}
+
+/** Evento del historial: ícono de 40 px unido al siguiente por una línea de 2 px. */
+function EventoHistorial({ evento: e, ultimo }: { evento: EventoLinea; ultimo: boolean }) {
+  return (
+    <li className="relative flex gap-3.5 pb-5 last:pb-0">
+      {!ultimo && (
+        <span
+          aria-hidden="true"
+          className="absolute top-11 bottom-1 left-[19px] w-0.5 rounded-full bg-secondary-hover"
+        />
+      )}
+      {e.icono && <IconoCuadro icono={e.icono} className={e.claseIcono} />}
+      <div className="min-w-0 flex-1 pt-0.5">
+        <p className="text-[15px] leading-snug font-extrabold break-words text-heading">{e.titulo}</p>
+        {e.detalle && (
+          <p className="mt-0.5 text-sm break-words text-muted-foreground">{e.detalle}</p>
+        )}
+        {e.nota}
       </div>
     </li>
   );

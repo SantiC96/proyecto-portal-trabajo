@@ -22,7 +22,7 @@ export function TarjetaAcceso({
   icono: ReactNode;
   titulo: string;
   descripcion: string;
-  /** Un dato extra debajo de la descripción (cursos activos, postulantes registrados). */
+  /** Un dato en verde (13 px 700) debajo de la descripción: "2 cursos activos". */
   detalle?: string;
   /** Fondo y color del cuadrado del ícono. */
   claseIcono?: string;
@@ -51,7 +51,7 @@ export function TarjetaAcceso({
         <span className="block text-[17px] leading-snug font-extrabold text-heading">{titulo}</span>
         <span className="mt-0.5 block text-sm text-muted-foreground">{descripcion}</span>
         {detalle && (
-          <span className="mt-1 block text-[13px] font-semibold text-muted-foreground-strong">
+          <span className="mt-1 block text-[13px] font-bold text-primary">
             {detalle}
           </span>
         )}
