@@ -1,14 +1,5 @@
-"use client";
-
-import { Bar, BarChart, Cell, LabelList, XAxis, YAxis } from "recharts";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
+import type { CSSProperties } from "react";
 import { formatNumero } from "./formato";
-import { useMovimientoReducido } from "./use-movimiento-reducido";
 
 /** Las tres medidas de una oferta, en este orden y con estos colores. */
 export const MEDIDAS_OFERTA = [
@@ -27,83 +18,43 @@ type Props = {
   resumen: string;
 };
 
-const CONFIG = Object.fromEntries(
-  MEDIDAS_OFERTA.map((m) => [m.clave, { label: m.nombre, color: m.color }]),
-) satisfies ChartConfig;
-
-/** Barras horizontales de una oferta (derivados, entrevistas y seleccionados) con el valor al final. */
+/**
+ * Barras horizontales de 12 px de una oferta (derivados, entrevistas y
+ * seleccionados): la etiqueta a la izquierda, la barra sobre un fondo
+ * `secondary` y el número a la derecha. HTML del servidor. Las barras crecen
+ * al verse si un AnimarAlVerse las envuelve (.grafico-barra-x, en orden).
+ */
 export function BarrasOferta({ valores, maximo, resumen }: Props) {
-  const reducido = useMovimientoReducido();
-  const datos = MEDIDAS_OFERTA.map((m) => ({
-    clave: m.clave,
-    nombre: m.nombre,
-    valor: valores[m.clave],
-    fill: m.color,
-  }));
-
+  const tope = Math.max(1, maximo);
   return (
-    <div role="img" aria-label={resumen}>
-      <ChartContainer config={CONFIG} className="aspect-auto h-[112px] w-full">
-        <BarChart
-          accessibilityLayer
-          data={datos}
-          layout="vertical"
-          barCategoryGap={8}
-          margin={{ top: 0, right: 36, bottom: 0, left: 0 }}
-        >
-          <XAxis type="number" hide domain={[0, Math.max(1, maximo)]} />
-          <YAxis
-            type="category"
-            dataKey="nombre"
-            tickLine={false}
-            axisLine={false}
-            width={104}
-            tick={{ fill: "var(--color-control-foreground)", fontSize: 13, fontWeight: 600 }}
-          />
-          <ChartTooltip
-            cursor={false}
-            content={
-              <ChartTooltipContent
-                hideLabel
-                nameKey="clave"
-                formatter={(valor, _nombre, item) => (
-                  <div className="flex w-full items-center gap-2">
-                    <span
-                      aria-hidden="true"
-                      className="size-2.5 shrink-0 rounded-[2px]"
-                      style={{ backgroundColor: item.payload?.fill }}
-                    />
-                    <span className="text-muted-foreground-strong">{item.payload?.nombre}</span>
-                    <span className="ml-auto pl-3 font-bold text-foreground tabular-nums">
-                      {formatNumero(Number(valor))}
-                    </span>
-                  </div>
-                )}
-              />
-            }
-          />
-          <Bar
-            dataKey="valor"
-            radius={[0, 4, 4, 0]}
-            barSize={16}
-            minPointSize={2}
-            isAnimationActive={!reducido}
+    <div role="img" aria-label={resumen} className="flex flex-col gap-2.5">
+      {MEDIDAS_OFERTA.map((m, k) => {
+        const valor = Math.max(0, valores[m.clave]);
+        return (
+          <div
+            key={m.clave}
+            aria-hidden="true"
+            className="grid grid-cols-[104px_minmax(0,1fr)_2.5rem] items-center gap-3 text-[13px]"
           >
-            {datos.map((d) => (
-              <Cell key={d.clave} fill={d.fill} />
-            ))}
-            <LabelList
-              dataKey="valor"
-              position="right"
-              offset={8}
-              className="fill-foreground"
-              fontSize={13}
-              fontWeight={700}
-              formatter={(v: unknown) => formatNumero(Number(v))}
-            />
-          </Bar>
-        </BarChart>
-      </ChartContainer>
+            <span className="font-semibold text-control-foreground">{m.nombre}</span>
+            <span className="h-3 overflow-hidden rounded-full bg-secondary">
+              <span
+                className="grafico-barra-x block h-full rounded-full"
+                style={
+                  {
+                    width: `${Math.min(100, (valor * 100) / tope)}%`,
+                    backgroundColor: m.color,
+                    "--i": k,
+                  } as CSSProperties
+                }
+              />
+            </span>
+            <span className="text-right font-bold text-foreground tabular-nums">
+              {formatNumero(valor)}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }

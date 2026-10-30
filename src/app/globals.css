@@ -98,6 +98,9 @@
   --color-texto-ejemplo:      #6e7d74; /* título de ejemplo de la vista previa (texto grande: 4,3:1) */
   --color-separador-filtro: #c9d4cd; /* línea entre los estados y "Eliminadas" en Mis ofertas */
 
+  /* Candidatos guardados de la empresa (ronda 8) */
+  --color-nota-rotulo: #5c4500; /* "NOTA PRIVADA" sobre el amarillo suave de la nota */
+
   /* Navegación lateral y barra del celular (sobre --color-primary) */
   --color-sidebar-texto: #e3f0e8; /* secciones; bajada del login */
   --color-sidebar-suave: #cfe6d9; /* "Portal de empleo", rol, "Contraer menú" */
@@ -685,6 +688,13 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
 }
 .encabezado-banda-acciones--blancos :is(.btn-peligro, .btn-peligro-borde):focus-visible {
   box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 5px var(--color-surface);
+}
+/* Con el selector de período desplegable (indicadores de la empresa), la
+   lista tiene que salir de la banda: la decoración ya se recorta sola
+   (.banda-ofertas-deco) y la banda queda por encima de lo que sigue. */
+.encabezado-banda:has(.selector-periodo-banda) {
+  overflow: visible;
+  z-index: 20;
 }
 /* Con banda, el escudo de agua del fondo sobra: la banda ya lleva el suyo. */
 .app-contenido:has(.encabezado-banda)::after { display: none; }
@@ -1889,3 +1899,35 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
 @media print {
   [data-aparecer] { opacity: 1; translate: none; }
 }
+
+/* Gráficos que se dibujan al verse (AnimarAlVerse, indicadores de la empresa
+   y de la oficina). El servidor no pone data-animar: sin JavaScript, con
+   movimiento reducido o al imprimir, el gráfico se ve completo. Solo se
+   animan transform, stroke-dasharray y opacity: los anchos, altos y largos
+   finales son los del servidor y el layout no se mueve.
+   - Barras: crecen desde 0 en 600 ms ease-out, 60 ms entre una y otra (--i).
+   - Tramos de la dona: van de 0 a su largo, en orden; --retraso y --duracion
+     los calcula la dona para que el anillo entero tarde 800 ms en ease-out.
+   - Centro de la dona: aparece junto con el anillo. */
+.grafico-barra-x { transform-origin: left center; }
+.grafico-barra-y { transform-origin: center bottom; }
+@media screen and (prefers-reduced-motion: no-preference) {
+  [data-animar="espera"] .grafico-barra-x { transform: scaleX(0); }
+  [data-animar="espera"] .grafico-barra-y { transform: scaleY(0); }
+  [data-animar="espera"] .grafico-tramo { stroke-dasharray: 0 var(--circunferencia); }
+  [data-animar="espera"] .grafico-centro { opacity: 0; }
+
+  [data-animar="animando"] .grafico-barra-x {
+    animation: crecer-x 600ms ease-out calc(var(--i, 0) * 60ms) both;
+  }
+  [data-animar="animando"] .grafico-barra-y {
+    animation: crecer-y 600ms ease-out calc(var(--i, 0) * 60ms) both;
+  }
+  [data-animar="animando"] .grafico-tramo {
+    animation: dibujar-tramo var(--duracion, 800ms) linear var(--retraso, 0ms) both;
+  }
+  [data-animar="animando"] .grafico-centro { animation: aparecer 800ms ease-out both; }
+}
+@keyframes crecer-x { from { transform: scaleX(0); } }
+@keyframes crecer-y { from { transform: scaleY(0); } }
+@keyframes dibujar-tramo { from { stroke-dasharray: 0 var(--circunferencia); } }
