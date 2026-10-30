@@ -5,7 +5,7 @@ import { Esqueleto, EsqueletoTarjeta } from "@/components/ui/esqueleto";
 // loading.tsx.
 
 /**
- * Grilla de los cinco cuadros de indicadores, sin huecos en ningún ancho:
+ * Grilla de los cinco cuadros de estado, sin huecos en ningún ancho:
  * en celular 2 por fila y el último a todo el ancho; desde 672 px, 3 arriba
  * y 2 abajo (sobre 6 columnas); desde 1024 px, los cinco en una fila.
  */
@@ -17,6 +17,13 @@ export function claseCuadroIndicador(indice: number): string {
   return "col-span-2 @2xl:col-span-3 @5xl:col-span-1";
 }
 
+/** Cuadro de estado: tarjeta con un filete superior de 4 px (el color va en `before:bg-*`). */
+export const CLASE_CUADRO_ESTADO =
+  "tarjeta tarjeta-panel relative flex h-full min-w-0 flex-col gap-3 overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-1";
+
+/** "Ofertas para vos": dos columnas como máximo, para que las tarjetas respiren. */
+export const CLASE_GRILLA_OFERTAS = "grid grid-cols-1 gap-4 @xl:grid-cols-2";
+
 export const CANTIDAD_INDICADORES = 5;
 
 export function EsqueletoIndicadores() {
@@ -24,14 +31,13 @@ export function EsqueletoIndicadores() {
     <div aria-busy="true" aria-label="Cargando tus indicadores" className="@container">
       <div className={CLASE_GRILLA_INDICADORES}>
         {Array.from({ length: CANTIDAD_INDICADORES }, (_, i) => (
-          <div key={i} className={cn("tarjeta flex flex-col gap-2.5 p-5", claseCuadroIndicador(i))}>
-            <Esqueleto className="h-[26px] w-24 rounded-[13px]" />
-            <div className="@container">
-              <div className="flex flex-col items-start gap-2.5 @[7.5rem]:flex-row @[7.5rem]:items-center @[7.5rem]:gap-3">
-                <Esqueleto className="size-10 shrink-0 rounded-[var(--radius-md)]" />
-                <Esqueleto className="h-9 w-12" />
-              </div>
-            </div>
+          <div
+            key={i}
+            className={cn(CLASE_CUADRO_ESTADO, "before:bg-secondary-hover", claseCuadroIndicador(i))}
+          >
+            <Esqueleto className="size-10 rounded-[11px]" />
+            <Esqueleto className="h-[38px] w-12" />
+            <Esqueleto className="h-4 w-24 max-w-full" />
           </div>
         ))}
       </div>
@@ -39,14 +45,23 @@ export function EsqueletoIndicadores() {
   );
 }
 
+function EsqueletoTituloBloque({ ancho }: { ancho: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <Esqueleto className="size-10 shrink-0 rounded-[11px]" />
+      <Esqueleto className={cn("h-6", ancho)} />
+    </div>
+  );
+}
+
 export function EsqueletoMovimientos() {
   return (
-    <div aria-busy="true" aria-label="Cargando tus últimos movimientos" className="tarjeta p-6">
-      <Esqueleto className="h-6 w-48" />
-      <div className="mt-4 flex flex-col gap-4">
+    <div aria-busy="true" aria-label="Cargando tus últimos movimientos" className="tarjeta tarjeta-panel">
+      <EsqueletoTituloBloque ancho="w-48" />
+      <div className="mt-5 flex flex-col gap-5">
         {Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="flex items-start gap-3">
-            <Esqueleto className="size-10 shrink-0 rounded-full" />
+          <div key={i} className="flex items-start gap-3.5">
+            <Esqueleto className="size-11 shrink-0 rounded-xl" />
             <div className="flex flex-1 flex-col gap-2">
               <Esqueleto className="h-4 w-3/4" />
               <Esqueleto className="h-3 w-24" />
@@ -60,10 +75,15 @@ export function EsqueletoMovimientos() {
 
 export function EsqueletoPerfil() {
   return (
-    <div aria-busy="true" aria-label="Cargando tu perfil" className="tarjeta flex flex-col gap-4 p-6">
-      <Esqueleto className="h-6 w-44" />
-      <Esqueleto className="h-4 w-full" />
-      <Esqueleto className="h-2.5 w-full rounded-[5px]" />
+    <div aria-busy="true" aria-label="Cargando tu perfil" className="tarjeta tarjeta-panel flex flex-col gap-5">
+      <EsqueletoTituloBloque ancho="w-44" />
+      <div className="flex items-center gap-4">
+        <Esqueleto className="size-24 shrink-0 rounded-full" />
+        <div className="flex flex-1 flex-col gap-2">
+          <Esqueleto className="h-4 w-full" />
+          <Esqueleto className="h-4 w-2/3" />
+        </div>
+      </div>
       {Array.from({ length: 4 }, (_, i) => (
         <Esqueleto key={i} className="h-4 w-2/3" />
       ))}
@@ -88,14 +108,10 @@ export function ColumnasPanel({ children }: { children: React.ReactNode }) {
 export function EsqueletoOfertas() {
   return (
     <div aria-busy="true" aria-label="Cargando ofertas para vos" className="@container">
-      <Esqueleto className="h-6 w-44" />
-      <Esqueleto className="mt-2 h-4 w-64" />
-      <div className="mt-5 grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
-        {Array.from({ length: 3 }, (_, i) => (
-          <EsqueletoTarjeta
-            key={i}
-            className={i === 1 ? "hidden p-6 @xl:block" : i === 2 ? "hidden p-6 @4xl:block" : "p-6"}
-          />
+      <EsqueletoTituloBloque ancho="w-44" />
+      <div className={cn("mt-5", CLASE_GRILLA_OFERTAS)}>
+        {Array.from({ length: 2 }, (_, i) => (
+          <EsqueletoTarjeta key={i} className={i === 1 ? "hidden p-6 @xl:block" : "p-6"} />
         ))}
       </div>
     </div>
