@@ -286,6 +286,7 @@ Texto de estado suelto sobre blanco (sin fondo):
   `opcion-elegida`    `#F3F8F5`   fondo de la opción tipo radio elegida
   `texto-parrafo`     `#22332A`   párrafos y listas del detalle de una oferta
   `texto-vence`       `#8A1A12`   "Vence el …" de las invitaciones (9,9:1 sobre blanco)
+  `pendiente-icono`   `#B07A00`   `CircleAlert` del índice de Mi perfil (3,7:1 sobre blanco: solo ícono)
 
 ## Pantallas de la empresa y de la oficina
 
@@ -595,17 +596,61 @@ otra.
 
 ## Índice de secciones (Mi perfil)
 
-`src/components/perfil/indice-secciones.tsx`: desde 768 px de ancho
-disponible (`@3xl:`), una columna de 220 px a la izquierda, sticky, con
-el título "En esta página" (13 px 700 en mayúsculas) y un link de 44 px
-por sección. Marca la sección visible con `IntersectionObserver` y
-`aria-current`: la activa va en verde, sobre blanco y con un borde
-izquierdo de 3 px. Las secciones, a la derecha, ocupan el resto del
-ancho. En el celular el índice no se muestra.
+`src/components/perfil/indice-secciones.tsx` (`IndiceSecciones`). Marca la
+sección visible con `IntersectionObserver` y `aria-current`.
+
+-   Desde 768 px de ancho disponible (`@3xl:`): una `.tarjeta` de 240 px a
+    la izquierda (padding 12), sticky (`top-6`), con "En esta página"
+    (13 px 800, mayúsculas, `neutral`) y un link de 44 px por sección:
+    el ícono de la sección (18 px), el nombre (15 px 600) y, a la
+    derecha, el estado. La actual, con fondo `primary` al 10 %
+    (`rgba(0,104,51,.10)`) y texto `primary-hover` (`#00532A`) 700;
+    hover `secondary`.
+-   En pantallas angostas: pastillas de 44 px (radio 22, borde 1,5 px
+    `border-campo`, fondo blanco) en una fila con scroll horizontal (sin
+    barra), fija arriba (`sticky top-0`, fondo `background` al 95 %). La
+    actual, verde sólida con texto blanco; al cambiar de sección se
+    desplaza a la vista (sin animación con movimiento reducido).
+-   Íconos: Foto `Camera`, Datos personales `IdCard`, Procedencia
+    `MapPin`, Información laboral `Briefcase`, Rubros de interés `Tag`,
+    CVs `FileText` y Contraseña `Lock`.
+-   Estado: `CircleCheck` `primary` si la sección está completa,
+    `CircleAlert` `pendiente-icono` (`#B07A00`) si le falta algo (blanco
+    sobre la pastilla actual), con el texto para lectores de pantalla
+    "(completa)" o "(le falta completar)". Los criterios son los de
+    `obtenerCompletitudPerfil` (los mismos del panel): Información
+    laboral junta experiencia y disponibilidad; Procedencia, localidad y
+    comprobante. Contraseña no tiene criterio y va sin estado. Si la
+    completitud no se puede leer, el índice va sin estados.
+
+## Tarjeta de la foto (Mi perfil del postulante)
+
+`EncabezadoPerfil destacado` (`src/components/perfil/encabezado-perfil.tsx`)
+reemplaza a la tarjeta "Foto" (el título queda solo para lectores de
+pantalla). Los perfiles de la empresa y de la oficina siguen con el
+encabezado de siempre.
+
+-   `.tarjeta .tarjeta-panel`: la foto o las iniciales (96 px; 76 en el
+    celular; clic para verla y ajustarla), el nombre en Georgia
+    (`.titulo-display`, 32 px; 26 en el celular), el rol (15 px 600
+    `primary`) y los botones "Cambiar foto" (o "Subir foto",
+    `.btn-secundario`) y quitar (`.btn-icono` con borde rojo, solo
+    ícono, con `aria-label`). En el celular, centrado.
+-   A la derecha desde `lg` (debajo en angosto), un recuadro con fondo
+    `primary` al 6 % (`rgba(0,104,51,.06)`), radio 12: el
+    `AnilloProgreso` de 64 px (el mismo del panel, con su animación),
+    "Perfil al X %" (16 px 800) y "Te falta:" con lo pendiente como
+    links a su sección (los textos del panel; abren la tarjeta en
+    edición como los links "Completar"). Completo: "Tu perfil está
+    completo."
+-   Debajo, a todo el ancho, la ayuda de formatos (13 px
+    `muted-foreground`).
 
 Cada sección del perfil es una tarjeta (`SeccionPerfil` en
 `components/perfil/piezas.tsx`) con su título de 20 px 800 (18 en el
-celular), una línea de ayuda opcional y su contenido. Campos del perfil:
+celular), una línea de ayuda opcional y su contenido. En el perfil del
+postulante, el título lleva el ícono de la sección en un `IconoCuadro`
+de 40 px (`icono`). Campos del perfil:
 alto 48, borde 1,5 px `border-campo`, radio 10; label 15 px 700, ayuda
 13 px, error 13 px 600 en `danger`.
 
@@ -616,13 +661,44 @@ personales, Procedencia, Información laboral y Rubros de interés) se ven
 en **modo lectura** al entrar:
 
 -   cada dato con `CampoLectura estiloPerfil` dentro de `GrillaLectura`
-    (`<dl>` de 2 columnas desde sm, 1 en el celular): la etiqueta en 14 px
-    700 `neutral` y el valor en 15 px `control-foreground`, como
-    `DatosClave`. Los vacíos dicen "Sin completar" en `muted-foreground`.
-    Los rubros elegidos van como `EtiquetaRubro` verde;
--   en el encabezado, el botón **"Editar"** (`BotonEditar`: `.btn-neutro`
-    con el ícono `Pencil`, 44 px). Su nombre accesible nombra la tarjeta
-    ("Editar datos personales").
+    (`<dl>` de 2 columnas desde sm, 1 en el celular): la etiqueta arriba
+    en 13 px 700 `neutral` y el valor abajo en 16 px
+    `control-foreground`. Un dato vacío va como `ChipSinCompletar`
+    (abajo);
+-   los rubros elegidos, como chips verdes: fondo `primary` al 10 %,
+    radio 18, alto 36, texto 15 px 600 `primary-hover`, con el ícono del
+    rubro (`iconoRubro`, `src/lib/rubros-iconos.ts`) blanco de 16 px en
+    un círculo `primary` de 28 px. Sin rubros, el chip de sin completar;
+-   en el encabezado, el botón **"Editar"** (`BotonEditar`: `.btn-neutro
+    .btn-chico` con el ícono `Pencil`). Su nombre accesible nombra la
+    tarjeta ("Editar datos personales"). "Cambiar contraseña" usa
+    `.btn-secundario .btn-chico`.
+
+`.btn-chico` (`globals.css`, después de las medidas comunes): padding
+12 px, texto 14 px, ícono de 16 px y 36 px de alto desde `sm`; en el
+celular, 44 px como todos los botones.
+
+**Dato sin completar** (`ChipSinCompletar`, `piezas.tsx`): chip en lugar
+del texto gris, con fondo `accent` al 20 % (`rgba(242,183,5,.2)`), radio
+8, texto "Sin completar" 14 px 700 en `invitacion-titulo` (`#3A2A00`) y
+`TriangleAlert` de 16 px. Va en todos los datos vacíos del modo lectura
+(también los opcionales).
+
+**Fila de archivo del perfil** (`FilaArchivoPerfil`, `piezas.tsx`): los
+CVs y el comprobante de domicilio. Fila con borde y radio 12: `FileText`
+en un cuadrado de 44 px con fondo `primary` al 10 % (ícono `primary`),
+el nombre (15 px 700) y sus datos en 13 px `muted-foreground` (peso,
+tipo y fecha, los que haya: "120 KB · PDF · Cargado el …"; el
+comprobante no guarda el tipo). A la derecha (debajo en el celular), el
+badge si tiene (el estado del comprobante: "Verificado", "En revisión" o
+"Rechazado") y las acciones: "Ver" (`.btn-neutro` con `ExternalLink`) y
+eliminar (`.btn-icono` con borde rojo y `aria-label`, con su
+confirmación). El comprobante no tiene acción de eliminar.
+
+En CVs, debajo de la lista, la barra de uso: "2 de 5 CVs" (700
+`heading`) "· PDF, hasta 5 MB" (con `CV_MAXIMOS` y `CV_HELP_TEXT`) y una
+barra de 8 px (`progreso-fondo`, lleno `primary`, decorativa) y, a la
+derecha, "Subir CV" (`.btn-secundario`; debajo en el celular).
 
 Al tocar "Editar", la tarjeta muestra el formulario (el botón se oculta)
 con el pie `PieEdicion`: "Cancelar" (neutro) y "Guardar cambios"
@@ -643,7 +719,7 @@ abrir y vuelve a "Editar" al guardar o cancelar.
 -   **Contraseña:** el botón "Cambiar contraseña" (secundario) despliega
     el formulario, con "Cancelar"; cuenta como una tarjeta más en edición.
 -   La foto y los CVs no tienen modo lectura: siguen con sus botones de
-    subir y de borrar. El comprobante de domicilio de Procedencia queda
+    subir y de borrar (la foto, en su tarjeta: «Tarjeta de la foto»). El comprobante de domicilio de Procedencia queda
     siempre a la vista, fuera del formulario de la localidad.
 -   Los perfiles de la empresa y de la oficina no usan `EdicionPerfil`.
 
@@ -1838,6 +1914,62 @@ trazo (`stroke-dashoffset` con `pathLength="100"`) y el número
 (`counter`). Sin movimiento con movimiento reducido. Lo usa "Completá tu
 perfil" en el panel; el cálculo del porcentaje es el de
 `obtenerCompletitudPerfil`.
+
+`tamano={64}` (`.anillo-progreso-64`): el mismo anillo a 64 px (el trazo
+escala con él) con el número de 16 px, en la tarjeta de la foto de Mi
+perfil.
+
+## Mis cursos
+
+`src/app/(dashboard)/mis-cursos/page.tsx`, debajo del encabezado con banda.
+
+-   **Resumen** (si hay cursos): `.banda-resumen` (`globals.css`), el
+    verde `primary` con los puntos blancos al 9 % de la banda del
+    encabezado (cada 24 px; 28 desde `sm`), radio 18, padding `22px 24px`
+    (`18px 16px` en el celular) y un aro blanco al 8 % arriba a la
+    derecha (decorativo). Adentro, `GraduationCap` en un `IconoCuadro` de
+    56 px con fondo blanco al 16 %, la cantidad de cursos completados
+    (34 px 800, blanco, números tabulares) y "cursos completados" (o
+    "curso completado") debajo, 15 px 600 `sidebar-texto`. Cuenta todos
+    los completados, no solo los de la página; si el conteo falla, la
+    lista se muestra sin el resumen.
+-   **Lista** a todo el ancho, una `.tarjeta .tarjeta-panel
+    .tarjeta-clickeable` por curso: `BookOpen` en un `IconoCuadro` de 40
+    px, el título como link verde (17 px 800, se estira sobre toda la
+    tarjeta) con el badge de su estado, la fecha de su estado ("Completado
+    el …", "Empezado el …", "Asignado el …", "Abandonado el …") en 14 px
+    `muted-foreground`, la descripción (15 px, hasta 3 líneas), las
+    acciones de siempre ("Empezar curso", "Marcar como completado", "Ir al
+    curso", por encima del link) y "Ver curso ›" (15 px 700 `primary`) a
+    la derecha, centrado; en el celular, abajo.
+-   Debajo, `Paginacion` simple ("Mostrando X–Y de Z").
+
+## Notificaciones del postulante
+
+`PaginaNotificaciones banda` usa `ListaNotificacionesAgrupada`
+(`src/components/notificaciones/lista-agrupada.tsx`). Las listas de la
+empresa y de la oficina no cambian.
+
+-   **Grupos por fecha** (`src/lib/grupos-notificaciones.ts`), dentro de la
+    página que se está viendo (la paginación no cambia): "Últimas 24
+    horas" (hace menos de 24 h), "Esta semana" (desde el lunes 00:00 de
+    Argentina y hace 24 h o más) y "Más antiguas". Se calculan en el
+    servidor; solo aparecen los grupos con notificaciones. Título de
+    grupo: `<h2>` de 13 px 800 en mayúsculas, `neutral` (`#4F5E55`).
+-   **Tarjeta** (`.tarjeta .tarjeta-panel`): el ícono en un `IconoCuadro`
+    de 40 px según el tipo: `CircleCheck` `success` (seleccionado),
+    `CalendarClock` `info` (`#1D4E9E`; entrevista y pre-entrevistas),
+    `Send` `teal` (derivada), `Archive` `neutral` (postulación cerrada);
+    los demás tipos, su ícono de siempre en `neutral` sobre `secondary`.
+    Después, el título (16 px 800), el texto (15 px
+    `muted-foreground-strong`) y "hace X" (13 px). "Ver detalle ›" es un
+    link (15 px 700 `primary`, 44 px de alto) a la derecha; en el
+    celular, debajo del texto. Las nuevas, con el punto `accent` y el
+    fondo resaltado de siempre; se marcan como leídas igual que antes.
+-   No hay chips de fecha, lugar o link de las entrevistas: la tabla
+    `notificaciones` no guarda esos datos en columnas propias (están
+    dentro del texto).
+-   Debajo, `Paginacion` simple ("Mostrando X–Y de Z").
 
 ## Invitaciones
 
