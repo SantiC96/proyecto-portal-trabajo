@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { FileText, TriangleAlert, Users } from "lucide-react";
 import { logError } from "@/lib/logger";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
+import { limpiarBusqueda } from "@/lib/busqueda";
+import {
+  aplicarFiltroPostulantes,
+  idsFiltroPostulantes,
+  sinCoincidencias,
+} from "@/lib/admin/filtro-postulantes";
 import {
   TAMANO_PAGINA,
   consultarPagina,
@@ -17,7 +22,8 @@ import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { Esqueleto } from "@/components/ui/esqueleto";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
-import { PestanasEstado } from "@/components/ui/pestanas-estado";
+import { PastillaFiltro } from "@/components/ui/pastilla-filtro";
+import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
 import { FiltrosPostulantes } from "./filtros-postulantes";
 import { AsignarCursoDialog } from "./asignar-curso-dialog";
 import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
@@ -29,11 +35,17 @@ import {
 } from "@/lib/cursos";
 import type { Tabla } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
-import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
-import { Badge, type TonoBadge } from "@/components/ui/badge";
+import { ChipLocalidad } from "@/components/postulantes/badge-procedencia";
+import { Badge, Chip } from "@/components/ui/badge";
 import { estadosDeComprobantes } from "@/lib/comprobantes";
 import { inicialesDePersona } from "@/lib/iniciales";
-import { nivelDe, type EstadoComprobante, type NivelPrioridad } from "@/lib/procedencia";
+import {
+  agruparPorNivel,
+  detalleSinVerificar,
+  nivelDe,
+  type EstadoComprobante,
+  type NivelPrioridad,
+} from "@/lib/procedencia";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -44,11 +56,24 @@ const RUTA = "/admin/postulantes";
 const NIVELES: NivelPrioridad[] = [1, 2, 3];
 
 // La lista se ordena por nivel de prioridad (decisión 027): cada grupo de la
-// página lleva este separador arriba de su primera fila.
-const NIVEL: Record<NivelPrioridad, { titulo: string; tono: TonoBadge }> = {
-  1: { titulo: "De Funes, domicilio verificado", tono: "success" },
-  2: { titulo: "De Funes, sin verificar", tono: "warning" },
-  3: { titulo: "Otra localidad o sin informar", tono: "neutral" },
+// página lleva un filete izquierdo de su color y una franja de encabezado con
+// el chip "Prioridad N", el nombre del grupo y su cantidad.
+const NIVEL: Record<NivelPrioridad, { titulo: string; filete: string; chip: string }> = {
+  1: {
+    titulo: "De Funes, domicilio verificado",
+    filete: "before:bg-primary",
+    chip: "bg-primary text-primary-foreground",
+  },
+  2: {
+    titulo: "De Funes, sin verificar",
+    filete: "before:bg-accent",
+    chip: "bg-accent text-accent-foreground",
+  },
+  3: {
+    titulo: "Otra localidad o sin informar",
+    filete: "before:bg-neutral",
+    chip: "bg-neutral text-white",
+  },
 };
 
 // Filtro ?procedencia=: un valor por nivel. Sin el parámetro, o con uno que no
@@ -86,13 +111,17 @@ function leerProcedencia(valor: string | undefined): NivelPrioridad | null {
 // Tabla desde 896 px de ancho disponible (la sidebar le quita ancho al
 // contenido); más angosto, cada postulante es una tarjeta. Misma técnica que
 // el componente Tabla: una sola grilla y, adentro, encabezado, grupos y filas
-// con subgrid, para que la columna `auto` de las acciones mida lo mismo en
-// todas las filas y los rótulos queden sobre su columna. No usa Tabla porque
-// las filas van agrupadas por nivel con un separador entre grupos.
+// con subgrid, para que las columnas midan lo mismo en todas las filas y los
+// rótulos queden sobre su columna. No usa Tabla porque las filas van
+// agrupadas por nivel con una franja entre grupos.
+// Postulante | DNI | Localidad | Rubros | CV | acciones.
 const GRILLA =
-  "@4xl:grid @4xl:grid-cols-[minmax(0,2.2fr)_7rem_minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1.5fr)_minmax(0,1.4fr)_auto] @4xl:gap-x-4 @4xl:gap-y-0";
+  "@4xl:grid @4xl:grid-cols-[minmax(0,1.6fr)_minmax(max-content,.8fr)_minmax(0,1.3fr)_minmax(0,1.7fr)_minmax(max-content,.8fr)_minmax(max-content,.7fr)] @4xl:gap-x-4 @4xl:gap-y-0";
 const SUBGRILLA =
   "@4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:gap-x-4 @4xl:gap-y-0";
+
+/** Rubros a la vista en la fila; el resto, como "+n". */
+const RUBROS_VISIBLES = 2;
 
 type FiltrosListado = {
   q: string;
@@ -178,7 +207,7 @@ export default async function PostulantesPage({
     .order("nombre");
   const opciones = categoriasRes.data ?? [];
 
-  // Una sola carga compartida por el contador de los filtros y la lista. La
+  // Una sola carga compartida por las pastillas, el contador y la lista. La
   // clave cambia con cada búsqueda o página: los Suspense se vuelven a montar
   // y muestran el esqueleto mientras llega el resultado nuevo.
   const datos = cargarListado(filtros);
@@ -187,12 +216,14 @@ export default async function PostulantesPage({
   return (
     <div className="flex flex-col gap-6">
       <EncabezadoPagina
+        banda
+        botonesBlancos
         titulo="Postulantes"
         bajada="Ordenados por prioridad: primero los vecinos de Funes con domicilio verificado."
       />
 
       <Suspense
-        key={`${clave}:pestanas`}
+        key={`${clave}:pastillas`}
         fallback={<FiltroProcedencia nivel={filtros.nivel} searchParams={sp} />}
       >
         <FiltroProcedenciaConCantidades datos={datos} nivel={filtros.nivel} searchParams={sp} />
@@ -223,77 +254,26 @@ async function cargarListado(filtros: FiltrosListado): Promise<DatosListado> {
 
   const supabase = await createSupabaseServerClient();
 
-  const rubroPreResult =
-    rubroIds.length > 0
-      ? await supabase
-          .from("postulante_categorias")
-          .select("postulante_id")
-          .in("categoria_id", rubroIds)
-      : { data: null };
-
-  const rubroPrefilterId: string[] | undefined =
-    rubroIds.length > 0
-      ? [
-          ...new Set(
-            (rubroPreResult.data ?? []).map((r) => r.postulante_id)
-          ),
-        ]
-      : undefined;
-
-  // Pre-filtro: búsqueda de texto
-  let textFilterIds: string[] | undefined;
-  if (q) {
-    const patron = patronIlike(q);
-
-    const [usersRes, dniRes] = await Promise.all([
-      supabase
-        .from("usuarios")
-        .select("id")
-        .or(`nombre.ilike.${patron},apellido.ilike.${patron}`),
-      supabase.from("postulantes").select("id").ilike("dni", patron),
-    ]);
-
-    const errorTexto = usersRes.error ?? dniRes.error;
-    if (errorTexto) {
-      return { tipo: "error", refError: logError("admin_postulantes_busqueda", errorTexto) };
-    }
-
-    const usuarioIds = (usersRes.data ?? []).map((r) => r.id);
-    const idsByDni = (dniRes.data ?? []).map((r) => r.id);
-
-    let idsByName: string[] = [];
-    if (usuarioIds.length > 0) {
-      const { data: byName } = await supabase
-        .from("postulantes")
-        .select("id")
-        .in("usuario_id", usuarioIds);
-      idsByName = (byName ?? []).map((r) => r.id);
-    }
-
-    textFilterIds = [...new Set([...idsByName, ...idsByDni])];
+  const filtroIds = await idsFiltroPostulantes(supabase, q, rubroIds);
+  if (!filtroIds.ok) {
+    return { tipo: "error", refError: logError("admin_postulantes_busqueda", filtroIds.error) };
   }
+  const ids = filtroIds.ids;
 
-  // Short-circuit si algún filtro no tiene resultados
-  const emptyFilter =
-    (rubroPrefilterId !== undefined && rubroPrefilterId.length === 0) ||
-    (textFilterIds !== undefined && textFilterIds.length === 0);
-
-  if (emptyFilter) {
+  if (sinCoincidencias(ids)) {
     return { tipo: "vacio", hayFiltros, nivel, totalesNivel: { 1: 0, 2: 0, 3: 0 } };
   }
 
-  // Totales por nivel para los separadores y las pestañas de procedencia: un
+  // Totales por nivel para los grupos y las pastillas de procedencia: un
   // conteo por nivel (head: true, sin traer filas) con la búsqueda y los
-  // rubros de la lista, pero no la procedencia, para que cada pestaña diga
+  // rubros de la lista, pero no la procedencia, para que cada pastilla diga
   // cuántos hay en su nivel.
-  const contarNivel = async (nivel: NivelPrioridad): Promise<number | null> => {
-    let query = supabase
-      .from("postulantes")
-      .select("id", { count: "exact", head: true })
-      .eq("nivel_prioridad", nivel);
-    if (rubroPrefilterId !== undefined) query = query.in("id", rubroPrefilterId);
-    if (textFilterIds !== undefined) query = query.in("id", textFilterIds);
-    const { count, error } = await query;
+  const contarNivel = async (nivelConteo: NivelPrioridad): Promise<number | null> => {
+    const { count, error } = await aplicarFiltroPostulantes(
+      supabase.from("postulantes").select("id", { count: "exact", head: true }),
+      ids,
+      nivelConteo,
+    );
     if (error) {
       logError("admin_postulantes_total_nivel", error);
       return null;
@@ -302,26 +282,23 @@ async function cargarListado(filtros: FiltrosListado): Promise<DatosListado> {
   };
 
   const [resultado, cursosRes, ...conteos] = await Promise.all([
-    consultarPagina(pagina, (desde, hasta) => {
-      let query = supabase
-        .from("postulantes")
-        .select(
-          "id, usuario_id, dni, created_at, localidad, nivel_prioridad, usuarios!usuario_id(nombre, apellido, telefono)",
-          { count: "exact" }
-        );
-
-      if (rubroPrefilterId !== undefined)
-        query = query.in("id", rubroPrefilterId);
-      if (textFilterIds !== undefined) query = query.in("id", textFilterIds);
-      if (nivel !== null) query = query.eq("nivel_prioridad", nivel);
-
+    consultarPagina(pagina, (desde, hasta) =>
       // Mismo orden que postulantes_nivel_prioridad_idx (migration_055).
-      return query
+      aplicarFiltroPostulantes(
+        supabase
+          .from("postulantes")
+          .select(
+            "id, usuario_id, dni, created_at, localidad, nivel_prioridad, usuarios!usuario_id(nombre, apellido, telefono)",
+            { count: "exact" }
+          ),
+        ids,
+        nivel,
+      )
         .order("nivel_prioridad", { ascending: true })
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
-        .range(desde, hasta);
-    }),
+        .range(desde, hasta)
+    ),
     // Cursos activos para el dialog de asignación
     supabase
       .from("cursos")
@@ -471,7 +448,7 @@ async function ContadorPostulantes({ datos }: { datos: Promise<DatosListado> }) 
   );
 }
 
-/** Las cantidades salen de los mismos conteos por nivel que los separadores. */
+/** Las cantidades salen de los mismos conteos por nivel que los grupos. */
 async function FiltroProcedenciaConCantidades({
   datos,
   nivel,
@@ -492,9 +469,9 @@ async function FiltroProcedenciaConCantidades({
 }
 
 /**
- * Pestañas "Todos" y una por nivel. Cambiar de pestaña vuelve a la página 1
+ * Pastillas "Todos" y una por nivel. Cambiar de pastilla vuelve a la página 1
  * y conserva la búsqueda y los rubros. Sin `totales` (mientras cargan) o si
- * falló un conteo, la pestaña va sin número.
+ * falló un conteo, la pastilla va sin número.
  */
 function FiltroProcedencia({
   nivel,
@@ -521,15 +498,20 @@ function FiltroProcedencia({
   ];
 
   return (
-    <PestanasEstado
-      etiqueta="Procedencia de los postulantes"
-      pestanas={opciones.map((o) => ({
-        href: hrefConParams(RUTA, searchParams, { procedencia: o.valor, pagina: null }),
-        label: o.etiqueta,
-        activa: o.nivel === nivel,
-        cantidad: o.cantidad ?? undefined,
-      }))}
-    />
+    <nav aria-label="Procedencia de los postulantes" className="min-w-0">
+      <div className="sin-barra-scroll -mx-4 -my-1 flex gap-2 overflow-x-auto px-4 py-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+        {opciones.map((o) => (
+          <PastillaFiltro
+            key={o.valor ?? "todos"}
+            href={hrefConParams(RUTA, searchParams, { procedencia: o.valor, pagina: null })}
+            activa={o.nivel === nivel}
+            cantidad={o.cantidad ?? undefined}
+          >
+            {o.etiqueta}
+          </PastillaFiltro>
+        ))}
+      </div>
+    </nav>
   );
 }
 
@@ -571,28 +553,21 @@ async function ListadoPostulantes({
     );
   }
 
-  // Las filas llegan ordenadas por nivel: se agrupan las consecutivas.
-  const grupos: { nivel: NivelPrioridad; filas: FilaPostulante[] }[] = [];
-  for (const p of d.filas) {
-    const ultimo = grupos.at(-1);
-    if (ultimo?.nivel === p.nivel) ultimo.filas.push(p);
-    else grupos.push({ nivel: p.nivel, filas: [p] });
-  }
-
+  const grupos = agruparPorNivel(d.filas);
   const volverUrl = hrefConParams(RUTA, searchParams, { pagina: d.pagina });
 
   return (
     <div className="@container flex flex-col gap-6">
       <div
         className={cn(
-          "flex flex-col gap-3 @4xl:overflow-hidden @4xl:rounded-[var(--radius-xl)] @4xl:border @4xl:border-border @4xl:bg-surface",
+          "flex flex-col gap-5 @4xl:overflow-hidden @4xl:rounded-[var(--radius-xl)] @4xl:border @4xl:border-border @4xl:bg-surface @4xl:shadow-[var(--sombra-tarjeta)]",
           GRILLA,
         )}
       >
         <div
           aria-hidden="true"
           className={cn(
-            "hidden bg-tabla-encabezado px-5 py-3 text-xs font-bold tracking-[0.06em] text-neutral uppercase",
+            "hidden bg-tabla-cabecera py-3 pr-4 pl-[21px] text-xs font-extrabold tracking-[0.06em] text-neutral uppercase",
             SUBGRILLA,
           )}
         >
@@ -600,8 +575,7 @@ async function ListadoPostulantes({
           <span>DNI</span>
           <span>Localidad</span>
           <span>Rubros</span>
-          <span>Prioridad</span>
-          <span>CV y curso</span>
+          <span>CV</span>
           <span />
         </div>
 
@@ -609,9 +583,14 @@ async function ListadoPostulantes({
           <section
             key={grupo.nivel}
             aria-labelledby={`nivel-${grupo.nivel}`}
-            className={cn("flex flex-col gap-3", SUBGRILLA)}
+            className={cn(
+              // Filete izquierdo de 5 px del color del grupo, de la franja a la última fila.
+              "relative flex flex-col gap-3 pl-[13px] before:absolute before:inset-y-0 before:left-0 before:w-[5px] before:rounded-full @4xl:pl-0 @4xl:before:rounded-none",
+              NIVEL[grupo.nivel].filete,
+              SUBGRILLA,
+            )}
           >
-            <SeparadorNivel nivel={grupo.nivel} total={d.totalesNivel[grupo.nivel]} />
+            <EncabezadoGrupo nivel={grupo.nivel} total={d.totalesNivel[grupo.nivel]} />
             <ul className={cn("flex flex-col gap-3", SUBGRILLA)}>
               {grupo.filas.map((p) => (
                 <FilaListado
@@ -637,22 +616,27 @@ async function ListadoPostulantes({
   );
 }
 
-function SeparadorNivel({ nivel, total }: { nivel: NivelPrioridad; total: number | null }) {
+/** Franja de un grupo: el chip "Prioridad N" de su color, el nombre y la cantidad. */
+function EncabezadoGrupo({ nivel, total }: { nivel: NivelPrioridad; total: number | null }) {
   return (
     <h2
       id={`nivel-${nivel}`}
-      className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[var(--radius-lg)] bg-tabla-separador px-4 py-2.5 text-sm leading-normal @4xl:col-span-full @4xl:rounded-none @4xl:border-t @4xl:border-tabla-borde @4xl:px-5"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[var(--radius-lg)] bg-tabla-cabecera px-4 py-2.5 text-[15px] leading-normal @4xl:col-span-full @4xl:rounded-none @4xl:border-t @4xl:border-tabla-borde @4xl:py-3 @4xl:pr-4 @4xl:pl-[21px]"
     >
-      <Badge tono={NIVEL[nivel].tono}>{NIVEL[nivel].titulo}</Badge>
-      <span>
-        <span className="font-bold text-heading">Prioridad {nivel}</span>
-        {total !== null && (
-          <span className="font-normal text-muted-foreground-strong">
-            {" "}
-            · {total} {total === 1 ? "postulante" : "postulantes"}
-          </span>
+      <span
+        className={cn(
+          "inline-flex h-6 items-center rounded-[6px] px-2 text-xs font-extrabold tracking-[0.06em] uppercase",
+          NIVEL[nivel].chip,
         )}
+      >
+        Prioridad {nivel}
       </span>
+      <span className="font-bold text-heading">{NIVEL[nivel].titulo}</span>
+      {total !== null && (
+        <span className="text-sm text-muted-foreground">
+          {total} {total === 1 ? "postulante" : "postulantes"}
+        </span>
+      )}
     </h2>
   );
 }
@@ -668,22 +652,18 @@ function FilaListado({
 }) {
   const pendientes = p.cursosPendientesIds.length;
   const puedeRecibirCurso = p.cursos?.puede_recibir_curso ?? false;
-  const etiquetaCurso = <EtiquetaCurso cursos={p.cursos} />;
-  const conBadgeCurso = Boolean(
-    p.cursos && (p.cursos.necesita_curso || p.cursos.asignacion_activa_estado),
-  );
+  const rubrosOcultos = p.rubros.slice(RUBROS_VISIBLES);
 
   return (
     <li
       className={cn(
-        "flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[var(--radius-xl)] border border-border bg-surface p-4 text-sm text-foreground transition-colors",
-        "@4xl:rounded-none @4xl:border-x-0 @4xl:border-b-0 @4xl:border-tabla-borde @4xl:px-5 @4xl:py-3 @4xl:hover:bg-tabla-hover",
+        "flex flex-col gap-3 rounded-[var(--radius-xl)] border border-border bg-surface p-4 text-[15px] text-foreground shadow-[var(--sombra-tarjeta)] transition-colors duration-150 motion-reduce:transition-none",
+        "@4xl:items-center @4xl:rounded-none @4xl:border-x-0 @4xl:border-b-0 @4xl:border-tabla-borde @4xl:py-3.5 @4xl:pr-4 @4xl:pl-[21px] @4xl:shadow-none @4xl:hover:bg-tabla-fila-hover",
         SUBGRILLA,
-        "@4xl:items-center",
       )}
     >
       {/* Postulante */}
-      <div className="flex min-w-0 basis-full items-center gap-3 @4xl:basis-auto">
+      <div className="flex min-w-0 items-center gap-3">
         <AvatarAjustado
           src={p.avatar?.url ?? null}
           alt=""
@@ -691,15 +671,15 @@ function FilaListado({
           iniciales={p.iniciales}
           size="lista"
         />
-        <div className="min-w-0">
+        <div className="flex min-w-0 flex-col items-start">
           <Link
             href={fichaUrl}
-            className="block rounded-[var(--radius-sm)] text-[15px] font-bold break-words text-heading no-underline outline-none hover:text-primary focus-visible:shadow-[var(--sombra-foco)]"
+            className="rounded-[var(--radius-sm)] text-[15px] leading-snug font-extrabold break-words text-heading no-underline outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
           >
             {p.nombre}
           </Link>
           {p.telefono && (
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-[13px] text-muted-foreground tabular-nums">
               <span className="sr-only">Teléfono: </span>
               {p.telefono}
             </p>
@@ -707,44 +687,57 @@ function FilaListado({
         </div>
       </div>
 
-      {/* DNI */}
+      {/* DNI: en la tarjeta, con el prefijo a la vista */}
       <p className="tabular-nums">
         <span className="text-muted-foreground @4xl:sr-only">DNI </span>
         {p.dni ?? "—"}
       </p>
 
-      {/* Localidad */}
-      <p className="min-w-0 break-words">
+      {/* Localidad: el chip dice la procedencia y el nivel */}
+      <div className="flex min-w-0 flex-col items-start gap-1">
         <span className="sr-only">Localidad: </span>
-        {p.localidad ?? <span className="text-muted-foreground">Sin informar</span>}
-      </p>
-
-      {/* Rubros */}
-      <p
-        className="line-clamp-2 basis-full text-muted-foreground-strong @4xl:basis-auto"
-        title={p.rubros.join(", ")}
-      >
-        <span className="sr-only">Rubros: </span>
-        {p.rubros.length > 0 ? p.rubros.join(", ") : <span className="text-muted-foreground">—</span>}
-      </p>
-
-      {/* Prioridad */}
-      <div className="min-w-0">
-        <span className="sr-only">Prioridad: </span>
-        <BadgeProcedencia nivel={p.nivel} localidad={p.localidad} comprobante={p.comprobante} />
+        <ChipLocalidad nivel={p.nivel} localidad={p.localidad} />
+        {p.nivel === 2 && (
+          <span className="text-[13px] font-semibold text-sin-comprobante">
+            {detalleSinVerificar(p.comprobante)}
+          </span>
+        )}
       </div>
 
-      {/* CV y curso */}
-      <div className="flex min-w-0 flex-col gap-1">
-        <span className="sr-only">CV y curso: </span>
-        {!p.tieneCv || conBadgeCurso ? (
-          <div className="flex flex-wrap gap-1.5">
-            {!p.tieneCv && <Badge tono="warning">Sin CV</Badge>}
-            {etiquetaCurso}
-          </div>
+      {/* Rubros */}
+      <div className="min-w-0">
+        <span className="sr-only">Rubros: </span>
+        {p.rubros.length > 0 ? (
+          <span className="flex flex-wrap gap-1.5">
+            {p.rubros.slice(0, RUBROS_VISIBLES).map((r) => (
+              <EtiquetaRubro key={r}>{r}</EtiquetaRubro>
+            ))}
+            {rubrosOcultos.length > 0 && (
+              <EtiquetaRubro title={rubrosOcultos.join(", ")}>
+                <span aria-hidden="true">+{rubrosOcultos.length}</span>
+                <span className="sr-only">y {rubrosOcultos.join(", ")}</span>
+              </EtiquetaRubro>
+            )}
+          </span>
         ) : (
-          <span className="text-muted-foreground-strong">CV cargado</span>
+          <span className="text-muted-foreground">Sin rubros</span>
         )}
+      </div>
+
+      {/* CV, y debajo el estado de los cursos */}
+      <div className="flex min-w-0 flex-col items-start gap-1.5">
+        <span className="sr-only">CV: </span>
+        {p.tieneCv ? (
+          <span className="inline-flex items-center gap-1.5 font-semibold whitespace-nowrap text-foreground">
+            <FileText aria-hidden="true" className="size-4 shrink-0 text-primary" />
+            CV cargado
+          </span>
+        ) : (
+          <Chip tono="amarillo" icono={TriangleAlert}>
+            Sin CV
+          </Chip>
+        )}
+        <EtiquetaCurso cursos={p.cursos} />
         {pendientes > 0 && (
           <p className="text-xs font-medium text-warning-text">
             {textoCursosPendientes(pendientes)}
@@ -753,22 +746,22 @@ function FilaListado({
       </div>
 
       {/* Acciones */}
-      <div className="flex basis-full flex-wrap gap-2 @4xl:basis-auto @4xl:flex-nowrap @4xl:justify-end">
+      <div className="flex flex-col gap-2 @4xl:items-stretch">
         {puedeRecibirCurso && (
           <AsignarCursoDialog
             postulanteId={p.id}
             postulanteNombre={p.nombre}
             cursosActivos={cursosActivos}
             cursosPendientesIds={p.cursosPendientesIds}
-            claseBoton="flex-1 @4xl:flex-none @4xl:min-h-10! @4xl:px-3.5! @4xl:text-sm!"
+            claseBoton="w-full @4xl:min-h-10! @4xl:px-3.5! @4xl:text-sm!"
           />
         )}
         <Link
           href={fichaUrl}
-          className="btn-neutro flex-1 whitespace-nowrap @4xl:flex-none @4xl:min-h-10! @4xl:px-3.5! @4xl:text-sm!"
+          aria-label={`Ver perfil de ${p.nombre}`}
+          className="btn-secundario w-full whitespace-nowrap @4xl:min-h-10! @4xl:px-3.5! @4xl:text-sm!"
         >
           Ver perfil
-          <span className="sr-only">: {p.nombre}</span>
         </Link>
       </div>
     </li>
@@ -779,7 +772,7 @@ function EtiquetaCurso({ cursos }: { cursos: EstadoCursosPostulante | undefined 
   if (!cursos) return null;
   if (cursos.necesita_curso) {
     return (
-      <Badge tono="warning" estado>
+      <Badge tono="warning" estado multilinea>
         Necesita curso · {textoRechazos(cursos.rechazos_ventana)}
       </Badge>
     );

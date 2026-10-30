@@ -30,6 +30,11 @@ type Props = Omit<ComponentProps<"div">, "title"> & {
   titulo?: ReactNode
   /** Ícono de Lucide; por defecto, el del tono. */
   icono?: LucideIcon
+  /**
+   * Solo "warning": fondo `accent` al 18 % con texto `accent-foreground`, para
+   * una advertencia dentro de un diálogo ("Esta acción no se puede deshacer.").
+   */
+  suave?: boolean
 }
 
 /**
@@ -37,7 +42,7 @@ type Props = Omit<ComponentProps<"div">, "title"> & {
  * links de adentro van subrayados y heredan el color del texto. Danger se
  * anuncia como alerta; los demás, como estado.
  */
-export function Aviso({ tono, titulo, icono, className, children, role, ...props }: Props) {
+export function Aviso({ tono, titulo, icono, suave = false, className, children, role, ...props }: Props) {
   const Icono = icono ?? ICONO[tono]
   return (
     <div
@@ -45,7 +50,7 @@ export function Aviso({ tono, titulo, icono, className, children, role, ...props
       className={cn(
         "flex items-start gap-3 rounded-[var(--radius-lg)] px-4 py-3.5 text-[15px] leading-[1.45]",
         "[&_a]:font-semibold [&_a]:underline [&_a]:underline-offset-2",
-        CLASE_TONO[tono],
+        suave && tono === "warning" ? "bg-accent/18 text-accent-foreground" : CLASE_TONO[tono],
         className,
       )}
       {...props}

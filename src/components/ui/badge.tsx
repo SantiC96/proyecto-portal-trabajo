@@ -15,6 +15,8 @@ export type TonoBadge =
   | "warning"
   | "danger"
   | "violet"
+  /** Gris claro `muted-icon` con texto oscuro (retirada): el blanco no llega a AA. */
+  | "apagado"
 
 const CLASE_TONO: Record<TonoBadge, string> = {
   info: "bg-info text-white",
@@ -24,6 +26,7 @@ const CLASE_TONO: Record<TonoBadge, string> = {
   warning: "bg-accent text-accent-foreground",
   danger: "bg-danger text-white",
   violet: "bg-violet text-white",
+  apagado: "bg-muted-icon text-heading",
 }
 
 /** Fondo y texto de un tono, para un elemento que no es un Badge (un botón, un aviso corto). */
@@ -41,6 +44,7 @@ const CLASE_TEXTO_TONO: Record<TonoBadge, string> = {
   warning: "text-warning-text",
   danger: "text-danger",
   violet: "text-violet",
+  apagado: "text-muted-foreground",
 }
 
 /** El tono como texto de color, para un estado escrito sin pastilla. */
@@ -100,8 +104,8 @@ function Badge({
 
 export { Badge }
 
-/** Tono del punto de BadgeBanda: los de Badge más "apagado" (retirada). */
-export type TonoPuntoBanda = TonoBadge | "apagado"
+/** Tono del punto de BadgeBanda: los de Badge ("apagado" para retirada). */
+export type TonoPuntoBanda = TonoBadge
 
 const CLASE_PUNTO: Record<TonoPuntoBanda, string> = {
   info: "bg-info",

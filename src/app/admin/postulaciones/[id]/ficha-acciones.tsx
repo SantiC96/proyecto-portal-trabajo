@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { PencilLine, RotateCcw, Send, TriangleAlert, X } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Combobox } from "@/components/ui/combobox";
 import {
@@ -8,6 +9,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogResumen,
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -42,7 +44,7 @@ import { Aviso } from "@/components/ui/aviso";
 import { Badge } from "@/components/ui/badge";
 import { Cita } from "@/components/ui/cita";
 import { DatosClave } from "@/components/ui/datos-clave";
-import { Franja } from "@/components/ui/franja";
+import { ResultadoDecision } from "@/components/ui/tarjeta-decision";
 import { ModalidadYLugar } from "@/components/entrevistas/cartel-entrevista";
 
 type Props = {
@@ -67,6 +69,8 @@ type Props = {
   > | null;
   /** Aviso informativo sobre cursos, se muestra antes de confirmar la derivación. */
   avisoCurso?: string | null;
+  /** Resumen de los diálogos: iniciales, nombre y "{oferta} · {empresa}" (ResumenPostulacion). */
+  resumen: ReactNode;
 };
 
 const ESTADOS_CORREGUIBLES: EstadoDerivacionEmpresa[] = [
@@ -76,6 +80,11 @@ const ESTADOS_CORREGUIBLES: EstadoDerivacionEmpresa[] = [
   "rechazado",
 ];
 
+/**
+ * Contenido de la tarjeta "Decisión" de la ficha: el resultado si ya está
+ * resuelta (ResultadoDecision) y las mismas acciones de siempre para cada
+ * estado, con sus diálogos.
+ */
 export function FichaAcciones({
   postulacionId,
   estado,
@@ -84,6 +93,7 @@ export function FichaAcciones({
   ofertaEstado,
   derivacion,
   avisoCurso,
+  resumen,
 }: Props) {
   const ofertaEnRevision = ofertaEstado === "pendiente_aprobacion";
   const [abrirDescartar, setAbrirDescartar] = useState(false);
@@ -95,6 +105,7 @@ export function FichaAcciones({
   const [notaDerivar, setNotaDerivar] = useState("");
   const camposCorregir = useErroresCampo<"estado">();
   const { pendiente: isPending, ejecutar } = useAccion();
+  const empresa = empresaNombre?.trim() || "la empresa";
 
   function cerrarTodo() {
     setAbrirDescartar(false);
@@ -141,40 +152,48 @@ export function FichaAcciones({
 
   // Retirada por el postulante (migration_053): estado final, sin acciones.
   if (estado === "retirada_postulante") {
-    const empresa = empresaNombre?.trim() || "la empresa";
     return (
       <div className="flex flex-col gap-4">
-        <Franja tono="neutra" titulo="Retirada por el postulante.">
-          {derivacion
-            ? `Ya estaba derivada a ${empresa}: el proceso con la empresa quedó cerrado.`
-            : "El postulante retiró la postulación y ya no se puede derivar ni descartar."}
-        </Franja>
+        <ResultadoDecision
+          tono="cerrada"
+          detalle={
+            derivacion
+              ? `Ya estaba derivada a ${empresa}: el proceso con la empresa quedó cerrado.`
+              : "El postulante retiró la postulación y ya no se puede derivar ni descartar."
+          }
+        >
+          Retirada por el postulante.
+        </ResultadoDecision>
         {derivacion && <DatosDerivacion derivacion={derivacion} />}
       </div>
     );
   }
 
-  // Estado derivada: info + acción de corrección. Con resultado final de la
-  // empresa (contratado o no seleccionado) no se ofrece derivar, rechazar ni
+  // Estado derivada: el resultado de la empresa y la corrección. Con resultado
+  // final (contratado o no seleccionado) no se ofrece derivar, rechazar ni
   // reconsiderar; solo corregir el estado si la empresa lo cargó mal.
   if (estado === "derivada") {
-    const empresa = empresaNombre?.trim() || "la empresa";
+    const fechaRespuesta = derivacion?.fecha_respuesta
+      ? ` el ${formatFecha(derivacion.fecha_respuesta)}`
+      : "";
     return (
       <div className="flex flex-col gap-4">
         {estadoVisible === "contratado" ? (
-          <Franja tono="ok" titulo={`Contratado por ${empresa}`}>
-            {derivacion?.fecha_respuesta && `el ${formatFecha(derivacion.fecha_respuesta)}.`}
-          </Franja>
+          <ResultadoDecision tono="aprobada">
+            Contratado por {empresa}
+            {fechaRespuesta}.
+          </ResultadoDecision>
         ) : estadoVisible === "no_seleccionado_empresa" ? (
-          <Franja tono="neutra" titulo={`No seleccionado por ${empresa}`}>
-            {derivacion?.fecha_respuesta && `el ${formatFecha(derivacion.fecha_respuesta)}.`}
-          </Franja>
+          <ResultadoDecision tono="rechazada">
+            No seleccionado por {empresa}
+            {fechaRespuesta}.
+          </ResultadoDecision>
         ) : derivacion?.estado_empresa === "oferta_retirada" ? (
-          <Franja tono="neutra">
+          <ResultadoDecision tono="cerrada">
             El proceso quedó cerrado porque la empresa retiró la oferta.
-          </Franja>
+          </ResultadoDecision>
         ) : (
-          <Franja tono="info" titulo="Derivada a la empresa." />
+          <ResultadoDecision tono="derivada">Derivada a la empresa.</ResultadoDecision>
         )}
 
         {derivacion && <DatosDerivacion derivacion={derivacion} />}
@@ -193,7 +212,6 @@ export function FichaAcciones({
           </button>
         )}
 
-        {/* Dialog: Corregir estado de la empresa */}
         <Dialog
           open={abrirCorregir}
           onOpenChange={(open) => {
@@ -201,15 +219,16 @@ export function FichaAcciones({
           }}
         >
           <DialogContent>
-            <DialogHeader>
+            <DialogHeader icono={PencilLine} tonoIcono="primario">
               <DialogTitle>Corregir estado de la empresa</DialogTitle>
               <DialogDescription>
                 Ajustá el estado que registró la empresa para esta derivación.
                 Usá esta acción solo para corregir errores.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-2">
-              <label htmlFor="corregir-estado" className="text-sm font-medium text-foreground">
+            <DialogResumen>{resumen}</DialogResumen>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="corregir-estado" className="etiqueta-campo">
                 Nuevo estado <Obligatorio />
               </label>
               <Combobox
@@ -244,52 +263,51 @@ export function FichaAcciones({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       {ofertaEnRevision && (
         <Aviso tono="warning">
           La oferta está en revisión: no se puede derivar ni rechazar hasta que se vuelva a aprobar.
         </Aviso>
       )}
 
+      {(estado === "recibida" || estado === "en_revision") && (
+        <>
+          <button
+            type="button"
+            onClick={() => setAbrirDerivar(true)}
+            disabled={isPending || ofertaEnRevision}
+            className="btn-primario w-full"
+          >
+            <Send aria-hidden="true" />
+            Derivar a la empresa
+          </button>
+          <button
+            type="button"
+            onClick={() => setAbrirDescartar(true)}
+            disabled={isPending || ofertaEnRevision}
+            className="btn-peligro-borde w-full"
+          >
+            No seleccionar
+          </button>
+        </>
+      )}
 
-      <div className="flex flex-col gap-3">
-        {(estado === "recibida" || estado === "en_revision") && (
-          <>
-            <button
-              type="button"
-              onClick={() => setAbrirDerivar(true)}
-              disabled={isPending || ofertaEnRevision}
-              className="btn-primario w-full"
-            >
-              Derivar a la empresa
-            </button>
-            <button
-              type="button"
-              onClick={() => setAbrirDescartar(true)}
-              disabled={isPending || ofertaEnRevision}
-              className="btn-peligro-borde w-full"
-            >
-              No seleccionar
-            </button>
-          </>
-        )}
+      {estado === "rechazada_municipalidad" && (
+        <>
+          <ResultadoDecision tono="rechazada" className="mb-1">
+            La oficina no seleccionó esta postulación.
+          </ResultadoDecision>
+          <button
+            type="button"
+            onClick={() => setAbrirReconsiderar(true)}
+            disabled={isPending}
+            className="btn-secundario w-full"
+          >
+            Reconsiderar
+          </button>
+        </>
+      )}
 
-        {estado === "rechazada_municipalidad" && (
-          <>
-            <Franja tono="neutra">La oficina no seleccionó esta postulación.</Franja>
-            <button
-              type="button"
-              onClick={() => setAbrirReconsiderar(true)}
-              disabled={isPending}
-              className="btn-secundario w-full"
-            >
-              Reconsiderar
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* Dialog: No seleccionar */}
       <Dialog
         open={abrirDescartar}
         onOpenChange={(open) => {
@@ -299,40 +317,29 @@ export function FichaAcciones({
         }}
       >
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader icono={X} tonoIcono="peligro">
             <DialogTitle>No seleccionar candidato</DialogTitle>
             <DialogDescription>
               El postulante va a ver su postulación como{" "}
-              <span className="font-semibold text-foreground">
-                «No seleccionada»
-              </span>
-              . Podés dejar una nota interna (no la ve el postulante).
+              <span className="font-semibold text-foreground">«No seleccionada»</span>. Podés
+              dejar una nota interna (no la ve el postulante).
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <label
-              htmlFor="nota-descartar"
-              className="text-sm font-medium text-foreground"
-            >
-              Nota interna{" "}
-              <span className="font-normal text-muted-foreground">
-                (opcional)
-              </span>
-            </label>
-            <Textarea
-              id="nota-descartar"
-              value={notaDescartar}
-              onChange={(e) => setNotaDescartar(e.target.value)}
-              placeholder="¿Por qué no se selecciona a este candidato?"
-              maxLength={LARGO_MAXIMO.nota}
-              className="min-h-24"
-              disabled={isPending}
-            />
-            <ContadorCaracteres actual={notaDescartar.length} maximo={LARGO_MAXIMO.nota} />
-          </div>
+          <DialogResumen>{resumen}</DialogResumen>
+          <CampoNotaDialogo
+            id="nota-descartar"
+            etiqueta="Nota interna"
+            placeholder="¿Por qué no se selecciona a este candidato?"
+            valor={notaDescartar}
+            onChange={setNotaDescartar}
+            deshabilitado={isPending}
+          />
           <BotonesDialogo
             pendiente={isPending}
-            onCancelar={() => { setAbrirDescartar(false); setNotaDescartar(""); }}
+            onCancelar={() => {
+              setAbrirDescartar(false);
+              setNotaDescartar("");
+            }}
             onConfirmar={handleDescartar}
             textoConfirmar="No seleccionar"
             textoPendiente="Guardando…"
@@ -341,7 +348,6 @@ export function FichaAcciones({
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Derivar a la empresa */}
       <Dialog
         open={abrirDerivar}
         onOpenChange={(open) => {
@@ -351,50 +357,41 @@ export function FichaAcciones({
         }}
       >
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader icono={Send} tonoIcono="teal">
             <DialogTitle>Derivar a la empresa</DialogTitle>
-            <DialogDescription>
-              La empresa recibirá los datos del candidato. Esta acción no se
-              puede deshacer.
-            </DialogDescription>
+            <DialogDescription>La empresa recibirá los datos del candidato.</DialogDescription>
           </DialogHeader>
+          <DialogResumen>{resumen}</DialogResumen>
+          <Aviso tono="warning" suave icono={TriangleAlert} role="note">
+            Esta acción no se puede deshacer.
+          </Aviso>
           {avisoCurso && (
             <Aviso tono="warning" role="note">
               {avisoCurso}
             </Aviso>
           )}
-          <div className="space-y-2">
-            <label
-              htmlFor="nota-derivar"
-              className="text-sm font-medium text-foreground"
-            >
-              ¿Por qué recomendás a este candidato?{" "}
-              <span className="font-normal text-muted-foreground">
-                (opcional)
-              </span>
-            </label>
-            <Textarea
-              id="nota-derivar"
-              value={notaDerivar}
-              onChange={(e) => setNotaDerivar(e.target.value)}
-              placeholder="Contá brevemente por qué este perfil encaja con la búsqueda…"
-              maxLength={LARGO_MAXIMO.nota}
-              className="min-h-24"
-              disabled={isPending}
-            />
-            <ContadorCaracteres actual={notaDerivar.length} maximo={LARGO_MAXIMO.nota} />
-          </div>
+          <CampoNotaDialogo
+            id="nota-derivar"
+            etiqueta="¿Por qué recomendás a este candidato?"
+            placeholder="Contá brevemente por qué este perfil encaja con la búsqueda…"
+            valor={notaDerivar}
+            onChange={setNotaDerivar}
+            deshabilitado={isPending}
+          />
           <BotonesDialogo
             pendiente={isPending}
-            onCancelar={() => { setAbrirDerivar(false); setNotaDerivar(""); }}
+            onCancelar={() => {
+              setAbrirDerivar(false);
+              setNotaDerivar("");
+            }}
             onConfirmar={handleDerivar}
             textoConfirmar="Derivar candidato"
             textoPendiente="Derivando…"
+            iconoConfirmar={Send}
           />
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Reconsiderar */}
       <Dialog
         open={abrirReconsiderar}
         onOpenChange={(open) => {
@@ -402,14 +399,14 @@ export function FichaAcciones({
         }}
       >
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader icono={RotateCcw} tonoIcono="primario">
             <DialogTitle>Reconsiderar candidato</DialogTitle>
             <DialogDescription>
               La postulación volverá a{" "}
-              <span className="font-semibold text-foreground">En revisión</span>
-              .
+              <span className="font-semibold text-foreground">En revisión</span>.
             </DialogDescription>
           </DialogHeader>
+          <DialogResumen>{resumen}</DialogResumen>
           <BotonesDialogo
             pendiente={isPending}
             onCancelar={() => setAbrirReconsiderar(false)}
@@ -419,6 +416,45 @@ export function FichaAcciones({
           />
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/** Nota opcional de un diálogo, con su contador debajo a la derecha. */
+function CampoNotaDialogo({
+  id,
+  etiqueta,
+  placeholder,
+  valor,
+  onChange,
+  deshabilitado,
+}: {
+  id: string;
+  etiqueta: string;
+  placeholder: string;
+  valor: string;
+  onChange: (valor: string) => void;
+  deshabilitado: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <label htmlFor={id} className="etiqueta-campo">
+        {etiqueta} <span className="font-normal text-muted-foreground">(opcional)</span>
+      </label>
+      <Textarea
+        id={id}
+        value={valor}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        maxLength={LARGO_MAXIMO.nota}
+        className="min-h-24"
+        disabled={deshabilitado}
+      />
+      <ContadorCaracteres
+        className="ml-auto"
+        actual={valor.length}
+        maximo={LARGO_MAXIMO.nota}
+      />
     </div>
   );
 }

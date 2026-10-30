@@ -19,7 +19,23 @@ export function nivelDe(valor: number): NivelPrioridad {
   return esNivelPrioridad(valor) ? valor : 3;
 }
 
-export const ESTADOS_COMPROBANTE = ["pendiente", "aprobado", "rechazado"] as const;
+/**
+ * Grupos de la lista de postulantes de la oficina: las filas llegan
+ * ordenadas por nivel y se agrupan las consecutivas del mismo nivel.
+ */
+export function agruparPorNivel<T extends { nivel: NivelPrioridad }>(
+  filas: T[],
+): { nivel: NivelPrioridad; filas: T[] }[] {
+  const grupos: { nivel: NivelPrioridad; filas: T[] }[] = [];
+  for (const p of filas) {
+    const ultimo = grupos.at(-1);
+    if (ultimo?.nivel === p.nivel) ultimo.filas.push(p);
+    else grupos.push({ nivel: p.nivel, filas: [p] });
+  }
+  return grupos;
+}
+
+export const ESTADOS_COMPROBANTE =["pendiente", "aprobado", "rechazado"] as const;
 export type EstadoComprobante = (typeof ESTADOS_COMPROBANTE)[number];
 
 export function esEstadoComprobante(valor: unknown): valor is EstadoComprobante {

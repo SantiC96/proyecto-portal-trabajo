@@ -67,31 +67,33 @@ export function FiltrosPostulantes({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+      {/* Una fila desde md: el buscador, los rubros y el contador; cada campo
+          con su label arriba. */}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] md:items-end">
         <Buscador
+          etiquetaVisible
+          etiqueta="Buscar"
           placeholder="Buscar por nombre o DNI"
-          className="min-w-0 lg:flex-1"
+          className="min-w-0"
           inputClassName="rounded-xl"
         />
 
-        <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-          <label htmlFor={idRubro} className="etiqueta-campo shrink-0">
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <label htmlFor={idRubro} className="etiqueta-campo">
             Rubro
           </label>
-          <div className="min-w-0 sm:min-w-[220px] sm:flex-1 lg:flex-none">
-            <MultiCombobox
-              id={idRubro}
-              opciones={opciones}
-              seleccionados={filtros.rubros}
-              onChange={(ids) => aplicar({ rubros: ids })}
-              placeholder="Todos los rubros"
-              vacioTexto="No hay rubros que coincidan"
-              campoClassName="bg-white"
-            />
-          </div>
+          <MultiCombobox
+            id={idRubro}
+            opciones={opciones}
+            seleccionados={filtros.rubros}
+            onChange={(ids) => aplicar({ rubros: ids })}
+            placeholder="Todos los rubros"
+            vacioTexto="No hay rubros que coincidan"
+            campoClassName="bg-white"
+          />
         </div>
 
-        {contador && <div className="shrink-0 lg:ml-auto lg:pl-2">{contador}</div>}
+        {contador && <div className="md:flex md:min-h-12 md:items-center md:pl-2">{contador}</div>}
       </div>
 
       {tienesFiltros && (
