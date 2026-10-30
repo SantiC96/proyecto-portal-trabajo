@@ -840,12 +840,13 @@ Gestioná las búsquedas activas de tu empresa.
 
 En mobile las acciones pasan debajo del título.
 
-## Con banda verde (pantallas del postulante)
+## Con banda verde (pantallas del postulante y de la empresa)
 
-`EncabezadoPagina banda`: solo en las seis pantallas del postulante
-(Panel, Mis postulaciones, Invitaciones, Mis cursos, Notificaciones y Mi
-perfil). Sin la prop, el encabezado de siempre en el resto. Clases
-`.encabezado-banda*` de `globals.css`.
+`EncabezadoPagina banda`: en las seis pantallas del postulante (Panel,
+Mis postulaciones, Invitaciones, Mis cursos, Notificaciones y Mi perfil) y
+en tres de la empresa (Panel, Mis ofertas y el detalle de la oferta). Sin
+la prop, el encabezado de siempre en el resto. Clases `.encabezado-banda*`
+de `globals.css`.
 
 -   Banda: `position: relative`, `isolation: isolate`, `overflow:
     hidden`, radio 24 (20 en celular), padding `34px 40px` (`22px 18px`
@@ -869,6 +870,15 @@ perfil). Sin la prop, el encabezado de siempre en el resto. Clases
     un anillo blanco por fuera de un borde verde.
 -   "Volver", si la pantalla lo tiene, va arriba y fuera de la banda
     (`BotonVolver destacado`, en verde).
+-   **Banda de la empresa** (`botonesBlancos`, clase
+    `.encabezado-banda-acciones--blancos`): todos los botones van con
+    fondo blanco, borde blanco y texto `primary`, también los neutros, los
+    secundarios y los de baja ("Retirar oferta", "Eliminar"); hover
+    `sidebar-texto`. Las del postulante no cambian.
+-   `junto`: algo al lado del título, en la misma línea (pasa debajo si no
+    entra). En el detalle de la oferta, el estado en una pastilla blanca de
+    30 px, radio 15, texto `primary-hover` (`#00532A`) 14 px 700 con su
+    punto.
 -   Con banda no se muestra el escudo de agua del fondo
     (`.app-contenido:has(.encabezado-banda)::after`).
 -   Mientras carga (`loading.tsx`), la banda ya está con su título; lo que
@@ -1543,6 +1553,45 @@ postulantes, con un componente para no repetir las clases:
     ninguna pantalla: Mis postulaciones pasó a tarjetas propias (sección
     25).
 
+-   **Como tabla** (`Tabla semantica="tabla"`, con `FilaTabla
+    semantica="tabla"` y cada celda con `role="cell"`): roles ARIA
+    `table`, `rowgroup`, `row`, `columnheader` y `cell` en lugar de una
+    lista. El encabezado (12 px **800**, mayúsculas, `neutral`, fondo
+    `tabla-cabecera`) no es `aria-hidden`: en angosto queda `sr-only`, así
+    los lectores de pantalla siguen teniendo los rótulos de columna.
+-   **Filete de estado** (`FilaTabla filete="before:bg-*"`): una franja
+    izquierda de 5 px del color del estado, en la fila de la tabla y en la
+    tarjeta; la fila corre su padding izquierdo a 21 px (y el encabezado
+    también, para que los rótulos queden alineados).
+
+### Lista de ofertas con filete (Mis ofertas)
+
+-   Columnas `1.75fr / 1.05fr / 1.15fr / .7fr / 1.75fr`: Oferta (título
+    como link, 16 px 800, y debajo la fecha en 13 px `muted-foreground`),
+    Estado (badge y, si tiene, "Candidatos por contactar"), Rubros (hasta
+    2 `EtiquetaRubro verde` y "+n"), Vence (la fecha, con "Vence en N
+    días" en `warning-text` si falta poco; "—" si no aplica) y acciones a
+    la derecha.
+-   Fecha: "Publicada el …" con `publicado_en`; si no hay (borrador,
+    pendiente, rechazada sin publicar), "Creada el …". La base no guarda
+    la fecha de envío a revisión ni la de cierre.
+-   Filete y badge por estado (`ACENTO_ESTADO_OFERTA`,
+    `src/lib/empresa/filtro-ofertas.ts`): publicada `success`, pendiente
+    de revisión `accent` (texto `accent-foreground`), rechazada y vencida
+    `danger`, cerrada y borrador `neutral`.
+-   Acciones, siempre en este orden: Ver candidatos (secundario, solo
+    activas), Renovar (vencidas), Continuar (borradores), Editar (neutro
+    con `Pencil`, `aria-label` "Editar: [título]") y la baja ("Retirar
+    oferta" o "Eliminar" con `Trash2`, `peligroBorde`). Cerrada: "Sin
+    acciones" en gris. Las acciones disponibles salen de
+    `accionesDisponibles`, como antes.
+-   Motivo de rechazo en la fila de detalle (solo la columna de la
+    oferta).
+-   Celular: cada oferta es una tarjeta con el mismo filete; arriba el
+    badge (`order-first`), después el título, la fecha, los rubros,
+    "Vence: …" con `Calendar` y los botones en dos columnas (el último,
+    si son impares, a todo el ancho).
+
 Dónde se usa y con qué columnas:
 
   Pantalla                                   Columnas
@@ -1552,20 +1601,33 @@ Dónde se usa y con qué columnas:
   Oficina · Ofertas                          Oferta · Empresa · Fecha · Estado · acción
   Oficina · Comprobantes                     Nombre · DNI · Localidad · Domicilio · Cargado el · Comprobante · Resultado o acciones
   Oficina · Buscar postulantes (oferta)      Postulante · Procedencia · Coincidencia · Invitación · Ver ficha e Invitar; separador "Ya invitados"
-  Empresa · Mis ofertas                      Oferta (título, fecha, estado) · Rubros (+N) · Vence · acciones; motivo de rechazo en la fila de detalle
+  Empresa · Mis ofertas                      Oferta (título, fecha) · Estado · Rubros (+N) · Vence · acciones; filete de estado; motivo de rechazo en la fila de detalle
   Empresa · Mis ofertas (Eliminadas)         Oferta · Eliminada · Restaurar
   Empresa · Detalle de oferta (candidatos)   Candidato · Derivado el · Nota de la Oficina · Estado · acción
 
-## Datos de la oferta en el detalle de la empresa
+## Detalle de la oferta (empresa)
 
-Una sola tarjeta (`tarjeta`, padding 20/24). Desde 768 px de ancho de la
-tarjeta, dos columnas (`1fr` y `1.6fr`, separadas por un borde a la
-izquierda de la segunda y 32 px): a la izquierda "Datos de la oferta" con
-`DatosClave`; a la derecha la descripción, los requisitos y los beneficios
-(estos dos lado a lado si la columna mide 576 px o más). La tarjeta mide lo
-que la columna más larga. Más angosto, una debajo de la otra con un borde
-entre las dos. La descripción se corta en 8 líneas con "Ver más" / "Ver
-menos" (botón de 44 px, solo si el texto no entra).
+-   "Volver" arriba de la banda. Banda (`botonesBlancos`) con el título de
+    la oferta en Georgia, el estado en la pastilla blanca (`junto`), las
+    fechas de publicación y de vencimiento en la bajada y los botones de
+    hoy: Editar (`Pencil`), Renovar si venció y la baja, todos blancos con
+    texto verde.
+-   Debajo, dos tarjetas `.tarjeta-panel` lado a lado (`380px / 1fr`
+    desde 768 px de ancho disponible; apiladas antes) con la misma altura:
+    -   **Datos de la oferta** (`TituloBloque` con `Briefcase`): un `dl`
+        donde cada dato lleva su ícono en un `IconoCuadro` de 40 px con
+        fondo `primary/10` e ícono `primary`, la etiqueta arriba (13 px 700
+        `muted-foreground`) y el valor (16 px 600 `heading`). Rubro `Tag`,
+        Modalidad `Monitor`, Jornada `Clock`, Ubicación `MapPin`,
+        Vencimiento `Calendar` y Vacantes `Users` ("N vacantes · M
+        cubiertas" con `BarraProgreso fina` y "M de N").
+    -   La descripción (`FileText`, con "Ver más" a las 8 líneas), los
+        requisitos (`ClipboardList`) y los beneficios (`Gift`), separados
+        por líneas de 1 px `tabla-borde`. Requisitos y beneficios vacíos no
+        se muestran.
+-   "Candidatos derivados por la Oficina de Empleo" (`TituloBloque` con
+    `Users` y bajada), con la tabla de candidatos de siempre. Sin
+    candidatos, `EstadoVacio` con `Users`.
 
 ## Lista de datos (`DatosClave`)
 
@@ -1610,6 +1672,8 @@ escribe. En `/ofertas` va dentro de un contenedor blanco de radio 16 con
     `border-campo`, 15 px 600, texto `control-foreground`;
 -   la activa: fondo `primary`, texto blanco;
 -   cada grupo lleva su título de 13 px 700 y `role="group"`;
+-   `cantidad`: el número va dentro, en un círculo de 28 px (fondo
+    `secondary`; en la elegida, blanco con texto `primary`);
 -   en el celular, una sola fila con scroll horizontal (sin barra); desde
     sm bajan de renglón;
 -   con `unaLinea` (los rubros del listado público, que son muchos)
@@ -1778,7 +1842,20 @@ Puede incluir:
 Las métricas no deben convertirse en grandes cards sin contexto
 únicamente para llenar espacio.
 
-## Cuadros de estado (panel del postulante)
+## Cuadros de estado (paneles del postulante y de la empresa)
+
+Componente compartido `CuadroEstado` con su grilla (`CLASE_GRILLA_CUADROS`,
+`claseCeldaCuadro`) en `src/components/ui/cuadro-estado.tsx`.
+
+**Empresa:** Publicadas (`success`, `CircleCheck`), En revisión (`accent`
+con el ícono `accent-foreground`, `Search`), Rechazadas (`danger`,
+`CircleX`), Cerradas (`neutral`, `Archive`) y Vencidas (`danger`,
+`Clock`). Cada uno lleva a Mis ofertas con su filtro
+(`/empresa/ofertas?estado=publicada`, `pendiente`, `rechazada`, `cerrada`,
+`vencida`) y cuenta con el mismo criterio (`aplicarFiltroOfertas`), con
+el nombre accesible "3 ofertas publicadas. Ver lista".
+
+**Postulante:**
 
 Cinco cuadros: En revisión, Enviadas a la empresa, Seleccionadas, No
 seleccionadas y Retiradas. Cada uno es un link a Mis postulaciones
@@ -1789,7 +1866,7 @@ de "Activas": repetía la suma de En revisión y Enviadas a la empresa.
 
 -   `.tarjeta .tarjeta-panel .tarjeta-clickeable` con un filete superior
     de 4 px del color del estado (`CLASE_CUADRO_ESTADO`,
-    `src/app/(dashboard)/panel/esqueletos.tsx`).
+    `src/components/ui/cuadro-estado.tsx`).
 -   Arriba, el ícono en un cuadrado de 40 px del color del estado y un
     `ChevronRight` `muted-icon` a la derecha; debajo, el número (38 px
     800, `heading`) y el nombre (14 px 700). Los textos pasan de línea
@@ -1846,6 +1923,32 @@ todas. Un filtro sin resultados muestra `EstadoVacio` `sin-resultados` con un te
 estado ("No tenés postulaciones retiradas.") y "Ver todas". Los cambios de
 filtro no cuentan como pantallas distintas para "Volver".
 
+## Filtro por estado (Mis ofertas)
+
+`GrupoPastillas` "Estado" con `PastillaFiltro cantidad` (44 px, la
+cantidad en el círculo de 28 px, la elegida verde sólida, scroll
+horizontal en el celular): Todas, Publicadas (activas no vencidas o sin
+`vence_en`), Pendientes de revisión, Rechazadas, Cerradas, Vencidas
+(activas con `vence_en` pasado) y Borradores. Después, separada por una
+línea vertical de 1 px `separador-filtro` (`#C9D4CD`), "Eliminadas" sin
+cantidad (`?vista=eliminadas`).
+
+-   `?estado=` acepta `publicada`, `pendiente`, `rechazada`, `cerrada`,
+    `vencida` y `borrador`; un valor no válido muestra todas. El filtro va
+    en la consulta del servidor, antes de la paginación; "Mostrando X–Y de
+    Z" y la paginación son los de la lista filtrada.
+-   Las cantidades son conteos del servidor con la búsqueda aplicada
+    (`FILTROS_OFERTAS`, `CRITERIO_FILTRO_OFERTAS` y `aplicarFiltroOfertas`
+    en `src/lib/empresa/filtro-ofertas.ts`, los mismos del panel).
+-   A la derecha, el `Buscador` por título (48 px, ícono `Search`
+    adentro, 320 px); debajo y a todo el ancho cuando el contenido mide
+    menos de 1024 px. Cambiar de filtro conserva la búsqueda y escribir
+    conserva el filtro.
+-   Vacío por filtro: `EstadoVacio` con `Briefcase`, "No tenés ofertas
+    [estado]." y "Ver todas". Eliminadas vacía: `Trash2` y "No tenés
+    ofertas eliminadas.". Con búsqueda, "No encontramos ofertas con ese
+    título" y "Limpiar búsqueda".
+
 ## Tarjetas de Mis postulaciones
 
 `MisPostulacionesLista`
@@ -1896,7 +1999,8 @@ pastillas que había antes: el nivel lo dice el texto.
 `src/components/ui/barra-progreso.tsx`: alto 10, radio 5, fondo
 `progreso-fondo`, relleno `primary`, `role="progressbar"` con
 `aria-label` ("Perfil completo al 70%") y `aria-valuenow`. El porcentaje
-visible va al lado, en 14 px 700.
+visible va al lado, en 14 px 700. `fina`: 8 px de alto, radio 4 y fondo
+`secondary-hover` (`#E3E9E5`), para las vacantes del detalle de la oferta.
 
 ## Anillo de progreso
 
@@ -2019,14 +2123,32 @@ de la empresa, en 2 columnas (1 en el celular).
 
 ## Panel de la empresa
 
-`EncabezadoPagina` "Hola, [razón social]" con "Mis ofertas" (neutro) y
-"Publicar oferta" (primario). Si hay ofertas vencidas o por vencer, una
-`Franja` de aviso con el link a Mis ofertas. Los indicadores de ofertas
-usan las mismas tarjetas que el panel del postulante, sin ícono (badge
-del estado y número de 36 px 800; 2 columnas en el celular, 3 en tablet y 5 en
-pantallas anchas). "Candidatos por contactar": una tarjeta con una fila por
-candidato (iniciales, nombre de 16 px 700, "[oferta] · derivado el
-[fecha]", badge y "Ver candidato" neutro, a todo el ancho en el celular).
+`EncabezadoPagina banda botonesBlancos` "Hola, [razón social]" con "Mis
+ofertas" (`List`) y "Publicar oferta" (`Plus`). Después, en este orden y
+separados por 28 px:
+
+1.  **Candidatos esperando tu respuesta** (solo si hay; `.aviso-respuesta`):
+    fondo `linear-gradient(180deg, rgb(242 183 5 / .18), rgb(242 183 5 /
+    .07))` sobre blanco, borde 1 px `aviso-borde` (`#E6CF86`), radio 18 y
+    filete izquierdo de 5 px `accent`. `UserCheck` en un `IconoCuadro` de
+    44 px `accent` con el ícono `accent-foreground`, el título "Tenés N
+    candidatos esperando tu respuesta" (18 px 800) y la bajada. Cada
+    candidato en una fila blanca (borde `aviso-fila-borde` `#EADDB0`,
+    radio 14): iniciales en un círculo verde de 44 px, el nombre (800) ·
+    la oferta, la entrevista con `Calendar` `info` y "Responder ›"
+    (`.btn-secundario .btn-chico`, `aria-label` con el nombre y la
+    oferta; en el celular, abajo y a todo el ancho).
+2.  **Cuadros por estado** (sección 25, «Cuadros de estado»).
+3.  Una fila `1.7fr / 1fr` (apiladas en celular): "Candidatos por
+    contactar" en `.tarjeta-panel` con `TituloBloque` (`Send`) y una fila
+    por candidato (foto o iniciales, nombre, "[oferta] · derivado el
+    [fecha]", badge y "Ver candidato" `.btn-secundario .btn-chico`); y
+    "Más herramientas": título de grupo de 13 px 800 en mayúsculas
+    `neutral` y dos `TarjetaAcceso elevable` (suben 2 px con sombra):
+    Candidatos guardados (`Bookmark`, `info`) e Indicadores
+    (`ChartColumn`, `teal`).
+4.  Si hay ofertas vencidas o por vencer, la `Franja` de aviso de siempre,
+    debajo de todo.
 
 ### Cuenta en revisión o rechazada
 
