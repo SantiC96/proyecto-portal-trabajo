@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
 import { eliminarOferta } from "@/app/empresa/(panel)/ofertas/actions";
 import { DialogoConfirmacion, type EstiloBoton } from "@/components/ui/dialogo-confirmacion";
 import { DIAS_RESTAURACION_OFERTA } from "@/lib/oferta-estados";
@@ -22,7 +23,13 @@ export function EliminarEnvioBtn({ ofertaId, ofertaTitulo, esBorrador = false, v
 
   return (
     <DialogoConfirmacion
-      textoBoton="Eliminar"
+      textoBoton={
+        <>
+          <Trash2 aria-hidden="true" />
+          Eliminar
+        </>
+      }
+      etiquetaBoton={`Eliminar: ${ofertaTitulo}`}
       estiloBoton={estiloBoton}
       claseBoton={claseBoton}
       ayudaBoton={`Pasa a la pestaña Eliminadas. Podés restaurarla durante ${DIAS_RESTAURACION_OFERTA} días.`}
