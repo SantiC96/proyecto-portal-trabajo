@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserPlus } from "lucide-react";
+import { Send, UserPlus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,8 @@ import { validarEmail, validarNombre, validarTelefono } from "@/lib/validaciones
 import { invitarCuenta } from "./actions";
 
 type Campo = "nombre" | "apellido" | "telefono" | "email";
-const CAMPOS: readonly Campo[] = ["nombre", "apellido", "telefono", "email"];
+// En el orden del formulario: el primer error que se marca es el de más arriba.
+const CAMPOS: readonly Campo[] = ["nombre", "apellido", "email", "telefono"];
 const VACIO: Record<Campo, string> = { nombre: "", apellido: "", telefono: "", email: "" };
 
 const ETIQUETAS: Record<Campo, { label: string; tipo: string; autoComplete: string; obligatorio: boolean; placeholder: string }> = {
@@ -57,8 +58,8 @@ export function InvitarCuenta() {
     const errores = [
       ["nombre", validarNombre(nombre)],
       ["apellido", validarNombre(apellido)],
-      ["telefono", validarTelefono(telefono)],
       ["email", validarEmail(email)],
+      ["telefono", validarTelefono(telefono)],
     ] as const;
     const primero = errores.find(([, mensaje]) => mensaje);
     if (primero?.[1]) {
@@ -87,7 +88,7 @@ export function InvitarCuenta() {
 
       <Dialog open={abierto} onOpenChange={cambiarAbierto}>
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader icono={UserPlus} tonoIcono="primario">
             <DialogTitle>Invitar una cuenta de la oficina</DialogTitle>
             <DialogDescription>
               La persona recibe un email para elegir su contraseña. Va a tener los mismos
@@ -95,14 +96,26 @@ export function InvitarCuenta() {
             </DialogDescription>
           </DialogHeader>
 
-          <form id="form-invitar-cuenta" onSubmit={enviar} noValidate className="flex flex-col gap-4">
+          {/* Nombre y Apellido lado a lado desde sm; Email y Teléfono a todo el ancho. */}
+          <form
+            id="form-invitar-cuenta"
+            onSubmit={enviar}
+            noValidate
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+          >
             {CAMPOS.map((campo) => {
               const cfg = ETIQUETAS[campo];
               const id = `invitar-${campo}`;
+              const ancho = campo === "email" || campo === "telefono";
               return (
-                <div key={campo} className="flex flex-col gap-1.5">
-                  <label htmlFor={id} className="text-sm font-medium text-foreground">
-                    {cfg.label} {cfg.obligatorio && <Obligatorio />}
+                <div key={campo} className={ancho ? "flex flex-col gap-1.5 sm:col-span-2" : "flex flex-col gap-1.5"}>
+                  <label htmlFor={id} className="etiqueta-campo">
+                    {cfg.label}{" "}
+                    {cfg.obligatorio ? (
+                      <Obligatorio />
+                    ) : (
+                      <span className="font-normal text-muted-foreground">(opcional)</span>
+                    )}
                   </label>
                   <Input
                     id={id}
@@ -134,7 +147,7 @@ export function InvitarCuenta() {
               aria-busy={pendiente}
               className={CLASE_ACCION_DIALOGO.primario}
             >
-              {pendiente && <Spinner />}
+              {pendiente ? <Spinner /> : <Send aria-hidden="true" />}
               {pendiente ? "Enviando…" : "Enviar invitación"}
             </button>
           </BotonesDialogo>
