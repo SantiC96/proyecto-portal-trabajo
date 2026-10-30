@@ -100,6 +100,14 @@ export function formatFechaHoraLarga(iso: string | null | undefined, ahora: Date
   return `${diaSemana.charAt(0).toUpperCase()}${diaSemana.slice(1)} ${parte("day")} de ${parte("month")}${anio}, ${parte("hour")}:${parte("minute")} h`;
 }
 
+/** "16:15": solo la hora, en Argentina. */
+export function formatHora(iso: string | null | undefined): string {
+  const d = parseFecha(iso);
+  if (!d) return "—";
+  const parte = partes(FORMATO_FECHA_HORA_CORTA, d);
+  return `${parte("hour")}:${parte("minute")}`;
+}
+
 /** "20/10 16:15": fecha y hora compactas para listados y badges. */
 export function formatFechaHoraCorta(iso: string | null | undefined): string {
   const d = parseFecha(iso);

@@ -1,6 +1,13 @@
 import "server-only";
 
-import type { PostulacionesPeriodo } from "@/lib/admin/indicadores";
+import type {
+  EstadoPostulacionesPeriodo,
+  FilaSerie,
+  IndicadoresComparados,
+  UltimaPostulacion,
+} from "@/lib/admin/indicadores";
+import type { EstadoPostulacion } from "@/lib/admin/postulacion-estados";
+import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 import { inicioAnioArgentinaISO } from "@/lib/fechas";
 import { AGRUPACION_POR_PERIODO, type Agrupacion, type Periodo } from "@/lib/indicadores-periodo";
 import type {
@@ -12,13 +19,16 @@ import type {
 
 // Modo de datos de ejemplo de los indicadores (docs/decisiones/032, punto 5).
 // Con INDICADORES_DE_EJEMPLO=true, las pantallas de indicadores de la oficina y
-// de la empresa muestran un año de uso ficticio en lugar de consultar la base.
+// de la empresa muestran uso ficticio en lugar de consultar la base: dos años
+// en la oficina (así "Este año" tiene con qué compararse) y unos meses de
+// ofertas en la empresa.
 //
-// Los datos no son números sueltos: se arma una lista de postulaciones y
-// derivaciones con fechas (siempre las mismas para cada mes) y se cuentan por
-// período. Así cada período contiene al más corto y las tarjetas coinciden con
-// los gráficos: el gráfico de postulaciones cuenta la misma lista por día,
-// semana o mes. Una diferencia con la base: un resultado de la empresa
+// Los datos no son números sueltos: se arma una lista de postulaciones,
+// derivaciones, registros de postulantes y ofertas publicadas con fechas
+// (siempre las mismas para cada mes) y se cuentan por período. Así cada
+// período contiene al más corto, las tarjetas coinciden con los gráficos (las
+// series cuentan las mismas listas por día, semana o mes) y el período
+// anterior se cuenta igual que el actual. Una diferencia con la base: un resultado de la empresa
 // (contratación, rechazo, entrevista) se cuenta en el período de su
 // derivación, no en el de su fecha. Con eso las contrataciones
 // nunca superan a las derivaciones y "En proceso" nunca queda en cero a la
@@ -121,17 +131,19 @@ const TOPE_RUBROS_EJEMPLO = 5;
 const EMPRESAS_APROBADAS = 41;
 const EMPRESAS_PENDIENTES = 4;
 const EMPRESAS_RECHAZADAS = 7;
-const OFERTAS_VIGENTES = 26;
-/** Postulantes registrados que todavía no se postularon a nada. */
-const POSTULANTES_SIN_POSTULACIONES = 57;
 
 type PostulacionEjemplo = {
+  /** Número fijo de la postulación (desde enero de 2024). */
+  numero: number;
   creada: number;
   rubro: string;
   rechazadaOficina: number | null;
   derivada: number | null;
   /** Solo si fue derivada: el resultado de la empresa, si ya llegó. */
   resultadoEmpresa: "contratado" | "rechazado" | null;
+  /** Solo entre las que siguen en revisión: el postulante la retiró, o la empresa retiró la oferta. */
+  retiradaPostulante: number | null;
+  ofertaRetirada: number | null;
   preEntrevista: number | null;
   cursoAsignado: number | null;
   cursoCompletado: number | null;
@@ -209,22 +221,29 @@ const CLAVE_PRIMER_MES = 2024 * 12;
 
 type MesEjemplo = { anio: number; mes0: number; cantidad: number; primerNumero: number };
 
-/** Los 12 meses que terminan en el actual, en hora de Argentina. */
+/**
+ * Meses de uso del portal de ejemplo. Dos años: así el período anterior de
+ * "Este año" (los mismos días antes del 1 de enero) también tiene datos.
+ */
+const MESES_DE_HISTORIA = 24;
+
+/** Los MESES_DE_HISTORIA meses que terminan en el actual, en hora de Argentina. */
 function mesesDeEjemplo(ahora: number): MesEjemplo[] {
   const hoy = new Date(ahora - DESFASE_ARGENTINA);
   const claveActual = hoy.getUTCFullYear() * 12 + hoy.getUTCMonth();
+  const primeraClave = claveActual - (MESES_DE_HISTORIA - 1);
   let numero = 0;
-  for (let clave = CLAVE_PRIMER_MES; clave < claveActual - 11; clave++) {
+  for (let clave = CLAVE_PRIMER_MES; clave < primeraClave; clave++) {
     numero += cantidadDelMes(clave);
   }
   // El mes actual lleva la parte de los días que pasaron (al menos 15).
   const inicioActual = inicioMesArgentina(Math.floor(claveActual / 12), claveActual % 12);
   const finActual = inicioMesArgentina(Math.floor(claveActual / 12), (claveActual % 12) + 1);
   const transcurrido = (ahora - inicioActual) / (finActual - inicioActual);
-  return Array.from({ length: 12 }, (_, k) => {
-    const clave = claveActual - 11 + k;
+  return Array.from({ length: MESES_DE_HISTORIA }, (_, k) => {
+    const clave = primeraClave + k;
     const cantidad =
-      k === 11
+      k === MESES_DE_HISTORIA - 1
         ? Math.max(15, Math.round(cantidadDelMes(clave) * transcurrido))
         : cantidadDelMes(clave);
     const mes = { anio: Math.floor(clave / 12), mes0: clave % 12, cantidad, primerNumero: numero };
@@ -269,17 +288,20 @@ function postulacionesDeEjemplo(ahora: number, meses: MesEjemplo[]): Postulacion
       const ranura = ranuras[j];
       const creada = ranura.desde + ((ranura.orden + posicion) / ranura.total) * ranura.largo;
       const p: PostulacionEjemplo = {
+        numero,
         creada,
         rubro: elegirRubro(rubro),
         rechazadaOficina: null,
         derivada: null,
         resultadoEmpresa: null,
+        retiradaPostulante: null,
+        ofertaRetirada: null,
         preEntrevista: null,
         cursoAsignado: null,
         cursoCompletado: null,
       };
 
-      // 15 % no seleccionadas por la oficina, 45 % derivadas, el resto sigue en revisión.
+      // 15 % no seleccionadas por la oficina, 45 % derivadas, 8 % retiradas y el resto en revisión.
       if (camino < 0.15) {
         p.rechazadaOficina = siYaPaso(creada + (2 + demoraOficina * 5) * DIA, ahora);
       } else if (vaADerivarse(numero)) {
@@ -291,6 +313,12 @@ function postulacionesDeEjemplo(ahora: number, meses: MesEjemplo[]): Postulacion
         // De las derivadas: 30 % contratadas, 45 % no seleccionadas, 25 % sin respuesta.
         if (respondida && resultado < 0.3) p.resultadoEmpresa = "contratado";
         else if (respondida && resultado < 0.75) p.resultadoEmpresa = "rechazado";
+      } else if (camino >= 0.95) {
+        // 5 % la retira el postulante y 3 % queda cerrada porque la empresa
+        // retiró la oferta; las demás siguen en revisión.
+        p.retiradaPostulante = siYaPaso(creada + (1 + demoraOficina * 6) * DIA, ahora);
+      } else if (camino >= 0.92) {
+        p.ofertaRetirada = siYaPaso(creada + (3 + demoraDerivacion * 10) * DIA, ahora);
       }
 
       if (repartoParejo(numero, ALFA_PRE_ENTREVISTA) < 0.32) {
@@ -334,6 +362,10 @@ function rubrosDelPeriodo(delPeriodo: PostulacionEjemplo[]): FilaRpc<"postulacio
 const enPeriodo = (fecha: number | null, desde: number): fecha is number =>
   fecha !== null && fecha >= desde;
 
+/** En [desde, hasta): el período anterior. */
+const enRango = (fecha: number | null, desde: number, hasta: number): fecha is number =>
+  fecha !== null && fecha >= desde && fecha < hasta;
+
 /** Primer día del día, la semana (lunes) o el mes de `momento` en Argentina, como fecha UTC sin hora. */
 function inicioGrupo(momento: number, agrupacion: Agrupacion): number {
   const local = new Date(momento - DESFASE_ARGENTINA);
@@ -351,46 +383,323 @@ function grupoSiguiente(inicio: number, agrupacion: Agrupacion): number {
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
 }
 
+// ── Postulantes y ofertas ─────────────────────────────────────────────────
+
+const ALFA_POSTULANTE = 0.7548776662466927;
+const ALFA_SIN_POSTULAR = 0.5698402909980532;
+
 /**
- * Lo mismo que postulaciones_por_periodo (migration_061): las postulaciones
- * desde `desde`, por día, semana o mes, con 0 en los que no tienen. "Todo"
- * empieza en el grupo de la primera postulación.
+ * Fecha de registro de cada postulante. El 60 % de las postulaciones es la
+ * primera de su postulante, que se registró de 1 a 11 días antes; además, por
+ * cada 13 postulaciones más o menos, alguien se registró ese día y todavía no
+ * se postuló a nada.
  */
-function postulacionesPorPeriodo(
-  postulaciones: PostulacionEjemplo[],
+function registrosDeEjemplo(postulaciones: PostulacionEjemplo[], ahora: number): number[] {
+  const registros: number[] = [];
+  for (const p of postulaciones) {
+    const demora = aleatorio(p.numero * 31 + 99991)();
+    if (repartoParejo(p.numero, ALFA_POSTULANTE) < 0.6) {
+      registros.push(p.creada - (1 + demora * 10) * DIA);
+    }
+    if (repartoParejo(p.numero, ALFA_SIN_POSTULAR) < 0.075) {
+      const registro = siYaPaso(p.creada + 0.5 * DIA, ahora);
+      if (registro !== null) registros.push(registro);
+    }
+  }
+  return registros;
+}
+
+type OfertaPortalEjemplo = {
+  publicada: number;
+  vence: number;
+  /** Se cerró antes de vencer (se cubrió la vacante). */
+  cerrada: number | null;
+  rubros: string[];
+};
+
+/** Ofertas publicadas por cada postulación del mes: unas 20 por mes. */
+const OFERTAS_POR_POSTULACION = 0.5;
+const DURACIONES_OFERTA = [30, 45, 60];
+
+function ofertasDeEjemplo(ahora: number, meses: MesEjemplo[]): OfertaPortalEjemplo[] {
+  const ofertas: OfertaPortalEjemplo[] = [];
+  meses.forEach(({ anio, mes0, cantidad }, k) => {
+    const inicio = inicioMesArgentina(anio, mes0);
+    const fin = k === meses.length - 1 ? ahora : inicioMesArgentina(anio, mes0 + 1);
+    const n = Math.round(cantidad * OFERTAS_POR_POSTULACION);
+    const azar = aleatorio((anio * 12 + mes0) * 104729);
+    for (let j = 0; j < n; j++) {
+      const [posicion, duracion, rubro, otroRubro, conDos, seCierra, cuando] = [
+        azar(),
+        azar(),
+        azar(),
+        azar(),
+        azar(),
+        azar(),
+        azar(),
+      ];
+      const publicada = inicio + ((j + posicion) / n) * (fin - inicio);
+      const dias = DURACIONES_OFERTA[Math.floor(duracion * DURACIONES_OFERTA.length)];
+      const rubros = [elegirRubro(rubro)];
+      // 30 % tiene un segundo rubro: cuenta en los dos, como en la base.
+      const segundo = elegirRubro(otroRubro);
+      if (conDos < 0.3 && segundo !== rubros[0]) rubros.push(segundo);
+      ofertas.push({
+        publicada,
+        vence: publicada + dias * DIA,
+        // 15 % se cierra antes de vencer.
+        cerrada: seCierra < 0.15 ? siYaPaso(publicada + (0.3 + cuando * 0.6) * dias * DIA, ahora) : null,
+        rubros,
+      });
+    }
+  });
+  return ofertas;
+}
+
+const esVigente = (o: OfertaPortalEjemplo, ahora: number) => o.vence > ahora && o.cerrada === null;
+
+/** Lo mismo que contar_ofertas_vigentes_por_rubro (065): rubros con al menos una, por nombre. */
+function ofertasPorRubroDeEjemplo(
+  ofertas: OfertaPortalEjemplo[],
+  ahora: number,
+): FilaRpc<"contar_ofertas_vigentes_por_rubro">[] {
+  const conteo = new Map<string, number>();
+  for (const o of ofertas) {
+    if (!esVigente(o, ahora)) continue;
+    for (const r of o.rubros) conteo.set(r, (conteo.get(r) ?? 0) + 1);
+  }
+  return [...conteo.entries()]
+    .sort(([a], [b]) => a.localeCompare(b, "es"))
+    .map(([rubro, cantidad]) => {
+      const indice = RUBROS.findIndex(([nombre]) => nombre === rubro);
+      return {
+        categoria_id: `0e1e0000-0000-4000-8000-${String(indice + 1).padStart(12, "0")}`,
+        rubro,
+        cantidad,
+      };
+    });
+}
+
+// ── Estado actual de una postulación ──────────────────────────────────────
+
+type EstadoActual = {
+  estado: EstadoPostulacion;
+  estadoEmpresa: EstadoDerivacionEmpresa | null;
+};
+
+function estadoActual(p: PostulacionEjemplo, ahora: number): EstadoActual {
+  if (p.rechazadaOficina !== null) return { estado: "rechazada_municipalidad", estadoEmpresa: null };
+  if (p.retiradaPostulante !== null) return { estado: "retirada_postulante", estadoEmpresa: null };
+  if (p.ofertaRetirada !== null) return { estado: "oferta_retirada", estadoEmpresa: null };
+  if (p.derivada !== null) {
+    return {
+      estado: "derivada",
+      estadoEmpresa: p.resultadoEmpresa ?? (ahora - p.derivada > 2 * DIA ? "en_proceso" : "pendiente"),
+    };
+  }
+  // Recibida hasta que la oficina la abre: el primer día, salvo que ya tenga pre-entrevista.
+  const recibida = ahora - p.creada < DIA && p.preEntrevista === null;
+  return { estado: recibida ? "recibida" : "en_revision", estadoEmpresa: null };
+}
+
+/** Lo mismo que estado_postulaciones_periodo (066): las cinco suman las postulaciones nuevas. */
+function estadoDelPeriodo(delPeriodo: PostulacionEjemplo[], ahora: number): EstadoPostulacionesPeriodo {
+  const estado: EstadoPostulacionesPeriodo = {
+    en_revision: 0,
+    derivadas: 0,
+    rechazadas: 0,
+    retiradas: 0,
+    de_ofertas_retiradas: 0,
+  };
+  for (const p of delPeriodo) {
+    const actual = estadoActual(p, ahora);
+    if (actual.estado === "recibida" || actual.estado === "en_revision") estado.en_revision++;
+    else if (actual.estado === "rechazada_municipalidad") estado.rechazadas++;
+    else if (actual.estado === "retirada_postulante") estado.retiradas++;
+    else if (actual.estado === "oferta_retirada") estado.de_ofertas_retiradas++;
+    else if (actual.estadoEmpresa === "rechazado") estado.rechazadas++;
+    else estado.derivadas++;
+  }
+  return estado;
+}
+
+// Nombres y puestos inventados para "Últimas postulaciones".
+const NOMBRES = [
+  "Lucía Fernández",
+  "Martín Gómez",
+  "Sofía Ramírez",
+  "Diego Acosta",
+  "Valentina Sosa",
+  "Joaquín Herrera",
+  "Camila Benítez",
+  "Tomás Medina",
+  "Florencia Ruiz",
+  "Nicolás Castro",
+  "Agustina Molina",
+  "Facundo Ríos",
+  "Milagros Paz",
+];
+const PUESTOS: Record<string, [string, string]> = {
+  "Comercio y Ventas": ["Vendedor/a de mostrador", "Cajero/a"],
+  Gastronomía: ["Ayudante de cocina", "Mozo/a"],
+  "Servicios Generales": ["Personal de limpieza", "Mantenimiento edilicio"],
+  "Logística y Transporte": ["Repartidor/a", "Operario/a de depósito"],
+  Administración: ["Auxiliar administrativo/a", "Recepcionista"],
+  Construcción: ["Ayudante de albañil", "Pintor/a de obra"],
+  Salud: ["Auxiliar de enfermería", "Cuidador/a domiciliario/a"],
+  "Informática y Tecnología": ["Soporte técnico", "Desarrollador/a web junior"],
+  Educación: ["Docente de apoyo escolar", "Auxiliar de jardín"],
+  Seguridad: ["Vigilador/a", "Controlador/a de acceso"],
+};
+
+/** Como CANTIDAD_ULTIMAS de lib/admin/indicadores (acá sin importarlo: ese módulo importa este). */
+const CANTIDAD_ULTIMAS = 5;
+
+/** Las CANTIDAD_ULTIMAS postulaciones más recientes, sin id: no hay ficha que abrir. */
+function ultimasDeEjemplo(postulaciones: PostulacionEjemplo[], ahora: number): UltimaPostulacion[] {
+  return [...postulaciones]
+    .sort((a, b) => b.creada - a.creada)
+    .slice(0, CANTIDAD_ULTIMAS)
+    .map((p) => ({
+      id: null,
+      fecha: new Date(p.creada).toISOString(),
+      postulante: NOMBRES[p.numero % NOMBRES.length],
+      puesto: PUESTOS[p.rubro]?.[p.numero % 2] ?? p.rubro,
+      ...estadoActual(p, ahora),
+    }));
+}
+
+// ── Series y comparación con el período anterior ──────────────────────────
+
+type Eventos = {
+  postulaciones: number[];
+  contrataciones: number[];
+  postulantes: number[];
+  ofertas: number[];
+};
+
+/**
+ * Lo mismo que series_indicadores (066): por día, semana o mes desde `desde`,
+ * con 0 en los vacíos. "Todo" empieza en el grupo del primer evento.
+ */
+function serieDeEjemplo(
+  eventos: Eventos,
   desde: number,
   agrupacion: Agrupacion,
   ahora: number,
-): PostulacionesPeriodo[] {
-  const conteo = new Map<number, number>();
-  let primera = ahora;
-  for (const p of postulaciones) {
-    if (p.creada < desde) continue;
-    const grupo = inicioGrupo(p.creada, agrupacion);
-    conteo.set(grupo, (conteo.get(grupo) ?? 0) + 1);
-    primera = Math.min(primera, p.creada);
-  }
-  const filas: PostulacionesPeriodo[] = [];
+): FilaSerie[] {
+  const conteo = new Map<number, FilaSerie>();
+  let primero = ahora;
+  const sumar = (fecha: number, campo: Exclude<keyof FilaSerie, "inicio">) => {
+    if (fecha < desde || fecha > ahora) return;
+    const grupo = inicioGrupo(fecha, agrupacion);
+    const fila = conteo.get(grupo) ?? {
+      inicio: new Date(grupo).toISOString().slice(0, 10),
+      postulaciones: 0,
+      contrataciones: 0,
+      postulantes_nuevos: 0,
+      ofertas_publicadas: 0,
+    };
+    fila[campo]++;
+    conteo.set(grupo, fila);
+    primero = Math.min(primero, fecha);
+  };
+  for (const f of eventos.postulaciones) sumar(f, "postulaciones");
+  for (const f of eventos.contrataciones) sumar(f, "contrataciones");
+  for (const f of eventos.postulantes) sumar(f, "postulantes_nuevos");
+  for (const f of eventos.ofertas) sumar(f, "ofertas_publicadas");
+
+  const filas: FilaSerie[] = [];
   const ultimo = inicioGrupo(ahora, agrupacion);
-  const desdeGrupo = inicioGrupo(Number.isFinite(desde) ? desde : primera, agrupacion);
+  const desdeGrupo = inicioGrupo(Number.isFinite(desde) ? desde : primero, agrupacion);
   for (let g = desdeGrupo; g <= ultimo; g = grupoSiguiente(g, agrupacion)) {
-    filas.push({ inicio: new Date(g).toISOString().slice(0, 10), cantidad: conteo.get(g) ?? 0 });
+    filas.push(
+      conteo.get(g) ?? {
+        inicio: new Date(g).toISOString().slice(0, 10),
+        postulaciones: 0,
+        contrataciones: 0,
+        postulantes_nuevos: 0,
+        ofertas_publicadas: 0,
+      },
+    );
   }
   return filas;
 }
 
-/** Lo mismo que devuelven indicadores_portal, postulaciones_por_periodo y postulaciones_por_rubro. */
+function tasa(contrataciones: number, postulaciones: number): number | null {
+  return postulaciones === 0 ? null : redondear1((contrataciones * 100) / postulaciones);
+}
+
+/** Lo mismo que indicadores_comparados (066). */
+function comparadosDeEjemplo(
+  eventos: Eventos,
+  derivaciones: number[],
+  vigentes: number,
+  desde: number,
+  ahora: number,
+): IndicadoresComparados {
+  const actual = (lista: number[]) => lista.filter((f) => enPeriodo(f, desde)).length;
+  const conAnterior = Number.isFinite(desde);
+  const anteriorDesde = desde - (ahora - desde);
+  const anterior = (lista: number[]) =>
+    conAnterior ? lista.filter((f) => enRango(f, anteriorDesde, desde)).length : null;
+
+  const postulaciones = actual(eventos.postulaciones);
+  const contrataciones = actual(eventos.contrataciones);
+  const postulacionesAnterior = anterior(eventos.postulaciones);
+  const contratacionesAnterior = anterior(eventos.contrataciones);
+
+  return {
+    postulantes_registrados: eventos.postulantes.length,
+    postulantes_nuevos: actual(eventos.postulantes),
+    postulantes_nuevos_anterior: anterior(eventos.postulantes),
+    ofertas_vigentes: vigentes,
+    ofertas_publicadas: actual(eventos.ofertas),
+    ofertas_publicadas_anterior: anterior(eventos.ofertas),
+    postulaciones_nuevas: postulaciones,
+    postulaciones_nuevas_anterior: postulacionesAnterior,
+    derivaciones: actual(derivaciones),
+    derivaciones_anterior: anterior(derivaciones),
+    contrataciones,
+    contrataciones_anterior: contratacionesAnterior,
+    tasa_contratacion: tasa(contrataciones, postulaciones),
+    tasa_contratacion_anterior:
+      postulacionesAnterior === null || contratacionesAnterior === null
+        ? null
+        : tasa(contratacionesAnterior, postulacionesAnterior),
+  };
+}
+
+/** Lo mismo que devuelven las funciones de indicadores de la Oficina (047, 065 y 066). */
 export function indicadoresPortalDeEjemplo(
   periodo: Periodo,
   ahora: number = Date.now(),
 ): {
   indicadores: FilaIndicadoresPortal;
-  porPeriodo: PostulacionesPeriodo[];
+  comparados: IndicadoresComparados;
+  series: FilaSerie[];
+  estado: EstadoPostulacionesPeriodo;
   porRubro: FilaRpc<"postulaciones_por_rubro">[];
+  ofertasPorRubro: FilaRpc<"contar_ofertas_vigentes_por_rubro">[];
+  ultimas: UltimaPostulacion[];
 } {
   const desde = desdeMs(periodo, ahora);
   const meses = mesesDeEjemplo(ahora);
   const postulaciones = postulacionesDeEjemplo(ahora, meses);
+  const ofertas = ofertasDeEjemplo(ahora, meses);
+  const vigentes = ofertas.filter((o) => esVigente(o, ahora)).length;
+
+  // Un resultado de la empresa se cuenta en el período de su derivación
+  // (ver el comentario del principio): la contratación lleva esa fecha.
+  const derivadasTodas = postulaciones.filter((p) => p.derivada !== null);
+  const eventos: Eventos = {
+    postulaciones: postulaciones.map((p) => p.creada),
+    contrataciones: derivadasTodas
+      .filter((p) => p.resultadoEmpresa === "contratado")
+      .map((p) => p.derivada as number),
+    postulantes: registrosDeEjemplo(postulaciones, ahora),
+    ofertas: ofertas.map((o) => o.publicada),
+  };
 
   const nuevas = postulaciones.filter((p) => enPeriodo(p.creada, desde));
   const derivadas = postulaciones.filter((p) => enPeriodo(p.derivada, desde));
@@ -405,12 +714,11 @@ export function indicadoresPortalDeEjemplo(
   );
 
   const indicadores: FilaIndicadoresPortal = {
-    postulantes_registrados:
-      Math.round(postulaciones.length * 0.6) + POSTULANTES_SIN_POSTULACIONES,
+    postulantes_registrados: eventos.postulantes.length,
     empresas_aprobadas: EMPRESAS_APROBADAS,
     empresas_pendientes: EMPRESAS_PENDIENTES,
     empresas_rechazadas: EMPRESAS_RECHAZADAS,
-    ofertas_vigentes: OFERTAS_VIGENTES,
+    ofertas_vigentes: vigentes,
     postulaciones_nuevas: nuevas.length,
     derivaciones_empresas: derivadas.length,
     contrataciones,
@@ -430,14 +738,21 @@ export function indicadoresPortalDeEjemplo(
     ),
   };
 
-  const porPeriodo = postulacionesPorPeriodo(
-    postulaciones,
-    desde,
-    AGRUPACION_POR_PERIODO[periodo],
-    ahora,
-  );
-
-  return { indicadores, porPeriodo, porRubro: rubrosDelPeriodo(nuevas) };
+  return {
+    indicadores,
+    comparados: comparadosDeEjemplo(
+      eventos,
+      derivadasTodas.map((p) => p.derivada as number),
+      vigentes,
+      desde,
+      ahora,
+    ),
+    series: serieDeEjemplo(eventos, desde, AGRUPACION_POR_PERIODO[periodo], ahora),
+    estado: estadoDelPeriodo(nuevas, ahora),
+    porRubro: rubrosDelPeriodo(nuevas),
+    ofertasPorRubro: ofertasPorRubroDeEjemplo(ofertas, ahora),
+    ultimas: ultimasDeEjemplo(postulaciones, ahora),
+  };
 }
 
 // ── Empresa ───────────────────────────────────────────────────────────────

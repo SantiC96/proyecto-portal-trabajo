@@ -56,6 +56,12 @@
   /* Decorativo (sección "Para empresas" del inicio) */
   --color-brand-subtle: #b9dcc7;
 
+  /* Solo en los gráficos de los indicadores de la oficina (decisión 032,
+     punto 8): derivadas y contrataciones, y rechazadas. Ninguno llega a 3:1
+     contra el blanco: siempre van con su nombre y su número al lado. */
+  --color-grafico-verde-claro: #8cc63f;
+  --color-grafico-gris:        #c5cec8;
+
   /* Inicio, panel y listas (PR 3 del rediseño) */
   --color-texto-bajada:       #2e4337; /* bajada del inicio, empresa en la tarjeta de oferta */
   --color-invitacion-titulo:  #3a2a00; /* tarjeta y aviso de invitaciones */
@@ -103,6 +109,7 @@
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
   --radius-ofertas: 1.25rem;
+  --radius-indicador: 1.125rem; /* tarjetas de los indicadores de la oficina */
 
   --sombra-foco:          0 0 0 3px rgb(0 104 51 / 0.25);
   --sombra-foco-campo:    0 0 0 3px rgb(0 104 51 / 0.18);
@@ -110,6 +117,7 @@
   --sombra-dialogo:       0 24px 60px rgb(0 40 20 / 0.18);
   --sombra-tarjeta-hover: 0 8px 20px rgb(15 42 27 / 0.08);
   --sombra-buscador:      0 18px 40px rgb(0 30 15 / 0.35); /* sobre el hero verde */
+  --sombra-selector:      0 6px 18px rgb(0 30 15 / 0.08); /* selector de período y su lista */
 }
 
 @layer base {
@@ -1636,3 +1644,21 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
   .hero-icono { animation: none; }
 }
 @keyframes pulsar { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+
+/* Aparición al hacer scroll (AparecerAlScroll, indicadores de la oficina).
+   El servidor no pone el atributo: sin JavaScript todo se ve. El componente
+   marca "oculto" solo lo que está debajo de la pantalla al cargar, y
+   "visible" cuando entra. translate no mueve el layout (sin CLS). Con
+   movimiento reducido no se oculta nada. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-aparecer="oculto"] {
+    opacity: 0;
+    translate: 0 16px;
+  }
+  [data-aparecer="visible"] {
+    transition: opacity 400ms ease-out, translate 400ms ease-out;
+  }
+}
+@media print {
+  [data-aparecer] { opacity: 1; translate: none; }
+}

@@ -295,6 +295,12 @@ Texto de estado suelto sobre blanco (sin fondo):
   `tabla-fila-hover`  `#FAFBFA`   hover de fila del componente `Tabla`
   `texto-pestana`     `#3D4A43`   pestañas inactivas; cantidad en cero de la tarjeta de pendiente (9,3:1 sobre blanco)
   `pastilla-gris`     `#DDE3DF`   fondo de la cantidad de las pestañas y de la tarjeta de pendiente en cero
+  `grafico-verde-claro` `#8CC63F` solo indicadores de la oficina: contrataciones, derivadas (con texto `heading`, 7,5:1)
+  `grafico-gris`      `#C5CEC8`   solo indicadores de la oficina: rechazadas (con texto `heading`, 9,5:1)
+
+Radio de las tarjetas de los indicadores de la oficina: `--radius-indicador`
+(18 px). Sombra del selector de período: `--sombra-selector`
+(`0 6px 18px rgb(0 30 15 / 0.08)`).
 
 Las etiquetas de `DatosClave` y el encabezado de la tabla usan `neutral`
 (`#4F5E55`); los valores, `control-foreground` (`#22332A`).
@@ -1791,9 +1797,11 @@ dentro del `AppShell` y a todo el ancho: `EncabezadoPagina` "Hola,
 
 ## Indicadores (oficina y empresa)
 
-`/admin/indicadores` y `/empresa/indicadores`: `EncabezadoPagina` con el
-control segmentado del período a la derecha (debajo hasta xl), una fila de
-tarjetas de número y los gráficos, cada uno en su `TarjetaGrafico`. Los
+`/empresa/indicadores`: `EncabezadoPagina` con el control segmentado del
+período a la derecha (debajo hasta xl), una fila de tarjetas de número y
+los gráficos, cada uno en su `TarjetaGrafico`. `/admin/indicadores` tiene
+su propio diseño (ver "Indicadores de la oficina", más abajo), con las
+mismas piezas de gráficos. Los
 números salen de las funciones de la base (decisiones 019 y 021); la
 página los pide en el servidor y los pasa a los gráficos por props.
 
@@ -1805,7 +1813,8 @@ página los pide en el servidor y los pasa a los gráficos por props.
 y una sombra suave, marcada con `aria-current` (en un link no vale
 `aria-pressed`). "Últimos 30 días", "Últimos 90 días", "Este año" y
 "Todo", con el mismo `?periodo=` de siempre. En el celular ocupa todo el
-ancho, en dos filas.
+ancho, en dos filas. Solo en la empresa: la oficina usa el selector
+desplegable.
 
 ### Tarjeta de número (`TarjetaNumero`)
 
@@ -1864,6 +1873,67 @@ preferencia).
     `info`, seleccionados `accent`), con el valor al final de cada una y la
     misma escala en todas las ofertas; la leyenda (`LeyendaMedidasOferta`)
     va arriba de las tarjetas.
+
+### Indicadores de la oficina (`/admin/indicadores`)
+
+Ronda 6 (decisión 032, puntos 8 y 9). Fondo de las pantallas internas.
+Las tarjetas son `.tarjeta` con radio 18 (`--radius-indicador`), borde
+`border` y `sombra-tarjeta`; los títulos de tarjeta llevan un ícono de 20
+px `primary` antes del texto. Grillas con gap 16 (24 desde lg).
+
+-   **Encabezado:** `EncabezadoPagina grande`: "Indicadores" en Georgia
+    400 (`.titulo-portada`) de 52 px (36 en el celular), `heading`, y la
+    bajada de 17 px `muted-foreground`.
+-   **Selector de período** (`SelectorPeriodoDesplegable`): a la
+    derecha (a todo el ancho en el celular). Botón blanco de 50 px, radio
+    16, borde `border` y `--sombra-selector` (0 6px 18px rgb(0 30 15 /
+    .08)), con `Calendar` `primary`, el período en 15 px 700 y un
+    `ChevronDown` que gira al abrir. La lista, debajo y a la derecha, con
+    la misma sombra: opciones de 44 px (15 px; la actual en `secondary`,
+    700 `primary` y un check). Botón con `aria-expanded`, Escape cierra.
+-   **Fila 1** (`TarjetaTendencia`): 4 columnas desde xl, 2 desde sm y 1
+    en el celular. Padding 20: ícono blanco en un cuadrado `primary` de 46
+    px, radio 13, y el nombre en 16 px 700; el número en 42 px 800 con la
+    mini línea (`LineaTendencia`, 120 × 44, línea `primary` de 2 px y
+    relleno al 10 %, `aria-hidden`) a la derecha (debajo si no entra);
+    abajo, la variación (`TextoVariacion`, 14 px): "↑ +12 %" en 800
+    `primary` si sube, "↓ −8 %" en 800 `muted-foreground-strong` si baja,
+    "Sin cambios", "Nuevo en este período" o "Desde el inicio del
+    portal", seguido de "vs. período anterior" en `muted-foreground`.
+    Debajo, en 13 px, sobre qué se calculó cuando no es el número
+    ("24 nuevos en el período"). Toda la tarjeta es el link a su listado.
+-   **Fila 2** (1,85fr / 1fr desde xl): "Evolución general" (`GraficoArea`
+    con dos series: postulaciones `primary` 2,5 px con área al 16 % y
+    contrataciones `grafico-verde-claro` 2 px; puntos de 3 px, eje Y de 5
+    marcas, leyenda arriba a la derecha) y "Estado de postulaciones"
+    (`GraficoDona variante="resumen"`: 190 px, total en 38 px 800 con
+    "Total", leyenda con punto redondo, nombre, porcentaje en 800 y la
+    cantidad entre paréntesis; En revisión `primary`, Derivadas
+    `grafico-verde-claro`, Rechazadas `grafico-gris`; debajo, en 13 px,
+    cuántas retiradas quedaron afuera).
+-   **Fila 3** (1fr / 1,3fr / ,95fr desde xl): "Ofertas por área"
+    (`BarrasVerticales`: verticales `primary`, radio 8 arriba, hasta 56
+    px, valor de 15 px 800 arriba y rubro de 13 px abajo, desde 32 rem de
+    ancho de la tarjeta; más angosta, horizontales de 12 px sobre
+    `secondary` con el nombre y el valor arriba); "Últimas postulaciones"
+    (`Tabla variante="incrustada"`: sin marco, tabla desde 320 px de
+    ancho, filas apiladas con una línea entre ellas más angosta; fecha
+    con la hora en `muted-foreground`; badges En revisión `primary` con
+    texto blanco, Derivada `grafico-verde-claro` y Rechazada
+    `grafico-gris` con texto `heading`, los demás estados con su tono de
+    siempre; "Ver todas →" de 44 px arriba a la derecha) y "Resumen del
+    período" (filas con ícono `primary` en un cuadrado `secondary` de 40
+    px, nombre de 15 px 600, variación de 13 px y el valor en 22 px 800).
+-   **Debajo:** postulaciones por rubro, resultado de las derivaciones y
+    empresas (3 columnas desde xl) y "Proceso de la Oficina", con el
+    mismo estilo y sin título de sección aparte.
+-   **Colores solo de estos gráficos:** `grafico-verde-claro` #8CC63F y
+    `grafico-gris` #C5CEC8. No llegan a 3:1 contra el blanco: siempre con
+    nombre y número al lado.
+-   **Aparición al scroll** (`AparecerAlScroll`): lo que está debajo de la
+    pantalla al cargar aparece al entrar (opacidad y 16 px hacia arriba,
+    400 ms, una vez). Lo que ya se ve no se oculta; sin JavaScript o con
+    movimiento reducido, todo se ve directamente. No mueve el layout.
 
 Ver `docs/decisiones/032-graficos-de-indicadores.md`.
 

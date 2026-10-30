@@ -14,11 +14,17 @@ import { cn } from "@/lib/utils";
  * rótulos quedaban corridos respecto de su columna. El encabezado es visual
  * (aria-hidden): cada celda lleva su rótulo para los lectores de pantalla con
  * `CeldaTabla etiqueta`.
+ *
+ * `variante="incrustada"` es para una tabla chica dentro de una tarjeta
+ * (Últimas postulaciones de los indicadores): sin el borde ni la sombra de
+ * tarjeta, y es tabla desde 320 px de ancho (más angosta, filas apiladas
+ * separadas por una línea). Las filas van con la misma variante.
  */
 export function Tabla({
   columnas,
   encabezados,
   etiqueta,
+  variante = "tarjeta",
   children,
   className,
 }: {
@@ -27,18 +33,30 @@ export function Tabla({
   encabezados: ReactNode[];
   /** Nombre accesible de la lista: "Candidatos derivados". */
   etiqueta: string;
+  variante?: VarianteTabla;
   children: ReactNode;
   className?: string;
 }) {
+  const incrustada = variante === "incrustada";
   return (
     <div
       className={cn("@container", className)}
       style={{ "--columnas-tabla": columnas } as CSSProperties}
     >
-      <div className="@4xl:overflow-hidden @4xl:rounded-[var(--radius-xl)] @4xl:border @4xl:border-border @4xl:bg-surface @4xl:shadow-[var(--sombra-tarjeta)] @4xl:grid @4xl:grid-cols-(--columnas-tabla) @4xl:gap-x-4">
+      <div
+        className={
+          incrustada
+            ? "@xs:grid @xs:grid-cols-(--columnas-tabla) @xs:gap-x-3"
+            : "@4xl:overflow-hidden @4xl:rounded-[var(--radius-xl)] @4xl:border @4xl:border-border @4xl:bg-surface @4xl:shadow-[var(--sombra-tarjeta)] @4xl:grid @4xl:grid-cols-(--columnas-tabla) @4xl:gap-x-4"
+        }
+      >
         <div
           aria-hidden="true"
-          className="hidden bg-tabla-cabecera px-4 py-3 text-xs font-bold tracking-[0.06em] text-neutral uppercase @4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:gap-x-4"
+          className={
+            incrustada
+              ? "hidden rounded-[var(--radius-sm)] bg-tabla-cabecera px-3 py-2.5 text-xs font-bold tracking-[0.06em] text-neutral uppercase @xs:col-span-full @xs:grid @xs:grid-cols-subgrid @xs:gap-x-3"
+              : "hidden bg-tabla-cabecera px-4 py-3 text-xs font-bold tracking-[0.06em] text-neutral uppercase @4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:gap-x-4"
+          }
         >
           {encabezados.map((e, i) => (
             <span key={i}>{e}</span>
@@ -46,7 +64,11 @@ export function Tabla({
         </div>
         <ul
           aria-label={etiqueta}
-          className="flex flex-col gap-3 @4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:gap-x-4 @4xl:gap-y-0"
+          className={
+            incrustada
+              ? "flex flex-col @xs:col-span-full @xs:grid @xs:grid-cols-subgrid @xs:gap-x-3"
+              : "flex flex-col gap-3 @4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:gap-x-4 @4xl:gap-y-0"
+          }
         >
           {children}
         </ul>
@@ -54,6 +76,8 @@ export function Tabla({
     </div>
   );
 }
+
+export type VarianteTabla = "tarjeta" | "incrustada";
 
 /**
  * Una fila: tarjeta de padding 16 en angosto; en la tabla, 14 × 16 con borde inferior.
@@ -67,20 +91,27 @@ export function FilaTabla({
   children,
   detalle,
   id,
+  variante = "tarjeta",
   className,
 }: {
   children: ReactNode;
   detalle?: ReactNode;
   /** Ancla de la fila (#id): deja lugar arriba para el encabezado fijo. */
   id?: string;
+  /** La misma de su Tabla. */
+  variante?: VarianteTabla;
   className?: string;
 }) {
   return (
     <li
       id={id}
       className={cn(
-        "flex flex-col gap-3 rounded-[var(--radius-xl)] border border-border bg-surface p-4 text-[15px] text-foreground shadow-[var(--sombra-tarjeta)] transition-colors duration-150 motion-reduce:transition-none",
-        "@4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:items-center @4xl:gap-x-4 @4xl:rounded-none @4xl:shadow-none @4xl:border-x-0 @4xl:border-t-0 @4xl:border-b-tabla-borde @4xl:px-4 @4xl:py-3.5 @4xl:last:border-b-0 @4xl:hover:bg-tabla-fila-hover",
+        variante === "incrustada"
+          ? "flex flex-col gap-1.5 border-b border-tabla-borde px-1 py-3 text-[15px] text-foreground transition-colors duration-150 last:border-b-0 motion-reduce:transition-none @xs:col-span-full @xs:grid @xs:grid-cols-subgrid @xs:items-center @xs:gap-x-3 @xs:px-3"
+          : [
+              "flex flex-col gap-3 rounded-[var(--radius-xl)] border border-border bg-surface p-4 text-[15px] text-foreground shadow-[var(--sombra-tarjeta)] transition-colors duration-150 motion-reduce:transition-none",
+              "@4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:items-center @4xl:gap-x-4 @4xl:rounded-none @4xl:shadow-none @4xl:border-x-0 @4xl:border-t-0 @4xl:border-b-tabla-borde @4xl:px-4 @4xl:py-3.5 @4xl:last:border-b-0 @4xl:hover:bg-tabla-fila-hover",
+            ],
         id && "scroll-mt-20",
         className,
       )}

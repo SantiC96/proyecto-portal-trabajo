@@ -12,7 +12,11 @@ export type TablaDatos = {
 
 type Props = {
   titulo: string;
+  /** Ícono verde antes del título (indicadores de la oficina). */
+  icono?: LucideIcon;
   descripcion?: ReactNode;
+  /** Algo arriba a la derecha, en lugar del destacado: una leyenda, "Ver todas →". */
+  accion?: ReactNode;
   /** Valor destacado arriba a la derecha (por ejemplo, el total). */
   destacado?: { valor: string; etiqueta: string };
   /** La conclusión del gráfico, calculada con los datos. */
@@ -32,7 +36,9 @@ type Props = {
  */
 export function TarjetaGrafico({
   titulo,
+  icono: Icono,
   descripcion,
+  accion,
   destacado,
   conclusion,
   iconoConclusion: IconoConclusion = Lightbulb,
@@ -48,9 +54,18 @@ export function TarjetaGrafico({
     >
       <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="min-w-0 flex-1 basis-60">
-          <h2 className="text-lg leading-snug font-extrabold text-heading">{titulo}</h2>
+          <h2
+            className={cn(
+              "text-lg leading-snug font-extrabold text-heading",
+              Icono && "flex items-center gap-2",
+            )}
+          >
+            {Icono && <Icono aria-hidden="true" className="size-5 shrink-0 text-primary" />}
+            {titulo}
+          </h2>
           {descripcion && <p className="mt-1 text-sm text-muted-foreground">{descripcion}</p>}
         </div>
+        {accion && <div className="shrink-0">{accion}</div>}
         {destacado && (
           <p className="flex shrink-0 flex-col items-start sm:items-end">
             <span className="text-[30px] leading-none font-extrabold text-heading tabular-nums">

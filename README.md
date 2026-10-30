@@ -82,13 +82,14 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 
 ### Dashboard de indicadores de la oficina
 
-- Postulantes, ofertas vigentes y empresas por estado.
-- Postulaciones, derivaciones, contrataciones y cursos del período elegido.
-- Tasa de contratación, días promedio hasta la derivación, postulaciones por día, semana o mes según el período y gráfico por rubro.
+- Selector de período desplegable: últimos 30 días, últimos 90 días, este año o desde el inicio.
+- Postulantes registrados, ofertas vigentes, postulaciones nuevas y contrataciones, cada una con su mini línea de tendencia y la variación contra el período anterior de la misma duración.
+- Evolución general (postulaciones y contrataciones por día, semana o mes), estado de las postulaciones del período, ofertas vigentes por área, las últimas cinco postulaciones y un resumen con derivaciones, contrataciones y tasa de contratación.
+- Más abajo, postulaciones por rubro, resultado de las derivaciones, empresas por estado y el proceso de la Oficina (pre-entrevistas, no seleccionados, días hasta la derivación y cursos). Las tarjetas que están fuera de la pantalla aparecen al llegar con el scroll.
 
 ### Datos de ejemplo en los indicadores
 
-Para presentaciones, la variable de entorno de servidor `INDICADORES_DE_EJEMPLO=true` hace que las pantallas de indicadores de la oficina y de la empresa muestren datos ficticios de un año de uso. **La pantalla no muestra ninguna marca de que son datos de ejemplo**: se ve igual que con los datos reales, así que hay que apagar el modo después de cada presentación. No escribe en la base ni manda correos, y el resto del portal sigue con los datos reales. Sin la variable, o con otro valor, todo funciona como siempre.
+Para presentaciones, la variable de entorno de servidor `INDICADORES_DE_EJEMPLO=true` hace que las pantallas de indicadores de la oficina y de la empresa muestren datos ficticios (dos años de uso en la oficina). **La pantalla no muestra ninguna marca de que son datos de ejemplo**: se ve igual que con los datos reales, así que hay que apagar el modo después de cada presentación. No escribe en la base ni manda correos, y el resto del portal sigue con los datos reales. Sin la variable, o con otro valor, todo funciona como siempre.
 
 - **Local:** agregar `INDICADORES_DE_EJEMPLO=true` a `.env.local` y reiniciar `npm run dev`. Para apagarlo, borrar la línea y reiniciar.
 - **Vercel:** en *Settings → Environment Variables*, agregar `INDICADORES_DE_EJEMPLO` = `true` y volver a desplegar. Para apagarlo, borrar la variable y volver a desplegar: el cambio no aplica hasta el próximo deploy.

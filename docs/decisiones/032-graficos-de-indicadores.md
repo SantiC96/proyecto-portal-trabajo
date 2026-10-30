@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-10-23
 **Estado:** Vigente
-**Migración:** 061 (`postulaciones_por_periodo`, punto 6)
+**Migración:** 061 (`postulaciones_por_periodo`, punto 6) y 066 (`indicadores_comparados`, `series_indicadores` y `estado_postulaciones_periodo`, punto 8)
 
 ---
 
@@ -80,9 +80,35 @@ Antes el área mostraba siempre los últimos 12 meses (`postulaciones_por_mes()`
 
 El área muestra el eje Y a la izquierda con 3 a 5 valores redondos (`escalaRedonda`: pasos de 1, 2, 5, 10, 20, 50…), en 13 px, color `muted-foreground` y cifras tabulares, sin línea de eje. La grilla horizontal se alinea con esos valores y el ancho del eje se ajusta al número más largo (`width="auto"`). Las barras por oferta de la empresa no llevan eje: cada barra muestra su valor al final y un eje en una tarjeta de 112 px de alto la recargaría.
 
+### 8. Rediseño de la oficina: comparación, tendencia y estado (ronda 6)
+
+`/admin/indicadores` se rediseñó según la ronda 6. Los indicadores de la empresa no cambian: los componentes compartidos (`TarjetaGrafico`, `GraficoDona`, `Tabla`, `EncabezadoPagina`) ganaron props opcionales y sin ellas se ven igual.
+
+- **Selector de período desplegable** (`SelectorPeriodoDesplegable`): un botón con el período elegido abre la lista; cada opción sigue siendo un link con `?periodo=`, así el período se resuelve en el servidor. Patrón *disclosure* (botón con `aria-expanded` y `aria-controls`; Escape cierra y devuelve el foco; la opción actual con `aria-current`). Sin JavaScript, los links se ven en una fila (`noscript`). "Todo" pasa a llamarse "Desde el inicio". La empresa sigue con el control segmentado.
+- **Comparación con el período anterior** (migración 066, `indicadores_comparados`): el período anterior es el de la misma duración inmediatamente antes (`[p_desde − (ahora − p_desde), p_desde)`); "Este año" se compara con los mismos días antes del 1 de enero, no con el mismo tramo del año pasado. "Desde el inicio" no tiene anterior. La variación es un porcentaje del anterior redondeado a entero ("Sin cambios" si da 0; "Nuevo en este período" si el anterior fue 0); la de la tasa, en puntos porcentuales con un decimal.
+- **Qué compara cada tarjeta:** las postulaciones y las contrataciones, su propio valor. "Postulantes registrados" muestra el total y compara los registros nuevos; "Ofertas vigentes" muestra las de hoy y compara las **publicadas** en cada período, porque la base no guarda qué ofertas estaban vigentes en una fecha pasada (no hay historial de estado ni fecha de cierre, y `vence_en` cambia al renovar). Por eso esas dos tarjetas dicen debajo sobre qué se calculó ("24 nuevos en el período", "24 publicadas en el período").
+- **Tasa de contratación:** contrataciones sobre postulaciones nuevas del mismo período. Es una razón entre cantidades del período: una contratación puede venir de una postulación anterior. No es la tasa de `indicadores_portal` (contrataciones sobre resultados finales), que quedó sin uso en la pantalla.
+- **Mini líneas y evolución general** (`series_indicadores`): las mismas filas que `postulaciones_por_periodo` (día, semana o mes según el período, vacíos en 0) con cuatro columnas; la suma de cada una coincide con su tarjeta. Las mini líneas son SVG del servidor (120 × 44, `aria-hidden`: el dato está en el texto). La evolución general es `GraficoArea` con dos series: postulaciones (`primary`, 2,5 px, área al 16 %) y contrataciones (verde claro, 2 px), con un punto en cada valor, 5 marcas en el eje Y (`escalaDeCinco`) y el tooltip con la fecha y los dos valores.
+- **Estado de las postulaciones** (`estado_postulaciones_periodo`): las creadas en el período, según su estado de hoy: en revisión (recibida y en revisión), derivadas (pendientes, en proceso o contratadas) y rechazadas (por la Oficina o por la empresa). Las retiradas por el postulante y las de ofertas que la empresa retiró **no van en la dona**: no son una revisión, una derivación ni un rechazo (decisiones 024 y 025). La función las devuelve aparte y la tarjeta dice cuántas quedaron afuera, para que la diferencia con "Postulaciones nuevas" no quede sin explicar. Dona de 190 px (`GraficoDona variante="resumen"`).
+- **Ofertas por área:** los 4 rubros con más ofertas vigentes y el resto en "Otros", de `contar_ofertas_vigentes_por_rubro` (065); una oferta con varios rubros cuenta en cada uno. Las barras son HTML del servidor (`BarrasVerticales`), no Recharts: cada valor está escrito (no hace falta tooltip) y los nombres pasan de línea entre palabras. Son verticales desde 32 rem de ancho de la tarjeta y horizontales más angosta: en la columna de 1440 px cada barra vertical mide unos 46 px y "Administración" o "Gastronomía" se cortaban a mitad de palabra.
+- **Últimas postulaciones:** las 5 más recientes con una consulta común (la Oficina ya las lee por RLS), en `Tabla variante="incrustada"` (tabla desde 320 px de ancho de la tarjeta). Los estados de la dona llevan sus colores (En revisión, que junta recibidas y en revisión; Derivada; Rechazada) y los demás el badge de siempre. Cada fila lleva a la ficha; en el modo de ejemplo, no.
+- **Colores nuevos, solo en estos gráficos:** verde claro `#8CC63F` (`grafico-verde-claro`) y gris `#C5CEC8` (`grafico-gris`). Ninguno llega a 3:1 contra el blanco: siempre van con su nombre y su número al lado, y está "Ver datos". Como fondo de badge, con texto `heading` (#0F2A1B) superan 7:1.
+- **Lo de antes, debajo:** postulaciones por rubro, resultado de las derivaciones, empresas y proceso de la Oficina, con el estilo de las tarjetas nuevas (radio 18 y el ícono junto al título), en la misma grilla.
+- **Modo de ejemplo:** genera además registros de postulantes, ofertas con fecha de publicación, duración y rubros, y retiros, y cuenta el período anterior igual que el actual. La historia pasó de 12 a 24 meses para que "Este año" tenga con qué compararse.
+
+### 9. Aparición al hacer scroll
+
+`AparecerAlScroll` (cliente) envuelve cada tarjeta o fila. Antes de pintar (`useLayoutEffect`) mira si está debajo de la pantalla: solo en ese caso le pone `data-aparecer="oculto"` y la observa con `IntersectionObserver`; al entrar pasa a `"visible"` (opacidad de 0 a 1 y 16 px hacia arriba, 400 ms) y deja de observarla. Lo que ya está a la vista al cargar, o arriba (al volver con el scroll guardado), no se toca.
+
+- El contenido sigue siendo HTML del servidor: el componente solo cambia un atributo, que React no maneja (no lo pisa un nuevo render).
+- Sin JavaScript, sin `IntersectionObserver`, con `prefers-reduced-motion` o al imprimir, todo se ve directamente: el estado oculto solo existe en CSS bajo `prefers-reduced-motion: no-preference`.
+- `translate` y `opacity` no mueven el layout: el CLS medido en Chrome fue 0 a 1440 y 375 px.
+- Si el foco del teclado entra a una tarjeta oculta, el navegador la lleva a la vista y aparece.
+
 ---
 
 ## Consecuencias
 
 - Una dependencia nueva (`recharts`). Un gráfico nuevo se arma con `chart.tsx` y los componentes de `src/components/indicadores/`, dentro de una `TarjetaGrafico` con su conclusión y su tabla.
 - "En proceso" (derivaciones de la oficina y candidatos de la empresa) es una resta de cantidades del período (derivados menos los resultados, mínimo 0): un resultado del período puede venir de una derivación anterior, así que es una aproximación.
+- Las funciones `postulaciones_por_mes()` (047) y `postulaciones_por_periodo()` (061) quedaron sin uso en el código desde la 066; también la columna `tasa_contratacion` de `indicadores_portal`. Se pueden sumar a la limpieza.
