@@ -233,8 +233,11 @@ aviso suelto se usa `warning-text` (`#8A5A00`).
   `danger-hover`   `#912018`   blanco       8,66:1
   `violet`         `#5B3A9E`   blanco       8,26:1
   warning          `accent`    `#2B2000`    8,82:1
+  apagado          `muted-icon` `heading`  5,10:1
 
-Todos superan AA (4,5:1) para texto de 13 px en negrita.
+Todos superan AA (4,5:1) para texto de 13 px en negrita. `apagado`
+(`#8A988F`, gris claro de "retirada") lleva texto oscuro: el blanco
+queda en 3,1:1.
 
 Texto de estado suelto sobre blanco (sin fondo):
 
@@ -297,6 +300,8 @@ Texto de estado suelto sobre blanco (sin fondo):
   `campo-lectura`     `#F3F5F4`   ubicación de solo lectura del formulario de oferta
   `texto-ejemplo`     `#6E7D74`   título de ejemplo de la vista previa de la oferta (solo texto grande)
   `tabla-fila-hover`  `#FAFBFA`   hover de fila del componente `Tabla`
+  `numero-fondo`      `#F7F9F8`   números de "Rechazos y cursos" en el perfil del postulante (oficina)
+  `sin-comprobante`   `#7A5A00`   "Sin comprobante" debajo del chip de localidad (6,3:1 sobre blanco)
   `texto-pestana`     `#3D4A43`   pestañas inactivas; cantidad en cero de la tarjeta de pendiente (9,3:1 sobre blanco)
   `pastilla-gris`     `#DDE3DF`   fondo de la cantidad de las pestañas y de la tarjeta de pendiente en cero
   `grafico-verde-claro` `#8CC63F` solo indicadores de la oficina: contrataciones, derivadas (con texto `heading`, 7,5:1)
@@ -1409,12 +1414,17 @@ dominio y cada helper los mapea a un tono en un único lugar.
   Dominio           Estado                                    Tono        Helper
   ----------------- ----------------------------------------- ----------- ------------------------------------------------
   Postulación       Recibida                                  neutral     `badgePostulacion` (`lib/mis-postulaciones.ts`)
-                    En revisión                               info        y `BADGE_ESTADO_VISIBLE`
-                    Enviada a la empresa / Derivada           teal        (`lib/admin/postulacion-estados.ts`)
-                    Seleccionado / Contratado                 success
-                    No seleccionado                           neutral
-                    Oferta cerrada                            neutral
-                    Retirada                                  neutral
+  (postulante)      En revisión                               info
+                    Enviada a la empresa                      teal
+                    Seleccionado                              success
+                    No seleccionado / Oferta cerrada /        neutral
+                    Retirada
+  Postulación       Recibida                                  neutral     `BADGE_ESTADO_VISIBLE` y `FILETE_ESTADO_VISIBLE`
+  (oficina)         En revisión / con pre-entrevista          info        (`lib/admin/postulacion-estados.ts`)
+                    Derivada                                  teal
+                    Contratado                                success
+                    No seleccionado (oficina o empresa)       danger
+                    Retirada / Cerrada (oferta retirada)      apagado
   Oferta            Borrador                                  neutral     `ESTADO_OFERTA_EMPRESA_TONO`,
                     En revisión / pendiente                   warning     `getOfertaEstadoBadge`
                     Activa / publicada                        success     (`lib/oferta-estados.ts`)
@@ -2050,21 +2060,20 @@ cantidad (`?vista=eliminadas`).
 
 ## Filtro por procedencia (lista de postulantes de la oficina)
 
-`PestanasEstado` ("Procedencia de los postulantes"), debajo del
-encabezado y arriba del buscador y de los rubros, como en Postulaciones,
-Empresas, Ofertas y Comprobantes: "Todos", "De Funes, verificados", "De
-Funes, sin verificar" y "Otra localidad o sin informar", cada una con su
-cantidad en la pastilla de la pestaña. Sin el punto de color de las
-pastillas que había antes: el nivel lo dice el texto.
+`PastillaFiltro` con cantidad (ronda 9), debajo de la banda y arriba del
+buscador y de los rubros: "Todos", "De Funes, verificados", "De Funes,
+sin verificar" y "Otra localidad o sin informar".
 
 -   Vive en la URL (`?procedencia=verificado | sin-verificar | otra`). Un
-    valor no válido muestra todos. Cambiar de pestaña vuelve a la página
+    valor no válido muestra todos. Cambiar de pastilla vuelve a la página
     1 y conserva la búsqueda y los rubros; cambiar la búsqueda o los
     rubros conserva la procedencia, y "Limpiar filtros" saca todo.
 -   Las cantidades respetan la búsqueda y los rubros, no la procedencia
-    elegida (son los mismos totales de los separadores). Mientras cargan,
-    las pestañas se ven sin número.
--   Con un filtro, la lista muestra solo el separador de ese nivel.
+    elegida (son los mismos totales de los grupos), con el mismo
+    `aplicarFiltroPostulantes` (`lib/admin/filtro-postulantes.ts`) que la
+    lista. "Todos" es la suma de los tres niveles. Mientras cargan, las
+    pastillas se ven sin número.
+-   Con un filtro, la lista muestra solo el grupo de ese nivel.
 -   Sin resultados por la procedencia sola: `EstadoVacio` `sin-resultados`
     con un texto por nivel ("No hay postulantes de Funes con el domicilio
     verificado.") y "Ver todos". Con búsqueda o rubros, el texto de
@@ -2447,6 +2456,203 @@ celular) con el logo o las iniciales en `primary` 800.
     celular), Email, Teléfono "(opcional)" y "Enviar invitación" con
     `Send`. Desactivar y Reactivar llevan su ícono (`X` rojo,
     `RotateCcw` verde).
+
+### Piezas que suma la parte 3
+
+-   `Badge tono="apagado"`: gris claro `muted-icon` con texto `heading`
+    (retirada; el blanco no llega a AA). `BadgeBanda` acepta los mismos
+    tonos.
+-   `TarjetaDecision` suma `estado="derivada"` (filete `teal`) y
+    `"cerrada"` (filete `muted-icon`); `ResultadoDecision`, los tonos
+    `derivada` (teal al 8 %, texto `teal`, `Send`) y `cerrada`
+    (`secondary`, texto `muted-foreground-strong`, `Undo2`), y `icono`
+    para cambiar el del tono.
+-   `BotonesDialogo iconoConfirmar`: ícono a la izquierda del texto de
+    confirmar ("Derivar candidato" con `Send`).
+-   `Aviso tono="warning" suave`: fondo `accent` al 18 %
+    (`rgba(242,183,5,.18)`), texto `accent-foreground` y `TriangleAlert`
+    ("Esta acción no se puede deshacer." en un diálogo).
+-   `Buscador etiquetaVisible`: la etiqueta arriba del campo
+    (`etiqueta-campo`), como la de los filtros de al lado.
+-   `GrupoOpciones` (`components/ui/grupo-opciones.tsx`): pastillas de
+    44 px con `role="radio"` dentro de un `radiogroup`, un solo paso de
+    tabulación y flechas. Lo usan el formulario de oferta y la modalidad de
+    la pre-entrevista.
+-   `CamposEntrevista`: `modalidadEnPastillas`, `etiquetaLink` y
+    `placeholderLink`. Sin esas props (la entrevista de la empresa) sigue
+    igual.
+-   `FilaArchivoPerfil` suma `nota` (una aclaración o la revisión del
+    comprobante) y `className`. `BotonVerArchivo`
+    (`components/admin/boton-ver-archivo.tsx`): "Ver CV" o "Ver
+    comprobante" (`.btn-neutro` con `ExternalLink`).
+-   `DatosCandidato`: DNI, teléfono, email y domicilio en dos columnas (una
+    en el celular), etiqueta de 13 px 700 `neutral` y valor de 16 px; sin
+    domicilio, `ChipSinCompletar`. Debajo, los rubros de interés como
+    `EtiquetaRubro verde` (o "Sin rubros" en gris). Lo usan la ficha de la
+    postulación y el perfil del postulante.
+-   `InformacionLaboralResumen` suma `encabezado` y `estiloOficina` (los
+    datos uno debajo del otro con la etiqueta de 13 px). Sin esas props
+    (las fichas de la empresa) sigue igual.
+
+### Colores de estado de una postulación
+
+`BADGE_ESTADO_VISIBLE` y `FILETE_ESTADO_VISIBLE`
+(`lib/admin/postulacion-estados.ts`): recibida `neutral` (`#4F5E55`), en
+revisión `info` (`#1D4E9E`), derivada `teal` (`#0B5D57`), contratado
+`success` (`#006833`), no seleccionado (por la oficina o la empresa)
+`danger` (`#B42318`), retirada por el postulante y cerrada porque la
+empresa retiró la oferta `apagado` (`#8A988F`). Una pendiente con la
+pre-entrevista coordinada lleva el filete azul. Las pantallas del
+postulante siguen con `badgePostulacion` de `lib/mis-postulaciones.ts`.
+
+### Postulaciones (`/admin/postulaciones`)
+
+-   Banda con el título y la bajada.
+-   Pendientes, Derivadas, Contratado, No seleccionado y Retiradas como
+    `PastillaFiltro` con cantidad (`?estado=`). Las cantidades aplican la
+    misma oferta y la misma búsqueda que la lista
+    (`cantidadesPorPestana`, `filtrarOfertaYBusqueda` y
+    `postulantesDeBusqueda` en `lib/admin/postulaciones-pestanas.ts`). Si
+    un conteo falla, esa pastilla va sin número.
+-   Debajo, una fila (1.4fr / 1fr / 1fr desde md, apilados más angosto):
+    el `Buscador` ("Buscar", con el label arriba) y los `Combobox`
+    "Oferta" y "Orden", los tres de 48 px. Oferta y Orden se aplican solos
+    al elegir; Orden solo existe en Pendientes, Derivadas y Retiradas.
+    "Limpiar filtros" debajo, si hay alguno.
+-   Tabla con filete (el color del estado): Postulante (`CeldaPersona` con
+    la foto o las iniciales, el nombre en 800, "DNI …", `ChipLocalidad` y,
+    si está sin verificar, el estado del comprobante en `sin-comprobante`)
+    1.7fr · Oferta en 800 con la empresa debajo 1.5fr · Fecha (el rótulo
+    cambia por pestaña: "Contratado el", "Rechazado el", "Retirada el")
+    .7fr · Estado (badge, "Por invitación" y "Pre-entrevista: 29/10
+    12:30" en `info` con `CalendarClock`) 1.2fr · "Ver ficha" (secundario
+    chico, `aria-label` con el nombre y la oferta) .6fr. En el celular,
+    tarjetas con el estado arriba y la fecha con `Calendar`.
+-   Debajo, `Paginacion variante="numeros"` con "Mostrando X–Y de Z
+    postulaciones".
+
+### Ficha de postulación (`/admin/postulaciones/[id]`)
+
+-   "Volver" arriba de la banda. Banda: "Postulación de {nombre}" con el
+    `BadgeBanda` del estado (y "Por invitación" si vino de una invitación)
+    y la bajada "{oferta} · {empresa} · recibida el …" (y "Contratado por
+    … el …" debajo, si corresponde).
+-   `DetalleConLateral` (380 px, 20 px entre columnas, 16 entre tarjetas):
+    las dos columnas terminan a la misma altura.
+-   Izquierda:
+    -   "Postulante" (`User`): la foto o las iniciales de 72 px, el nombre
+        (20 px 800) y `ChipLocalidad`; `DatosCandidato`; "CV elegido para
+        esta postulación" como `FilaArchivoPerfil` con "Ver CV"
+        (`ExternalLink`) y la aclaración si es un CV anterior o eliminado;
+        "Ver ficha completa del postulante ›".
+    -   "Oferta" (`Briefcase`): el badge del estado de la oferta arriba a
+        la derecha, las iniciales de la empresa (44 px), el título en 800
+        y la empresa, las etiquetas (rubros verdes, modalidad y jornada),
+        la franja "Modificada tras la postulación" si corresponde, "Vence
+        el …" con `Calendar` y "Ver oferta" (`ExternalLink`).
+    -   "Historial de estados" (`History`): `LineaDeTiempo
+        variante="historial"` (recibida `Send` gris, revisada `Search`
+        azul, retirada `Undo2` gris claro, última actualización `Clock`
+        teal).
+-   Derecha:
+    -   `TarjetaDecision`: "Decisión" pendiente (filete amarillo, "Derivá
+        la postulación si el perfil encaja con la oferta. Antes podés
+        coordinar una pre-entrevista (es opcional).", "Derivar a la
+        empresa" con `Send` y "No seleccionar"); no seleccionada por la
+        oficina (rojo, `ResultadoDecision` y "Reconsiderar"); "Derivación
+        a la empresa" (teal mientras la empresa no responde, verde
+        contratado, rojo no seleccionado, gris claro si la empresa retiró
+        la oferta; los datos de la derivación y "Corregir estado de la
+        empresa"); "Postulación retirada" (gris claro).
+    -   "Pre-entrevista" (`CalendarClock`) con el badge del estado ("Sin
+        coordinar" gris). El formulario: `CampoFechaHora`, la modalidad en
+        pastillas (`GrupoOpciones`, `role="radio"`) y "Lugar" o "Link de
+        la videollamada" (placeholder "https://…") según la modalidad, la
+        nota interna opcional con contador y "Guardar pre-entrevista"
+        (secundario a lo ancho). La coordinada, con su cartel,
+        "Reprogramar" (con "Cancelar" mientras se edita) y el resultado
+        (Realizada / No asistió).
+    -   "Nota interna" (`NotebookPen`), si la hay.
+-   Diálogos (`DialogHeader` con ícono y `DialogResumen` con las
+    iniciales, el nombre y "{oferta} · {empresa}"):
+    -   "Derivar a la empresa": `Send` teal, "La empresa recibirá los
+        datos del candidato.", el resumen, `Aviso suave` "Esta acción no se
+        puede deshacer.", el aviso del curso si corresponde, la
+        recomendación opcional con contador y "Derivar candidato"
+        (principal con `Send`).
+    -   "No seleccionar candidato": `X` rojo; "Reconsiderar candidato":
+        `RotateCcw` verde; "Corregir estado de la empresa": `PencilLine`
+        verde; "Marcar la pre-entrevista como realizada": `CircleCheck`
+        verde; "El postulante no asistió": `UserX` rojo. Todos con el
+        mismo resumen.
+
+### Postulantes (`/admin/postulantes`)
+
+-   Banda con el título y la bajada. Las pastillas de procedencia (ver
+    "Filtro por procedencia").
+-   Debajo, una fila desde md: el `Buscador` ("Buscar"), el
+    `MultiCombobox` "Rubro" (los dos con el label arriba, 48 px) y
+    "Mostrando X–Y de Z postulantes".
+-   La tabla agrupada por prioridad (decisión 027). Cada grupo lleva un
+    filete izquierdo de 5 px de su color (`primary` verificados, `accent`
+    sin verificar, `neutral` otra localidad) y una franja
+    `tabla-cabecera` con el chip "PRIORIDAD N" (12 px 800 en mayúsculas,
+    blanco; `accent-foreground` sobre el amarillo), el nombre del grupo en
+    negrita y la cantidad en gris.
+-   Columnas: Postulante (foto o iniciales, nombre en 800 y teléfono)
+    1.6fr · DNI .8fr · Localidad (`ChipLocalidad` y, si está sin
+    verificar, "Sin comprobante", "Comprobante en revisión" o
+    "Comprobante rechazado" en `sin-comprobante`) 1.3fr · Rubros (hasta 2
+    `EtiquetaRubro` y "+n" con el resto en el `title`, o "Sin rubros" en
+    gris) 1.7fr · CV ("CV cargado" con `FileText` verde o el `Chip`
+    amarillo "Sin CV"; debajo, el estado del curso y los cursos
+    pendientes) .8fr · acciones ("Asignar curso" si corresponde y "Ver
+    perfil" secundario con `aria-label`) .7fr.
+-   En el celular, cada fila es una tarjeta de una sola columna, con "DNI"
+    como prefijo; el filete del grupo va a la izquierda de sus tarjetas.
+
+### Perfil del postulante (`/admin/postulantes/[id]`)
+
+-   "Volver" arriba de la banda. Banda: la foto o las iniciales en el
+    círculo blanco de 72 px (56 en el celular), el nombre, el
+    `BadgeBanda` de la localidad (el texto de `ChipLocalidad`) y, si
+    corresponde, el del curso ("Necesita curso · …" o el estado del curso
+    activo). Bajada: "DNI … · N postulaciones · N rechazos de empresas".
+    Las acciones en la banda: "Invitar a esta oferta" (si se entró desde
+    la búsqueda de una oferta), "N cursos pendientes" (lleva a "Rechazos y
+    cursos") y "Asignar curso".
+-   Bloques de a dos (una columna en el celular) con la misma altura por
+    fila: "Datos del candidato" (`IdCard`, `DatosCandidato`) y
+    "Procedencia" (`MapPin`, `ChipLocalidad` arriba a la derecha, la
+    localidad y el comprobante como `FilaArchivoPerfil` al pie de la
+    tarjeta, con su estado, "Revisado el …", el motivo si lo rechazaron,
+    "Ver comprobante" y Aprobar / Rechazar si está pendiente);
+    "Currículum vitae" (`FileText`, "N de 5 CVs" a la derecha y cada CV
+    como `FilaArchivoPerfil` con "Ver CV") e "Información laboral"
+    (`Briefcase`).
+-   "Rechazos y cursos" (`ChartColumn`), a todo el ancho: tres números
+    (una columna en el celular) con fondo `numero-fondo`, filete
+    izquierdo de 4 px (`primary`, `neutral` e `info`), la etiqueta, el
+    número de 34 px 800 y una línea de contexto: rechazos en los últimos
+    90 días (en `warning-text` desde el umbral del curso), rechazos
+    totales y cursos (la cantidad del historial; "Necesita curso", los
+    pendientes o "Sin curso pendiente"). Debajo, lado a lado, "Rechazos de
+    empresas (N)" (`X` rojo, la oferta, "empresa · fecha",
+    `MotivoRechazo` y "Cuenta para el curso") y "Historial de cursos (N)"
+    (`BookOpen` verde, el curso como link, su badge, las fechas y la nota
+    interna), cada uno en un recuadro con borde y su paginación.
+-   "Historial de postulaciones (N)" (`ClipboardList`): tabla con filete
+    (el color del estado): Oferta y empresa 1.6fr · Fecha .7fr · Estado
+    1.1fr · CV (nombre y "Subido el …") 1.2fr · Pre-entrevista (badge azul
+    "Coordinada" con `CalendarClock`, la fecha y la hora en `info` y la
+    modalidad; las demás con su badge; o "Sin pre-entrevista" en gris)
+    1.2fr · "Ver ficha" .6fr. Al pie, "Mostrando X–Y de Z
+    postulaciones" y la paginación.
+-   "Invitaciones a ofertas (N)" (`Mail`): una lista con un ícono por
+    resultado (`MailCheck` verde aceptó, `Clock` gris vencida, `X` rojo
+    no aceptó, `Mail` amarillo pendiente), el título (link a la oferta),
+    "empresa · Invitado el … por …", el motivo si no aceptó, "Ver la
+    postulación ›" si aceptó y el badge del resultado a la derecha.
 
 ## Panel de la empresa
 
