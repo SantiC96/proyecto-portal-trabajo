@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/chart";
 import type { Agrupacion } from "@/lib/indicadores-periodo";
 import { escalaDeCinco, formatNumero } from "./formato";
-import { useMovimientoReducido } from "./use-movimiento-reducido";
+import { useAnimarAlVerse } from "./animar-al-verse";
 
 export type PuntoArea = {
   /** Identificador del punto: el primer día del día, la semana o el mes ("2026-10-01"). */
@@ -143,10 +143,11 @@ const OPACIDAD_AREA = 0.16;
  * valores redondos alineados a la grilla horizontal y eje X con fechas cada
  * tantos puntos según el ancho (siempre la primera y la última), cada una con
  * una marca hacia su punto. Debajo, el rango del período. El tooltip muestra
- * la fecha y el valor de cada serie.
+ * la fecha y el valor de cada serie. Las líneas se dibujan la primera vez
+ * que el gráfico entra a la pantalla (los ejes y la grilla ya están).
  */
 export function GraficoArea({ datos, agrupacion, series, resumen, rango }: Props) {
-  const reducido = useMovimientoReducido();
+  const [refAnimar, fase] = useAnimarAlVerse<HTMLDivElement>();
   const idDegrade = `degrade-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const [refContenedor, ancho] = useAncho<HTMLDivElement>();
   const config: ChartConfig = Object.fromEntries(
@@ -196,88 +197,92 @@ export function GraficoArea({ datos, agrupacion, series, resumen, rango }: Props
 
   return (
     <div role="img" aria-label={resumen} ref={refContenedor}>
-      <ChartContainer
-        config={config}
-        className="aspect-auto h-[236px] w-full sm:h-[276px] [&_.recharts-yAxis_text]:tabular-nums"
-      >
-        <AreaChart
-          accessibilityLayer
-          data={filas}
-          margin={{ top: 8, right: MARGEN_DERECHO, bottom: 0, left: MARGEN_IZQUIERDO }}
+      <div ref={refAnimar}>
+        <ChartContainer
+          config={config}
+          className="aspect-auto h-[236px] w-full sm:h-[276px] [&_.recharts-yAxis_text]:tabular-nums"
         >
-          <defs>
-            <linearGradient id={idDegrade} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={series[0]?.color} stopOpacity={OPACIDAD_AREA} />
-              <stop offset="100%" stopColor={series[0]?.color} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid vertical={false} />
-          <YAxis
-            type="number"
-            domain={[0, valoresEje[valoresEje.length - 1]]}
-            ticks={valoresEje}
-            interval={0}
-            allowDecimals={false}
-            tickLine={false}
-            axisLine={false}
-            tickMargin={6}
-            width="auto"
-            tickFormatter={(valor: number) => formatNumero(valor)}
-          />
-          <XAxis
-            dataKey="clave"
-            ticks={etiquetas.indices.map((i) => datos[i].clave)}
-            interval={0}
-            height={32}
-            tickLine={false}
-            axisLine={false}
-            tickMargin={0}
-            tick={dibujarEtiqueta}
-          />
-          <ChartTooltip
-            cursor={{ strokeWidth: 1.5 }}
-            content={
-              <ChartTooltipContent
-                hideIndicator
-                labelFormatter={(_, payload) => {
-                  const clave = payload?.[0]?.payload?.clave;
-                  return typeof clave === "string" ? (porClave.get(clave)?.detalle ?? "") : "";
-                }}
-                formatter={(valor, nombre) => {
-                  const s = series.find((x) => x.clave === nombre);
-                  return (
-                    <div className="flex w-full items-center gap-2">
-                      <span
-                        aria-hidden="true"
-                        className="size-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: s?.color }}
-                      />
-                      <span className="text-muted-foreground-strong">{s?.nombre ?? nombre}</span>
-                      <span className="ml-auto pl-4 font-bold text-foreground tabular-nums">
-                        {formatNumero(Number(valor))}
-                      </span>
-                    </div>
-                  );
-                }}
-              />
-            }
-          />
-          {series.map((s, i) => (
-            <Area
-              key={s.clave}
-              dataKey={s.clave}
-              name={s.clave}
-              type="monotone"
-              stroke={s.color}
-              strokeWidth={s.grosor}
-              fill={i === 0 ? `url(#${idDegrade})` : "none"}
-              dot={{ r: 3, fill: s.color, stroke: "var(--color-surface)", strokeWidth: 1 }}
-              activeDot={{ r: 5, strokeWidth: 2, stroke: "var(--color-surface)", fill: s.color }}
-              isAnimationActive={!reducido}
+          <AreaChart
+            accessibilityLayer
+            data={filas}
+            margin={{ top: 8, right: MARGEN_DERECHO, bottom: 0, left: MARGEN_IZQUIERDO }}
+          >
+            <defs>
+              <linearGradient id={idDegrade} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={series[0]?.color} stopOpacity={OPACIDAD_AREA} />
+                <stop offset="100%" stopColor={series[0]?.color} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid vertical={false} />
+            <YAxis
+              type="number"
+              domain={[0, valoresEje[valoresEje.length - 1]]}
+              ticks={valoresEje}
+              interval={0}
+              allowDecimals={false}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={6}
+              width="auto"
+              tickFormatter={(valor: number) => formatNumero(valor)}
             />
-          ))}
-        </AreaChart>
-      </ChartContainer>
+            <XAxis
+              dataKey="clave"
+              ticks={etiquetas.indices.map((i) => datos[i].clave)}
+              interval={0}
+              height={32}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={0}
+              tick={dibujarEtiqueta}
+            />
+            <ChartTooltip
+              cursor={{ strokeWidth: 1.5 }}
+              content={
+                <ChartTooltipContent
+                  hideIndicator
+                  labelFormatter={(_, payload) => {
+                    const clave = payload?.[0]?.payload?.clave;
+                    return typeof clave === "string" ? (porClave.get(clave)?.detalle ?? "") : "";
+                  }}
+                  formatter={(valor, nombre) => {
+                    const s = series.find((x) => x.clave === nombre);
+                    return (
+                      <div className="flex w-full items-center gap-2">
+                        <span
+                          aria-hidden="true"
+                          className="size-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: s?.color }}
+                        />
+                        <span className="text-muted-foreground-strong">{s?.nombre ?? nombre}</span>
+                        <span className="ml-auto pl-4 font-bold text-foreground tabular-nums">
+                          {formatNumero(Number(valor))}
+                        </span>
+                      </div>
+                    );
+                  }}
+                />
+              }
+            />
+            {/* En espera no se montan: Recharts anima al montar, así que la
+                animación empieza cuando el gráfico entra a la pantalla. */}
+            {fase !== "espera" && series.map((s, i) => (
+              <Area
+                key={s.clave}
+                dataKey={s.clave}
+                name={s.clave}
+                type="monotone"
+                stroke={s.color}
+                strokeWidth={s.grosor}
+                fill={i === 0 ? `url(#${idDegrade})` : "none"}
+                dot={{ r: 3, fill: s.color, stroke: "var(--color-surface)", strokeWidth: 1 }}
+                activeDot={{ r: 5, strokeWidth: 2, stroke: "var(--color-surface)", fill: s.color }}
+                isAnimationActive={fase === "animando"}
+              />
+            ))}
+          </AreaChart>
+        </ChartContainer>
+      </div>
       {rango && (
         <p className="mt-1 text-right text-xs text-muted-foreground tabular-nums">
           {rango}

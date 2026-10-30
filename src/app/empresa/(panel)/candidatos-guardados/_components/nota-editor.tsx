@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Check, Pencil, X } from "lucide-react";
 import { actualizarNotaGuardado } from "@/app/empresa/(panel)/candidatos-guardados/actions";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
+import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
@@ -12,12 +13,19 @@ import { LARGO_MAXIMO } from "@/lib/validaciones";
 type Props = {
   guardadoId: string;
   notaInicial: string | null;
+  className?: string;
 };
 
-export function NotaGuardadoEditor({ guardadoId, notaInicial }: Props) {
+/**
+ * Nota privada de un candidato guardado: recuadro amarillo suave con el
+ * rótulo "NOTA PRIVADA", el lápiz para editarla, el texto y la ayuda.
+ */
+export function NotaGuardadoEditor({ guardadoId, notaInicial, className }: Props) {
   const { pendiente: isPending, ejecutar } = useAccion();
   const [editing, setEditing] = useState(false);
   const [nota, setNota] = useState(notaInicial ?? "");
+  const idRotulo = useId();
+  const idAyuda = useId();
 
   function handleSave() {
     ejecutar(async () => {
@@ -27,62 +35,81 @@ export function NotaGuardadoEditor({ guardadoId, notaInicial }: Props) {
     });
   }
 
-  if (!editing) {
-    return (
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1">
-          <p className="text-xs font-medium text-muted-foreground">Nota privada</p>
-          <p className="mt-0.5 text-sm text-foreground">
-            {nota || <span className="italic text-muted-foreground">Sin nota</span>}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-tinted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-          aria-label="Editar nota"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-2">
-      <p className="text-xs font-medium text-muted-foreground">Nota privada</p>
-      <textarea
-        value={nota}
-        onChange={(e) => setNota(e.target.value)}
-        rows={3}
-        className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        placeholder="Escribí una nota privada…"
-        maxLength={LARGO_MAXIMO.nota}
-        disabled={isPending}
-        autoFocus
-      />
-      <ContadorCaracteres actual={nota.length} maximo={LARGO_MAXIMO.nota} />
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isPending}
-          aria-busy={isPending}
-          className="btn-primario min-h-11 px-3 text-xs sm:min-h-9"
+    <div
+      className={cn(
+        "flex min-w-0 flex-col gap-2 rounded-[14px] border border-aviso-fila-borde bg-accent/15 px-4 py-3",
+        className,
+      )}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p
+          id={idRotulo}
+          className="text-xs font-extrabold tracking-[0.06em] text-nota-rotulo uppercase"
         >
-          {isPending ? <Spinner /> : <Check className="h-3.5 w-3.5" />}
-          {isPending ? "Guardando…" : "Guardar"}
-        </button>
-        <button
-          type="button"
-          onClick={() => { setNota(notaInicial ?? ""); setEditing(false); }}
-          disabled={isPending}
-          className="btn-secundario inline-flex min-h-11 items-center gap-1.5 px-3 text-xs font-medium sm:min-h-9"
-        >
-          <X className="h-3.5 w-3.5" />
-          Cancelar
-        </button>
+          Nota privada
+        </p>
+        {!editing && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="-my-2 -mr-2 flex size-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-nota-rotulo outline-none transition-colors hover:bg-accent/25 focus-visible:shadow-[var(--sombra-foco)]"
+            aria-label="Editar nota"
+          >
+            <Pencil className="size-[18px]" aria-hidden="true" />
+          </button>
+        )}
       </div>
+
+      {editing ? (
+        <>
+          <textarea
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            rows={3}
+            aria-labelledby={idRotulo}
+            aria-describedby={idAyuda}
+            className="w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            placeholder="Escribí una nota privada…"
+            maxLength={LARGO_MAXIMO.nota}
+            disabled={isPending}
+            autoFocus
+          />
+          <ContadorCaracteres actual={nota.length} maximo={LARGO_MAXIMO.nota} />
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isPending}
+              aria-busy={isPending}
+              className="btn-primario btn-chico"
+            >
+              {isPending ? <Spinner /> : <Check aria-hidden="true" />}
+              {isPending ? "Guardando…" : "Guardar"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setNota(notaInicial ?? "");
+                setEditing(false);
+              }}
+              disabled={isPending}
+              className="btn-neutro btn-chico"
+            >
+              <X aria-hidden="true" />
+              Cancelar
+            </button>
+          </div>
+        </>
+      ) : (
+        <p className="text-[15px] leading-normal whitespace-pre-line break-words text-foreground">
+          {nota || <span className="text-muted-foreground-strong italic">Sin nota</span>}
+        </p>
+      )}
+
+      <p id={idAyuda} className="text-[13px] text-muted-foreground-strong">
+        Solo la ve tu empresa.
+      </p>
     </div>
   );
 }

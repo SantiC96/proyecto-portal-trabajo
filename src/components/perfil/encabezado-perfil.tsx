@@ -19,6 +19,7 @@ import type { ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
 import { MensajeError, type AjusteAvatar, type FotoPerfil } from "@/components/perfil/piezas";
+import { cn } from "@/lib/utils";
 
 // La empresa usa la foto de perfil como logo: mismo archivo, mismas
 // validaciones, otros textos.
@@ -38,7 +39,7 @@ const TEXTOS = {
     subir: "Subir logo",
     cambiar: "Cambiar logo",
     guardar: "Guardar logo",
-    quitar: "Quitar logo",
+    quitar: "Eliminar logo",
     ver: "Ver y ajustar logo",
     alt: "Logo de",
     tituloQuitar: "¿Quitar el logo de la empresa?",
@@ -67,6 +68,8 @@ export function EncabezadoPerfil({
   tituloSeccion,
   destacado = false,
   lateral,
+  debajo,
+  accionesAlCostado = false,
 }: {
   avatarActivo: FotoPerfil | null;
   /** Nombre grande: la persona, o la empresa en su perfil. */
@@ -86,6 +89,13 @@ export function EncabezadoPerfil({
   destacado?: boolean;
   /** Recuadro a la derecha (debajo en angosto), solo con `destacado`. */
   lateral?: ReactNode;
+  /** Debajo del subtítulo, solo con `destacado` (el badge del estado de la empresa). */
+  debajo?: ReactNode;
+  /**
+   * Solo con `destacado` (perfil de la empresa): los botones van a la derecha
+   * (debajo en angosto), en una sola fila, en lugar de debajo del nombre.
+   */
+  accionesAlCostado?: boolean;
 }) {
   const router = useRouter();
   const textos = TEXTOS[variante];
@@ -219,7 +229,12 @@ export function EncabezadoPerfil({
           </div>
         </div>
       ) : (
-        <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
+        <div
+          className={cn(
+            "flex justify-center gap-2 sm:justify-start",
+            accionesAlCostado ? "flex-nowrap" : "flex-wrap",
+          )}
+        >
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
@@ -308,15 +323,21 @@ export function EncabezadoPerfil({
             <div className="shrink-0">{fotoInteractiva}</div>
             <div className="flex min-w-0 flex-col gap-3">
               <div>
-                <p className="titulo-display text-[26px] leading-[1.15] break-words text-heading sm:text-[32px]">
+                <p
+                  className={cn(
+                    "titulo-display text-[26px] leading-[1.15] break-words text-heading",
+                    variante === "logo" ? "sm:text-[30px]" : "sm:text-[32px]",
+                  )}
+                >
                   {nombreCompleto || "Sin nombre"}
                 </p>
                 <p className="mt-1 text-[15px] font-semibold break-words text-primary">{subtitulo}</p>
+                {debajo && <div className="mt-2.5">{debajo}</div>}
               </div>
-              {botones}
+              {!accionesAlCostado && botones}
             </div>
           </div>
-          {lateral}
+          {accionesAlCostado ? <div className="flex shrink-0 justify-center">{botones}</div> : lateral}
         </div>
         <div className="flex flex-col gap-3">{ayudaYError}</div>
         {extras}

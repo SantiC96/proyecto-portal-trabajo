@@ -14,14 +14,20 @@ import { cn } from "@/lib/utils";
  * devuelve el foco al botón, y un clic afuera también cierra. La opción
  * elegida lleva aria-current. Sin JavaScript, los links se ven en una fila
  * (noscript).
+ *
+ * Con `enBanda` (indicadores de la empresa) va sobre la banda verde: el label
+ * "Período" visible arriba y el botón blanco de 48 px con texto
+ * `primary-hover`; en el celular, a todo el ancho.
  */
 export function SelectorPeriodoDesplegable({
   ruta,
   periodo,
+  enBanda = false,
   className,
 }: {
   ruta: string;
   periodo: Periodo;
+  enBanda?: boolean;
   className?: string;
 }) {
   const [abierto, setAbierto] = useState(false);
@@ -54,14 +60,27 @@ export function SelectorPeriodoDesplegable({
   }, [abierto]);
 
   return (
-    <div ref={contenedor} className={cn("relative w-full sm:w-auto", className)}>
+    <div
+      ref={contenedor}
+      className={cn("relative w-full sm:w-auto", enBanda && "selector-periodo-banda", className)}
+    >
+      {enBanda && (
+        <span aria-hidden="true" className="mb-1.5 block text-[13px] font-semibold text-sidebar-texto">
+          Período
+        </span>
+      )}
       <button
         ref={boton}
         type="button"
         aria-expanded={abierto}
         aria-controls={idLista}
         onClick={() => setAbierto((v) => !v)}
-        className="flex h-[50px] w-full items-center gap-2.5 rounded-[var(--radius-xl)] border border-border bg-surface px-4 text-[15px] font-bold text-heading shadow-[var(--sombra-selector)] outline-none transition-colors duration-150 hover:border-border-strong focus-visible:shadow-[var(--sombra-foco)] sm:w-auto sm:min-w-[232px]"
+        className={cn(
+          "flex w-full items-center gap-2.5 bg-surface px-4 text-[15px] font-bold transition-colors duration-150 sm:w-auto sm:min-w-[232px]",
+          enBanda
+            ? "h-12 rounded-[var(--radius-lg)] text-primary-hover hover:bg-sidebar-texto focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            : "h-[50px] rounded-[var(--radius-xl)] border border-border text-heading shadow-[var(--sombra-selector)] outline-none hover:border-border-strong focus-visible:shadow-[var(--sombra-foco)]",
+        )}
       >
         <Calendar aria-hidden="true" className="size-5 shrink-0 text-primary" />
         <span className="sr-only">Período: </span>
@@ -69,7 +88,8 @@ export function SelectorPeriodoDesplegable({
         <ChevronDown
           aria-hidden="true"
           className={cn(
-            "size-5 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none",
+            "size-5 shrink-0 transition-transform duration-200 motion-reduce:transition-none",
+            enBanda ? "text-primary" : "text-muted-foreground",
             abierto && "rotate-180",
           )}
         />
@@ -112,7 +132,10 @@ export function SelectorPeriodoDesplegable({
               key={p}
               href={hrefPeriodo(ruta, p)}
               aria-current={p === periodo ? "page" : undefined}
-              className="inline-flex min-h-11 items-center text-sm font-bold text-primary"
+              className={cn(
+                "inline-flex min-h-11 items-center text-sm font-bold",
+                enBanda ? "text-primary-foreground underline" : "text-primary",
+              )}
             >
               {PERIODO_LABEL[p]}
             </a>

@@ -301,6 +301,7 @@ Texto de estado suelto sobre blanco (sin fondo):
   `pastilla-gris`     `#DDE3DF`   fondo de la cantidad de las pestañas y de la tarjeta de pendiente en cero
   `grafico-verde-claro` `#8CC63F` solo indicadores de la oficina: contrataciones, derivadas (con texto `heading`, 7,5:1)
   `grafico-gris`      `#C5CEC8`   solo indicadores de la oficina: rechazadas (con texto `heading`, 9,5:1)
+  `nota-rotulo`       `#5C4500`   "NOTA PRIVADA" de Candidatos guardados (sobre el amarillo suave de la nota)
 
 Radio de las tarjetas de los indicadores de la oficina: `--radius-indicador`
 (18 px). Sombra del selector de período: `--sombra-selector`
@@ -630,8 +631,8 @@ sección visible con `IntersectionObserver` y `aria-current`.
 
 `EncabezadoPerfil destacado` (`src/components/perfil/encabezado-perfil.tsx`)
 reemplaza a la tarjeta "Foto" (el título queda solo para lectores de
-pantalla). Los perfiles de la empresa y de la oficina siguen con el
-encabezado de siempre.
+pantalla). La empresa usa la misma tarjeta (ver «Mi perfil de la
+empresa», más abajo); la oficina sigue con el encabezado de siempre.
 
 -   `.tarjeta .tarjeta-panel`: la foto o las iniciales (96 px; 76 en el
     celular; clic para verla y ajustarla), el nombre en Georgia
@@ -676,6 +677,47 @@ en **modo lectura** al entrar:
     .btn-chico` con el ícono `Pencil`). Su nombre accesible nombra la
     tarjeta ("Editar datos personales"). "Cambiar contraseña" usa
     `.btn-secundario .btn-chico`.
+
+### Mi perfil de la empresa (`/empresa/perfil`)
+
+`EncabezadoPagina banda` "Mi perfil" con su bajada y, dentro de
+`EdicionPerfil` (una sola tarjeta en edición a la vez):
+
+-   **Tarjeta del logo**: `EncabezadoPerfil destacado accionesAlCostado
+    variante="logo"`. El logo (o las iniciales de la empresa sobre
+    `primary`) en 96 px (76 en el celular); la razón social en Georgia de
+    30 px (26 en el celular); "Contacto: [persona]" (15 px 600 `primary`)
+    y, debajo (`debajo`), el badge del estado de la empresa (En revisión
+    `warning`, Aprobada `success`, Rechazada `danger`). A la derecha
+    (debajo en angosto), en una sola fila (`flex-nowrap`): "Cambiar logo"
+    (`.btn-secundario`, `Upload`) y "Eliminar logo" (`.btn-icono`
+    `.btn-peligro-borde`, solo `Trash2`, con su confirmación; sin logo no
+    se muestra). Debajo, la ayuda de formatos. Sin el anillo de
+    completitud.
+-   Dos tarjetas lado a lado desde `lg` (apiladas antes), `SeccionPerfil`
+    con `GrillaLectura` (etiqueta arriba, valor abajo; el vacío como "—"
+    gris, `chipVacio={false}`). Desde `lg` miden lo mismo: la fila con
+    `align-items: stretch` y las dos tarjetas con `height: 100%`
+    (`lg:items-stretch lg:*:h-full`); en el celular, cada una con su alto.
+    Los íconos de las tres tarjetas (contacto, empresa y contraseña) van
+    en el mismo cuadrado `primary` de `IconoCuadro` (40 px, ícono blanco).
+    -   **Datos de contacto** (`IdCard`): `DatosContactoForm
+        variante="tarjeta"`, con "Editar datos" (`BotonEditar`, `.btn-neutro
+        .btn-chico` con texto e ícono `primary`, `primary-hover` al pasar
+        el mouse; fondo y borde los del neutro). Solo en este perfil: el
+        "Editar" del postulante sigue neutro. La edición es la de siempre
+        (nombre, apellido, teléfono; el email no se edita) con los campos
+        del perfil y `PieEdicion` ("Guardar datos").
+    -   **Datos de la empresa** (`Building2` en el cuadrado `primary`):
+        razón social, CUIT, rubro, estado y descripción (a
+        todo el ancho), de solo lectura. Debajo, un recuadro
+        `surface-tinted` (radio 12) con `Lock` y "Para corregir estos
+        datos, comunicate con la Oficina de Empleo." en `primary-hover`
+        600; si la solicitud fue rechazada, en su lugar "Corregir y
+        reenviar solicitud" (primario).
+-   **Contraseña**: `SeccionContrasena` con `Lock` en el cuadrado
+    `primary` y "Cambiar contraseña" (`.btn-secundario`) a la derecha,
+    que despliega el formulario de siempre.
 
 `.btn-chico` (`globals.css`, después de las medidas comunes): padding
 12 px, texto 14 px, ícono de 16 px y 36 px de alto desde `sm`; en el
@@ -847,8 +889,9 @@ En mobile las acciones pasan debajo del título.
 
 `EncabezadoPagina banda`: en las seis pantallas del postulante (Panel,
 Mis postulaciones, Invitaciones, Mis cursos, Notificaciones y Mi perfil) y
-en cinco de la empresa (Panel, Mis ofertas, el detalle de la oferta,
-Publicar oferta y Editar oferta). Sin
+en nueve de la empresa (Panel, Mis ofertas, el detalle de la oferta,
+Publicar oferta, Editar oferta, Candidatos guardados, Indicadores,
+Notificaciones y Mi perfil). Sin
 la prop, el encabezado de siempre en el resto. Clases `.encabezado-banda*`
 de `globals.css`.
 
@@ -883,6 +926,10 @@ de `globals.css`.
     entra). En el detalle de la oferta, el estado en una pastilla blanca de
     30 px, radio 15, texto `primary-hover` (`#00532A`) 14 px 700 con su
     punto.
+-   Con el selector de período desplegable en las acciones (indicadores
+    de la empresa, `.selector-periodo-banda`), la banda pasa a `overflow:
+    visible` y `z-index` 20 para que la lista salga por debajo; la
+    decoración ya se recorta en su propia capa.
 -   Con banda no se muestra el escudo de agua del fondo
     (`.app-contenido:has(.encabezado-banda)::after`).
 -   Mientras carga (`loading.tsx`), la banda ya está con su título; lo que
@@ -939,7 +986,7 @@ clases sueltas de cada pantalla.
 `.btn-icono` (fuera de capa, después de las medidas comunes): botón de
 solo ícono de 44 × 44, sin padding, ícono de 20 px. Siempre con
 `aria-label` y `title` con el mismo texto. Lo usan los botones de borrar
-un archivo: "Quitar foto" (o "Quitar logo") de Mi perfil y "Eliminar CV
+un archivo: "Quitar foto" (o "Eliminar logo") de Mi perfil y "Eliminar CV
 «nombre»" de cada CV, con `Trash2` en `.btn-peligro-borde`
 (`DialogoConfirmacion` con `etiquetaBoton`, `ayudaBoton` y
 `claseBoton="btn-icono"`). La confirmación es la de siempre.
@@ -2052,11 +2099,12 @@ perfil.
     la derecha, centrado; en el celular, abajo.
 -   Debajo, `Paginacion` simple ("Mostrando X–Y de Z").
 
-## Notificaciones del postulante
+## Notificaciones del postulante y de la empresa
 
 `PaginaNotificaciones banda` usa `ListaNotificacionesAgrupada`
-(`src/components/notificaciones/lista-agrupada.tsx`). Las listas de la
-empresa y de la oficina no cambian.
+(`src/components/notificaciones/lista-agrupada.tsx`); la empresa pasa
+además `rol="empresa"`, que cambia solo los íconos y colores (abajo). La
+lista de la oficina no cambia.
 
 -   **Grupos por fecha** (`src/lib/grupos-notificaciones.ts`), dentro de la
     página que se está viendo (la paginación no cambia): "Últimas 24
@@ -2074,6 +2122,12 @@ empresa y de la oficina no cambian.
     link (15 px 700 `primary`, 44 px de alto) a la derecha; en el
     celular, debajo del texto. Las nuevas, con el punto `accent` y el
     fondo resaltado de siempre; se marcan como leídas igual que antes.
+-   **Íconos de la empresa** (`IconoCuadro` de 40 px): `Send` `teal`
+    (candidato derivado), `CircleCheck` `success` (oferta aprobada y
+    solicitud aprobada), `CircleX` `danger` (oferta rechazada y solicitud
+    rechazada), `Archive` `neutral` (oferta vencida y candidato retirado)
+    y `CalendarClock` `info` (oferta por vencer). Un tipo desconocido, su
+    ícono de siempre en `neutral` sobre `secondary`.
 -   No hay chips de fecha, lugar o link de las entrevistas: la tabla
     `notificaciones` no guarda esos datos en columnas propias (están
     dentro del texto).
@@ -2154,6 +2208,36 @@ separados por 28 px:
 4.  Si hay ofertas vencidas o por vencer, la `Franja` de aviso de siempre,
     debajo de todo.
 
+## Candidatos guardados (`/empresa/candidatos-guardados`)
+
+`BotonVolver destacado` y `EncabezadoPagina banda` con el título y la
+bajada. No hay buscador: la pantalla no tiene búsqueda por nombre (los
+nombres llegan de `candidato_para_empresa`, uno por candidato, después
+de paginar). Cada candidato es una `.tarjeta .tarjeta-panel` en grilla
+(dentro de un `@container`):
+
+-   desde 672 px de ancho (`@2xl`): `64px / 1.2fr / 1fr / auto`; más
+    angosta, `52px / 1fr` con la nota y las acciones a todo el ancho;
+-   la foto o las iniciales en un círculo de 64 px (52 en angosto;
+    `AvatarAjustado size="tarjeta"`; la foto sale de
+    `fotosDeCandidatosEmpresa`, como en el panel);
+-   el nombre (`<h2>` 19 px 800), el email y el teléfono (15 px
+    `muted-foreground-strong`) con `Mail` y `Phone` `primary` de 16 px;
+    chips grises (`secondary`, radio 8, 13 px 600 `control-foreground`)
+    con "Conocido por: [oferta]" (`Briefcase`) y "Guardado el …"
+    (`Bookmark`);
+-   la nota privada (`NotaGuardadoEditor`): recuadro con fondo `accent` al
+    15 %, borde `aviso-fila-borde` (`#EADDB0`), radio 14; el rótulo "NOTA
+    PRIVADA" (12 px 800, `nota-rotulo` `#5C4500`), el lápiz de 44 px
+    (`aria-label` "Editar nota"; la edición de siempre), el texto (15 px)
+    y "Solo la ve tu empresa." (13 px);
+-   las acciones en columna (en fila y repartidas en angosto): "Ver
+    perfil" (`.btn-secundario .btn-chico`) y "Quitar"
+    (`.btn-peligro-borde .btn-chico`, `aria-label` "Quitar a [nombre] de
+    guardados", con la confirmación de siempre).
+
+Debajo, `Paginacion` simple ("Mostrando X–Y de Z").
+
 ### Cuenta en revisión o rechazada
 
 Mientras la empresa no está aprobada, todo lo que está bajo
@@ -2186,32 +2270,57 @@ dentro del `AppShell` y a todo el ancho: `EncabezadoPagina` "Hola,
 
 ## Indicadores (oficina y empresa)
 
-`/empresa/indicadores`: `EncabezadoPagina` con el control segmentado del
-período a la derecha (debajo hasta xl), una fila de tarjetas de número y
-los gráficos, cada uno en su `TarjetaGrafico`. `/admin/indicadores` tiene
-su propio diseño (ver "Indicadores de la oficina", más abajo), con las
-mismas piezas de gráficos. Los
-números salen de las funciones de la base (decisiones 019 y 021); la
-página los pide en el servidor y los pasa a los gráficos por props.
+`/empresa/indicadores` (ronda 8): `EncabezadoPagina banda` con
+"Indicadores", su bajada y el selector de período a la derecha; una fila
+de tarjetas de número y los gráficos, cada uno en su `TarjetaGrafico
+variante="empresa"`. `/admin/indicadores` tiene su propio diseño (ver
+"Indicadores de la oficina", más abajo), con las mismas piezas de
+gráficos. Los números salen de las funciones de la base (decisiones 019 y
+021); la página los pide en el servidor y los pasa a los gráficos por
+props. El modo de datos de ejemplo (`INDICADORES_DE_EJEMPLO`) vale para
+las dos.
 
-### Control segmentado (`SelectorPeriodo`)
+### Selector de período en la banda (empresa)
 
-`src/components/indicadores/selector-periodo.tsx`. Fondo
-`secondary-hover`, padding 4, radio 12. Cada opción es un link de 40 px
-(44 en el celular), 14 px 700; la elegida en `surface` con texto `primary`
-y una sombra suave, marcada con `aria-current` (en un link no vale
-`aria-pressed`). "Últimos 30 días", "Últimos 90 días", "Este año" y
-"Todo", con el mismo `?periodo=` de siempre. En el celular ocupa todo el
-ancho, en dos filas. Solo en la empresa: la oficina usa el selector
-desplegable.
+`SelectorPeriodoDesplegable enBanda` (el de la oficina, abajo): arriba,
+el label "Período" (13 px 600 `sidebar-texto` `#E3F0E8`); el botón
+blanco de 48 px, radio 12, sin borde ni sombra, con `Calendar` y
+`ChevronDown` `primary` y el período en 15 px 700 `primary-hover`
+(`#00532A`); hover `sidebar-texto`; foco con un `outline` de 3 px
+`accent` (`#F2B705`) separado 2 px. En el celular, a todo el ancho. La
+lista y el `?periodo=` son los de siempre.
 
 ### Tarjeta de número (`TarjetaNumero`)
 
-`src/components/indicadores/tarjeta-numero.tsx`. `.tarjeta` con padding
-20: un ícono blanco en un cuadrado `primary` de 48 px con radio 12, el
-número en 36 px 800 (28 en el celular), la etiqueta en 15 px 700 y un
-subtítulo de 13 px. Con `href`, toda la tarjeta es el link (chevron arriba
-a la derecha). `GrillaNumeros`: 4 columnas, 2 en el celular.
+`src/components/indicadores/tarjeta-numero.tsx`. La tarjeta de los
+cuadros de estado (`CLASE_CUADRO_ESTADO`: `.tarjeta .tarjeta-panel` con
+filete superior de 4 px, `claseFilete`): el ícono en un `IconoCuadro` de
+40 px (`claseIcono`), el número en 38 px 800 (30 en el celular), la
+etiqueta en 15 px 700 `heading` y una línea de contexto de 13 px `muted`.
+Con `href`, toda la tarjeta es el link (chevron arriba a la derecha).
+`GrillaNumeros`: 4 columnas, 2 en el celular. En la empresa: Ofertas
+vigentes (`Briefcase`, `primary`), Candidatos derivados (`Send`, `teal`),
+Seleccionados (`Award`, `accent` con el ícono `accent-foreground`) y Días
+hasta la contratación (`Clock`, `info`).
+
+### Donas y Por oferta (empresa)
+
+-   "Tus ofertas" y "Tus candidatos" lado a lado desde `lg` (apiladas
+    antes), con `GraficoDona variante="anillo"` (abajo). Colores: ofertas
+    vigentes `success`, en revisión `accent`, rechazadas y vencidas
+    `danger`, cerradas `neutral`; candidatos seleccionados `success`, no
+    seleccionados `neutral` y en proceso `info`. La conclusión, en el
+    recuadro verde suave de abajo, dice la parte mayor sobre el total
+    ("2 de tus 5 ofertas están vigentes.", "Todos tus 3 candidatos están
+    en proceso.", "Tu única oferta está vigente."). "Ver datos" al pie,
+    como siempre; con total 0, el estado vacío corto de la dona.
+-   "Por oferta" (`Briefcase`) con "Ver datos en tabla" en el encabezado.
+    Debajo, `LeyendaMedidasOferta` y las tarjetas en 2 columnas desde 672
+    px de ancho de la tarjeta (1 antes). Cada una con el filete superior
+    del color de su estado (`ACENTO_ESTADO_OFERTA`), el título (16 px 800,
+    link al detalle salvo en el modo de ejemplo) y el badge del estado,
+    `BarrasOferta` y, al pie, separada por una línea `tabla-borde`,
+    "Vacantes cubiertas" con "M de N" y `BarraProgreso`.
 
 ### Tarjeta de gráfico (`TarjetaGrafico`)
 
@@ -2223,6 +2332,12 @@ un ícono, calculada con los datos ("Octubre fue el mes con más
 postulaciones: 34", "La mayoría de tus candidatos están en proceso"). Al
 final, **"Ver datos"** (`details`/`summary`, 44 px) despliega una tabla
 con los mismos números: es la alternativa al gráfico para quien no lo ve.
+Con `variante="empresa"`, la conclusión va **debajo** del gráfico, en un
+recuadro `surface-tinted` (radio 12, padding 12 × 16) con el texto
+`primary-hover`; y con `tablaEnEncabezado` la tabla no va en "Ver datos"
+al pie sino en "Ver datos en tabla" (`DesplegarTabla`: `.btn-neutro
+.btn-chico` con `Table2` a la derecha del título, `aria-expanded`), que
+la despliega debajo del encabezado.
 `IndicadorChico` (ícono en un cuadrado `secondary` de 40 px, número de 22
 px 800 y texto de 13 px) arma las tarjetas de resumen como "Proceso de la
 Oficina".
@@ -2234,8 +2349,8 @@ de shadcn/ui (`src/components/ui/chart.tsx`, Recharts) con los colores
 ajustados a los tokens: tooltip en `surface` con anillo `border`, texto de
 13 px, grilla `tabla-borde` y cursor `border-strong`. Todos llevan
 `accessibilityLayer` y un `role="img"` con un `aria-label` que resume el
-gráfico; no animan con `prefers-reduced-motion` (ni antes de conocer la
-preferencia).
+gráfico. Todos (también los de HTML y SVG propio) se dibujan la primera
+vez que entran a la pantalla (abajo, «Animación al verse»).
 
 -   **Paleta**, siempre en este orden (`PALETA_GRAFICOS`): `primary`
     #006833, `accent` #F2B705, `info` #1D4E9E, `muted-icon` #8A988F,
@@ -2257,11 +2372,56 @@ preferencia).
     también en la leyenda (fondo `secondary` y texto 800). Con total 0,
     un estado vacío corto en lugar de la dona. El total del centro no recibe
     eventos del puntero y el tooltip va por encima (`z-index` 10).
--   **Barras** (`BarrasOferta`): para comparar cantidades. Barras
-    horizontales de 16 px por oferta (derivados `primary`, entrevistas
-    `info`, seleccionados `accent`), con el valor al final de cada una y la
-    misma escala en todas las ofertas; la leyenda (`LeyendaMedidasOferta`)
-    va arriba de las tarjetas.
+-   **Dona anillo** (`GraficoDona variante="anillo"`, indicadores de la
+    empresa): SVG propio, sin Recharts ni tooltip. 170 px,
+    trazo de 14 sobre un anillo de fondo `secondary` (`#EEF1EF`), un
+    círculo por parte con `stroke-dasharray` empezando arriba y en sentido
+    horario, 1,5 de separación entre partes (ninguna si hay una sola), y
+    el total (34 px 800) con la unidad en el centro. Los tramos los
+    calcula `segmentosDona` (`segmentos-dona.ts`, sin imports): las partes
+    en 0 no tienen tramo pero siguen en la leyenda. Leyenda al costado
+    (debajo en angosto): cuadrado de color, nombre, cantidad y porcentaje.
+-   **Barras** (`BarrasOferta`): para comparar cantidades. HTML del
+    servidor: una fila por medida con la etiqueta (13 px 600, 104 px) a la
+    izquierda, una barra de 12 px sobre `secondary` (derivados `primary`,
+    entrevistas `info`, seleccionados `accent`) y el número (13 px 700) a
+    la derecha, con la misma escala en todas las ofertas; la leyenda
+    (`LeyendaMedidasOferta`) va arriba de las tarjetas.
+
+#### Animación al verse
+
+`useAnimarAlVerse` y su contenedor `AnimarAlVerse`
+(`src/components/indicadores/animar-al-verse.tsx`): una sola pieza para
+todos los gráficos de los indicadores (empresa y oficina).
+
+-   **Cuándo:** la primera vez que el gráfico entra a la pantalla
+    (`IntersectionObserver`, 40 px antes del borde de abajo). Lo que ya se
+    ve al cargar se anima al cargar. No se repite al volver con el scroll;
+    al cambiar de período el contenido se vuelve a montar y se anima de
+    nuevo.
+-   **Fases:** `final` (el gráfico completo, lo que manda el servidor),
+    `espera` (en cero, puesta antes de pintar para que nunca se vea
+    completo y después vacío) y `animando`. Sin JavaScript, con
+    `prefers-reduced-motion`, al imprimir o si el `IntersectionObserver`
+    no está o falla, queda en `final`: completo y sin animación.
+-   **Donas anillo:** cada tramo va de 0 a su largo (`stroke-dasharray`,
+    `.grafico-tramo`), en orden. `tiemposDona` (`segmentos-dona.ts`)
+    reparte los 800 ms como si el anillo entero se trazara en ease-out:
+    cada tramo empieza cuando el trazo llega a su inicio. El total del
+    centro aparece con el anillo (`.grafico-centro`, opacidad, 800 ms).
+-   **Donas de Recharts** (oficina): `Pie` se monta recién al verse, con
+    `animationBegin` 0, 800 ms y `ease-out`; el total del centro aparece
+    con ella. **Área:** las líneas se montan al verse con la animación de
+    Recharts; los ejes y la grilla están desde el principio.
+-   **Barras** (Por oferta, vacantes cubiertas con
+    `BarraProgreso animarIndice` y `BarrasVerticales` de la oficina):
+    crecen desde 0 con `transform: scale` (`.grafico-barra-x` desde la
+    izquierda, `.grafico-barra-y` desde abajo), 600 ms `ease-out`, 60 ms
+    entre una y otra (`--i`).
+-   **Sin saltos:** el espacio del gráfico está reservado desde el
+    principio y solo se animan `transform`, `stroke-dasharray` y
+    `opacity`; los anchos, altos y largos finales son los del servidor. El
+    contenido y los `aria-label` no cambian.
 
 ### Indicadores de la oficina (`/admin/indicadores`)
 
@@ -2322,7 +2482,9 @@ px `primary` antes del texto. Grillas con gap 16 (24 desde lg).
 -   **Aparición al scroll** (`AparecerAlScroll`): lo que está debajo de la
     pantalla al cargar aparece al entrar (opacidad y 16 px hacia arriba,
     400 ms, una vez). Lo que ya se ve no se oculta; sin JavaScript o con
-    movimiento reducido, todo se ve directamente. No mueve el layout.
+    movimiento reducido, todo se ve directamente. No mueve el layout. Los
+    gráficos de adentro, además, se dibujan al verse («Animación al
+    verse», en Gráficos).
 
 Ver `docs/decisiones/032-graficos-de-indicadores.md`.
 

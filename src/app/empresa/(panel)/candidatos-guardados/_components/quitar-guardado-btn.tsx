@@ -8,21 +8,23 @@ import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
 type Props = {
   guardadoId: string;
   nombre: string;
+  claseBoton?: string;
 };
 
-export function QuitarGuardadoBtn({ guardadoId, nombre }: Props) {
+export function QuitarGuardadoBtn({ guardadoId, nombre, claseBoton }: Props) {
   const router = useRouter();
 
   return (
     <DialogoConfirmacion
       textoBoton={
         <>
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 aria-hidden="true" />
           Quitar
         </>
       }
-      estiloBoton="peligro"
-      claseBoton="px-3 text-xs sm:min-h-9"
+      etiquetaBoton={`Quitar a ${nombre} de guardados`}
+      estiloBoton="peligroBorde"
+      claseBoton={claseBoton}
       titulo="¿Quitar candidato guardado?"
       descripcion={
         <>

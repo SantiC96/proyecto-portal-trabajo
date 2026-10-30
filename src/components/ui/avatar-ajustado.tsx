@@ -9,6 +9,8 @@ const sizeMap = {
   md: { wrapper: "h-14 w-14", icon: "h-7 w-7",   texto: "text-lg",  px: 56 },
   ficha: { wrapper: "h-[72px] w-[72px]", icon: "h-9 w-9", texto: "text-2xl", px: 72 },
   lg: { wrapper: "h-24 w-24", icon: "h-12 w-12", texto: "text-3xl", px: 96 },
+  // Candidatos guardados: 52 px y 64 px cuando la tarjeta (un @container) es ancha.
+  tarjeta: { wrapper: "h-[52px] w-[52px] @2xl:h-16 @2xl:w-16", icon: "h-7 w-7", texto: "text-lg", px: 64 },
 };
 
 const DEFAULT_AJUSTE = { x: 50, y: 50, zoom: 1 };
@@ -17,7 +19,7 @@ interface AvatarAjustadoProps {
   src?: string | null;
   alt?: string;
   ajuste?: { x: number; y: number; zoom: number };
-  size?: "sm" | "nav" | "lista" | "md" | "ficha" | "lg";
+  size?: keyof typeof sizeMap;
   className?: string;
   /** Sin foto (o si no carga) se muestran estas iniciales en lugar del ícono. */
   iniciales?: string;

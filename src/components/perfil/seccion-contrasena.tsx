@@ -45,11 +45,14 @@ const CLASE_VER_CONTRASENA =
 export function SeccionContrasena({
   id = "contrasena",
   icono,
+  claseIcono,
   claseBoton = "btn-secundario",
 }: {
   id?: string;
-  /** Ícono junto al título (perfil del postulante). */
+  /** Ícono junto al título (perfil del postulante y de la empresa). */
   icono?: LucideIcon;
+  /** Fondo del cuadrado del ícono (por defecto, `primary`). */
+  claseIcono?: string;
   claseBoton?: string;
 }) {
   const tarjeta = useTarjetaEditable(id, { titulo: "Contraseña" });
@@ -59,6 +62,7 @@ export function SeccionContrasena({
       id={id}
       titulo="Contraseña"
       icono={icono}
+      claseIcono={claseIcono}
       ayuda="Cambiá tu contraseña de acceso."
       acciones={
         !tarjeta.editando && (
