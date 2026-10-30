@@ -88,6 +88,14 @@
   --color-pastilla-gris:    #dde3df; /* cantidad de pestañas y tarjetas de pendiente */
   --color-aviso-borde:      #e6cf86; /* aviso de candidatos esperando respuesta (panel de la empresa) */
   --color-aviso-fila-borde: #eaddb0; /* filas de ese aviso */
+
+  /* Formulario de oferta de la empresa (ronda 8) */
+  --color-borde-campo-oferta:  #7f9488; /* borde de los campos del formulario */
+  --color-cancelar-borde:      #7f9488; /* botón Cancelar del formulario de oferta */
+  --color-cancelar-texto:      #2b3a31;
+  --color-cancelar-hover:      #f3f5f4;
+  --color-campo-lectura:      #f3f5f4; /* fondo de la ubicación de solo lectura */
+  --color-texto-ejemplo:      #6e7d74; /* título de ejemplo de la vista previa (texto grande: 4,3:1) */
   --color-separador-filtro: #c9d4cd; /* línea entre los estados y "Eliminadas" en Mis ofertas */
 
   /* Navegación lateral y barra del celular (sobre --color-primary) */
@@ -250,6 +258,23 @@ textarea:focus::placeholder { color: transparent; }
     color: var(--color-muted-foreground);
   }
 
+  /* Formulario de oferta: borde más marcado y foco con outline de 3 px. */
+  .formulario-oferta :is(.campo, .campo-grupo) {
+    border-color: var(--color-borde-campo-oferta);
+  }
+  .formulario-oferta .campo:focus-visible,
+  .formulario-oferta .campo-grupo:focus-within {
+    border-color: var(--color-primary);
+    box-shadow: none;
+    outline: 3px solid rgb(0 104 51 / 0.35);
+    outline-offset: 0;
+  }
+  .formulario-oferta .campo[aria-invalid="true"],
+  .formulario-oferta .campo-grupo:has([aria-invalid="true"]) {
+    border-color: var(--color-danger);
+    box-shadow: var(--sombra-error-campo);
+  }
+
   .etiqueta-campo {
     font-size: 15px;
     font-weight: 600;
@@ -295,6 +320,17 @@ textarea:focus::placeholder { color: transparent; }
   width: 18px;
   height: 18px;
   flex-shrink: 0;
+}
+/* Cancelar del formulario de oferta: neutro con borde gris marcado, para que se
+   vea como botón sin competir con el secundario verde. Fuera de capa para ganar
+   al border-transparent del componente Button. */
+.formulario-oferta .btn-cancelar {
+  border-color: var(--color-cancelar-borde);
+  color: var(--color-cancelar-texto);
+}
+.formulario-oferta .btn-cancelar:not(:disabled, [aria-disabled="true"]):hover {
+  background: var(--color-cancelar-hover);
+  color: var(--color-cancelar-texto);
 }
 /* Botón de solo ícono (borrar un archivo): 44 × 44, con aria-label y title.
    Va después de las medidas comunes para ganarles el padding. */
@@ -1092,6 +1128,19 @@ a.pie-dato:focus-visible { box-shadow: 0 0 0 3px rgb(255 255 255 / 0.6); }
 .tarjeta-oferta:hover:has(h3 a:focus-visible) { box-shadow: var(--sombra-foco), 0 12px 28px rgb(0 30 15 / 0.14); }
 @media (prefers-reduced-motion: no-preference) {
   .tarjeta-oferta:hover { translate: 0 -3px; }
+}
+
+/* Vista previa del formulario de oferta: lo que falta va como ejemplo, en
+   gris e itálica. El título (20 px 700, texto grande) usa texto-ejemplo; el
+   rubro (13 px) usa placeholder para llegar a 4,5:1. */
+.vista-previa-oferta[data-sin-titulo] .tarjeta-oferta h3 a {
+  color: var(--color-texto-ejemplo);
+  font-style: italic;
+}
+.vista-previa-oferta[data-sin-rubro] .tarjeta-oferta-etiquetas > :first-child {
+  color: var(--color-placeholder);
+  font-style: italic;
+  box-shadow: inset 0 0 0 1.5px var(--color-muted-icon);
 }
 .tarjeta-oferta-icono {
   position: absolute;

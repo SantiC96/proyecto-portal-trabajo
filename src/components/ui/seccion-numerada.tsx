@@ -11,11 +11,15 @@ type Props = {
   variante?: "tarjeta" | "plana";
   children: ReactNode;
   className?: string;
+  /** Clases del contenedor de los campos (por ejemplo, para que crezca con la sección). */
+  classNameCuerpo?: string;
 };
 
 /**
- * Sección de un formulario largo: el número en un círculo verde de 28 px y
- * el título de 18 px 800, con sus campos debajo.
+ * Sección de un formulario largo: el número en un círculo verde y el título,
+ * con sus campos debajo. En la tarjeta (formulario de oferta), círculo de
+ * 34 px, título de 19 px 800 y bajada de 14 px; plana (registro), círculo de
+ * 28 px y título de 18 px 800.
  */
 export function SeccionNumerada({
   numero,
@@ -25,26 +29,46 @@ export function SeccionNumerada({
   variante = "tarjeta",
   children,
   className,
+  classNameCuerpo,
 }: Props) {
+  const tarjeta = variante === "tarjeta";
   return (
     <section
       aria-labelledby={id}
-      className={cn(variante === "tarjeta" && "tarjeta px-4 py-5 sm:p-6", className)}
+      className={cn(tarjeta && "tarjeta px-4 py-5 sm:p-6", className)}
     >
       <div className="flex items-center gap-3">
         <span
           aria-hidden="true"
-          className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-primary-foreground"
+          className={cn(
+            "flex shrink-0 items-center justify-center rounded-full bg-primary font-extrabold text-primary-foreground",
+            tarjeta ? "size-[34px] text-[15px]" : "size-7 text-sm",
+          )}
         >
           {numero}
         </span>
-        <h2 id={id} className="text-lg leading-snug font-extrabold text-heading">
+        <h2
+          id={id}
+          className={cn(
+            "leading-snug font-extrabold text-heading",
+            tarjeta ? "text-[19px]" : "text-lg",
+          )}
+        >
           <span className="sr-only">{numero}. </span>
           {titulo}
         </h2>
       </div>
-      {descripcion && <p className="mt-1.5 text-sm text-muted-foreground sm:pl-10">{descripcion}</p>}
-      <div className="mt-5">{children}</div>
+      {descripcion && (
+        <p
+          className={cn(
+            "mt-1.5 text-sm text-muted-foreground",
+            tarjeta ? "sm:pl-[46px]" : "sm:pl-10",
+          )}
+        >
+          {descripcion}
+        </p>
+      )}
+      <div className={cn("mt-5", classNameCuerpo)}>{children}</div>
     </section>
   );
 }
