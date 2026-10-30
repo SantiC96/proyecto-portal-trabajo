@@ -45,11 +45,14 @@ export function CampoLectura({
   vacio = "—",
   className,
   estiloPerfil = false,
+  chipVacio = true,
 }: {
   label: string;
   valor: string;
   vacio?: string;
   className?: string;
+  /** Con `estiloPerfil`: false muestra el vacío como texto gris, sin chip (datos de solo lectura). */
+  chipVacio?: boolean;
   /**
    * Modo lectura de las tarjetas de Mi perfil del postulante: label 13 px 700
    * `neutral` arriba y valor 16 px abajo; el vacío, un ChipSinCompletar.
@@ -61,7 +64,12 @@ export function CampoLectura({
       <div className={`flex min-w-0 flex-col gap-1 ${className ?? ""}`}>
         <dt className="text-[13px] leading-[1.4] font-bold text-neutral">{label}</dt>
         <dd className="text-base leading-[1.45] whitespace-pre-line break-words text-control-foreground">
-          {valor || <ChipSinCompletar>{vacio}</ChipSinCompletar>}
+          {valor ||
+            (chipVacio ? (
+              <ChipSinCompletar>{vacio}</ChipSinCompletar>
+            ) : (
+              <span className="text-muted-foreground">{vacio}</span>
+            ))}
         </dd>
       </div>
     );
@@ -184,6 +192,7 @@ export function SeccionPerfil({
   ayuda,
   acciones,
   icono,
+  claseIcono,
   children,
 }: {
   id: string;
@@ -193,6 +202,8 @@ export function SeccionPerfil({
   acciones?: React.ReactNode;
   /** Ícono de la sección junto al título (perfil del postulante). */
   icono?: LucideIcon;
+  /** Fondo del cuadrado del ícono (por defecto, `primary`). */
+  claseIcono?: string;
   children?: React.ReactNode;
 }) {
   const idTitulo = `${id}-titulo`;
@@ -213,7 +224,7 @@ export function SeccionPerfil({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         {icono ? (
           <div className="flex min-w-0 items-center gap-3">
-            <IconoCuadro icono={icono} />
+            <IconoCuadro icono={icono} className={claseIcono} />
             {encabezado}
           </div>
         ) : (
