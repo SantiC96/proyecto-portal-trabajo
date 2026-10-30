@@ -2,19 +2,20 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { CircleCheck, X } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogResumen,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { aprobarOferta, rechazarOferta } from "../actions";
 import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
-import type { Enum } from "@/types/db";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
 import { LARGO_MAXIMO } from "@/lib/validaciones";
 import {
@@ -26,10 +27,14 @@ import { useErroresCampo } from "@/lib/use-errores-campo";
 
 type Props = {
   ofertaId: string;
-  estado: Enum<"estado_oferta">;
+  ofertaTitulo: string;
+  empresaNombre: string;
+  /** Fecha de envío ya formateada, para el resumen de los diálogos. */
+  enviadaEl: string;
 };
 
-export function OfertaAcciones({ ofertaId, estado }: Props) {
+/** Acciones de una oferta pendiente: publicarla o rechazarla con un motivo. */
+export function OfertaAcciones({ ofertaId, ofertaTitulo, empresaNombre, enviadaEl }: Props) {
   const router = useRouter();
   const [abrirAprobar, setAbrirAprobar] = useState(false);
   const [abrirRechazar, setAbrirRechazar] = useState(false);
@@ -67,40 +72,34 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
     });
   }
 
-  if (estado !== "pendiente_aprobacion") {
-    return (
-      <p className="text-[15px] text-muted-foreground-strong">
-        {estado === "activa"
-          ? "Esta oferta ya fue aprobada y está publicada."
-          : estado === "rechazada"
-            ? "Esta oferta fue rechazada."
-            : "Esta oferta no puede ser revisada."}
+  const resumen = (
+    <DialogResumen>
+      <p className="font-bold break-words text-heading">{ofertaTitulo}</p>
+      <p className="mt-0.5 text-sm text-muted-foreground">
+        {empresaNombre} · Enviada el {enviadaEl}
       </p>
-    );
-  }
+    </DialogResumen>
+  );
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-3">
-        <button
-          type="button"
-          onClick={() => setAbrirAprobar(true)}
-          disabled={isPending}
-          className="btn-primario w-full"
-        >
-          Publicar oferta
-        </button>
-        <button
-          type="button"
-          onClick={() => setAbrirRechazar(true)}
-          disabled={isPending}
-          className="btn-peligro-borde w-full"
-        >
-          Rechazar
-        </button>
-      </div>
+    <div className="flex flex-col gap-3">
+      <button
+        type="button"
+        onClick={() => setAbrirAprobar(true)}
+        disabled={isPending}
+        className="btn-primario w-full"
+      >
+        Publicar oferta
+      </button>
+      <button
+        type="button"
+        onClick={() => setAbrirRechazar(true)}
+        disabled={isPending}
+        className="btn-peligro-borde w-full"
+      >
+        Rechazar
+      </button>
 
-      {/* Dialog: Aprobar */}
       <Dialog
         open={abrirAprobar}
         onOpenChange={(open) => {
@@ -108,7 +107,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
         }}
       >
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader icono={CircleCheck} tonoIcono="primario">
             <DialogTitle>Publicar oferta</DialogTitle>
             <DialogDescription>
               La oferta pasará a{" "}
@@ -116,6 +115,7 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
               será visible para los postulantes.
             </DialogDescription>
           </DialogHeader>
+          {resumen}
           <BotonesDialogo
             pendiente={isPending}
             onCancelar={() => setAbrirAprobar(false)}
@@ -126,7 +126,6 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Rechazar */}
       <Dialog
         open={abrirRechazar}
         onOpenChange={(open) => {
@@ -139,17 +138,16 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
         }}
       >
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader icono={X} tonoIcono="peligro">
             <DialogTitle>Rechazar oferta</DialogTitle>
             <DialogDescription>
-              La empresa verá el motivo y podrá corregir la oferta para
-              reenviarla a revisión.
+              La empresa ve el motivo y puede corregir la oferta para reenviarla a revisión.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
+          {resumen}
+          <div className="flex flex-col gap-2">
             <label htmlFor="motivo-rechazo" className="etiqueta-campo">
-              Motivo del rechazo{" "}
-              <Obligatorio />
+              Motivo del rechazo <Obligatorio />
             </label>
             <Textarea
               id="motivo-rechazo"
@@ -158,19 +156,16 @@ export function OfertaAcciones({ ofertaId, estado }: Props) {
                 setMotivo(e.target.value);
                 campos.limpiar("motivo");
               }}
-              placeholder="Explicá brevemente por qué no se aprueba la oferta…"
+              placeholder="Por ejemplo: falta el horario de trabajo en la descripción."
               maxLength={LARGO_MAXIMO.motivo}
               className="min-h-24"
               disabled={isPending}
               {...ariaErrorCampo("motivo-rechazo", campos.errores.motivo)}
             />
-            <ErrorCampo idCampo="motivo-rechazo" mensaje={campos.errores.motivo} />
             <div className="flex items-start justify-between gap-3">
-              <p className="text-sm text-muted-foreground">
-                La empresa ve este motivo y puede corregir la oferta.
-              </p>
+              <ErrorCampo idCampo="motivo-rechazo" mensaje={campos.errores.motivo} />
               <ContadorCaracteres
-                className="shrink-0"
+                className="ml-auto shrink-0"
                 actual={motivo.length}
                 maximo={LARGO_MAXIMO.motivo}
               />

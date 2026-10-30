@@ -5,16 +5,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { cn } from "cn"
 
 import { Button } from "@/components/ui/button"
-import { XIcon } from "lucide-react"
-
-/**
- * "amplio": el diálogo del rediseño de las pantallas del postulante (540 px,
- * radio 20, título de 22 px, X de 44 px y acciones a la derecha; en el celular,
- * a todo el ancho y apiladas con la principal abajo).
- */
-type TamanoDialogo = "normal" | "amplio"
-
-const TamanoDialogoContext = React.createContext<TamanoDialogo>("normal")
+import { XIcon, type LucideIcon } from "lucide-react"
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
@@ -48,45 +39,45 @@ function DialogOverlay({
   )
 }
 
+/**
+ * Diálogo del portal (ronda 9): 520 px de ancho (100 % − 32 px en el
+ * celular), radio 20, el botón de cerrar de 44 px arriba a la derecha y el
+ * pie gris (DialogFooter). Base UI pone role="dialog", aria-modal, atrapa el
+ * foco y cierra con Escape.
+ */
 function DialogContent({
   className,
   children,
   showCloseButton = true,
-  tamano = "normal",
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
-  tamano?: TamanoDialogo
 }) {
-  const amplio = tamano === "amplio"
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-[var(--radius-xl)] bg-surface p-4 text-[15px] leading-[1.45] text-foreground shadow-[var(--sombra-dialogo)] outline-none sm:max-w-sm sm:p-5",
-          amplio &&
-            "max-h-[calc(100dvh-2rem)] gap-5 overflow-y-auto rounded-[20px] px-[18px] py-[22px] sm:max-w-[540px] sm:p-7",
+          "fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-5 overflow-y-auto rounded-[20px] bg-surface p-5 text-[15px] leading-[1.45] text-foreground shadow-[var(--sombra-dialogo)] outline-none sm:max-w-[520px] sm:p-6",
           className
         )}
         {...props}
       >
-        <TamanoDialogoContext.Provider value={tamano}>{children}</TamanoDialogoContext.Provider>
+        {children}
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
+            aria-label="Cerrar"
             render={
               <Button
                 variant="ghost"
-                className={amplio ? "absolute top-3 right-3 size-11 sm:top-4 sm:right-4" : "absolute top-2 right-2"}
-                size={amplio ? "icon" : "icon-sm"}
+                className="absolute top-3 right-3 size-11 sm:top-4 sm:right-4"
+                size="icon"
               />
             }
           >
-            <XIcon
-            />
-            <span className="sr-only">Cerrar</span>
+            <XIcon aria-hidden="true" />
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Popup>
@@ -94,16 +85,79 @@ function DialogContent({
   )
 }
 
-function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
+const CLASE_TONO_ICONO = {
+  peligro: "bg-danger/10 text-danger",
+  teal: "bg-teal/10 text-teal",
+  primario: "bg-primary/10 text-primary",
+} as const
+
+export type TonoIconoDialogo = keyof typeof CLASE_TONO_ICONO
+
+/**
+ * Encabezado: el título (20 px) y una línea de explicación. Con `icono`, va
+ * a la izquierda en un círculo de 44 px: rojo para rechazar, teal para
+ * derivar, verde para invitar o aprobar. Deja lugar a la derecha para el
+ * botón de cerrar.
+ */
+function DialogHeader({
+  className,
+  icono: Icono,
+  tonoIcono = "primario",
+  children,
+  ...props
+}: React.ComponentProps<"div"> & {
+  icono?: LucideIcon
+  tonoIcono?: TonoIconoDialogo
+}) {
+  if (!Icono) {
+    return (
+      <div
+        data-slot="dialog-header"
+        className={cn("flex flex-col gap-1.5 pr-12", className)}
+        {...props}
+      >
+        {children}
+      </div>
+    )
+  }
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2", className)}
+      className={cn("flex items-start gap-3.5 pr-12", className)}
+      {...props}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "grid size-11 shrink-0 place-items-center rounded-full [&_svg]:size-[22px]",
+          CLASE_TONO_ICONO[tonoIcono]
+        )}
+      >
+        <Icono />
+      </span>
+      <div className="flex min-w-0 flex-col gap-1.5 pt-0.5">{children}</div>
+    </div>
+  )
+}
+
+/** Recuadro gris con el resumen de lo que se está confirmando (título, empresa, fecha). */
+function DialogResumen({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="dialog-resumen"
+      className={cn(
+        "rounded-[14px] bg-tabla-cabecera px-4 py-3 text-[15px] leading-[1.45] text-foreground",
+        className
+      )}
       {...props}
     />
   )
 }
 
+/**
+ * Pie gris (`background`) de borde a borde: Cancelar y la acción a la
+ * derecha; en el celular, apilados con la acción arriba.
+ */
 function DialogFooter({
   className,
   showCloseButton = false,
@@ -112,14 +166,11 @@ function DialogFooter({
 }: React.ComponentProps<"div"> & {
   showCloseButton?: boolean
 }) {
-  const amplio = React.useContext(TamanoDialogoContext) === "amplio"
   return (
     <div
       data-slot="dialog-footer"
       className={cn(
-        amplio
-          ? "flex flex-col gap-2 pt-1 sm:flex-row sm:justify-end sm:gap-3"
-          : "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-[var(--radius-xl)] border-t border-border bg-surface-tinted p-4 sm:-mx-5 sm:-mb-5 sm:flex-row sm:justify-end sm:px-5",
+        "-mx-5 -mb-5 flex flex-col-reverse gap-2 border-t border-border bg-background px-5 py-4 sm:-mx-6 sm:-mb-6 sm:flex-row sm:justify-end sm:gap-3 sm:px-6",
         className
       )}
       {...props}
@@ -135,13 +186,11 @@ function DialogFooter({
 }
 
 function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
-  const amplio = React.useContext(TamanoDialogoContext) === "amplio"
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
       className={cn(
-        "text-lg leading-snug font-extrabold text-heading",
-        amplio && "pr-10 text-[22px] leading-tight",
+        "text-xl leading-tight font-extrabold text-heading",
         className
       )}
       {...props}
@@ -174,6 +223,7 @@ export {
   DialogHeader,
   DialogOverlay,
   DialogPortal,
+  DialogResumen,
   DialogTitle,
   DialogTrigger,
 }

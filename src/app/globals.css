@@ -107,6 +107,7 @@
   --color-sidebar-grupo: #c2dece; /* títulos de grupo */
   --color-tooltip:       #0f1d15;
   --color-danger-fondo:  #fdedec; /* hover de "Cerrar sesión" */
+  --color-motivo-rechazo: #5a1a12; /* texto del motivo de rechazo en el historial (sobre rojo al 7 %) */
 
   /* Pantallas de /auth y login */
   --color-fondo-auth:   #f3f5f4;

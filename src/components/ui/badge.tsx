@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react"
+import type { ComponentProps, ReactNode } from "react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -99,3 +99,47 @@ function Badge({
 }
 
 export { Badge }
+
+/** Tono del punto de BadgeBanda: los de Badge más "apagado" (retirada). */
+export type TonoPuntoBanda = TonoBadge | "apagado"
+
+const CLASE_PUNTO: Record<TonoPuntoBanda, string> = {
+  info: "bg-info",
+  teal: "bg-teal",
+  success: "bg-success",
+  neutral: "bg-neutral",
+  warning: "bg-accent",
+  danger: "bg-danger",
+  violet: "bg-violet",
+  apagado: "bg-muted-icon",
+}
+
+/**
+ * Estado al lado del título de una banda verde (EncabezadoPagina `junto`):
+ * pastilla blanca de 30 px, radio 15, texto `primary-hover` y un punto de
+ * 9 px del color del estado. Sin `tono`, el punto va del color del texto.
+ */
+export function BadgeBanda({
+  tono,
+  children,
+  className,
+}: {
+  tono?: TonoPuntoBanda
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-[30px] shrink-0 items-center gap-1.5 rounded-[15px] bg-surface px-3 text-sm font-bold whitespace-nowrap text-primary-hover",
+        className,
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn("size-[9px] shrink-0 rounded-full", tono ? CLASE_PUNTO[tono] : "bg-primary-hover")}
+      />
+      {children}
+    </span>
+  )
+}

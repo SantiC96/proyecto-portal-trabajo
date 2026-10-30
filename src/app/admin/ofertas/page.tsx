@@ -9,14 +9,21 @@ import { VencimientoOferta } from "@/components/ofertas/vencimiento-oferta";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
 import { getOfertaEstadoLabel } from "@/lib/oferta-estados";
 import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
+import { inicialesDeEmpresa } from "@/lib/iniciales";
 import {
   consultarPagina,
   hrefConParams,
   leerPagina,
   type ParamsUrl,
 } from "@/lib/paginacion";
+import {
+  ESTADOS_FILTRO_ADMIN,
+  aplicarFiltroOfertasAdmin,
+  leerEstadoFiltroAdmin,
+  type EstadoFiltroAdmin,
+} from "@/lib/admin/filtro-ofertas";
 import { Buscador } from "@/components/ui/buscador";
-import { PestanasEstado } from "@/components/ui/pestanas-estado";
+import { PastillaFiltro } from "@/components/ui/pastilla-filtro";
 import { Badge, type TonoBadge } from "@/components/ui/badge";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
@@ -24,7 +31,7 @@ import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import {
   CLASE_ACCION_FILA,
-  CeldaTabla,
+  CeldaPersona,
   FilaTabla,
   Tabla as TablaListado,
 } from "@/components/ui/tabla";
@@ -35,19 +42,7 @@ export const metadata: Metadata = {
   title: "Ofertas | Panel municipal | Portal de Empleo Funes",
 };
 
-// "vencida" no es un estado de la base: es una oferta 'activa' con vence_en
-// vencido (migration_036). Se muestra aparte porque ya no se ve en el portal.
-type EstadoFiltro = "pendiente_aprobacion" | "activa" | "vencida" | "rechazada" | "cerrada";
-
-const ESTADOS_FILTRO: EstadoFiltro[] = [
-  "pendiente_aprobacion",
-  "activa",
-  "vencida",
-  "rechazada",
-  "cerrada",
-];
-
-const LABEL_FILTRO: Record<EstadoFiltro, string> = {
+const LABEL_FILTRO: Record<EstadoFiltroAdmin, string> = {
   pendiente_aprobacion: "Por revisar",
   activa: "Activas",
   vencida: "Vencidas",
@@ -55,7 +50,7 @@ const LABEL_FILTRO: Record<EstadoFiltro, string> = {
   cerrada: "Cerradas",
 };
 
-const TEXTO_VACIO: Record<EstadoFiltro, string> = {
+const TEXTO_VACIO: Record<EstadoFiltroAdmin, string> = {
   pendiente_aprobacion: "No hay ofertas por revisar en este momento.",
   activa: "No hay ofertas activas en este momento.",
   vencida: "No hay ofertas vencidas en este momento.",
@@ -74,6 +69,16 @@ const ESTADO_TONO: Record<EstadoVisible, TonoBadge> = {
   cerrada: "neutral",
 };
 
+// Filete izquierdo de la fila: el color del estado.
+const ESTADO_FILETE: Record<EstadoVisible, string> = {
+  borrador: "before:bg-neutral",
+  pendiente_aprobacion: "before:bg-accent",
+  activa: "before:bg-primary",
+  vencida: "before:bg-danger",
+  rechazada: "before:bg-danger",
+  cerrada: "before:bg-neutral",
+};
+
 type OfertaRow = Pick<Tabla<"ofertas">, "estado" | "vence_en">;
 
 const RUTA = "/admin/ofertas";
@@ -86,79 +91,70 @@ export default async function AdminOfertasPage({
   await requerirRolPagina("municipalidad");
   const sp = await searchParams;
 
-  const estado: EstadoFiltro =
-    ESTADOS_FILTRO.find((e) => e === sp.estado) ?? "pendiente_aprobacion";
-
+  const estado = leerEstadoFiltroAdmin(sp.estado);
   const q = limpiarBusqueda(sp.q);
   const pagina = leerPagina(sp.pagina);
 
   const supabase = await createSupabaseServerClient();
 
+  // Mismo instante y misma búsqueda para las cantidades y la lista.
   const ahora = dentroDeDiasISO(0);
-  const [
-    { count: cPendientes },
-    { count: cActivas },
-    { count: cVencidas },
-    { count: cRechazadas },
-    { count: cCerradas },
-  ] = await Promise.all([
-    supabase
-      .from("ofertas")
-      .select("*", { count: "exact", head: true })
-      .eq("estado", "pendiente_aprobacion"),
-    supabase
-      .from("ofertas")
-      .select("*", { count: "exact", head: true })
-      .eq("estado", "activa")
-      .gt("vence_en", ahora),
-    supabase
-      .from("ofertas")
-      .select("*", { count: "exact", head: true })
-      .eq("estado", "activa")
-      .lte("vence_en", ahora),
-    supabase
-      .from("ofertas")
-      .select("*", { count: "exact", head: true })
-      .eq("estado", "rechazada"),
-    supabase
-      .from("ofertas")
-      .select("*", { count: "exact", head: true })
-      .eq("estado", "cerrada"),
-  ]);
-
-  const cantidades: Record<EstadoFiltro, number> = {
-    pendiente_aprobacion: cPendientes ?? 0,
-    activa: cActivas ?? 0,
-    vencida: cVencidas ?? 0,
-    rechazada: cRechazadas ?? 0,
-    cerrada: cCerradas ?? 0,
-  };
+  const patron = q ? patronIlike(q) : null;
+  const conteos = await Promise.all(
+    ESTADOS_FILTRO_ADMIN.map((e) =>
+      aplicarFiltroOfertasAdmin(
+        supabase.from("ofertas").select("*", { count: "exact", head: true }),
+        e,
+        ahora,
+        patron,
+      ),
+    ),
+  );
+  const cantidades = Object.fromEntries(
+    ESTADOS_FILTRO_ADMIN.map((e, i) => [e, conteos[i].count ?? 0]),
+  ) as Record<EstadoFiltroAdmin, number>;
 
   return (
     <section className="flex flex-col gap-6">
       <EncabezadoPagina
+        banda
+        botonesBlancos
         titulo="Ofertas"
         bajada="Revisá las ofertas que cargan las empresas antes de publicarlas."
       />
 
-      <PestanasEstado
-        etiqueta="Estado de las ofertas"
-        pestanas={ESTADOS_FILTRO.map((tab) => ({
-          href: hrefConParams(RUTA, {}, { estado: tab, q: sp.q ?? null }),
-          label: LABEL_FILTRO[tab],
-          activa: tab === estado,
-          cantidad: cantidades[tab],
-        }))}
-      />
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+        <nav aria-label="Estado de las ofertas" className="min-w-0">
+          <div className="sin-barra-scroll -mx-4 -my-1 flex gap-2 overflow-x-auto px-4 py-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+            {ESTADOS_FILTRO_ADMIN.map((tab) => (
+              <PastillaFiltro
+                key={tab}
+                href={hrefConParams(RUTA, {}, { estado: tab, q: sp.q ?? null })}
+                activa={tab === estado}
+                cantidad={cantidades[tab]}
+              >
+                {LABEL_FILTRO[tab]}
+              </PastillaFiltro>
+            ))}
+          </div>
+        </nav>
 
-      <Buscador
-        className="min-w-0 lg:max-w-xl"
-        inputClassName="rounded-xl"
-        placeholder="Buscar por título…"
-      />
+        <Buscador
+          className="w-full min-w-0 lg:w-80 lg:shrink-0"
+          inputClassName="rounded-xl"
+          placeholder="Buscar por título…"
+        />
+      </div>
 
       <Suspense key={JSON.stringify({ estado, q, pagina })} fallback={<EsqueletoLista filas={5} />}>
-        <ListadoOfertas estado={estado} q={q} pagina={pagina} searchParams={sp} />
+        <ListadoOfertas
+          estado={estado}
+          q={q}
+          patron={patron}
+          ahora={ahora}
+          pagina={pagina}
+          searchParams={sp}
+        />
       </Suspense>
     </section>
   );
@@ -184,16 +180,24 @@ function etiquetaRevision(row: {
 }
 
 // Oferta | Empresa | Fecha | Estado | acción.
-const COLUMNAS = "minmax(0,2.2fr) minmax(0,1.4fr) 7.5rem minmax(0,1.3fr) auto";
+const COLUMNAS =
+  "minmax(0,2fr) minmax(0,1.3fr) minmax(max-content,.8fr) minmax(0,1.1fr) minmax(max-content,.6fr)";
+
+const CLASE_TITULO =
+  "rounded-[var(--radius-sm)] text-[15px] leading-snug font-extrabold break-words text-heading no-underline outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]";
 
 async function ListadoOfertas({
   estado,
   q,
+  patron,
+  ahora,
   pagina,
   searchParams,
 }: {
-  estado: EstadoFiltro;
+  estado: EstadoFiltroAdmin;
   q: string;
+  patron: string | null;
+  ahora: string;
   pagina: number;
   searchParams: ParamsUrl;
 }) {
@@ -201,26 +205,22 @@ async function ListadoOfertas({
   // Pendientes: de más vieja a más nueva (más urgentes primero)
   const ascendente = estado === "pendiente_aprobacion";
 
-  const resultado = await consultarPagina(pagina, (desde, hasta) => {
-    let query = supabase
-      .from("ofertas")
-      .select(
-        "id, titulo, empresa_nombre, created_at, estado, contenido_editado_en, publicado_en, vence_en",
-        { count: "exact" }
-      );
-    if (estado === "activa") {
-      query = query.eq("estado", "activa").gt("vence_en", dentroDeDiasISO(0));
-    } else if (estado === "vencida") {
-      query = query.eq("estado", "activa").lte("vence_en", dentroDeDiasISO(0));
-    } else {
-      query = query.eq("estado", estado);
-    }
-    if (q) query = query.ilike("titulo", patronIlike(q));
-    return query
+  const resultado = await consultarPagina(pagina, (desde, hasta) =>
+    aplicarFiltroOfertasAdmin(
+      supabase
+        .from("ofertas")
+        .select(
+          "id, titulo, empresa_id, empresa_nombre, created_at, estado, contenido_editado_en, publicado_en, vence_en",
+          { count: "exact" },
+        ),
+      estado,
+      ahora,
+      patron,
+    )
       .order("created_at", { ascending: ascendente })
       .order("id", { ascending: ascendente })
-      .range(desde, hasta);
-  });
+      .range(desde, hasta),
+  );
 
   if (!resultado.ok) {
     const ref = logError("admin_ofertas_listado", resultado.error, { estado });
@@ -246,47 +246,65 @@ async function ListadoOfertas({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground-strong" aria-live="polite">
-        Mostrando {rows.length} de {resultado.total} {resultado.total === 1 ? "oferta" : "ofertas"}
-      </p>
-
       <TablaListado
         columnas={COLUMNAS}
         etiqueta="Ofertas"
-        encabezados={["Oferta", "Empresa", "Fecha", "Estado", ""]}
+        semantica="tabla"
+        encabezados={[
+          "Oferta",
+          "Empresa",
+          "Fecha",
+          "Estado",
+          <span key="a" className="sr-only">
+            Acciones
+          </span>,
+        ]}
       >
         {rows.map((row) => {
           const href = `/admin/ofertas/${row.id}`;
           const etiqueta = porRevisar ? etiquetaRevision(row) : null;
+          const visible = estadoVisible(row);
           return (
-            <FilaTabla key={row.id}>
-              <div className="flex min-w-0 flex-col items-start gap-1.5">
+            <FilaTabla key={row.id} semantica="tabla" filete={ESTADO_FILETE[visible]}>
+              <div role="cell" className="flex min-w-0 flex-col items-start gap-1.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Link
-                    href={href}
-                    className="rounded-[var(--radius-sm)] text-[15px] leading-snug font-bold break-words text-heading no-underline outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
-                  >
+                  <Link href={href} className={CLASE_TITULO}>
                     {row.titulo}
                   </Link>
                   {etiqueta && <Badge tono={etiqueta.tono}>{etiqueta.texto}</Badge>}
                 </div>
                 <VencimientoOferta estado={row.estado} venceEn={row.vence_en} />
               </div>
-              <CeldaTabla etiqueta="Empresa" rotuloVisible>
-                {row.empresa_nombre}
-              </CeldaTabla>
-              <CeldaTabla etiqueta="Fecha" rotuloVisible className="tabular-nums">
+              <div role="cell" className="min-w-0">
+                <CeldaPersona
+                  nombre={row.empresa_nombre}
+                  href={row.empresa_id ? `/admin/empresas/${row.empresa_id}` : undefined}
+                  iniciales={inicialesDeEmpresa(row.empresa_nombre)}
+                  secundario={null}
+                />
+              </div>
+              <div
+                role="cell"
+                className="text-sm whitespace-nowrap text-muted-foreground-strong tabular-nums @4xl:text-[15px] @4xl:text-foreground"
+              >
+                <span className="font-bold text-neutral @4xl:sr-only">Fecha </span>
                 {formatFechaCorta(row.created_at)}
-              </CeldaTabla>
-              <CeldaTabla etiqueta="Estado">
-                <Badge tono={ESTADO_TONO[estadoVisible(row)] ?? "neutral"} estado>
+              </div>
+              {/* En la tarjeta, el estado va arriba de todo. */}
+              <div role="cell" className="order-first min-w-0 @4xl:order-none">
+                <Badge tono={ESTADO_TONO[visible] ?? "neutral"} estado>
                   {etiquetaEstado(row)}
                 </Badge>
-              </CeldaTabla>
-              <Link href={href} className={`btn-neutro ${CLASE_ACCION_FILA}`}>
-                Revisar
-                <span className="sr-only">: {row.titulo}</span>
-              </Link>
+              </div>
+              <div role="cell" className="@4xl:text-right">
+                <Link
+                  href={href}
+                  aria-label={`Revisar ${row.titulo}`}
+                  className={`btn-secundario ${CLASE_ACCION_FILA}`}
+                >
+                  Revisar
+                </Link>
+              </div>
             </FilaTabla>
           );
         })}
@@ -299,6 +317,7 @@ async function ListadoOfertas({
         pagina={resultado.pagina}
         total={resultado.total}
         variante="numeros"
+        elemento={{ singular: "oferta", plural: "ofertas" }}
       />
     </div>
   );

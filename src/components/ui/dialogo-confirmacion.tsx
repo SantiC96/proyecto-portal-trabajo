@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogResumen,
   DialogTitle,
+  type TonoIconoDialogo,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -37,8 +40,8 @@ export const CLASE_BOTON = {
 export type EstiloBoton = keyof typeof CLASE_BOTON;
 
 /**
- * Pie de todos los diálogos con una acción: Cancelar a la izquierda y la
- * acción a la derecha (en el celular, la acción arriba). Mientras la acción
+ * Pie gris de todos los diálogos con una acción: Cancelar y la acción a la
+ * derecha (en el celular, la acción arriba). Mientras la acción
  * corre los dos quedan deshabilitados y el de confirmar muestra la carga.
  * Si la acción no es un botón (un link, un formulario), va como `children`
  * con las clases de CLASE_ACCION_DIALOGO.
@@ -102,8 +105,15 @@ type Props<T> = {
   /** Nombre accesible del botón cuando muestra solo un ícono. */
   etiquetaBoton?: string;
   titulo: string;
+  /** Una sola línea de explicación debajo del título. */
   descripcion?: ReactNode;
-  /** Contenido extra entre la descripción y los botones. */
+  /** Ícono del encabezado, en un círculo de 44 px del tono `tonoIcono`. */
+  icono?: LucideIcon;
+  /** "peligro" (rechazar), "teal" (derivar) o "primario" (invitar, aprobar). Por defecto, rojo si es destructivo. */
+  tonoIcono?: TonoIconoDialogo;
+  /** Recuadro gris con lo que se está confirmando (título, empresa, fecha). */
+  resumen?: ReactNode;
+  /** Contenido extra (los campos) entre el encabezado y los botones. */
   children?: ReactNode;
   textoConfirmar: string;
   textoPendiente: string;
@@ -129,6 +139,9 @@ export function DialogoConfirmacion<T>({
   etiquetaBoton,
   titulo,
   descripcion,
+  icono,
+  tonoIcono,
+  resumen,
   children,
   textoConfirmar,
   textoPendiente,
@@ -175,10 +188,12 @@ export function DialogoConfirmacion<T>({
         }}
       >
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader icono={icono} tonoIcono={tonoIcono ?? (destructivo ? "peligro" : "primario")}>
             <DialogTitle>{titulo}</DialogTitle>
             {descripcion && <DialogDescription>{descripcion}</DialogDescription>}
           </DialogHeader>
+
+          {resumen && <DialogResumen>{resumen}</DialogResumen>}
 
           {children}
 

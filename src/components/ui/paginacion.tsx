@@ -27,6 +27,11 @@ type Props = {
    * suspensivos si son muchas), para listas que ya muestran el total arriba.
    */
   variante?: "simple" | "numeros";
+  /**
+   * Con "numeros": a la izquierda va "Mostrando X–Y de Z ofertas" en lugar
+   * de "Página N de M" (tablas de la oficina, que no muestran el total arriba).
+   */
+  elemento?: { singular: string; plural: string };
   className?: string;
 };
 
@@ -68,6 +73,7 @@ export function Paginacion({
   ancla,
   parametro = "pagina",
   variante = "simple",
+  elemento,
   className,
 }: Props) {
   if (total <= 0) return null;
@@ -119,8 +125,10 @@ export function Paginacion({
           className,
         )}
       >
-        <p className="text-center text-muted-foreground-strong sm:text-left">
-          Página {pagina} de {totalPaginas}
+        <p className="text-center text-muted-foreground-strong sm:text-left" aria-live="polite">
+          {elemento
+            ? `Mostrando ${desde}–${hasta} de ${total} ${total === 1 ? elemento.singular : elemento.plural}`
+            : `Página ${pagina} de ${totalPaginas}`}
         </p>
 
         {totalPaginas > 1 && (

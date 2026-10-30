@@ -35,3 +35,24 @@ export function detalleSinVerificar(comprobante: EstadoComprobante | null): stri
 
 /** Largo máximo del motivo de rechazo (CHECK de archivos_usuario, migration_055). */
 export const MOTIVO_RECHAZO_COMPROBANTE_MAXIMO = 500;
+
+export type VarianteLocalidad = "verificado" | "sin-verificar" | "otra-localidad";
+
+/**
+ * Variante del chip de localidad de la oficina, según el nivel de prioridad:
+ * 1 verificado, 2 sin verificar, 3 otra localidad (o sin informar).
+ */
+export function varianteLocalidad(nivel: NivelPrioridad): VarianteLocalidad {
+  if (nivel === 1) return "verificado";
+  if (nivel === 2) return "sin-verificar";
+  return "otra-localidad";
+}
+
+/** Texto del chip de localidad. */
+export function textoChipLocalidad(nivel: NivelPrioridad, localidad: string | null): string {
+  const variante = varianteLocalidad(nivel);
+  if (variante === "verificado") return "Funes · Verificado";
+  if (variante === "sin-verificar") return "Funes · Sin verificar";
+  const ciudad = localidad?.trim();
+  return ciudad ? `Otra localidad: ${ciudad}` : "Localidad sin informar";
+}

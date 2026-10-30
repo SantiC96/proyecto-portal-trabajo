@@ -25,13 +25,14 @@ import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_TONO } from "@/lib/derivacion-estados";
-import { Badge } from "@/components/ui/badge";
+import { Badge, BadgeBanda } from "@/components/ui/badge";
 import { BarraProgreso } from "@/components/ui/barra-progreso";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { IconoCuadro } from "@/components/ui/icono-cuadro";
 import { TituloBloque } from "@/components/ui/titulo-bloque";
 import { Aviso } from "@/components/ui/aviso";
 import { DescripcionPlegable } from "./descripcion-plegable";
+import { ListaTexto, SeccionTexto } from "@/components/ofertas/seccion-texto";
 import {
   CLASE_ACCION_FILA,
   CeldaPersona,
@@ -160,10 +161,7 @@ export default async function OfertaDetallePage({
         className="-mt-2"
         titulo={oferta.titulo}
         junto={
-          <span className="inline-flex h-[30px] shrink-0 items-center gap-1.5 rounded-[15px] bg-surface px-3 text-sm font-bold whitespace-nowrap text-primary-hover">
-            <span aria-hidden="true" className="size-2 rounded-full bg-primary-hover" />
-            {ESTADO_OFERTA_EMPRESA_LABEL[estadoVisible] ?? estadoVisible}
-          </span>
+          <BadgeBanda>{ESTADO_OFERTA_EMPRESA_LABEL[estadoVisible] ?? estadoVisible}</BadgeBanda>
         }
         bajada={
           <>
@@ -278,36 +276,6 @@ export default async function OfertaDetallePage({
         </Suspense>
       </section>
     </section>
-  );
-}
-
-function SeccionTexto({
-  titulo,
-  icono: Icono,
-  children,
-}: {
-  titulo: string;
-  icono: LucideIcon;
-  children: ReactNode;
-}) {
-  return (
-    <section className="flex min-w-0 flex-col gap-2.5 py-5 first:pt-0 last:pb-0">
-      <h2 className="flex items-center gap-2 text-lg font-extrabold text-heading">
-        <Icono className="size-5 shrink-0 text-primary" aria-hidden="true" />
-        {titulo}
-      </h2>
-      {children}
-    </section>
-  );
-}
-
-function ListaTexto({ items }: { items: string[] }) {
-  return (
-    <ul className="flex list-disc flex-col gap-2 pl-[22px] text-base leading-[1.6] break-words text-texto-parrafo marker:text-primary">
-      {items.map((item, i) => (
-        <li key={i}>{item}</li>
-      ))}
-    </ul>
   );
 }
 

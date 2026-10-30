@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { logError } from "@/lib/logger";
 import {
   BookOpen,
@@ -7,6 +8,8 @@ import {
   ChartColumn,
   ClipboardList,
   House,
+  Inbox,
+  LayoutGrid,
   UserCog,
   UserX,
   Users,
@@ -16,7 +19,13 @@ import { UMBRAL_RECHAZOS_CURSO } from "@/lib/cursos";
 import { requerirRolPagina } from "@/lib/auth";
 import { contarPendientesOficina } from "@/lib/admin/pendientes";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
-import { TarjetaPendiente } from "@/components/ui/tarjeta-pendiente";
+import { TituloBloque } from "@/components/ui/titulo-bloque";
+import {
+  CLASE_GRILLA_CUADROS,
+  ChipAccionCuadro,
+  CuadroEstado,
+  claseCeldaCuadro,
+} from "@/components/ui/cuadro-estado";
 import { TarjetaAcceso } from "@/components/ui/tarjeta-acceso";
 
 export const metadata: Metadata = {
@@ -35,6 +44,7 @@ export default async function AdminDashboardPage() {
     esperandoCursoRes,
     { count: cursosActivos },
     pendientesOficina,
+    cuentasRes,
   ] = await Promise.all([
     supabase
       .from("postulaciones")
@@ -47,11 +57,14 @@ export default async function AdminDashboardPage() {
       .select("*", { count: "exact", head: true })
       .eq("activo", true),
     contarPendientesOficina(supabase),
+    supabase.rpc("listar_cuentas_oficina"),
   ]);
 
   if (esperandoCursoRes.error)
     logError("contar_postulantes_esperando_curso", esperandoCursoRes.error);
   const postulantesEsperando = Number(esperandoCursoRes.data ?? 0);
+  if (cuentasRes.error) logError("admin_panel_cuentas", cuentasRes.error);
+  const cuentasActivas = (cuentasRes.data ?? []).filter((c) => c.activo).length;
 
   const pendientes = [
     {
@@ -94,32 +107,59 @@ export default async function AdminDashboardPage() {
   const nombre = usuario.perfil.nombre.trim();
   const activos = cursosActivos ?? 0;
   const registrados = totalPostulantes ?? 0;
+  const totalPendientes = pendientes.reduce((suma, p) => suma + p.cantidad, 0);
 
   return (
-    <section>
+    <section className="flex flex-col gap-8">
       <EncabezadoPagina
+        banda
+        botonesBlancos
         titulo={nombre ? `Hola, ${nombre}` : "Hola"}
         bajada="Esto es lo que tiene pendiente la Oficina de Empleo."
+        acciones={
+          <Link href="/admin/indicadores" className="btn-neutro">
+            <ChartColumn aria-hidden="true" />
+            Ver indicadores
+          </Link>
+        }
       />
 
-      <section aria-labelledby="panel-pendientes" className="@container mt-8">
-        <h2 id="panel-pendientes" className="text-[22px] leading-tight font-extrabold text-heading">
-          Pendientes
-        </h2>
-        <ul className="mt-4 grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
-          {pendientes.map((p) => (
-            <li key={p.href}>
-              <TarjetaPendiente {...p} />
-            </li>
-          ))}
+      <section aria-labelledby="panel-pendientes" className="@container flex flex-col gap-4">
+        <TituloBloque
+          id="panel-pendientes"
+          titulo="Pendientes"
+          icono={Inbox}
+          bajada={
+            totalPendientes === 0
+              ? "Estás al día."
+              : `Hay ${totalPendientes} ${totalPendientes === 1 ? "cosa" : "cosas"} para revisar.`
+          }
+        />
+        <ul className={CLASE_GRILLA_CUADROS}>
+          {pendientes.map((p, i) => {
+            const alDia = p.cantidad === 0;
+            return (
+              <li key={p.href} className={claseCeldaCuadro(i)}>
+                <CuadroEstado
+                  href={p.href}
+                  etiqueta={p.titulo}
+                  etiquetaAccesible={`${p.titulo}: ${p.cantidad}. ${alDia ? "Al día" : p.accion}`}
+                  valor={p.cantidad}
+                  icono={p.icono}
+                  claseIcono={alDia ? "bg-muted-icon" : "bg-primary"}
+                  claseFilete={alDia ? "before:bg-muted-icon" : "before:bg-accent"}
+                  apagado={alDia}
+                  pie={<ChipAccionCuadro accion={p.accion} alDia={alDia} />}
+                />
+              </li>
+            );
+          })}
         </ul>
       </section>
 
-      <section aria-labelledby="panel-accesos" className="mt-10">
-        <h2 id="panel-accesos" className="text-[22px] leading-tight font-extrabold text-heading">
-          Accesos
-        </h2>
-        <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <section aria-labelledby="panel-accesos" className="flex flex-col gap-4">
+        <TituloBloque id="panel-accesos" titulo="Accesos" icono={LayoutGrid} />
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <li>
             <TarjetaAcceso
               href="/admin/cursos"
@@ -131,6 +171,7 @@ export default async function AdminDashboardPage() {
                   ? `${activos} curso${activos === 1 ? "" : "s"} activo${activos === 1 ? "" : "s"}`
                   : undefined
               }
+              elevable
             />
           </li>
           <li>
@@ -139,6 +180,8 @@ export default async function AdminDashboardPage() {
               icono={<ChartColumn className="size-[22px]" />}
               titulo="Indicadores"
               descripcion="Números del portal para informes"
+              claseIcono="bg-teal text-white"
+              elevable
             />
           </li>
           <li>
@@ -152,6 +195,8 @@ export default async function AdminDashboardPage() {
                   ? `${registrados} registrado${registrados === 1 ? "" : "s"}`
                   : undefined
               }
+              claseIcono="bg-info text-white"
+              elevable
             />
           </li>
           <li>
@@ -160,6 +205,13 @@ export default async function AdminDashboardPage() {
               icono={<UserCog className="size-[22px]" />}
               titulo="Cuentas de la oficina"
               descripcion="Invitá, desactivá o reactivá las cuentas del personal"
+              detalle={
+                cuentasActivas > 0
+                  ? `${cuentasActivas} cuenta${cuentasActivas === 1 ? "" : "s"} activa${cuentasActivas === 1 ? "" : "s"}`
+                  : undefined
+              }
+              claseIcono="bg-neutral text-white"
+              elevable
             />
           </li>
         </ul>

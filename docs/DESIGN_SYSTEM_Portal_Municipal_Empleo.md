@@ -572,6 +572,9 @@ ventana en las que ya pasaban a dos columnas ahí):
 -   En una columna (celular), el orden de siempre: `principal`, `lateral`
     y `debajo`, o el lateral primero o al final (`lateralEnCelular`).
 -   `debajoEnDosColumnas` para dos tarjetas cortas.
+-   `anchoLateral` (400 por defecto; 380 en la oficina) y
+    `separacionColumnas` (la separación entre columnas, si es distinta de
+    la de las tarjetas).
 
 Pantallas: detalle público de una oferta (título y "Postularme" arriba,
 descripción debajo), revisión de oferta y de empresa, ficha de una
@@ -1451,7 +1454,7 @@ dominio y cada helper los mapea a un tono en un único lugar.
                     Media                                     warning
                     Baja                                      neutral
   Cuenta oficina    Activa / Desactivada                      success / neutral
-  Contadores        Pendientes (tarjetas de pendiente)        warning     `TarjetaPendiente` (gris si es 0)
+  Contadores        Pendientes del panel de la oficina        warning     `CuadroEstado` + `ChipAccionCuadro` (gris si es 0)
                     Cantidad de una pestaña                   ---         `PestanasEstado`: gris; verde en la activa
 
 Contraste de cada tono: ver la sección 5 (todos superan 6,5:1).
@@ -1800,19 +1803,43 @@ JavaScript. "Limpiar filtros" queda como link.
 
 # 24. Modal / Dialog
 
-Usar `Dialog` de shadcn/ui: radio 16 px, sombra `--sombra-dialogo`,
-título 800 en `heading`, los mismos botones que el resto del portal
-(Cancelar neutro a la izquierda, acción a la derecha).
+Usar `Dialog` de shadcn/ui (`src/components/ui/dialog.tsx`). Desde la
+ronda 9, todos los diálogos del portal (postulante, empresa y oficina)
+comparten un solo estilo:
+
+-   ancho 520 px (100 % − 32 px en el celular), radio 20, padding 24 (20
+    en el celular), sombra `--sombra-dialogo` y alto máximo de la ventana
+    − 32 px con scroll interno;
+-   encabezado (`DialogHeader`): título de 20 px 800 `heading` y una sola
+    línea de explicación (15 px `muted-foreground`). Con `icono`, el
+    ícono va a la izquierda en un círculo de 44 px: `tonoIcono="peligro"`
+    (rojo, rechazar), `"teal"` (derivar) o `"primario"` (verde, invitar o
+    aprobar), sobre el mismo color al 10 %;
+-   botón de cerrar de 44 px arriba a la derecha, con `aria-label="Cerrar"`;
+-   resumen opcional (`DialogResumen`): recuadro `tabla-cabecera`
+    (`#F3F5F4`), radio 14, con lo que se está confirmando (título,
+    empresa, fecha);
+-   los campos;
+-   pie (`DialogFooter`, el de `BotonesDialogo`): franja `background`
+    (`#F4F7F5`) de borde a borde con borde superior, "Cancelar" (neutro) y
+    la acción a la derecha; en el celular, apilados con la acción arriba.
+
+`DialogoConfirmacion` arma el diálogo completo y suma las props
+opcionales `icono`, `tonoIcono` (por defecto rojo si es destructivo) y
+`resumen`; las demás props no cambiaron. Base UI pone `role="dialog"`,
+`aria-modal`, atrapa el foco y cierra con Escape.
 
 Estructura:
 
 ``` text
-Título
-Descripción opcional
-
-Contenido
-
-Cancelar                Acción
+(o) Título                                   [X]
+    Una línea de explicación
++-----------------------------------------------+
+| Resumen (opcional)                            |
++-----------------------------------------------+
+Campos
+------------------------------------------------- (pie gris)
+                              Cancelar   Acción
 ```
 
 No utilizar modales para procesos largos que deberían ser una página.
@@ -1820,7 +1847,7 @@ No utilizar modales para procesos largos que deberían ser una página.
 ## Elegir el tipo de cuenta (`RegisterModal`)
 
 El diálogo de "Registrarme" (`src/components/auth/register-modal.tsx`)
-usa el `Dialog` amplio a 480 px (casi todo el ancho en el celular):
+usa el `Dialog` a 480 px (casi todo el ancho en el celular):
 "Crear una cuenta" (20 px 800) y "Elegí cómo vas a usar el Portal de
 Empleo." (15 px `muted`); dos opciones, una debajo de la otra, que son
 links: borde 1,5 px `border`, radio 16, padding 20, mínimo 88 px, ícono
@@ -1833,10 +1860,8 @@ Iniciá sesión". Botón de cerrar de 44 px con `aria-label`.
 
 ## Diálogo amplio
 
-`<DialogContent tamano="amplio">` (pantallas del postulante): ancho 540
-px, radio 20, padding 28 (22 × 18 en el celular), título de 22 px 800 y
-botón X de 44 px. Sin franja gris al pie: las acciones van a la derecha;
-en el celular, a todo el ancho y apiladas, con la principal abajo.
+Ya no existe: la variante `tamano="amplio"` de las pantallas del
+postulante se unificó con el diálogo de la ronda 9 (sección 24).
 
 ## Opciones tipo radio
 
@@ -2155,29 +2180,157 @@ Pantalla `/invitaciones` (`seccion-invitaciones.tsx`):
     interesó o venció), el título, "empresa · respondida el …" (o "venció
     el …"), el badge y "Ver oferta ›" si la oferta todavía se puede ver.
 
-## Tarjeta de pendiente (panel de la oficina)
+## Pendientes del panel de la oficina
 
-`src/components/ui/tarjeta-pendiente.tsx` (`TarjetaPendiente`). Toda la
-tarjeta es un link (`.tarjeta`, padding 20, gap 14); en hover, el borde se
-pone `primary`.
+`CuadroEstado` con `pie` y `apagado` (la `TarjetaPendiente` anterior se
+borró), en la grilla de cinco (`CLASE_GRILLA_CUADROS`: 2 columnas en el
+celular, los cinco en una fila desde 1024 px de contenido). Toda la
+tarjeta es el link, con `aria-label` "nombre: número. acción".
 
--   arriba: ícono blanco en un cuadrado `primary` de 44 px con radio 12 y,
-    a la derecha, la cantidad en una pastilla de 36 px de alto, 20 px 800
-    (`aria-label` "N pendientes"): `accent` con `accent-foreground` si es
-    mayor a 0; `pastilla-gris` con `texto-pestana` si es 0;
--   el título en 17 px 800;
--   abajo, la acción en 15 px 700 verde con flecha.
-
-Grilla de 3 columnas, 2 en tablet y 1 en el celular (según el ancho del
-contenido).
+-   Con pendientes: filete superior `accent`, ícono blanco en el cuadrado
+    `primary`, el número en `heading` y abajo `ChipAccionCuadro`: chip
+    `accent` con `accent-foreground`, 13 px 700, "Revisar postulaciones ›".
+-   En 0: filete e ícono `muted-icon` (`#8A988F`), el número en
+    `muted-foreground` (`#55665C`) y el chip verde "Al día" (`primary` al
+    12 % con `primary-hover`) con `CircleCheck`.
+-   Sin chevron arriba: la acción ya está en el chip.
 
 ## Tarjeta de acceso
 
 `src/components/ui/tarjeta-acceso.tsx` (`TarjetaAcceso`): link con un ícono
 en un cuadrado verde de 44 px, título de 17 px 800, descripción de 14 px,
-un dato opcional (13 px 600, "3 cursos activos") y chevron. En hover, el
-borde verde. Accesos del panel de la oficina y "Más herramientas" del panel
-de la empresa, en 2 columnas (1 en el celular).
+un dato opcional en verde (13 px 700 `primary`, "3 cursos activos") y
+chevron. `claseIcono` cambia el color del cuadrado y `elevable` hace que
+suba 2 px con sombra. Accesos del panel de la oficina (Cursos verde,
+Indicadores teal, Postulantes azul, Cuentas gris; todos `elevable`) y "Más
+herramientas" del panel de la empresa, en 2 columnas (1 en el celular).
+
+## Pantallas de la Oficina (ronda 9)
+
+Piezas compartidas para las pantallas de la oficina (rol admin). Las
+próximas pantallas de la oficina usan las mismas.
+
+### Badge de estado en la banda (`BadgeBanda`)
+
+`src/components/ui/badge.tsx`. Va en `EncabezadoPagina` `junto`, al lado
+del título: pastilla blanca de 30 px, radio 15, 14 px 700
+`primary-hover` (`#00532A`) y un punto de 9 px del color del estado
+(`tono`: los de `Badge` más `"apagado"`, `muted-icon`, para retirada). Sin
+`tono`, el punto va del color del texto (detalle de la oferta de la
+empresa).
+
+### Tabla con filete
+
+El `Tabla` de la ronda 8 (`semantica="tabla"`, roles ARIA) con las
+columnas por props y `FilaTabla filete` (`before:bg-*` del estado). En el
+celular, cada fila es una tarjeta con el mismo filete, el estado arriba y
+el botón a todo el ancho (`CLASE_ACCION_FILA`). El botón de cada fila
+lleva `aria-label` con el nombre del elemento ("Revisar Contador").
+
+Debajo, `Paginacion variante="numeros"` con `elemento`: "Mostrando X–Y de
+Z ofertas" a la izquierda y los números de página a la derecha.
+
+### Persona o empresa en una celda (`CeldaPersona`)
+
+Iniciales (o la foto o el logo, si la consulta ya los trae) en un círculo
+de 40 px y el nombre como link. Con `secundario`, el nombre va en 800 y
+debajo una línea de 13 px `muted-foreground` (DNI, teléfono o CUIT);
+`secundario={null}` da el estilo sin la segunda línea. Sin `secundario`,
+el estilo anterior (700), que siguen usando la empresa y el postulante.
+
+### Chip de localidad (`ChipLocalidad`)
+
+`src/components/postulantes/badge-procedencia.tsx`. 26 px, radio 13, 13 px
+700, ícono de 14 px. La variante sale del nivel de prioridad
+(`varianteLocalidad` en `lib/procedencia.ts`, la misma lógica que
+`BadgeProcedencia`):
+
+  Nivel   Fondo                      Texto       Ícono         Texto del chip
+  ------- -------------------------- ----------- ------------- ---------------------------------------------------
+  1       `primary` al 12 %          `#00532A`   CircleCheck   Funes · Verificado
+  2       `accent` al 22 %           `#3A2A00`   Clock         Funes · Sin verificar
+  3       `secondary` (`#EEF1EF`)    `#33443A`   MapPin        Otra localidad: {ciudad} (o "Localidad sin informar")
+
+### Detalle en dos columnas
+
+`DetalleConLateral` con `anchoLateral={380}`, `separacion="gap-4"` y
+`separacionColumnas="gap-5"`: grid `minmax(0,1fr) / 380px`, 20 px entre
+columnas, 16 px entre tarjetas, `align-items: stretch` y la última tarjeta
+de cada columna con `flex: 1`, así las dos terminan a la misma altura. Una
+columna en el celular. La lateral no es sticky.
+
+### Tarjeta "Decisión" (`TarjetaDecision`)
+
+`src/components/ui/tarjeta-decision.tsx`: filete superior de 4 px
+(`accent` si la decisión está pendiente, `primary` con `resuelta`),
+`Scale` en un cuadrado de 40 px, el título de 20 px 800, la bajada y las
+acciones a todo el ancho: la principal (verde) arriba y la de rechazo
+(`btn-peligro-borde`) abajo.
+
+### Historial de revisión
+
+`LineaDeTiempo variante="historial"`: cada evento con su ícono blanco en
+un cuadrado de 40 px, unido al siguiente por una línea de 2 px
+`secondary-hover` (`#E3E9E5`); el título en 15 px 800 y la fecha y el
+autor en 14 px `muted-foreground`. Íconos (`ICONO_HISTORIAL`): `Send`
+gris (enviado), `Search` azul (revisado), `CircleCheck` verde (aprobado),
+`CircleX` rojo (rechazado) y `Clock` teal (actualizado). El motivo de un
+rechazo va en `nota` con `MotivoRechazo`: recuadro rojo al 7 %, texto
+`motivo-rechazo` (`#5A1A12`) y "Motivo:" en negrita.
+
+### Mosaicos de datos (`MosaicosDatos`)
+
+`src/components/ui/mosaicos-datos.tsx`: grid de 3 columnas (1 en el
+celular, gap 12). Cada mosaico: borde `secondary-hover`, radio 14, fondo
+`tabla-fila-hover` (`#FAFBFA`), el ícono verde en un cuadrado de 38 px
+(`primary` al 10 %), la etiqueta de 12 px y el valor de 15 px 700. Con
+`ancho`, ocupa toda la fila (los rubros). Los datos sin valor no se
+muestran.
+
+### Panel (`/admin`)
+
+-   Banda verde: "Hola, {nombre}", "Esto es lo que tiene pendiente la
+    Oficina de Empleo." y el botón blanco "Ver indicadores" (`ChartColumn`).
+-   "Pendientes" (`TituloBloque`, `Inbox`), con la bajada "Hay N cosas
+    para revisar." o "Estás al día." y los cinco cuadros de pendientes.
+-   "Accesos" (`TituloBloque`, `LayoutGrid`): cuatro `TarjetaAcceso` con
+    su dato en verde (cursos activos, postulantes registrados, cuentas
+    activas; Indicadores no lleva).
+
+### Ofertas (`/admin/ofertas`)
+
+-   Banda con el título y la bajada.
+-   Las cinco pestañas como `PastillaFiltro` con cantidad (`?estado=`) y,
+    al lado, el `Buscador` por título (debajo y a todo el ancho por debajo
+    de lg). Las cantidades aplican la misma búsqueda que la lista
+    (`aplicarFiltroOfertasAdmin`, `lib/admin/filtro-ofertas.ts`), así
+    coinciden siempre.
+-   Tabla con filete: Oferta (link y badge "Nueva", "Modificada" o
+    "Corregida") 2fr · Empresa (`CeldaPersona` con iniciales) 1.3fr ·
+    Fecha en una línea .8fr · Estado 1.1fr · "Revisar" (secundario chico)
+    .6fr. Filete: `accent` por revisar, `primary` activa, `danger` vencida
+    o rechazada, `neutral` cerrada.
+-   Sin ofertas: estado vacío E1 con el texto de cada pestaña.
+
+### Detalle de la oferta (`/admin/ofertas/[id]`)
+
+-   "Volver" arriba de la banda. Banda: el título con `BadgeBanda` y la
+    bajada "{empresa} · Enviada el …" o "{empresa} · Publicada el … ·
+    Vence el …".
+-   Izquierda: "Contenido de la oferta" (`FileText`) con los mosaicos
+    (Rubros a todo el ancho, Modalidad, Jornada, Ubicación, Vacantes,
+    Duración), una línea y Descripción, Requisitos y Beneficios
+    (`SeccionTexto`, compartida con el detalle de la empresa).
+-   Derecha, pendiente: "Decisión" (Publicar oferta y Rechazar) y la
+    tarjeta de la empresa (logo o iniciales, nombre, estado, razón social,
+    CUIT, rubro y "Ver empresa ›").
+-   Derecha, en los demás estados: "Postulaciones" (`Users`, el número en
+    44 px 800 y "Buscar postulantes para esta oferta" si está activa; en
+    rechazada o cerrada solo si recibió alguna), la empresa y "Revisión"
+    (`History`) con el historial.
+-   Diálogo "Rechazar oferta": ícono `X` rojo, una sola explicación, el
+    resumen (título, empresa y fecha de envío), el motivo obligatorio con
+    contador y "Rechazar oferta" en rojo sólido.
 
 ## Panel de la empresa
 
@@ -3074,6 +3227,10 @@ siguiente por una línea de 2 px `secondary-hover` (`#E3E9E5`); `extra`
 (un badge) va a la derecha del texto, o debajo si el contenedor mide
 menos de 28 rem. Lo usan los últimos movimientos del panel del
 postulante. Los demás usos no cambian.
+
+`variante="historial"` (revisión de la oficina): ícono de 40 px, título en
+800 y `nota` para el motivo de un rechazo. Ver "Pantallas de la Oficina
+(ronda 9)".
 
 ## Archivo en una tarjeta
 

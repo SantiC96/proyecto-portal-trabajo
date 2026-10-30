@@ -28,7 +28,6 @@ export function RegisterModal({ onClose }: RegisterModalProps) {
   return (
     <Dialog open onOpenChange={(abierto) => !abierto && onClose()}>
       <DialogContent
-        tamano="amplio"
         showCloseButton={false}
         className="max-w-[calc(100%-1.5rem)] sm:max-w-[480px]"
       >
