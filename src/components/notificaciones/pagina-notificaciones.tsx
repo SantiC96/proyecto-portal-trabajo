@@ -10,8 +10,8 @@ import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { BotonFormulario } from "@/components/ui/boton-formulario";
-import { abrirNotificacion } from "@/app/(dashboard)/notificaciones/actions";
 import { MarcarLeidasAlEntrar } from "./acciones-notificaciones";
+import { FormAbrirNotificacion } from "./form-abrir-notificacion";
 import { IconoNotificacion } from "./icono-notificacion";
 import { ListaNotificacionesAgrupada, type RolListaNotificaciones } from "./lista-agrupada";
 import { BotonVolver } from "@/components/ui/boton-volver";
@@ -38,7 +38,7 @@ export async function PaginaNotificaciones({
   volverA: string;
   textoVacio: string;
   searchParams: ParamsUrl;
-  /** Encabezado con banda verde y lista agrupada por fecha (postulante y empresa). */
+  /** Encabezado con banda verde y lista agrupada por fecha (los tres roles). */
   banda?: boolean;
   /** Con `banda`: los íconos y colores de cada tipo. */
   rol?: RolListaNotificaciones;
@@ -117,7 +117,8 @@ async function ListadoNotificaciones({
   const resultado = await consultarPagina(pagina, (desde, hasta) =>
     supabase
       .from("notificaciones")
-      .select(COLUMNAS_NOTIFICACION, { count: "exact" })
+      // La clave distingue los avisos de la oficina que comparten tipo (reenvío, edición).
+      .select(`${COLUMNAS_NOTIFICACION}, clave`, { count: "exact" })
       .eq("usuario_id", usuarioId)
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
@@ -183,14 +184,14 @@ async function ListadoNotificaciones({
                 </div>
                 <div className="flex flex-wrap gap-2 sm:flex-none sm:justify-end">
                   {n.link && (
-                    <form action={abrirNotificacion.bind(null, n.id)}>
+                    <FormAbrirNotificacion id={n.id}>
                       <BotonFormulario
                         textoPendiente="Abriendo…"
                         className="btn-secundario inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap px-4 text-sm font-medium"
                       >
                         Ver detalle
                       </BotonFormulario>
-                    </form>
+                    </FormAbrirNotificacion>
                   )}
                 </div>
               </li>
