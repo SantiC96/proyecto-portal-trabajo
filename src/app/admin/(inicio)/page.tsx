@@ -15,7 +15,6 @@ import {
   Users,
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { UMBRAL_RECHAZOS_CURSO } from "@/lib/cursos";
 import { requerirRolPagina } from "@/lib/auth";
 import { contarPendientesOficina } from "@/lib/admin/pendientes";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
@@ -28,6 +27,7 @@ import {
 } from "@/components/ui/cuadro-estado";
 import { TarjetaAcceso } from "@/components/ui/tarjeta-acceso";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { TITULOS_PENDIENTES } from "./pendientes-panel";
 
 export const metadata: Metadata = {
   title: "Panel municipal | Portal de Empleo Funes",
@@ -71,35 +71,35 @@ export default async function AdminDashboardPage() {
     {
       href: "/admin/postulaciones",
       icono: ClipboardList,
-      titulo: "Postulaciones por revisar",
+      titulo: TITULOS_PENDIENTES[0],
       accion: "Revisar postulaciones",
       cantidad: postulacionesPendientes ?? 0,
     },
     {
       href: "/admin/ofertas",
       icono: Briefcase,
-      titulo: "Ofertas por aprobar",
+      titulo: TITULOS_PENDIENTES[1],
       accion: "Revisar ofertas",
       cantidad: pendientesOficina?.ofertas ?? 0,
     },
     {
       href: "/admin/empresas",
       icono: Building2,
-      titulo: "Empresas por aprobar",
+      titulo: TITULOS_PENDIENTES[2],
       accion: "Revisar empresas",
       cantidad: pendientesOficina?.empresas ?? 0,
     },
     {
       href: "/admin/comprobantes",
       icono: House,
-      titulo: "Comprobantes por revisar",
+      titulo: TITULOS_PENDIENTES[3],
       accion: "Revisar comprobantes",
       cantidad: pendientesOficina?.comprobantes ?? 0,
     },
     {
       href: "/admin/postulantes",
       icono: UserX,
-      titulo: `Postulantes con ${UMBRAL_RECHAZOS_CURSO} o más rechazos`,
+      titulo: TITULOS_PENDIENTES[4],
       accion: "Ver postulantes",
       cantidad: postulantesEsperando,
     },

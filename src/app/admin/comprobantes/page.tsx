@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LABEL_PESTANA, COLUMNAS_TABLA } from "./listado";
 import { Suspense } from "react";
 import { ExternalLink, FileCheck } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
@@ -23,7 +24,7 @@ import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { PastillaFiltro } from "@/components/ui/pastilla-filtro";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { EsqueletoComprobantes } from "./esqueleto";
 import { RevisarComprobante } from "@/components/admin/revisar-comprobante";
 import { ChipLocalidad } from "@/components/postulantes/badge-procedencia";
 import { Badge } from "@/components/ui/badge";
@@ -36,17 +37,8 @@ export const metadata: Metadata = {
 
 const RUTA = "/admin/comprobantes";
 
-const LABEL_PESTANA: Record<PestanaComprobantes, string> = {
-  "por-revisar": "Por revisar",
-  revisados: "Revisados",
-};
-
 const COLUMNAS =
   "id, ruta, creado_en, verificacion_estado, verificacion_motivo, verificado_en, usuarios!usuario_id(nombre, apellido, postulantes(id, dni, localidad, domicilio, nivel_prioridad)), revisor:usuarios!verificado_por(nombre, apellido)" as const;
-
-// Postulante | Localidad | Domicilio declarado | Cargado el | Comprobante | acciones o resultado.
-const COLUMNAS_TABLA =
-  "minmax(0,1.5fr) minmax(0,.8fr) minmax(0,1fr) minmax(max-content,.9fr) minmax(max-content,1fr) minmax(max-content,1.6fr)";
 
 // Filete izquierdo de la fila: el color del estado del comprobante.
 const FILETE = {
@@ -118,7 +110,7 @@ export default async function ComprobantesPage({
         </p>
       </div>
 
-      <Suspense key={JSON.stringify({ pestana, pagina })} fallback={<EsqueletoLista filas={5} />}>
+      <Suspense key={JSON.stringify({ pestana, pagina })} fallback={<EsqueletoComprobantes />}>
         <ListadoComprobantes pestana={pestana} pagina={pagina} searchParams={sp} />
       </Suspense>
     </section>

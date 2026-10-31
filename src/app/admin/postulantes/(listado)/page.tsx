@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { FILTROS_PROCEDENCIA, GRILLA, SUBGRILLA } from "./listado";
+import { EsqueletoListado } from "./esqueleto";
 import { Suspense } from "react";
 import Link from "next/link";
 import { FileText, TriangleAlert, Users } from "lucide-react";
@@ -25,7 +27,7 @@ import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { PastillaFiltro } from "@/components/ui/pastilla-filtro";
 import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
 import { FiltrosPostulantes } from "./filtros-postulantes";
-import { AsignarCursoDialog } from "./asignar-curso-dialog";
+import { AsignarCursoDialog } from "../asignar-curso-dialog";
 import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
 import {
   aEstadoCursos,
@@ -77,49 +79,9 @@ const NIVEL: Record<NivelPrioridad, { titulo: string; filete: string; chip: stri
   },
 };
 
-// Filtro ?procedencia=: un valor por nivel. Sin el parámetro, o con uno que no
-// está acá, se ven todos.
-const FILTROS_PROCEDENCIA: {
-  valor: string;
-  nivel: NivelPrioridad;
-  etiqueta: string;
-  vacio: string;
-}[] = [
-  {
-    valor: "verificado",
-    nivel: 1,
-    etiqueta: "De Funes, verificados",
-    vacio: "No hay postulantes de Funes con el domicilio verificado.",
-  },
-  {
-    valor: "sin-verificar",
-    nivel: 2,
-    etiqueta: "De Funes, sin verificar",
-    vacio: "No hay postulantes de Funes sin verificar.",
-  },
-  {
-    valor: "otra",
-    nivel: 3,
-    etiqueta: "Otra localidad o sin informar",
-    vacio: "No hay postulantes de otra localidad o sin localidad informada.",
-  },
-];
-
 function leerProcedencia(valor: string | undefined): NivelPrioridad | null {
   return FILTROS_PROCEDENCIA.find((f) => f.valor === valor)?.nivel ?? null;
 }
-
-// Tabla desde 896 px de ancho disponible (la sidebar le quita ancho al
-// contenido); más angosto, cada postulante es una tarjeta. Misma técnica que
-// el componente Tabla: una sola grilla y, adentro, encabezado, grupos y filas
-// con subgrid, para que las columnas midan lo mismo en todas las filas y los
-// rótulos queden sobre su columna. No usa Tabla porque las filas van
-// agrupadas por nivel con una franja entre grupos.
-// Postulante | DNI | Localidad | Rubros | CV | acciones.
-const GRILLA =
-  "@4xl:grid @4xl:grid-cols-[minmax(0,1.6fr)_minmax(max-content,.8fr)_minmax(0,1.3fr)_minmax(0,1.7fr)_minmax(max-content,.8fr)_minmax(max-content,.7fr)] @4xl:gap-x-4 @4xl:gap-y-0";
-const SUBGRILLA =
-  "@4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:gap-x-4 @4xl:gap-y-0";
 
 /** Rubros a la vista en la fila; el resto, como "+n". */
 const RUBROS_VISIBLES = 2;
@@ -784,22 +746,4 @@ function EtiquetaCurso({ cursos }: { cursos: EstadoCursosPostulante | undefined 
     return <EstadoCursoBadge estado={cursos.asignacion_activa_estado} />;
   }
   return null;
-}
-
-function EsqueletoListado() {
-  return (
-    <div aria-busy="true" aria-label="Cargando postulantes" className="flex flex-col gap-3">
-      <Esqueleto className="h-11 w-full rounded-[var(--radius-lg)]" />
-      {Array.from({ length: 6 }, (_, i) => (
-        <div key={i} className="tarjeta flex items-center gap-3 p-4">
-          <Esqueleto className="size-10 shrink-0 rounded-full" />
-          <div className="flex flex-1 flex-col gap-2">
-            <Esqueleto className="h-4 w-1/3" />
-            <Esqueleto className="h-3 w-1/4" />
-          </div>
-          <Esqueleto className="hidden h-10 w-24 sm:block" />
-        </div>
-      ))}
-    </div>
-  );
 }

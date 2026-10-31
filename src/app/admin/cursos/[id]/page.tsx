@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { COLUMNAS_ASIGNADOS, EsqueletoAsignados } from "./esqueleto";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { Lock, StickyNote, Users } from "lucide-react";
@@ -13,7 +14,6 @@ import { cn } from "@/lib/utils";
 import { AvisoUrl } from "@/components/ui/aviso-url";
 import { Paginacion } from "@/components/ui/paginacion";
 import { ErrorListado, EstadoVacio } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
 import {
   ESTADO_CURSO_LABEL,
@@ -45,7 +45,6 @@ const FILETE_ESTADO_CURSO: Record<EstadoAsignacionCurso, string> = {
   abandonado: "before:bg-neutral",
 };
 
-const COLUMNAS_ASIGNADOS = "minmax(0,1.3fr) 8.5rem minmax(0,1fr) minmax(0,1.4fr)";
 
 export default async function CursoDetallePage({
   params,
@@ -222,7 +221,7 @@ export default async function CursoDetallePage({
 
         <Suspense
           key={JSON.stringify({ pagina, estadoFiltro })}
-          fallback={<EsqueletoLista filas={3} />}
+          fallback={<EsqueletoAsignados />}
         >
           <ListadoAsignados
             cursoId={curso.id}

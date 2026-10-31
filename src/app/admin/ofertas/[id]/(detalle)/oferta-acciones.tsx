@@ -12,7 +12,7 @@ import {
   DialogResumen,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { aprobarOferta, rechazarOferta } from "../actions";
+import { aprobarOferta, rechazarOferta } from "../../actions";
 import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
 import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { COLUMNAS, EsqueletoCandidatos, EsqueletoYaSePostularon } from "./esqueleto";
 import { Fragment, Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -23,7 +24,6 @@ import { formatFechaCorta } from "@/lib/fechas";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { Badge, claseTono } from "@/components/ui/badge";
 import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
 import { BadgeCoincidencia, MotivosCoincidencia } from "@/components/ofertas/coincidencia";
@@ -53,7 +53,6 @@ const TAMANO = 20;
 const POSTULADOS_MAXIMO = 50;
 
 // Postulante | Procedencia | Coincidencia | Invitación | acciones.
-const COLUMNAS = "minmax(0,1.5fr) minmax(0,1.1fr) minmax(0,2fr) minmax(0,1.3fr) auto";
 
 export default async function CandidatosOfertaPage({
   params,
@@ -124,7 +123,7 @@ export default async function CandidatosOfertaPage({
         jornada={oferta.jornada}
       />
 
-      <Suspense key={pagina} fallback={<EsqueletoLista filas={4} className="mt-6" />}>
+      <Suspense key={pagina} fallback={<EsqueletoCandidatos />}>
         <ListaCandidatos
           ofertaId={ofertaId}
           ofertaTitulo={oferta.titulo}
@@ -135,7 +134,7 @@ export default async function CandidatosOfertaPage({
         />
       </Suspense>
 
-      <Suspense fallback={<EsqueletoLista filas={1} className="mt-8" />}>
+      <Suspense fallback={<EsqueletoYaSePostularon />}>
         <YaSePostularon ofertaId={ofertaId} />
       </Suspense>
     </section>

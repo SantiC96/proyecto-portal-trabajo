@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LABEL_FILTRO, COLUMNAS } from "./listado";
 import { Suspense } from "react";
 import Link from "next/link";
 import { Briefcase } from "lucide-react";
@@ -27,7 +28,7 @@ import { PastillaFiltro } from "@/components/ui/pastilla-filtro";
 import { Badge, type TonoBadge } from "@/components/ui/badge";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { EsqueletoOfertasAdmin } from "./esqueleto";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import {
   CLASE_ACCION_FILA,
@@ -41,14 +42,6 @@ import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Ofertas | Panel municipal | Portal de Empleo Funes",
-};
-
-const LABEL_FILTRO: Record<EstadoFiltroAdmin, string> = {
-  pendiente_aprobacion: "Por revisar",
-  activa: "Activas",
-  vencida: "Vencidas",
-  rechazada: "Rechazadas",
-  cerrada: "Cerradas",
 };
 
 const TEXTO_VACIO: Record<EstadoFiltroAdmin, string> = {
@@ -149,7 +142,7 @@ export default async function AdminOfertasPage({
         />
       </div>
 
-      <Suspense key={JSON.stringify({ estado, q, pagina })} fallback={<EsqueletoLista filas={5} />}>
+      <Suspense key={JSON.stringify({ estado, q, pagina })} fallback={<EsqueletoOfertasAdmin />}>
         <ListadoOfertas
           estado={estado}
           q={q}
@@ -181,10 +174,6 @@ function etiquetaRevision(row: {
   if (row.publicado_en) return { texto: "Modificada", tono: "info" };
   return { texto: "Corregida", tono: "info" };
 }
-
-// Oferta | Empresa | Fecha | Estado | acción.
-const COLUMNAS =
-  "minmax(0,2fr) minmax(0,1.3fr) minmax(max-content,.8fr) minmax(0,1.1fr) minmax(max-content,.6fr)";
 
 const CLASE_TITULO =
   "rounded-[var(--radius-sm)] text-[15px] leading-snug font-extrabold break-words text-heading no-underline outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]";

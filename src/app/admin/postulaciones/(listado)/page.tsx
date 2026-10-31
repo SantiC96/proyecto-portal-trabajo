@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ESTADOS_FILTRO, LABEL_FILTRO, COLUMNAS } from "../listado";
 import { Suspense } from "react";
 import Link from "next/link";
 import Form from "next/form";
@@ -17,7 +18,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { PastillaFiltro } from "@/components/ui/pastilla-filtro";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { EsqueletoPostulacionesAdmin } from "../esqueleto";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import {
   CLASE_ACCION_FILA,
@@ -63,22 +64,6 @@ export const metadata: Metadata = {
 
 // Qué entra en cada pestaña: src/lib/admin/postulaciones-pestanas.ts.
 type EstadoFiltro = PestanaPostulaciones;
-
-const ESTADOS_FILTRO: EstadoFiltro[] = [
-  "pendiente",
-  "derivada",
-  "contratado",
-  "rechazada_municipalidad",
-  "retirada_postulante",
-];
-
-const LABEL_FILTRO: Record<EstadoFiltro, string> = {
-  pendiente: "Pendientes",
-  derivada: "Derivadas",
-  contratado: "Contratado",
-  rechazada_municipalidad: "No seleccionado",
-  retirada_postulante: "Retiradas",
-};
 
 // "Primero verificados de Funes" (migration_055): ordena por
 // postulantes.nivel_prioridad y después por fecha. Solo en las pestañas que
@@ -292,7 +277,7 @@ export default async function PostulacionesPage({
         )}
       </div>
 
-      <Suspense key={clave} fallback={<EsqueletoLista filas={5} />}>
+      <Suspense key={clave} fallback={<EsqueletoPostulacionesAdmin etiquetaFecha={ENCABEZADO_FECHA[estado]} />}>
         <ListadoPostulaciones datos={cargarListado(filtros)} estado={estado} searchParams={sp} />
       </Suspense>
     </section>
@@ -604,10 +589,6 @@ async function cargarListado({
     avatarMap,
   };
 }
-
-// Postulante | Oferta y empresa | Fecha | Estado | acción.
-const COLUMNAS =
-  "minmax(0,1.7fr) minmax(0,1.5fr) minmax(max-content,.7fr) minmax(0,1.2fr) minmax(max-content,.6fr)";
 
 const ENCABEZADO_FECHA: Record<EstadoFiltro, string> = {
   pendiente: "Fecha",

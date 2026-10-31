@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LABELS, COLUMNAS } from "./listado";
 import { Suspense } from "react";
 import Link from "next/link";
 import { Building2, Calendar, Tag, User } from "lucide-react";
@@ -17,7 +18,7 @@ import { Buscador } from "@/components/ui/buscador";
 import { PastillaFiltro } from "@/components/ui/pastilla-filtro";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { EsqueletoEmpresasAdmin } from "./esqueleto";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import {
   CLASE_ACCION_FILA,
@@ -36,12 +37,6 @@ import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Empresas | Panel municipal | Portal de Empleo Funes",
-};
-
-const LABELS: Record<EstadoAprobacion, string> = {
-  pendiente: "Pendientes",
-  aprobada: "Aprobadas",
-  rechazada: "Rechazadas",
 };
 
 // Filete izquierdo de la fila: el color del estado.
@@ -118,7 +113,7 @@ export default async function AdminEmpresasPage({
         />
       </div>
 
-      <Suspense key={JSON.stringify({ estado, q, pagina })} fallback={<EsqueletoLista filas={5} />}>
+      <Suspense key={JSON.stringify({ estado, q, pagina })} fallback={<EsqueletoEmpresasAdmin />}>
         <ListadoEmpresas
           estado={estado}
           q={q}
@@ -130,10 +125,6 @@ export default async function AdminEmpresasPage({
     </section>
   );
 }
-
-// Razón social | CUIT | Rubro | Persona responsable | Solicitud | acción.
-const COLUMNAS =
-  "minmax(0,1.6fr) minmax(max-content,1fr) minmax(0,1.2fr) minmax(0,1.2fr) minmax(max-content,.8fr) minmax(max-content,.6fr)";
 
 // Rubro, responsable y fecha: en la tarjeta del celular, cada uno con su ícono.
 const CLASE_DATO =

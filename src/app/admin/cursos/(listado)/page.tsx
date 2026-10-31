@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AvisoUrl } from "@/components/ui/aviso-url";
 import Link from "next/link";
-import { BookOpen, CheckCircle2, Link as IconoLink, Plus, Users } from "lucide-react";
+import { BookOpen, Link as IconoLink, Users } from "lucide-react";
+import { AccionesCursos, bajadaCursos } from "./encabezado-cursos";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
 import { limpiarBusqueda } from "@/lib/busqueda";
@@ -24,9 +25,8 @@ import { Paginacion } from "@/components/ui/paginacion";
 import { PastillaFiltro } from "@/components/ui/pastilla-filtro";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { EsqueletoCursos } from "@/components/cursos/esqueleto-curso";
 import { TarjetaCurso } from "@/components/cursos/tarjeta-curso";
-import { UMBRAL_RECHAZOS_CURSO, VENTANA_RECHAZOS_DIAS } from "@/lib/cursos";
 import { requerirRolPagina } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { BotonVolver } from "@/components/ui/boton-volver";
@@ -64,19 +64,8 @@ export default async function CursosPage({
         className="-mt-2"
         botonesBlancos
         titulo="Cursos de inserción laboral"
-        bajada={`Cursos asignables a postulantes con ${UMBRAL_RECHAZOS_CURSO} o más rechazos de empresas en los últimos ${VENTANA_RECHAZOS_DIAS} días.`}
-        acciones={
-          <>
-            <Link href="/admin/cursos/completados" className="btn-secundario">
-              <CheckCircle2 aria-hidden="true" />
-              Ver cursos completados
-            </Link>
-            <Link href="/admin/cursos/nuevo" className="btn-primario">
-              <Plus aria-hidden="true" />
-              Nuevo curso
-            </Link>
-          </>
-        }
+        bajada={bajadaCursos}
+        acciones={<AccionesCursos />}
       />
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
@@ -104,7 +93,7 @@ export default async function CursosPage({
 
       <Suspense
         key={JSON.stringify({ pestana, q, pagina })}
-        fallback={<EsqueletoLista filas={4} />}
+        fallback={<EsqueletoCursos cantidad={4} pista="Ver detalle" />}
       >
         <ListadoCursos pestana={pestana} q={q} pagina={pagina} searchParams={sp} />
       </Suspense>
