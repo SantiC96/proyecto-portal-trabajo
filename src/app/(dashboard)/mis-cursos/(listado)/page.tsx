@@ -8,10 +8,10 @@ import { formatFechaCorta } from "@/lib/fechas";
 import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { EsqueletoMisCursos } from "@/components/cursos/esqueleto-curso";
 import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
 import { aMisCursos, type MiCurso } from "@/lib/cursos";
-import { AccionesMiCurso } from "./acciones-mi-curso";
+import { AccionesMiCurso } from "../acciones-mi-curso";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { IconoCuadro } from "@/components/ui/icono-cuadro";
@@ -43,7 +43,7 @@ export default async function MisCursosPage({
           bajada="Ante cualquier duda, comunicate con la Oficina de Empleo."
         />
 
-        <Suspense key={pagina} fallback={<EsqueletoLista filas={3} />}>
+        <Suspense key={pagina} fallback={<EsqueletoMisCursos />}>
           <ListadoMisCursos pagina={pagina} searchParams={sp} />
         </Suspense>
       </div>

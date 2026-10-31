@@ -27,7 +27,8 @@ import { obtenerIndicadoresPostulante } from "@/lib/postulante/panel";
 import { GrupoPastillas, PastillaFiltro } from "@/components/ui/pastilla-filtro";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { LineaBanda } from "@/components/ui/esqueleto";
+import { EsqueletoMisPostulaciones } from "./esqueleto";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import {
   LeyendaEstados,
@@ -163,7 +164,7 @@ export default async function MisPostulacionesPage({
         bajada={
           <Suspense
             key={`${clave}:bajada`}
-            fallback={<span className="inline-block h-4 w-72 max-w-full rounded bg-primary-foreground/20" />}
+            fallback={<LineaBanda className="w-[30em]" />}
           >
             <BajadaMisPostulaciones resultado={resultado} />
           </Suspense>
@@ -190,7 +191,7 @@ export default async function MisPostulacionesPage({
         />
       </Suspense>
 
-      <Suspense key={`${clave}:lista`} fallback={<EsqueletoLista filas={3} />}>
+      <Suspense key={`${clave}:lista`} fallback={<EsqueletoMisPostulaciones />}>
         <ListadoMisPostulaciones
           postulanteId={postulante.id}
           resultado={resultado}
