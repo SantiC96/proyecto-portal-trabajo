@@ -29,8 +29,6 @@ type Props = {
   publicada?: string | null;
   /** Badges junto a las etiquetas ("Te invitaron", coincidencia). */
   badges?: ReactNode;
-  /** Texto del botón que lleva a la oferta. */
-  textoAccion?: string;
   /** Otra acción con su propio link (por ejemplo "Buscar postulantes"). */
   accionExtra?: ReactNode;
   className?: string;
@@ -59,7 +57,6 @@ export function TarjetaOferta({
   jornada,
   publicada,
   badges,
-  textoAccion = "Ver oferta",
   accionExtra,
   className,
 }: Props) {
@@ -74,7 +71,7 @@ export function TarjetaOferta({
   const datos = (clase?: string) => <LugarJornada lugar={lugar} jornada={jornada} className={clase} />;
   const boton = (
     <span aria-hidden="true" className="btn-primario tarjeta-oferta-boton">
-      {textoAccion}
+      Ver oferta
     </span>
   );
 

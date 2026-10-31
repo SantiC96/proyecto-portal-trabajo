@@ -60,14 +60,6 @@ export function LineaBanda({ className, style }: { className?: string; style?: C
   );
 }
 
-export function EsqueletoTexto({ className }: { className?: string }) {
-  return <Esqueleto className={cn("h-4 w-full", className)} />;
-}
-
-export function EsqueletoTitulo({ className }: { className?: string }) {
-  return <Esqueleto className={cn("h-7 w-48 sm:w-64", className)} />;
-}
-
 export function EsqueletoTarjeta({ className }: { className?: string }) {
   return (
     <div className={cn("tarjeta p-4 sm:p-5", className)}>
@@ -753,61 +745,6 @@ export function CampoEsqueleto({
         <Esqueleto className="my-[3px] h-4 w-32" />
       )}
       <div className={cn("campo", alto ?? "h-12")} />
-    </div>
-  );
-}
-
-/**
- * Tarjeta de formulario: el número y el título reales (SeccionNumerada) o una
- * línea, y campos de 48 px con su rótulo. `columnas={2}` reparte los campos
- * desde sm, como GrillaLectura y los formularios del perfil.
- */
-export function FormularioEsqueleto({
-  numero,
-  titulo,
-  descripcion,
-  etiquetas,
-  campos = 4,
-  columnas = 1,
-  className,
-}: {
-  numero?: number;
-  titulo?: string;
-  descripcion?: string;
-  /** Rótulos reales de los campos; si no, `campos` líneas. */
-  etiquetas?: readonly string[];
-  campos?: number;
-  columnas?: 1 | 2;
-  className?: string;
-}) {
-  const lista = etiquetas ?? Array.from({ length: campos }, () => undefined);
-  return (
-    <div className={cn("tarjeta px-4 py-5 sm:p-6", className)}>
-      <div className="flex items-center gap-3">
-        {numero !== undefined ? (
-          <span
-            aria-hidden="true"
-            className="flex size-[34px] shrink-0 items-center justify-center rounded-full bg-primary text-[15px] font-extrabold text-primary-foreground"
-          >
-            {numero}
-          </span>
-        ) : (
-          <Esqueleto className="size-10 shrink-0 rounded-[11px]" />
-        )}
-        {titulo ? (
-          <p className="text-[19px] leading-snug font-extrabold text-heading">{titulo}</p>
-        ) : (
-          <Esqueleto className="h-6 w-48" />
-        )}
-      </div>
-      {descripcion && (
-        <p className="mt-1.5 text-sm text-muted-foreground sm:pl-[46px]">{descripcion}</p>
-      )}
-      <div className={cn("mt-5 grid grid-cols-1 gap-5", columnas === 2 && "sm:grid-cols-2 sm:gap-x-6")}>
-        {lista.map((e, i) => (
-          <CampoEsqueleto key={i} etiqueta={e} />
-        ))}
-      </div>
     </div>
   );
 }
