@@ -78,7 +78,6 @@ export type FilaDerivacionDePostulanteEmpresa = ConNulos<
   FilaRpc<"derivaciones_de_postulante_empresa">,
   "fecha_respuesta"
 >;
-export type FilaDerivacionSinResultado = FilaRpc<"derivaciones_sin_resultado_empresa">;
 export type FilaEstadoDerivacionPostulante = ConNulos<
   FilaRpc<"estado_derivacion_postulante">,
   "fecha_entrevista" | "lugar_entrevista" | "link_entrevista"
@@ -87,7 +86,6 @@ export type FilaPostulacionNoSeleccionada = ConNulos<
   FilaRpc<"postulaciones_no_seleccionadas">,
   "usuario_id" | "nombre" | "apellido" | "dni" | "empresa_nombre"
 >;
-export type FilaEmailDeUsuario = FilaRpc<"emails_de_usuarios">;
 /** Una pre-entrevista online puede no tener lugar; una presencial no tiene link (migration_064). */
 export type FilaMiPreEntrevista = ConNulos<FilaRpc<"mis_pre_entrevistas">, "lugar" | "link">;
 /** CVs (migration_054): con qué CV se postuló y el CV que ve la empresa. */
@@ -135,5 +133,3 @@ export type FilaOfertaDeMiPostulacion = ConNulos<
   FilaRpc<"ofertas_de_mis_postulaciones">,
   "empresa_nombre"
 >;
-/** Foto activa de los candidatos que la empresa puede ver (migration_060). */
-export type FilaAvatarCandidatoEmpresa = FilaRpc<"avatares_de_candidatos_para_empresa">;

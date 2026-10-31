@@ -35,11 +35,6 @@ export function esEstadoCurso(valor: unknown): valor is EstadoAsignacionCurso {
   return ESTADOS_ASIGNACION_CURSO.some((estado) => estado === valor);
 }
 
-/** Asignado o en curso: el curso todavía está pendiente de completar. */
-export function cursoPendiente(estado: EstadoAsignacionCurso): boolean {
-  return estado === "asignado" || estado === "en_curso";
-}
-
 /** Mismos textos que el trigger asignaciones_curso_alta (migration_046). */
 export const MENSAJE_SOLO_SI_PUEDE_RECIBIR_CURSO =
   "Solo se puede asignar un curso a postulantes con 3 o más rechazos recientes.";

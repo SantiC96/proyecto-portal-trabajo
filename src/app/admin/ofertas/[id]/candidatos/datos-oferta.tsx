@@ -100,7 +100,7 @@ function Fila({
   );
 }
 
-/** Misma viñeta que RequisitosList del detalle público, en versión compacta. */
+/** Requisitos con viñeta verde, en versión compacta. */
 function ListaRequisitos({ items, className }: { items: string[]; className?: string }) {
   return (
     <ul className={cn("flex flex-col gap-1.5", className)}>

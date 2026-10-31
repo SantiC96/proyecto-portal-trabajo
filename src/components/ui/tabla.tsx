@@ -126,7 +126,6 @@ export type SemanticaTabla = "lista" | "tabla";
 export function FilaTabla({
   children,
   detalle,
-  id,
   variante = "tarjeta",
   semantica = "lista",
   filete,
@@ -134,8 +133,6 @@ export function FilaTabla({
 }: {
   children: ReactNode;
   detalle?: ReactNode;
-  /** Ancla de la fila (#id): deja lugar arriba para el encabezado fijo. */
-  id?: string;
   /** La misma de su Tabla. */
   variante?: VarianteTabla;
   /** La misma de su Tabla. */
@@ -146,7 +143,6 @@ export function FilaTabla({
   const Fila = semantica === "tabla" ? "div" : "li";
   return (
     <Fila
-      id={id}
       role={semantica === "tabla" ? "row" : undefined}
       className={cn(
         variante === "incrustada"
@@ -155,7 +151,6 @@ export function FilaTabla({
               "flex flex-col gap-3 rounded-[var(--radius-xl)] border border-border bg-surface p-4 text-[15px] text-foreground shadow-[var(--sombra-tarjeta)] transition-colors duration-150 motion-reduce:transition-none",
               "@4xl:col-span-full @4xl:grid @4xl:grid-cols-subgrid @4xl:items-center @4xl:gap-x-4 @4xl:rounded-none @4xl:shadow-none @4xl:border-x-0 @4xl:border-t-0 @4xl:border-b-tabla-borde @4xl:px-4 @4xl:py-3.5 @4xl:last:border-b-0 @4xl:hover:bg-tabla-fila-hover",
             ],
-        id && "scroll-mt-20",
         filete && [
           "relative overflow-hidden pl-[21px] before:absolute before:inset-y-0 before:left-0 before:w-[5px] @4xl:pl-[21px]",
           filete,

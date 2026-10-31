@@ -17,10 +17,6 @@ export const inputClass =
   "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 " +
   CLASE_CONTROL_INVALIDO;
 
-export const inputClassPassword =
-  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-10 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 " +
-  CLASE_CONTROL_INVALIDO;
-
 export const inputReadonlyClass =
   "w-full rounded-lg border border-border bg-surface-tinted py-2.5 pl-10 pr-4 text-sm text-muted-foreground-strong outline-none cursor-default";
 
@@ -163,23 +159,6 @@ export function MensajeError({ error }: { error: ErrorAccion }) {
         </p>
       )}
     </Aviso>
-  );
-}
-
-/** Tarjeta de cada sección del perfil. */
-export function TarjetaPerfil({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={`tarjeta px-4 py-5 sm:px-6 sm:py-6 ${className}`}
-    >
-      {children}
-    </div>
   );
 }
 
