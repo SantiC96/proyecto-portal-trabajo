@@ -1248,21 +1248,85 @@ Evitar llenar la card de información secundaria.
 
 ------------------------------------------------------------------------
 
-## Tarjeta de oferta (inicio y panel)
+## Tarjeta de oferta
 
 `src/components/ofertas/tarjeta-oferta.tsx` (`TarjetaOferta`). `.tarjeta`
 con `.tarjeta-oferta` (decoración en `globals.css`, bloque "Ambiente"),
-padding 24, gap 14:
+padding 24, gap 14. Dos variantes del mismo componente (prop `variante`),
+que comparten las etiquetas, el título con la empresa (el link que cubre la
+tarjeta), el lugar y la jornada, y el botón:
+
+| Variante | Dónde | Descripción |
+|---|---|---|
+| `compacta` (por defecto) | carrusel de la portada | no |
+| `detallada` | `/ofertas`, "Ofertas para vos" del panel, vista previa del formulario de oferta | sí, 2 renglones |
+
+### Variante compacta
 
 ``` text
-┌━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓  franja verde de 4 px
+┌━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓  franja verde de 4 px
 │ [Gastronomía +1] [Presencial] [Te …]  [💼] │  ícono 44 px (tinte desde acá)
 │ Ayudante de cocina                         │  20 px 700, hasta 2 renglones
 │ Restaurante El Molino                      │  15 px 600 texto-bajada
 │ 📍 Funes    🕒 Jornada completa             │  14 px muted, íconos 16 px
-│ [ Ver oferta ]                             │  tonal (primario: "Postularme")
+│ [ Ver oferta ]                             │  verde sólido (btn-primario)
 └────────────────────────────────────────────┘
 ```
+
+-   Todo apilado, sin container query. Las etiquetas, los badges y
+    "Publicada hace…" (a la derecha, `ml-auto`) van en una fila arriba.
+-   Ícono a 16 px de arriba y de la derecha (`.tarjeta-oferta-compacta
+    .tarjeta-oferta-icono`, absoluto). La fila de etiquetas lleva 48 px de
+    padding a la derecha para no pasar por debajo; el título siempre
+    empieza debajo del ícono porque la fila tiene al menos la modalidad
+    (26 px).
+-   Pie (`mt-auto`): `accionExtra` y el botón en una fila; si no entran
+    (tarjetas angostas, 375 px), el botón baja a la siguiente.
+-   No muestra la descripción: el carrusel no la pasa.
+
+### Variante detallada
+
+La distribución depende del ancho de la tarjeta, no de la pantalla
+(container query en el `<article>`, `@md`: 448 px de ancho interno).
+
+Ancha (desde 448 px internos: `/ofertas` y la vista previa en escritorio):
+
+``` text
+┌━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓  franja verde de 4 px
+│ [💼] Ayudante de cocina          [Gastronomía +1]    │  título 20 px 700, hasta 2 renglones
+│      Restaurante El Molino           [Presencial]    │  empresa 15 px 600 texto-bajada
+│                                     [Te invitaron]   │  badges y "Publicada…" debajo
+│ Preparación de platos fríos y calientes, limpieza …  │  descripción 15 px muted, 2 renglones
+│ [ Ver oferta ]               📍 Funes  🕒 Completa    │  botón a la izquierda, datos a la derecha
+└──────────────────────────────────────────────────────┘
+```
+
+Angosta (celular, `/ofertas` a 1024 px), una columna: título y empresa,
+etiquetas, descripción, lugar y jornada, y el botón a lo ancho.
+
+-   Arriba, dos columnas: a la izquierda el ícono (en el flujo, a 12 px
+    del título, alineado arriba) y el título con la empresa (flexible,
+    `min-w-0`); a la derecha las etiquetas, alineadas a la derecha, con
+    el ancho de su contenido y como máximo el 45 % de la tarjeta
+    (`max-w-[45cqw]`; si no entran, bajan de renglón). Debajo de las
+    etiquetas, en otra fila, los badges y "Publicada hace…".
+-   Descripción (`.tarjeta-oferta-descripcion`, opcional): 15 px
+    `muted-foreground`, `line-clamp-2` con puntos suspensivos. Los saltos
+    de línea y espacios de más se muestran como un espacio; se mandan al
+    navegador hasta 400 caracteres (sobran para dos renglones; el corte
+    visible es siempre el del CSS). Sin descripción no hay párrafo ni
+    hueco.
+-   Pie (`mt-auto`): siempre al fondo, así las tarjetas de una fila miden
+    lo mismo aunque cambie el largo de la descripción. Ancha: botón (y
+    `accionExtra`) a la izquierda y lugar y jornada a la derecha (si no
+    entran en una fila, los datos bajan alineados a la derecha). Angosta:
+    los datos y debajo los botones a lo ancho.
+-   Vista previa del formulario de oferta: la descripción que se va
+    escribiendo; vacía, un texto de ejemplo en itálica
+    (`data-sin-descripcion`), con el mismo `muted-foreground` (el
+    `placeholder` no llega a 4,5:1 sobre el tinte).
+
+### Común a las dos
 
 Decoración (ronda 5, tinte verde). Todas las ofertas usan el verde
 institucional: una oferta puede tener varios rubros, así que el color no
@@ -1276,15 +1340,12 @@ depende del rubro; los rubros van solo en las etiquetas.
     `overflow: hidden`.
 -   Ícono (`.tarjeta-oferta-icono`, `aria-hidden`, sin clics): cuadrado
     de 44 px con radio 12, fondo `primary`, sombra `0 6px 14px rgb(0 30
-    15 / .18)`, a 16 px de arriba y de la derecha, con `Briefcase` blanco
-    de 22 px (trazo 2). La fila de etiquetas lleva 48 px de padding a la
-    derecha para no pasar por debajo; el título siempre empieza debajo
-    del ícono porque la fila tiene al menos la modalidad (26 px).
--   Botón "Ver oferta" tonal (`.tarjeta-oferta-tonal`, variante de
-    `.btn-secundario` solo para esta tarjeta): fondo `rgb(0 104 51 /
-    .12)`, sin borde visible (queda transparente para medir lo mismo),
-    texto `primary-hover`; con el mouse sobre la tarjeta, fondo al 20 %.
-    Alto mínimo 44 px. La versión primaria ("Postularme") no cambia.
+    15 / .18)`, con `Briefcase` blanco de 22 px (trazo 2).
+-   Botón (`textoAccion`, por defecto "Ver oferta"; hoy todas las
+    tarjetas usan ese texto): siempre verde sólido, `.btn-primario` con
+    `.tarjeta-oferta-boton`: fondo `primary`, texto blanco; con el mouse
+    sobre la tarjeta, fondo `primary-hover` (el link del título cubre la
+    tarjeta, así que el hover es el de la tarjeta). Alto mínimo 44 px.
 -   Hover: sube 3 px y sombra `0 12px 28px rgb(0 30 15 / .14)`, en
     180 ms. Sin movimiento con `prefers-reduced-motion: reduce` (la
     sombra sí cambia).
@@ -1292,36 +1353,57 @@ depende del rubro; los rubros van solo en las etiquetas.
     (`:has(h3 a:focus-visible)`), porque el `overflow: hidden` recortaría
     el del link.
 -   Contraste (peor caso, sobre el tinte al 16 %): `muted-foreground`
-    4,75:1, `texto-bajada` 8,27:1, título 11,95:1 (5,40:1 en verde al
-    pasar el mouse); botón tonal 6,07:1 (5,39:1 con hover); las etiquetas
-    tienen su propio fondo blanco (9,25:1 y 10,35:1); ícono 6,94:1.
+    (descripción y datos) 4,75:1, `texto-bajada` 8,27:1, título 11,95:1
+    (5,40:1 en verde al pasar el mouse); botón, blanco sobre `primary`
+    6,94:1 (9,25:1 sobre `primary-hover`); las etiquetas tienen su propio
+    fondo blanco (9,25:1 y 10,35:1); ícono 6,94:1.
 -   En un contenedor con scroll (el carrusel) la elevación necesita unos
     20 px libres arriba y 40 abajo: el carrusel los da con padding y los
     compensa con márgenes negativos.
 
--   Etiquetas: rubro (`EtiquetaRubro verde`, el primero y "+N"),
-    modalidad (`EtiquetaRubro`) y badges extra (`Te invitaron` warning,
-    coincidencia).
--   Fila de datos: lugar (`MapPin`), jornada (`Clock`) y, opcional,
-    cuándo se publicó (`publicada`, ícono `CalendarDays`, mismo estilo):
-    "Publicada hoy", "Publicada ayer", "Publicada hace 3 días", "Publicada
-    hace 2 semanas", "Publicada hace 1 mes". Se arma en el servidor con
-    `formatAntiguedadPublicacion` (`src/lib/fechas.ts`), contando días
-    calendario en Argentina, para que no cambie al hidratar. Por ahora
-    solo lo pasa el carrusel del inicio.
+-   Etiquetas: rubro (`EtiquetaRubro verde`, `.tarjeta-oferta-rubro`, el
+    primero y "+N"), modalidad (`EtiquetaRubro`) y badges extra (`Te
+    invitaron` warning, coincidencia).
+-   Fila de datos: lugar (`MapPin`) y jornada (`Clock`). Cuándo se
+    publicó (`publicada`, ícono `CalendarDays`, 13 px `muted-foreground`)
+    va con los badges: "Publicada hoy", "Publicada ayer", "Publicada hace
+    3 días", "Publicada hace 2 semanas", "Publicada hace 1 mes". Se arma
+    en el servidor con `formatAntiguedadPublicacion` (`src/lib/fechas.ts`),
+    contando días calendario en Argentina, para que no cambie al hidratar.
+    Por ahora solo lo pasa el carrusel del inicio.
 -   El título es el link y cubre la tarjeta (un paso de teclado por
     oferta); el botón de abajo es visual. Una acción extra con su propio
     link va por encima: `Buscar postulantes` de la oficina, en
-    `btn-primario` (verde) con el ícono `UserSearch`, porque es su acción
-    principal en la tarjeta; "Ver oferta" sigue tonal. Si no entran en una
-    fila (tarjetas angostas, 375 px), "Ver oferta" baja a la siguiente.
--   El listado `/ofertas` también usa `TarjetaOferta` (`JobCard` se
-    borró): grilla de 3, 2 o 1 columnas según el ancho del contenido
-    (`@4xl:` y `@xl:`), "Te invitaron" para el postulante y "Buscar
-    postulantes" para la oficina.
+    `btn-secundario` (borde verde, fondo blanco) con el ícono
+    `UserSearch`, para distinguirse del botón verde sólido.
+-   El listado `/ofertas` usa la variante detallada (`JobCard` se borró):
+    grilla de 2 o 1 columnas según el ancho del contenido (`@xl:`), "Te
+    invitaron" para el postulante y "Buscar postulantes" para la oficina.
+-   "Ofertas para vos" del panel usa la misma variante y la misma grilla
+    (`CLASE_GRILLA_OFERTAS`, igual a la de `/ofertas`), con el badge de
+    coincidencia y los rubros coincidentes. `ofertas_recomendadas_para_mi`
+    no devuelve la descripción ni la jornada: salen de una segunda
+    consulta a `ofertas` (`.in("id", ids)`, solo `id, descripcion,
+    jornada`) y se combinan por id en el servidor
+    (`obtenerOfertasRecomendadas`); si falta alguna, la tarjeta va sin
+    ese dato. El esqueleto de carga tiene la forma de la tarjeta
+    detallada.
+
 -   Sin logo de la empresa (está en el bucket privado de avatares): el
     detalle y las invitaciones muestran sus iniciales en un círculo verde
     (`InicialesEmpresa`, 64 o 44 px).
+
+### Botón "Ver oferta"
+
+Todo botón (o link con forma de botón) "Ver oferta" va en verde sólido,
+`.btn-primario`: fondo `primary`, texto blanco y `primary-hover` al pasar
+el mouse. Excepciones:
+
+-   Junto a "Postularme" (Tu actividad en la portada y
+    `/panel/comparacion-actividad`), "Ver oferta" sigue en
+    `.btn-secundario`: la acción principal ahí es postularse.
+-   Los links de texto "Ver oferta" (invitaciones, ficha de postulación de
+    la oficina, notificaciones, "Ver oferta actualizada") no cambian.
 
 ## Carrusel
 
@@ -2021,9 +2103,10 @@ izquierda y, si tiene, el link a la derecha ("Ver mis postulaciones",
     `accent` al 18 %, texto `accent-foreground` 700, `TriangleAlert`,
     radio 10, 44 px de alto); lo completo, con `CircleCheck` `primary`.
     "Completar perfil" (`.btn-secundario`) al pie, al primer pendiente.
--   **Ofertas para vos** (`Briefcase`): `TarjetaOferta` en 2 columnas como
-    máximo (1 en angosto), con el badge de coincidencia (`success` sólido
-    para "Alta coincidencia") y "Postularme".
+-   **Ofertas para vos** (`Briefcase`): `TarjetaOferta` detallada, la
+    misma de `/ofertas`, en 2 columnas como máximo (1 en angosto), con el
+    badge de coincidencia (`success` sólido para "Alta coincidencia") y
+    "Ver oferta" (verde sólido) que lleva al detalle.
 
 ## Filtro por estado (Mis postulaciones)
 
