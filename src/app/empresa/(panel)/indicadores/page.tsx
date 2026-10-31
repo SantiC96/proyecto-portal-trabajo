@@ -30,6 +30,7 @@ import { BarrasOferta, LeyendaMedidasOferta, MEDIDAS_OFERTA } from "@/components
 import { AnimarAlVerse } from "@/components/indicadores/animar-al-verse";
 import { formatDecimal, formatNumero, formatPorcentaje } from "@/components/indicadores/formato";
 import { EsqueletoIndicadoresEmpresa } from "./esqueleto-indicadores-empresa";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Indicadores | Panel de empresa | Portal de Empleo Funes",
@@ -48,8 +49,10 @@ export default async function IndicadoresEmpresaPage({
 
   return (
     <section className="flex flex-col gap-6">
+      <BotonVolver href="/empresa" destacado />
       <EncabezadoPagina
         banda
+        className="-mt-2"
         titulo="Indicadores"
         bajada="Cómo les va a tus ofertas y a tus candidatos."
         acciones={<SelectorPeriodoDesplegable ruta={RUTA} periodo={periodo} enBanda />}

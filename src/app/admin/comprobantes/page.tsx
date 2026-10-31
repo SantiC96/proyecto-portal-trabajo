@@ -28,6 +28,7 @@ import { RevisarComprobante } from "@/components/admin/revisar-comprobante";
 import { ChipLocalidad } from "@/components/postulantes/badge-procedencia";
 import { Badge } from "@/components/ui/badge";
 import { CeldaPersona, FilaTabla, Tabla } from "@/components/ui/tabla";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Comprobantes | Panel municipal | Portal de Empleo Funes",
@@ -88,8 +89,10 @@ export default async function ComprobantesPage({
 
   return (
     <section className="flex flex-col gap-6">
+      <BotonVolver href="/admin" destacado />
       <EncabezadoPagina
         banda
+        className="-mt-2"
         botonesBlancos
         titulo="Comprobantes de domicilio"
         bajada="Al aprobarlo, el postulante pasa a «De Funes verificado»."

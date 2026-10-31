@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CircleCheck, CircleX, Clock, Search, Send, type LucideIcon } from "lucide-react";
+import { Check, Circle, CircleCheck, CircleX, Clock, Search, Send, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconoCuadro } from "@/components/ui/icono-cuadro";
 
@@ -60,8 +60,13 @@ export function LineaDeTiempo({
    * "historial" (revisión de la oficina): cada evento con ícono en un
    * cuadrado de 40 px (ICONO_HISTORIAL), el título en 800 y la fecha y el
    * autor en gris debajo.
+   *
+   * "pasos" (cuenta de empresa en revisión): un círculo de 40 px por paso
+   * según su `estado`. Hecho: verde con Check y la línea siguiente verde;
+   * actual: amarillo con Clock y un halo (aria-current="step"); pendiente:
+   * blanco con borde gris, su `icono` y el texto en gris.
    */
-  variante?: "historial";
+  variante?: "historial" | "pasos";
   className?: string;
 }) {
   return (
@@ -69,6 +74,7 @@ export function LineaDeTiempo({
       {eventos.map((e, i) => {
         const ultimo = i === eventos.length - 1;
         if (variante === "historial") return <EventoHistorial key={e.clave} evento={e} ultimo={ultimo} />;
+        if (variante === "pasos") return <Paso key={e.clave} evento={e} ultimo={ultimo} />;
         if (e.icono) return <EventoConIcono key={e.clave} evento={e} ultimo={ultimo} />;
         const actual = e.estado ? e.estado === "actual" : ultimo;
         const pendiente = e.estado === "pendiente";
@@ -137,6 +143,55 @@ function EventoConIcono({ evento: e, ultimo }: { evento: EventoLinea; ultimo: bo
           {e.detalle && <div className="mt-0.5 break-words">{e.detalle}</div>}
         </div>
         {e.extra && <div className="shrink-0">{e.extra}</div>}
+      </div>
+    </li>
+  );
+}
+
+/** Paso de la variante "pasos": círculo de 40 px unido al siguiente por una línea de 2 px. */
+function Paso({ evento: e, ultimo }: { evento: EventoLinea; ultimo: boolean }) {
+  const estado = e.estado ?? "pendiente";
+  const Icono = estado === "hecho" ? Check : estado === "actual" ? Clock : (e.icono ?? Circle);
+  return (
+    <li
+      aria-current={estado === "actual" ? "step" : undefined}
+      className="relative flex gap-4 pb-6 last:pb-0"
+    >
+      {!ultimo && (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "absolute top-11 bottom-1 left-[19px] w-0.5 rounded-full",
+            estado === "hecho" ? "bg-primary" : "bg-secondary-hover",
+          )}
+        />
+      )}
+      <span
+        aria-hidden="true"
+        className={cn(
+          "grid size-10 shrink-0 place-items-center rounded-full [&_svg]:size-5",
+          estado === "hecho" && "bg-primary text-primary-foreground",
+          estado === "actual" &&
+            "bg-accent text-accent-foreground shadow-[0_0_0_6px_rgba(242,183,5,.22)]",
+          estado === "pendiente" && "border-2 border-border-campo bg-surface text-muted-icon",
+        )}
+      >
+        <Icono />
+      </span>
+      <div className="min-w-0 flex-1 pt-2">
+        <p
+          className={cn(
+            "text-[15px] leading-snug font-extrabold break-words",
+            estado === "pendiente" ? "text-muted-foreground" : "text-heading",
+          )}
+        >
+          {e.titulo}
+          {estado === "pendiente" && <span className="sr-only"> (pendiente)</span>}
+          {estado === "hecho" && <span className="sr-only"> (hecho)</span>}
+        </p>
+        {e.detalle && (
+          <p className="mt-0.5 text-sm break-words text-muted-foreground">{e.detalle}</p>
+        )}
       </div>
     </li>
   );

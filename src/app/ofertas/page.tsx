@@ -1,5 +1,6 @@
 import { JobDirectory } from "@/components/public/job-directory";
 import { getCategorias, leerFiltrosOfertasPublicas } from "@/lib/ofertas";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata = {
   title: "Ofertas laborales | Portal de Empleo Funes",
@@ -24,7 +25,8 @@ export default async function OfertasPage({
 
   return (
     <>
-      <main className="flex-1">
+      <main className="flex flex-1 flex-col gap-4">
+        <BotonVolver href="/" destacado />
         <JobDirectory
           ruta="/ofertas"
           searchParams={params}

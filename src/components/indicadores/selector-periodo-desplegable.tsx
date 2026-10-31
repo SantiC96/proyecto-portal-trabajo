@@ -65,7 +65,8 @@ export function SelectorPeriodoDesplegable({
       className={cn("relative w-full sm:w-auto", enBanda && "selector-periodo-banda", className)}
     >
       {enBanda && (
-        <span aria-hidden="true" className="mb-1.5 block text-[13px] font-semibold text-sidebar-texto">
+        // Blanco y no sidebar-texto: va encima del escudo (5,2:1 sobre su parte más clara).
+        <span aria-hidden="true" className="mb-1.5 block text-[13px] font-semibold text-primary-foreground">
           Período
         </span>
       )}

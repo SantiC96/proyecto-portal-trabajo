@@ -6,6 +6,7 @@ import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { SelectorPeriodoDesplegable } from "@/components/indicadores/selector-periodo-desplegable";
 import { ContenidoIndicadores, RUTA_INDICADORES } from "./contenido";
 import { EsqueletoIndicadores } from "./esqueleto-indicadores";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Indicadores | Panel municipal | Portal de Empleo Funes",
@@ -22,11 +23,13 @@ export default async function IndicadoresPage({
 
   return (
     <section className="flex flex-col gap-6">
+      <BotonVolver href="/admin" destacado />
       <EncabezadoPagina
-        grande
+        banda
+        className="-mt-2"
         titulo="Indicadores"
         bajada="Cómo viene funcionando el Portal de Empleo, para informar al municipio."
-        acciones={<SelectorPeriodoDesplegable ruta={RUTA_INDICADORES} periodo={periodo} />}
+        acciones={<SelectorPeriodoDesplegable ruta={RUTA_INDICADORES} periodo={periodo} enBanda />}
       />
 
       <Suspense key={periodo} fallback={<EsqueletoIndicadores />}>

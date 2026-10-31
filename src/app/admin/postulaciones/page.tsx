@@ -55,6 +55,7 @@ import {
   type EstadoComprobante,
   type NivelPrioridad,
 } from "@/lib/procedencia";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Postulaciones | Panel municipal | Portal de Empleo Funes",
@@ -185,8 +186,10 @@ export default async function PostulacionesPage({
 
   return (
     <section className="flex flex-col gap-6">
+      <BotonVolver href="/admin" destacado />
       <EncabezadoPagina
         banda
+        className="-mt-2"
         botonesBlancos
         titulo="Postulaciones"
         bajada="Revisá cada postulación antes de derivarla a la empresa."

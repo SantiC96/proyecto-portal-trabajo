@@ -58,20 +58,23 @@ const CLASES = {
  * encabezado del perfil y el menú del usuario se actualizan con el refresh.
  * Con `variante="tarjeta"` (perfil de la empresa) es una tarjeta editable de
  * Mi perfil: IdCard, "Editar datos" y los datos en lectura en 2 columnas.
+ * `titulo` cambia el de la tarjeta ("Datos personales" en la oficina).
  */
 export function DatosContactoForm({
   datos,
   email,
   variante = "simple",
+  titulo = "Datos de contacto",
 }: {
   datos: { nombre: string; apellido: string; telefono: string };
   email: string;
   variante?: keyof typeof CLASES;
+  titulo?: string;
 }) {
   const router = useRouter();
   const conTarjeta = variante === "tarjeta";
   const clases = CLASES[variante];
-  const tarjeta = useTarjetaEditable("datos-contacto", { titulo: "Datos de contacto" });
+  const tarjeta = useTarjetaEditable("datos-contacto", { titulo });
   const [editandoSimple, setEditandoSimple] = useState(false);
   const editando = conTarjeta ? tarjeta.editando : editandoSimple;
   const [nombre, setNombre] = useState(datos.nombre);
@@ -219,14 +222,14 @@ export function DatosContactoForm({
     return (
       <SeccionPerfil
         id="datos-contacto"
-        titulo="Datos de contacto"
+        titulo={titulo}
         icono={IdCard}
         acciones={
           !editando && (
             <BotonEditar
               tarjeta={tarjeta}
               texto="Editar datos"
-              etiqueta="Editar datos de contacto"
+              etiqueta={`Editar ${titulo.toLowerCase()}`}
               className="btn-neutro btn-chico self-start text-primary hover:text-primary-hover sm:self-auto"
             />
           )

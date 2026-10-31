@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/tabla";
 import type { Enum, Tabla } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Ofertas | Panel municipal | Portal de Empleo Funes",
@@ -116,8 +117,10 @@ export default async function AdminOfertasPage({
 
   return (
     <section className="flex flex-col gap-6">
+      <BotonVolver href="/admin" destacado />
       <EncabezadoPagina
         banda
+        className="-mt-2"
         botonesBlancos
         titulo="Ofertas"
         bajada="Revisá las ofertas que cargan las empresas antes de publicarlas."

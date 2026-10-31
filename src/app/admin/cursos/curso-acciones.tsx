@@ -12,6 +12,7 @@ type Props = {
   tieneAsignaciones: boolean;
 };
 
+/** "Desactivar"/"Activar" a todo el ancho y, sin asignaciones, "Eliminar". */
 export function CursoAcciones({ cursoId, activo, tieneAsignaciones }: Props) {
   const { pendiente: isPending, ejecutar } = useAccion();
 
@@ -22,13 +23,13 @@ export function CursoAcciones({ cursoId, activo, tieneAsignaciones }: Props) {
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-2">
       <button
         type="button"
         onClick={handleToggle}
         disabled={isPending}
         aria-busy={isPending}
-        className="btn-secundario inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap px-4 text-sm font-medium"
+        className="btn-secundario w-full"
       >
         {isPending && <Spinner />}
         {isPending ? "Guardando…" : activo ? "Desactivar" : "Activar"}
@@ -38,6 +39,7 @@ export function CursoAcciones({ cursoId, activo, tieneAsignaciones }: Props) {
         <DialogoConfirmacion
           textoBoton="Eliminar"
           estiloBoton="peligro"
+          claseBoton="w-full"
           deshabilitado={isPending}
           titulo="¿Eliminar este curso?"
           descripcion="El curso se borra definitivamente. Esta acción no se puede deshacer."

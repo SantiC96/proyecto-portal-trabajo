@@ -32,6 +32,7 @@ import { ESTADOS_EMPRESA, historialValido, type EstadoAprobacion } from "@/lib/a
 import { formatFechaCorta } from "@/lib/fechas";
 import { inicialesDeEmpresa } from "@/lib/iniciales";
 import { fotosDePerfil } from "@/lib/fotos-perfil";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Empresas | Panel municipal | Portal de Empleo Funes",
@@ -85,8 +86,10 @@ export default async function AdminEmpresasPage({
 
   return (
     <section className="flex flex-col gap-6">
+      <BotonVolver href="/admin" destacado />
       <EncabezadoPagina
         banda
+        className="-mt-2"
         botonesBlancos
         titulo="Empresas"
         bajada="Aprobá las empresas antes de que puedan publicar ofertas."

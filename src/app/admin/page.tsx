@@ -27,6 +27,7 @@ import {
   claseCeldaCuadro,
 } from "@/components/ui/cuadro-estado";
 import { TarjetaAcceso } from "@/components/ui/tarjeta-acceso";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Panel municipal | Portal de Empleo Funes",
@@ -111,8 +112,10 @@ export default async function AdminDashboardPage() {
 
   return (
     <section className="flex flex-col gap-8">
+      <BotonVolver href="/" destacado />
       <EncabezadoPagina
         banda
+        className="-mt-4"
         botonesBlancos
         titulo={nombre ? `Hola, ${nombre}` : "Hola"}
         bajada="Esto es lo que tiene pendiente la Oficina de Empleo."

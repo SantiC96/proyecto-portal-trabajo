@@ -117,30 +117,53 @@ export function EdicionPerfil({ children }: { children: ReactNode }) {
   return (
     <Contexto.Provider value={valor}>
       {children}
-      <Dialog
-        open={pedida !== null}
-        onOpenChange={(v) => {
-          if (!v) setPedida(null);
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>¿Descartar los cambios sin guardar?</DialogTitle>
-            <DialogDescription>
-              Tenés cambios sin guardar en «{pedida?.tituloAbierta}». Si seguís, se pierden.
-            </DialogDescription>
-          </DialogHeader>
-          <BotonesDialogo
-            pendiente={false}
-            onCancelar={() => setPedida(null)}
-            textoCancelar="Seguir editando"
-            onConfirmar={() => pedida !== null && abrir(pedida.id)}
-            textoConfirmar="Descartar cambios"
-            destructivo
-          />
-        </DialogContent>
-      </Dialog>
+      <DialogoDescartarCambios
+        abierto={pedida !== null}
+        titulo={pedida?.tituloAbierta ?? ""}
+        onSeguirEditando={() => setPedida(null)}
+        onDescartar={() => pedida !== null && abrir(pedida.id)}
+      />
     </Contexto.Provider>
+  );
+}
+
+/** "¿Descartar los cambios sin guardar?" de una tarjeta en edición. */
+export function DialogoDescartarCambios({
+  abierto,
+  titulo,
+  onSeguirEditando,
+  onDescartar,
+}: {
+  abierto: boolean;
+  /** Título de la tarjeta con cambios. */
+  titulo: string;
+  onSeguirEditando: () => void;
+  onDescartar: () => void;
+}) {
+  return (
+    <Dialog
+      open={abierto}
+      onOpenChange={(v) => {
+        if (!v) onSeguirEditando();
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>¿Descartar los cambios sin guardar?</DialogTitle>
+          <DialogDescription>
+            Tenés cambios sin guardar en «{titulo}». Si seguís, se pierden.
+          </DialogDescription>
+        </DialogHeader>
+        <BotonesDialogo
+          pendiente={false}
+          onCancelar={onSeguirEditando}
+          textoCancelar="Seguir editando"
+          onConfirmar={onDescartar}
+          textoConfirmar="Descartar cambios"
+          destructivo
+        />
+      </DialogContent>
+    </Dialog>
   );
 }
 

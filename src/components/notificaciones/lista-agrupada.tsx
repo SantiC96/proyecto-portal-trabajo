@@ -13,13 +13,17 @@ import type { Notificacion } from "@/lib/notificaciones";
 import { cn } from "@/lib/utils";
 import { BotonFormulario } from "@/components/ui/boton-formulario";
 import { IconoCuadro } from "@/components/ui/icono-cuadro";
-import { abrirNotificacion } from "@/app/(dashboard)/notificaciones/actions";
 import { iconoTipoNotificacion } from "./icono-notificacion";
+import { estiloNotificacionOficina } from "./estilo-oficina";
+import { FormAbrirNotificacion } from "./form-abrir-notificacion";
 
-type Estilo = { icono: LucideIcon; fondo: string };
+type Estilo = { icono: LucideIcon; fondo: string; enlace?: string };
+
+/** Fila de la lista; la clave distingue los avisos de la oficina que comparten tipo. */
+type FilaLista = Notificacion & { clave?: string | null };
 
 /** De qué rol es la lista: cambia el ícono y el color de cada tipo. */
-export type RolListaNotificaciones = "postulante" | "empresa";
+export type RolListaNotificaciones = "postulante" | "empresa" | "oficina";
 
 // Colores de la lista del postulante; los demás tipos van en neutro con su ícono.
 const ESTILO_POSTULANTE: Record<string, Estilo> = {
@@ -45,12 +49,14 @@ const ESTILO_EMPRESA: Record<string, Estilo> = {
   candidato_retirado: { icono: Archive, fondo: "bg-neutral" },
 };
 
-const ESTILOS: Record<RolListaNotificaciones, Record<string, Estilo>> = {
+const ESTILOS: Record<"postulante" | "empresa", Record<string, Estilo>> = {
   postulante: ESTILO_POSTULANTE,
   empresa: ESTILO_EMPRESA,
 };
 
-function estiloDe(tipo: string, rol: RolListaNotificaciones): Estilo {
+function estiloDe(n: FilaLista, rol: RolListaNotificaciones): Estilo {
+  if (rol === "oficina") return estiloNotificacionOficina(n);
+  const tipo = n.tipo;
   return (
     ESTILOS[rol][tipo] ?? {
       icono: iconoTipoNotificacion(tipo),
@@ -69,7 +75,7 @@ export function ListaNotificacionesAgrupada({
   ahora,
   rol = "postulante",
 }: {
-  filas: Notificacion[];
+  filas: FilaLista[];
   ahora: Date;
   rol?: RolListaNotificaciones;
 }) {
@@ -103,18 +109,21 @@ function TarjetaNotificacion({
   ahora,
   rol,
 }: {
-  notificacion: Notificacion;
+  notificacion: FilaLista;
   ahora: Date;
   rol: RolListaNotificaciones;
 }) {
   const nueva = !n.leida_en;
-  const { icono, fondo } = estiloDe(n.tipo, rol);
+  const { icono, fondo, enlace } = estiloDe(n, rol);
 
+  // Con destino, toda la tarjeta es clickeable: el botón del link estira su
+  // ::after sobre ella, así sigue habiendo un solo control por notificación.
   return (
     <article
       className={cn(
         "tarjeta tarjeta-panel flex gap-3 sm:items-start sm:gap-4",
         nueva && "border-primary/30 bg-secondary/40",
+        n.link && "notificacion-con-destino",
       )}
     >
       <IconoCuadro icono={icono} className={fondo} />
@@ -137,16 +146,16 @@ function TarjetaNotificacion({
           </time>
         </div>
         {n.link && (
-          <form action={abrirNotificacion.bind(null, n.id)} className="shrink-0">
+          <FormAbrirNotificacion id={n.id} className="shrink-0">
             <BotonFormulario
               textoPendiente="Abriendo…"
-              className="-mx-1 inline-flex min-h-11 items-center gap-1 rounded-[var(--radius-md)] px-1 text-[15px] font-bold whitespace-nowrap text-primary outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)] disabled:opacity-60"
+              className="notificacion-enlace -mx-1 inline-flex min-h-11 items-center gap-1 rounded-[var(--radius-md)] px-1 text-[15px] font-bold whitespace-nowrap text-primary outline-none hover:underline after:absolute after:inset-0 after:rounded-[var(--radius-indicador)] disabled:opacity-60"
             >
-              Ver detalle
+              {enlace ?? "Ver detalle"}
               <span className="sr-only">: {n.titulo}</span>
               <ChevronRight className="size-4" aria-hidden="true" />
             </BotonFormulario>
-          </form>
+          </FormAbrirNotificacion>
         )}
       </div>
     </article>

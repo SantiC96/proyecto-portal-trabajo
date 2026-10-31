@@ -14,6 +14,7 @@ import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { desactivarCuenta, reactivarCuenta } from "./actions";
 import { InvitarCuenta } from "./invitar-cuenta";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Cuentas de la oficina | Panel municipal | Portal de Empleo Funes",
@@ -137,8 +138,10 @@ export default async function AdminCuentasPage() {
 
   return (
     <section className="flex flex-col gap-6">
+      <BotonVolver href="/admin" destacado />
       <EncabezadoPagina
         banda
+        className="-mt-2"
         botonesBlancos
         titulo="Cuentas de la oficina"
         bajada="Todas las cuentas activas tienen los mismos permisos. Una cuenta desactivada no puede ingresar, pero su historial se conserva."

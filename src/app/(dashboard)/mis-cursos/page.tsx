@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import Link from "next/link";
-import { BookOpen, ChevronRight, ExternalLink, GraduationCap } from "lucide-react";
+import { BookOpen, GraduationCap } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirRolPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
@@ -16,6 +15,7 @@ import { AccionesMiCurso } from "./acciones-mi-curso";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { IconoCuadro } from "@/components/ui/icono-cuadro";
+import { BotonIrAlCurso, TarjetaCurso } from "@/components/cursos/tarjeta-curso";
 
 export const metadata: Metadata = {
   title: "Mis cursos | Portal de Empleo Funes",
@@ -35,7 +35,7 @@ export default async function MisCursosPage({
   return (
     <section>
       <div className="space-y-6">
-        <BotonVolver href="/perfil" destacado />
+        <BotonVolver href="/panel" destacado />
         <EncabezadoPagina
           banda
           className="-mt-2"
@@ -112,7 +112,7 @@ async function ListadoMisCursos({
       <ul className="flex flex-col gap-3 sm:gap-4">
         {cursos.map((curso) => (
           <li key={curso.asignacion_id}>
-            <TarjetaCurso curso={curso} />
+            <TarjetaMiCurso curso={curso} />
           </li>
         ))}
       </ul>
@@ -145,69 +145,32 @@ function ResumenCursos({ completados }: { completados: number }) {
  * Todo el curso lleva a su detalle: el link del título se estira sobre la
  * tarjeta. Los botones (empezar, completar, ir al curso) quedan por encima.
  */
-function TarjetaCurso({ curso }: { curso: MiCurso }) {
+function TarjetaMiCurso({ curso }: { curso: MiCurso }) {
   return (
-    <article className="tarjeta tarjeta-panel tarjeta-clickeable group relative grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-4">
-      <IconoCuadro icono={BookOpen} />
+    <TarjetaCurso
+      href={`/mis-cursos/${curso.asignacion_id}`}
+      nombre={curso.nombre}
+      badge={<EstadoCursoBadge estado={curso.estado} />}
+      detalle={textoFechaCurso(curso)}
+      descripcion={curso.descripcion}
+      pista={{ texto: "Ver curso" }}
+    >
+      {curso.estado === "abandonado" && (
+        <p className="mt-2.5 text-sm text-muted-foreground">
+          Este curso figura como abandonado y ya no se puede retomar. Si
+          necesitás otro curso, comunicate con la Oficina de Empleo.
+        </p>
+      )}
 
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <h2 className="text-[17px] leading-snug font-extrabold break-words">
-            <Link
-              href={`/mis-cursos/${curso.asignacion_id}`}
-              className="text-primary outline-none group-hover:underline after:absolute after:inset-0 after:rounded-[var(--radius-indicador)] focus-visible:after:shadow-[var(--sombra-foco)]"
-            >
-              {curso.nombre}
-            </Link>
-          </h2>
-          <EstadoCursoBadge estado={curso.estado} />
-        </div>
-        <p className="mt-1 text-sm text-muted-foreground">{textoFechaCurso(curso)}</p>
+      <AccionesMiCurso
+        className="mt-3"
+        asignacionId={curso.asignacion_id}
+        estado={curso.estado}
+        nombreCurso={curso.nombre}
+      />
 
-        {curso.descripcion && (
-          <p className="mt-2.5 line-clamp-3 text-[15px] leading-normal text-foreground">
-            {curso.descripcion}
-          </p>
-        )}
-
-        {curso.estado === "abandonado" && (
-          <p className="mt-2.5 text-sm text-muted-foreground">
-            Este curso figura como abandonado y ya no se puede retomar. Si
-            necesitás otro curso, comunicate con la Oficina de Empleo.
-          </p>
-        )}
-
-        <AccionesMiCurso
-          className="mt-3"
-          asignacionId={curso.asignacion_id}
-          estado={curso.estado}
-          nombreCurso={curso.nombre}
-        />
-
-        {curso.link && curso.estado !== "abandonado" && (
-          <div className="mt-3">
-            <a
-              href={curso.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="relative z-10 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-hover"
-            >
-              Ir al curso
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          </div>
-        )}
-      </div>
-
-      {/* Lo dice el link del título: acá es solo la pista visual. */}
-      <span
-        aria-hidden="true"
-        className="col-start-2 inline-flex items-center gap-1 text-[15px] font-bold whitespace-nowrap text-primary group-hover:underline sm:col-start-3 sm:row-start-1 sm:self-center"
-      >
-        Ver curso
-        <ChevronRight className="size-4" />
-      </span>
-    </article>
+      {curso.link && curso.estado !== "abandonado" && <BotonIrAlCurso link={curso.link} />}
+    </TarjetaCurso>
   );
 }
 

@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Bell } from "lucide-react";
 import {
   abrirCampanaNotificaciones,
-  abrirNotificacion,
   obtenerNotificacionesRecientes,
 } from "@/app/(dashboard)/notificaciones/actions";
 import type { Notificacion, ResumenNotificaciones } from "@/lib/notificaciones";
@@ -17,6 +16,7 @@ import { formatFechaHora, formatFechaRelativa } from "@/lib/fechas";
 import { cn } from "@/lib/utils";
 import { IconoNotificacion } from "./icono-notificacion";
 import { EVENTO_NOTIFICACIONES_CAMBIARON } from "./eventos";
+import { FormAbrirNotificacion } from "./form-abrir-notificacion";
 
 const RESUMEN_VACIO: ResumenNotificaciones = { noLeidas: 0, ultimas: [] };
 
@@ -38,6 +38,10 @@ function todasLeidas(r: ResumenNotificaciones): ResumenNotificaciones {
  * Al abrirla, el contador pasa a cero y una sola acción trae las últimas y
  * marca todas como leídas. Mientras el panel sigue abierto, las que eran
  * nuevas se ven resaltadas; al cerrarlo quedan como leídas.
+ *
+ * El panel se cierra al abrir una notificación y en cada cambio de pantalla
+ * (también al volver con "Volver" o con Atrás): la campanita vive en el
+ * layout y no se desmonta, así que si no se cerrara reaparecería abierta.
  */
 export function CampanaNotificaciones({
   rutaListado,
@@ -51,10 +55,9 @@ export function CampanaNotificaciones({
   variante: "sidebar" | "barra";
 }) {
   const pathname = usePathname();
-  // Ruta en la que se abrió: al navegar, el panel se cierra solo.
-  const [abiertaEn, setAbiertaEn] = useState<string | null>(null);
-  const abierta = abiertaEn === pathname;
+  const [abierta, setAbierta] = useState(false);
   const abiertaRef = useRef(false);
+  const botonRef = useRef<HTMLButtonElement>(null);
 
   const [resumen, setResumen] = useState<ResumenNotificaciones | null>(null);
   const [cargando, startCarga] = useTransition();
@@ -84,14 +87,17 @@ export function CampanaNotificaciones({
 
   const cerrar = useCallback(() => {
     abiertaRef.current = false;
-    setAbiertaEn(null);
+    setAbierta(false);
     setResumen((r) => r && todasLeidas(r));
   }, []);
 
   useEffect(() => {
     if (!abierta) return;
     function alTeclear(e: KeyboardEvent) {
-      if (e.key === "Escape") cerrar();
+      if (e.key === "Escape") {
+        cerrar();
+        botonRef.current?.focus();
+      }
     }
     function alClic(e: MouseEvent) {
       if (contenedorRef.current && !contenedorRef.current.contains(e.target as Node)) {
@@ -112,7 +118,7 @@ export function CampanaNotificaciones({
       return;
     }
     abiertaRef.current = true;
-    setAbiertaEn(pathname);
+    setAbierta(true);
     setResumen((r) => r && { ...r, noLeidas: 0 });
     ejecutar(async () => {
       try {
@@ -131,7 +137,11 @@ export function CampanaNotificaciones({
 
   return (
     <div ref={contenedorRef} className="relative">
+      <Suspense fallback={null}>
+        <CerrarAlNavegar alNavegar={cerrar} />
+      </Suspense>
       <button
+        ref={botonRef}
         type="button"
         onClick={alternar}
         aria-haspopup="dialog"
@@ -188,7 +198,7 @@ export function CampanaNotificaciones({
           ) : (
             <ul className="max-h-[60vh] divide-y divide-border overflow-y-auto">
               {ultimas.map((n) => (
-                <ItemNotificacion key={n.id} notificacion={n} />
+                <ItemNotificacion key={n.id} notificacion={n} alAbrir={cerrar} />
               ))}
             </ul>
           )}
@@ -207,12 +217,33 @@ export function CampanaNotificaciones({
   );
 }
 
+/**
+ * Avisa cada cambio de pantalla (ruta o query), no el primero. Aparte y en
+ * Suspense porque usa useSearchParams.
+ */
+function CerrarAlNavegar({ alNavegar }: { alNavegar: () => void }) {
+  const pantalla = `${usePathname()}?${useSearchParams().toString()}`;
+  const anterior = useRef(pantalla);
+  useEffect(() => {
+    if (anterior.current === pantalla) return;
+    anterior.current = pantalla;
+    alNavegar();
+  }, [pantalla, alNavegar]);
+  return null;
+}
+
 /** Las que estaban sin leer al abrir el panel se resaltan como nuevas. */
-function ItemNotificacion({ notificacion: n }: { notificacion: Notificacion }) {
+function ItemNotificacion({
+  notificacion: n,
+  alAbrir,
+}: {
+  notificacion: Notificacion;
+  alAbrir: () => void;
+}) {
   const nueva = !n.leida_en;
   return (
     <li className={cn("px-2 py-1", nueva && "bg-secondary/40")}>
-      <form action={abrirNotificacion.bind(null, n.id)}>
+      <FormAbrirNotificacion id={n.id} alEnviar={alAbrir}>
         <BotonFormulario className="flex w-full items-start gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-surface-tinted disabled:opacity-60">
           <IconoNotificacion tipo={n.tipo} />
           <span className="min-w-0 flex-1">
@@ -237,7 +268,7 @@ function ItemNotificacion({ notificacion: n }: { notificacion: Notificacion }) {
             </time>
           </span>
         </BotonFormulario>
-      </form>
+      </FormAbrirNotificacion>
     </li>
   );
 }

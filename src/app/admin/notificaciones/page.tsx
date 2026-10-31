@@ -20,6 +20,8 @@ export default async function NotificacionesAdminPage({
       usuarioId={user.id}
       ruta={rutaNotificaciones("municipalidad")}
       volverA="/admin"
+      banda
+      rol="oficina"
       textoVacio="Te avisamos acá de contrataciones, empresas y ofertas para revisar y cursos completados."
       searchParams={sp}
     />
