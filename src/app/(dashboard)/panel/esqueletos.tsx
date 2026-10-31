@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Esqueleto, EsqueletoTarjeta } from "@/components/ui/esqueleto";
+import { Esqueleto } from "@/components/ui/esqueleto";
 import {
   CLASE_CUADRO_ESTADO,
   CLASE_GRILLA_CUADROS,
@@ -14,7 +14,7 @@ import {
 export const CLASE_GRILLA_INDICADORES = CLASE_GRILLA_CUADROS;
 export const claseCuadroIndicador = claseCeldaCuadro;
 
-/** "Ofertas para vos": dos columnas como máximo, para que las tarjetas respiren. */
+/** "Ofertas para vos": la misma grilla que /ofertas (job-directory), con dos columnas como máximo. */
 export const CLASE_GRILLA_OFERTAS = "grid grid-cols-1 gap-4 @xl:grid-cols-2";
 
 export const CANTIDAD_INDICADORES = 5;
@@ -104,8 +104,42 @@ export function EsqueletoOfertas() {
       <EsqueletoTituloBloque ancho="w-44" />
       <div className={cn("mt-5", CLASE_GRILLA_OFERTAS)}>
         {Array.from({ length: 2 }, (_, i) => (
-          <EsqueletoTarjeta key={i} className={i === 1 ? "hidden p-6 @xl:block" : "p-6"} />
+          <EsqueletoTarjetaDetallada key={i} className={i === 1 ? "hidden @xl:flex" : undefined} />
         ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * La forma de TarjetaOferta "detallada": ícono, título y empresa arriba a la
+ * izquierda; etiquetas arriba a la derecha; dos renglones de descripción;
+ * abajo el botón a la izquierda y el lugar a la derecha. Desde @md, como la
+ * tarjeta.
+ */
+function EsqueletoTarjetaDetallada({ className }: { className?: string }) {
+  return (
+    <div className={cn("tarjeta @container flex flex-col gap-3.5 p-6", className)}>
+      <div className="flex flex-col gap-3.5 @md:flex-row @md:items-start @md:justify-between @md:gap-4">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <Esqueleto className="size-11 shrink-0 rounded-xl" />
+          <div className="flex min-w-0 flex-1 flex-col gap-2 pt-0.5">
+            <Esqueleto className="h-6 w-3/4" />
+            <Esqueleto className="h-4 w-1/2" />
+          </div>
+        </div>
+        <div className="flex gap-2 @md:flex-col @md:items-end">
+          <Esqueleto className="h-7 w-24 rounded-full" />
+          <Esqueleto className="h-7 w-28 rounded-full" />
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <Esqueleto className="h-4 w-full" />
+        <Esqueleto className="h-4 w-4/5" />
+      </div>
+      <div className="mt-auto flex flex-col gap-3 pt-1.5 @md:flex-row-reverse @md:items-center @md:justify-between">
+        <Esqueleto className="h-4 w-40" />
+        <Esqueleto className="h-11 w-32 rounded-[var(--radius-md)]" />
       </div>
     </div>
   );
