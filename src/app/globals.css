@@ -930,7 +930,7 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
 }
 
 /* "Cómo funciona" y "Tu actividad": banda a todo el ancho del contenido. El
-   margen negativo es igual al padding de .app-pagina, así que no sale de
+   margen negativo es igual al padding de .app-contenido, así que no sale de
    él ni genera scroll horizontal. */
 .banda-inicio {
   margin-inline: calc(-1 * var(--relleno-contenido));
