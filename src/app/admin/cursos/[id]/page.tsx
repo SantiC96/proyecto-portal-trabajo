@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Lock, StickyNote, Users } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { CursoForm } from "../curso-form";
 import { CursoAcciones } from "../curso-acciones";
 import { formatFechaCorta } from "@/lib/fechas";
 import { logError } from "@/lib/logger";
+import { inicialesDePersona } from "@/lib/iniciales";
 import { consultarPagina, hrefConParams, leerPagina, type ParamsUrl } from "@/lib/paginacion";
+import { cn } from "@/lib/utils";
 import { AvisoUrl } from "@/components/ui/aviso-url";
 import { Paginacion } from "@/components/ui/paginacion";
 import { ErrorListado, EstadoVacio } from "@/components/ui/estado-listado";
@@ -20,15 +22,30 @@ import {
   esEstadoCurso,
   type EstadoAsignacionCurso,
 } from "@/lib/cursos";
-import type { Tabla } from "@/types/db";
+import type { Tabla as FilaDb } from "@/types/db";
 import { requerirRolPagina } from "@/lib/auth";
 import { BotonVolver } from "@/components/ui/boton-volver";
-import { DetalleConLateral } from "@/components/ui/detalle-con-lateral";
-import { Badge } from "@/components/ui/badge";
+import { Badge, BadgeBanda } from "@/components/ui/badge";
+import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
+import { PastillaFiltro } from "@/components/ui/pastilla-filtro";
+import { TituloBloque } from "@/components/ui/titulo-bloque";
+import { CeldaPersona, FilaTabla, Tabla } from "@/components/ui/tabla";
 
 export const metadata: Metadata = {
   title: "Detalle del curso | Panel municipal | Portal de Empleo Funes",
 };
+
+const TARJETA = "tarjeta tarjeta-panel flex min-w-0 flex-col gap-4";
+const TITULO_TARJETA = "text-lg font-extrabold text-heading sm:text-xl";
+
+const FILETE_ESTADO_CURSO: Record<EstadoAsignacionCurso, string> = {
+  asignado: "before:bg-violet",
+  en_curso: "before:bg-violet",
+  completado: "before:bg-success",
+  abandonado: "before:bg-neutral",
+};
+
+const COLUMNAS_ASIGNADOS = "minmax(0,1.3fr) 8.5rem minmax(0,1fr) minmax(0,1.4fr)";
 
 export default async function CursoDetallePage({
   params,
@@ -77,118 +94,144 @@ export default async function CursoDetallePage({
   const totalAsignaciones = Object.values(conteoPorEstado).reduce((a, b) => a + b, 0);
   const tieneAsignaciones = totalAsignaciones > 0;
   // La oficina ya no puede marcar cursos como abandonados (migration_038):
-  // el filtro solo aparece si quedan asignaciones históricas en ese estado.
-  const estadosFiltro: (EstadoAsignacionCurso | null)[] = [
-    null,
-    ...ESTADOS_ASIGNACION_CURSO.filter(
-      (estado) => estado !== "abandonado" || conteoPorEstado.abandonado > 0
-    ),
-  ];
+  // el estado solo aparece si quedan asignaciones históricas en él.
+  const estadosVisibles = ESTADOS_ASIGNACION_CURSO.filter(
+    (estado) => estado !== "abandonado" || conteoPorEstado.abandonado > 0
+  );
+  const estadosFiltro: (EstadoAsignacionCurso | null)[] = [null, ...estadosVisibles];
   const rutaCurso = `/admin/cursos/${curso.id}`;
 
   return (
-    <section className="w-full">
+    <section className="flex w-full flex-col gap-6">
       <Suspense>
         <AvisoUrl />
       </Suspense>
-      <BotonVolver href="/admin/cursos" />
+      <BotonVolver href="/admin/cursos" destacado />
 
-      <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-        {curso.nombre}
-      </h1>
-
-      <DetalleConLateral
-        className="mt-8"
-        desde="lg"
-        principal={
-          <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5">
-            <h2 className="mb-4 font-semibold text-foreground">Editar</h2>
-            <CursoForm
-              modo="editar"
-              cursoId={curso.id}
-              inicial={{
-                nombre: curso.nombre,
-                descripcion: curso.descripcion,
-                link: curso.link,
-                indicaciones: curso.indicaciones,
-              }}
-            />
-          </div>
+      <EncabezadoPagina
+        banda
+        botonesBlancos
+        className="-mt-2"
+        titulo={curso.nombre}
+        junto={
+          <BadgeBanda tono={curso.activo ? "success" : "neutral"}>
+            {curso.activo ? "Activo" : "Inactivo"}
+          </BadgeBanda>
         }
-        lateral={
-          <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-5 space-y-4">
-            <div>
-              <h2 className="font-semibold text-foreground">Estado</h2>
-              <div className="mt-2">
-                <Badge tono={curso.activo ? "success" : "neutral"} estado>
-                  {curso.activo ? "Activo" : "Inactivo"}
-                </Badge>
-              </div>
-            </div>
+        bajada={`${totalAsignaciones} ${totalAsignaciones === 1 ? "postulante asignado" : "postulantes asignados"} · ${conteoPorEstado.completado} ${conteoPorEstado.completado === 1 ? "completado" : "completados"}`}
+      />
 
+      {/* Estado y Asignaciones lado a lado con la misma altura; debajo, los
+          datos del curso a todo el ancho (miden lo que su contenido). */}
+      <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 md:gap-5">
+        <section aria-labelledby="estado-curso" className={TARJETA}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="estado-curso" className={TITULO_TARJETA}>
+              Estado
+            </h2>
+            <Badge tono={curso.activo ? "success" : "neutral"} estado>
+              {curso.activo ? "Activo" : "Inactivo"}
+            </Badge>
+          </div>
+          <p className="text-[15px] leading-normal text-muted-foreground-strong">
+            {curso.activo
+              ? "Si lo desactivás, no se puede asignar a postulantes nuevos. Las asignaciones que ya tiene no cambian."
+              : "Está inactivo: no se puede asignar a postulantes nuevos. Activalo para volver a asignarlo."}
+          </p>
+          <div className="mt-auto flex flex-col gap-2">
             <CursoAcciones
               cursoId={curso.id}
               activo={curso.activo}
               tieneAsignaciones={tieneAsignaciones}
             />
-
             {tieneAsignaciones && (
-              <p className="text-xs text-muted-foreground">
+              <p className="flex items-start gap-2 text-sm leading-snug text-muted-foreground-strong">
+                <Lock aria-hidden="true" className="mt-px size-4 shrink-0" />
                 No se puede eliminar un curso con asignaciones.
               </p>
             )}
           </div>
-        }
-        debajo={
-          <div
-            id="asignados"
-            className="scroll-mt-20 rounded-[var(--radius-lg)] border border-border bg-surface p-5"
-          >
-            <h2 className="font-semibold text-foreground">
-              Postulantes asignados ({totalAsignaciones})
-            </h2>
+        </section>
 
-            {tieneAsignaciones && (
-              <nav aria-label="Filtrar por estado" className="mt-4 flex flex-wrap gap-2">
-                {estadosFiltro.map(
-                  (estado) => {
-                    const activo = estado === estadoFiltro;
-                    const cantidad = estado ? conteoPorEstado[estado] : totalAsignaciones;
-                    return (
-                      <Link
-                        key={estado ?? "todos"}
-                        href={hrefConParams(rutaCurso, sp, { estado, pagina: null }, "asignados")}
-                        scroll={false}
-                        aria-current={activo ? "page" : undefined}
-                        className={
-                          activo
-                            ? "inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-3 text-sm font-medium text-primary-foreground sm:min-h-9"
-                            : "inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-white px-3 text-sm text-muted-foreground-strong transition-colors hover:text-foreground sm:min-h-9"
-                        }
-                      >
-                        {estado ? ESTADO_CURSO_LABEL[estado] : "Todos"}
-                        <span className="text-xs opacity-80">{cantidad}</span>
-                      </Link>
-                    );
-                  }
-                )}
-              </nav>
+        <section aria-labelledby="asignaciones-curso" className={TARJETA}>
+          <h2 id="asignaciones-curso" className={TITULO_TARJETA}>
+            Asignaciones
+          </h2>
+          {/* flex-1 + auto-rows-fr: los cuadros crecen hasta el alto de "Estado". */}
+          <dl
+            className={cn(
+              "grid flex-1 auto-rows-fr gap-3",
+              estadosVisibles.length === 4 ? "grid-cols-2" : "grid-cols-3",
             )}
+          >
+            {estadosVisibles.map((estado) => {
+              const valor = conteoPorEstado[estado];
+              return (
+                <div
+                  key={estado}
+                  className={cn(
+                    "flex min-w-0 flex-col-reverse items-center justify-center gap-1 rounded-[14px] px-2 py-3 text-center",
+                    valor > 0 ? "bg-surface-tinted text-primary" : "bg-secondary text-heading",
+                  )}
+                >
+                  <dt className="text-[13px] font-semibold text-muted-foreground-strong">
+                    {ESTADO_CURSO_LABEL[estado]}
+                  </dt>
+                  <dd className="text-[26px] leading-none font-extrabold tabular-nums">{valor}</dd>
+                </div>
+              );
+            })}
+          </dl>
+        </section>
+      </div>
 
-            <Suspense
-              key={JSON.stringify({ pagina, estadoFiltro })}
-              fallback={<EsqueletoLista filas={3} className="mt-4" />}
-            >
-              <ListadoAsignados
-                cursoId={curso.id}
-                estado={estadoFiltro}
-                pagina={pagina}
-                searchParams={sp}
-              />
-            </Suspense>
-          </div>
-        }
+      <CursoForm
+        modo="editar"
+        cursoId={curso.id}
+        inicial={{
+          nombre: curso.nombre,
+          descripcion: curso.descripcion,
+          link: curso.link,
+          indicaciones: curso.indicaciones,
+        }}
       />
+
+      <section id="asignados" aria-labelledby="titulo-asignados" className="flex scroll-mt-20 flex-col gap-4">
+        <TituloBloque
+          id="titulo-asignados"
+          titulo={`Postulantes asignados (${totalAsignaciones})`}
+          icono={Users}
+        />
+
+        {tieneAsignaciones && (
+          <nav aria-label="Filtrar por estado">
+            <div className="sin-barra-scroll -mx-4 -my-1 flex gap-2 overflow-x-auto px-4 py-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+              {estadosFiltro.map((estado) => (
+                <PastillaFiltro
+                  key={estado ?? "todos"}
+                  href={hrefConParams(rutaCurso, sp, { estado, pagina: null }, "asignados")}
+                  activa={estado === estadoFiltro}
+                  cantidad={estado ? conteoPorEstado[estado] : totalAsignaciones}
+                >
+                  {estado ? ESTADO_CURSO_LABEL[estado] : "Todos"}
+                </PastillaFiltro>
+              ))}
+            </div>
+          </nav>
+        )}
+
+        <Suspense
+          key={JSON.stringify({ pagina, estadoFiltro })}
+          fallback={<EsqueletoLista filas={3} />}
+        >
+          <ListadoAsignados
+            cursoId={curso.id}
+            estado={estadoFiltro}
+            pagina={pagina}
+            searchParams={sp}
+          />
+        </Suspense>
+      </section>
     </section>
   );
 }
@@ -225,7 +268,6 @@ async function ListadoAsignados({
     const ref = logError("admin_curso_asignados", resultado.error);
     return (
       <ErrorListado
-        className="mt-4"
         mensaje="No pudimos cargar los postulantes asignados."
         refError={ref}
       />
@@ -238,7 +280,6 @@ async function ListadoAsignados({
     return estado ? (
       <EstadoVacio
         tipo="sin-resultados"
-        className="mt-3"
         titulo={`No hay asignaciones en estado «${ESTADO_CURSO_LABEL[estado]}»`}
         descripcion="Probá con otro estado o mirá todas las asignaciones."
         hrefLimpiar={hrefConParams(`/admin/cursos/${cursoId}`, searchParams, { estado: null, pagina: null }, "asignados")}
@@ -247,7 +288,6 @@ async function ListadoAsignados({
     ) : (
       <EstadoVacio
         tipo="sin-registros"
-        className="mt-3"
         titulo="Todavía no se asignó este curso a ningún postulante"
         descripcion="Se asigna desde la ficha de un postulante o desde el listado de postulantes."
       />
@@ -256,86 +296,49 @@ async function ListadoAsignados({
 
   return (
     <>
-      {/* Tabla md+ */}
-      <div className="mt-4 hidden overflow-x-auto md:block">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left">
-              <th className="pb-2 pr-4 font-medium text-muted-foreground">Postulante</th>
-              <th className="pb-2 pr-4 font-medium text-muted-foreground">Estado</th>
-              <th className="pb-2 pr-4 font-medium text-muted-foreground">Fechas</th>
-              <th className="pb-2 font-medium text-muted-foreground">Nota interna</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {asignaciones.map((a) => {
-              const p = a.postulantes;
-              const u = p?.usuarios;
-              const nombre = u ? `${u.nombre} ${u.apellido}` : "Postulante eliminado";
-              return (
-                <tr key={a.id}>
-                  <td className="py-3 pr-4 font-medium text-foreground">
-                    {p ? (
-                      <Link
-                        href={`/admin/postulantes/${p.id}`}
-                        className="text-primary hover:underline"
-                      >
-                        {nombre}
-                      </Link>
-                    ) : (
-                      nombre
-                    )}
-                  </td>
-                  <td className="py-3 pr-4">
-                    <EstadoCursoBadge estado={a.estado} />
-                  </td>
-                  <td className="py-3 pr-4 text-xs text-muted-foreground">
-                    <FechasAsignacion asignacion={a} />
-                  </td>
-                  <td className="py-3 text-xs text-muted-foreground">{a.nota ?? "—"}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Cards mobile */}
-      <div className="mt-4 space-y-3 md:hidden">
+      <Tabla
+        columnas={COLUMNAS_ASIGNADOS}
+        etiqueta="Postulantes asignados"
+        semantica="tabla"
+        encabezados={["Postulante", "Estado", "Fechas", "Nota interna"]}
+      >
         {asignaciones.map((a) => {
           const p = a.postulantes;
           const u = p?.usuarios;
           const nombre = u ? `${u.nombre} ${u.apellido}` : "Postulante eliminado";
           return (
-            <div
-              key={a.id}
-              className="rounded-[var(--radius-md)] border border-border p-3 space-y-2"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-medium text-foreground">
-                  {p ? (
-                    <Link
-                      href={`/admin/postulantes/${p.id}`}
-                      className="text-primary hover:underline"
-                    >
-                      {nombre}
-                    </Link>
-                  ) : (
-                    nombre
-                  )}
-                </p>
+            <FilaTabla key={a.id} semantica="tabla" filete={FILETE_ESTADO_CURSO[a.estado]}>
+              <div role="cell" className="min-w-0">
+                <CeldaPersona
+                  nombre={nombre}
+                  href={p ? `/admin/postulantes/${p.id}` : undefined}
+                  iniciales={u ? inicialesDePersona(u.nombre, u.apellido) : undefined}
+                />
+              </div>
+              <div role="cell" className="min-w-0">
+                <span className="sr-only">Estado: </span>
                 <EstadoCursoBadge estado={a.estado} />
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div role="cell" className="min-w-0 text-sm text-muted-foreground-strong">
+                <span className="sr-only">Fechas: </span>
                 <FechasAsignacion asignacion={a} />
               </div>
-              {a.nota && <p className="text-xs text-muted-foreground">{a.nota}</p>}
-            </div>
+              <div role="cell" className="min-w-0 text-sm text-muted-foreground-strong">
+                <span className="sr-only">Nota interna: </span>
+                {a.nota ? (
+                  <span className="flex items-start gap-2">
+                    <StickyNote aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-icon" />
+                    <span className="min-w-0 break-words whitespace-pre-line">{a.nota}</span>
+                  </span>
+                ) : (
+                  "—"
+                )}
+              </div>
+            </FilaTabla>
           );
         })}
-      </div>
+      </Tabla>
       <Paginacion
-        className="mt-4"
         ruta={`/admin/cursos/${cursoId}`}
         searchParams={searchParams}
         pagina={resultado.pagina}
@@ -350,7 +353,7 @@ function FechasAsignacion({
   asignacion: a,
 }: {
   asignacion: Pick<
-    Tabla<"asignaciones_curso">,
+    FilaDb<"asignaciones_curso">,
     "created_at" | "iniciado_en" | "completado_en" | "abandonado_en"
   > & { estado: EstadoAsignacionCurso };
 }) {

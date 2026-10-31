@@ -2,30 +2,44 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AvisoUrl } from "@/components/ui/aviso-url";
 import Link from "next/link";
-import { Plus, BookOpen } from "lucide-react";
+import { BookOpen, CheckCircle2, Link as IconoLink, Plus, Users } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
-import { limpiarBusqueda, patronIlike } from "@/lib/busqueda";
+import { limpiarBusqueda } from "@/lib/busqueda";
 import {
   consultarPagina,
   hrefConParams,
   leerPagina,
   type ParamsUrl,
 } from "@/lib/paginacion";
+import {
+  LABEL_PESTANA_CURSOS,
+  PESTANAS_CURSOS,
+  filtrarCursos,
+  leerPestanaCursos,
+  type PestanaCursos,
+} from "@/lib/admin/filtro-cursos";
 import { Buscador } from "@/components/ui/buscador";
 import { Paginacion } from "@/components/ui/paginacion";
+import { PastillaFiltro } from "@/components/ui/pastilla-filtro";
+import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { TarjetaCurso } from "@/components/cursos/tarjeta-curso";
 import { UMBRAL_RECHAZOS_CURSO, VENTANA_RECHAZOS_DIAS } from "@/lib/cursos";
 import { requerirRolPagina } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
-import { PestanasEstado } from "@/components/ui/pestanas-estado";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Cursos | Panel municipal | Portal de Empleo Funes",
 };
 
 const RUTA = "/admin/cursos";
+
+function hrefPestana(pestana: PestanaCursos, q: string | undefined): string {
+  return hrefConParams(RUTA, {}, { estado: pestana === "inactivos" ? "inactivos" : null, q: q ?? null });
+}
 
 export default async function CursosPage({
   searchParams,
@@ -34,122 +48,122 @@ export default async function CursosPage({
 }) {
   await requerirRolPagina("municipalidad");
   const sp = await searchParams;
-  const soloActivos = sp.estado !== "inactivos";
+  const pestana = leerPestanaCursos(sp.estado);
   const q = limpiarBusqueda(sp.q);
   const pagina = leerPagina(sp.pagina);
   const cantidades = await contarCursos(q);
 
   return (
-    <section>
+    <section className="flex flex-col gap-6">
       <Suspense>
         <AvisoUrl />
       </Suspense>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Cursos de inserción laboral
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Cursos asignables a postulantes con {UMBRAL_RECHAZOS_CURSO} o más rechazos de
-            empresas en los últimos {VENTANA_RECHAZOS_DIAS} días.{" "}
-            <Link href="/admin/cursos/completados" className="text-primary hover:underline">
+      <BotonVolver href="/admin" destacado />
+      <EncabezadoPagina
+        banda
+        className="-mt-2"
+        botonesBlancos
+        titulo="Cursos de inserción laboral"
+        bajada={`Cursos asignables a postulantes con ${UMBRAL_RECHAZOS_CURSO} o más rechazos de empresas en los últimos ${VENTANA_RECHAZOS_DIAS} días.`}
+        acciones={
+          <>
+            <Link href="/admin/cursos/completados" className="btn-secundario">
+              <CheckCircle2 aria-hidden="true" />
               Ver cursos completados
             </Link>
-          </p>
-        </div>
-        <Link href="/admin/cursos/nuevo" className="btn-primario">
-          <Plus className="h-4 w-4" />
-          Nuevo curso
-        </Link>
-      </div>
-
-      <PestanasEstado
-        className="mt-6"
-        etiqueta="Estado de los cursos"
-        pestanas={[
-          {
-            href: hrefConParams(RUTA, {}, { q: sp.q ?? null }),
-            label: "Activos",
-            activa: soloActivos,
-            cantidad: cantidades.activos ?? undefined,
-          },
-          {
-            href: hrefConParams(RUTA, {}, { estado: "inactivos", q: sp.q ?? null }),
-            label: "Inactivos",
-            activa: !soloActivos,
-            cantidad: cantidades.inactivos ?? undefined,
-          },
-        ]}
+            <Link href="/admin/cursos/nuevo" className="btn-primario">
+              <Plus aria-hidden="true" />
+              Nuevo curso
+            </Link>
+          </>
+        }
       />
 
-      <Buscador className="mt-4" placeholder="Buscar por nombre…" />
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+        <nav aria-label="Estado de los cursos" className="min-w-0">
+          <div className="sin-barra-scroll -mx-4 -my-1 flex gap-2 overflow-x-auto px-4 py-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+            {PESTANAS_CURSOS.map((p) => (
+              <PastillaFiltro
+                key={p}
+                href={hrefPestana(p, sp.q)}
+                activa={p === pestana}
+                cantidad={cantidades[p] ?? undefined}
+              >
+                {LABEL_PESTANA_CURSOS[p]}
+              </PastillaFiltro>
+            ))}
+          </div>
+        </nav>
+
+        <Buscador
+          className="w-full min-w-0 lg:w-[22rem] lg:shrink-0"
+          inputClassName="rounded-xl"
+          placeholder="Buscar por nombre…"
+        />
+      </div>
 
       <Suspense
-        key={JSON.stringify({ soloActivos, q, pagina })}
-        fallback={<EsqueletoLista filas={4} className="mt-6" />}
+        key={JSON.stringify({ pestana, q, pagina })}
+        fallback={<EsqueletoLista filas={4} />}
       >
-        <ListadoCursos
-          soloActivos={soloActivos}
-          q={q}
-          pagina={pagina}
-          searchParams={sp}
-        />
+        <ListadoCursos pestana={pestana} q={q} pagina={pagina} searchParams={sp} />
       </Suspense>
     </section>
   );
 }
 
 /**
- * Cantidad de cursos activos e inactivos con la búsqueda, para las pestañas.
- * null si el conteo falló: la pestaña va sin número.
+ * Cantidad de cursos de cada pestaña con la búsqueda, para las pastillas.
+ * null si el conteo falló: la pastilla va sin número.
  */
-async function contarCursos(q: string): Promise<{ activos: number | null; inactivos: number | null }> {
+async function contarCursos(q: string): Promise<Record<PestanaCursos, number | null>> {
   const supabase = await createSupabaseServerClient();
-  const contar = async (activo: boolean) => {
-    let query = supabase
-      .from("cursos")
-      .select("id", { count: "exact", head: true })
-      .eq("activo", activo);
-    if (q) query = query.ilike("nombre", patronIlike(q));
-    const { count, error } = await query;
+  const contar = async (pestana: PestanaCursos) => {
+    const { count, error } = await filtrarCursos(
+      supabase.from("cursos").select("id", { count: "exact", head: true }),
+      pestana,
+      q,
+    );
     if (error) {
-      logError("admin_cursos_conteo_estado", error);
+      logError("admin_cursos_conteo_estado", error, { pestana });
       return null;
     }
     return count ?? 0;
   };
-  const [activos, inactivos] = await Promise.all([contar(true), contar(false)]);
+  const [activos, inactivos] = await Promise.all([contar("activos"), contar("inactivos")]);
   return { activos, inactivos };
 }
 
 async function ListadoCursos({
-  soloActivos,
+  pestana,
   q,
   pagina,
   searchParams,
 }: {
-  soloActivos: boolean;
+  pestana: PestanaCursos;
   q: string;
   pagina: number;
   searchParams: ParamsUrl;
 }) {
   const supabase = await createSupabaseServerClient();
+  const soloActivos = pestana === "activos";
 
-  const resultado = await consultarPagina(pagina, (desde, hasta) => {
-    let query = supabase
-      .from("cursos")
-      .select("id, nombre, link, activo", { count: "exact" })
-      .eq("activo", soloActivos);
-    if (q) query = query.ilike("nombre", patronIlike(q));
-    return query
+  const resultado = await consultarPagina(pagina, (desde, hasta) =>
+    filtrarCursos(
+      supabase
+        .from("cursos")
+        .select("id, nombre, descripcion, link, activo", { count: "exact" }),
+      pestana,
+      q,
+    )
       .order("nombre", { ascending: true })
       .order("id", { ascending: true })
-      .range(desde, hasta);
-  });
+      .range(desde, hasta),
+  );
 
   if (!resultado.ok) {
     const ref = logError("admin_cursos_listado", resultado.error);
-    return <ErrorListado className="mt-6" refError={ref} />;
+    return <ErrorListado refError={ref} />;
   }
 
   const cursos = resultado.filas;
@@ -158,15 +172,13 @@ async function ListadoCursos({
     return q ? (
       <EstadoVacio
         tipo="sin-resultados"
-        className="mt-6"
         titulo="No se encontraron cursos con ese nombre"
-        hrefLimpiar={hrefConParams(RUTA, {}, { estado: soloActivos ? null : "inactivos" })}
+        hrefLimpiar={hrefPestana(pestana, undefined)}
         textoLimpiar="Limpiar búsqueda"
       />
     ) : (
       <EstadoVacio
         tipo="sin-registros"
-        className="mt-6"
         icono={BookOpen}
         titulo={soloActivos ? "No hay cursos activos" : "No hay cursos inactivos"}
         accion={
@@ -198,100 +210,52 @@ async function ListadoCursos({
 
   return (
     <>
-          {/* Tabla md+ */}
-          <div className="mt-6 hidden overflow-x-auto rounded-[var(--radius-lg)] border border-border bg-surface md:block">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-surface-tinted text-left">
-                  <th className="px-4 py-3 font-medium text-muted-foreground">
-                    Nombre
-                  </th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">
-                    Link
-                  </th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">
-                    Asignaciones
-                  </th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">
-                    Estado
-                  </th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {cursos.map((c) => (
-                  <tr
-                    key={c.id}
-                    className="transition-colors hover:bg-surface-tinted"
-                  >
-                    <td className="px-4 py-3 font-medium text-foreground">
-                      {c.nombre}
-                    </td>
-                    <td className="px-4 py-3">
-                      {c.link ? (
-                        <span className="truncate block max-w-xs text-xs text-primary">
-                          Con link
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-foreground">
-                      {conteosAsignaciones[c.id] ?? 0}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge tono={c.activo ? "success" : "neutral"} estado>
-                        {c.activo ? "Activo" : "Inactivo"}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 w-px whitespace-nowrap">
-                      <Link
-                        href={`/admin/cursos/${c.id}`}
-                        className="btn-secundario inline-flex items-center justify-center whitespace-nowrap px-3 py-1.5 text-xs"
-                      >
-                        Ver detalle
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Cards mobile */}
-          <div className="mt-6 space-y-3 md:hidden">
-            {cursos.map((c) => (
-              <div
-                key={c.id}
-                className="rounded-[var(--radius-lg)] border border-border bg-surface p-4 space-y-3"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-medium text-foreground">{c.nombre}</p>
+      <ul className="flex flex-col gap-3 sm:gap-4" aria-label={soloActivos ? "Cursos activos" : "Cursos inactivos"}>
+        {cursos.map((c) => {
+          const asignaciones = conteosAsignaciones[c.id] ?? 0;
+          return (
+            <li key={c.id}>
+              <TarjetaCurso
+                href={`/admin/cursos/${c.id}`}
+                nombre={c.nombre}
+                badge={
                   <Badge tono={c.activo ? "success" : "neutral"} estado>
                     {c.activo ? "Activo" : "Inactivo"}
                   </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {conteosAsignaciones[c.id] ?? 0} asignación
-                  {(conteosAsignaciones[c.id] ?? 0) !== 1 ? "es" : ""}
-                  {c.link ? " · Con link" : ""}
-                </p>
-                <Link
-                  href={`/admin/cursos/${c.id}`}
-                  className="btn-secundario inline-flex items-center justify-center whitespace-nowrap px-3 py-1.5 text-sm"
-                >
-                  Ver detalle
-                </Link>
-              </div>
-            ))}
-          </div>
-          <Paginacion
-            className="mt-6"
-            ruta={RUTA}
-            searchParams={searchParams}
-            pagina={resultado.pagina}
-            total={resultado.total}
-          />
+                }
+                descripcion={c.descripcion}
+                pista={{ texto: "Ver detalle", etiqueta: `Ver detalle de ${c.nombre}` }}
+              >
+                <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-muted-foreground-strong">
+                  <li className="inline-flex items-center gap-1.5">
+                    <Users className="size-4 shrink-0 text-muted-icon" aria-hidden="true" />
+                    {conteosError
+                      ? "Asignaciones sin datos"
+                      : `${asignaciones} ${asignaciones === 1 ? "asignación" : "asignaciones"}`}
+                  </li>
+                  <li className="inline-flex min-w-0 max-w-full items-center gap-1.5">
+                    <IconoLink className="size-4 shrink-0 text-muted-icon" aria-hidden="true" />
+                    {c.link ? (
+                      <span className="min-w-0 truncate" title={c.link}>
+                        <span className="sr-only">Link: </span>
+                        {c.link.replace(/^https:\/\//, "")}
+                      </span>
+                    ) : (
+                      "Sin link"
+                    )}
+                  </li>
+                </ul>
+              </TarjetaCurso>
+            </li>
+          );
+        })}
+      </ul>
+      <Paginacion
+        ruta={RUTA}
+        searchParams={searchParams}
+        pagina={resultado.pagina}
+        total={resultado.total}
+      />
     </>
   );
 }
