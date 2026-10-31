@@ -29,6 +29,7 @@ import { inicialesDePersona } from "@/lib/iniciales";
 import { fotosDeCandidatosEmpresa } from "@/lib/fotos-perfil";
 import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_TONO } from "@/lib/derivacion-estados";
 import type { FilaDerivacionDeOfertaEmpresa } from "@/types/db";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Panel de empresa | Portal de Empleo Funes",
@@ -92,8 +93,10 @@ export default async function EmpresaDashboardPage() {
         <AvisoUrl />
       </Suspense>
 
+      <BotonVolver href="/" destacado />
       <EncabezadoPagina
         banda
+        className="-mt-3"
         botonesBlancos
         titulo={`Hola, ${empresa.razon_social}`}
         bajada="Así están tus ofertas y tus candidatos."

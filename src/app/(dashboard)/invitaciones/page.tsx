@@ -26,7 +26,7 @@ export default async function InvitacionesPage() {
 
   return (
     <section className="flex flex-col gap-6">
-      <BotonVolver href="/perfil" destacado />
+      <BotonVolver href="/panel" destacado />
       <EncabezadoPagina
         banda
         className="-mt-2"

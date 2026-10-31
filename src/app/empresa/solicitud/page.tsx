@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { obtenerEmpresaActual, requerirRolPagina } from "@/lib/auth";
 import { CorregirSolicitudForm } from "./_components/corregir-form";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Corregir solicitud | Portal de Empleo Funes",
@@ -27,7 +28,8 @@ export default async function SolicitudEmpresaPage() {
       <main className="flex-1">
         <section>
           <div className="w-full">
-            <div className="mb-6">
+            <BotonVolver href="/empresa" destacado />
+            <div className="mt-4 mb-6">
               <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
                 Corregir solicitud
               </h1>

@@ -120,7 +120,7 @@ export default async function PerfilPage() {
 
   return (
     <section className="@container flex flex-col gap-6">
-      <BotonVolver href="/" destacado />
+      <BotonVolver href="/panel" destacado />
       <EncabezadoPagina banda className="-mt-2" titulo={TITULO} bajada={BAJADA} />
 
       <div className="grid grid-cols-1 items-start gap-4 @3xl:grid-cols-[240px_minmax(0,1fr)] @3xl:gap-8">

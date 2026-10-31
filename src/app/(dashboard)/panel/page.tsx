@@ -18,6 +18,7 @@ import {
   EsqueletoOfertas,
   EsqueletoPerfil,
 } from "./esqueletos";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Panel | Portal de Empleo Funes",
@@ -33,8 +34,10 @@ export default async function PanelPostulantePage() {
 
   return (
     <div className="flex flex-col gap-7">
+      <BotonVolver href="/" destacado />
       <EncabezadoPagina
         banda
+        className="-mt-3"
         titulo={nombre ? `Hola, ${nombre}` : "Hola"}
         bajada="Este es el resumen de tus postulaciones."
         acciones={<AccionesPanel />}

@@ -7,6 +7,7 @@ import { obtenerUsuarioActual, type Rol } from "@/lib/auth";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { OFICINA } from "@/lib/oficina";
 import { DURACIONES_OFERTA } from "@/lib/ofertas-vencimiento";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Preguntas frecuentes | Portal de Empleo Funes",
@@ -280,7 +281,10 @@ export default async function PreguntasFrecuentesPage({
 
   return (
     <main className="flex flex-1 flex-col gap-10">
-      <EncabezadoPagina titulo="Preguntas frecuentes" bajada={bajada} />
+      <div className="flex flex-col gap-4">
+        <BotonVolver href="/" destacado />
+        <EncabezadoPagina titulo="Preguntas frecuentes" bajada={bajada} />
+      </div>
 
       {secciones.map(({ id, titulo, preguntas }) => (
         <section key={id} aria-labelledby={`faq-${id}`} className="flex flex-col gap-4">
