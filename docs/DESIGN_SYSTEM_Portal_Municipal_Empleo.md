@@ -515,13 +515,17 @@ fondo, aplicado una sola vez en `.app-contenido` (`globals.css`, bloque
     `radial-gradient(ellipse 70% 100% at 100% 0, #000 15%, transparent
     60%)`: quedan solo en la esquina superior derecha, lejos del título.
 -   Escudo de agua (`::after`, solo desde lg): 300 px, al 8 %, girado
-    −8°, a 28 px de la derecha y 56 px por encima del borde.
+    −8°, a 28 px de la derecha y 56 px por encima del borde (ver
+    "Escudo de agua").
 -   `.app-contenido` lleva `position: relative` e `isolation: isolate`:
     la decoración va en `z-index: -1` dentro de él, detrás del contenido,
     y no recibe clics (`pointer-events: none`).
--   El inicio (`/`) no lo lleva: `AppShell` le pone
+-   El inicio (`/`) no lleva el degradé ni los puntos: `AppShell` le pone
     `.app-contenido--inicio`, que deja el fondo liso, porque su
-    decoración es el hero (sección 26).
+    decoración es el hero (sección 26). El escudo sí (ver "Escudo de
+    agua").
+-   Las pantallas de `/auth` no tienen navegación ni `.app-contenido`:
+    no llevan este fondo ni el escudo.
 -   Las tarjetas y tablas siguen blancas. El encabezado de página, la
     sidebar y la barra del celular no cambian.
 
@@ -541,8 +545,32 @@ La marca de agua es el escudo de la Municipalidad, en dos imágenes de
     imagen ya es verde de marca: no lleva máscara ni color propio.
 -   `escudo-blanco.png`, para fondos verdes: el footer (sección 41).
 
-En las pantallas con encabezado de banda verde (sección 13) el escudo del
-fondo no se muestra: la banda ya lleva el suyo.
+El escudo del fondo es una sola regla (`.app-contenido::after`) y se ve
+en todas las pantallas con navegación:
+
+-   las pantallas con sesión de los tres roles (postulante, empresa y
+    oficina), con o sin banda verde;
+-   la portada (`/`), con o sin sesión;
+-   las públicas: `/ofertas`, el detalle de una oferta y
+    `/preguntas-frecuentes`.
+
+No lo llevan las pantallas de `/auth` (inicio de sesión, registro,
+recuperar contraseña y el resto), que no tienen `.app-contenido`.
+
+Solo en escritorio (desde `lg`; en el celular no se muestra), de 300 px,
+al 8 % y girado −8°, `position: absolute` arriba a la derecha:
+`top: var(--escudo-arriba)` (−56 px) y 28 px de la derecha. Se va con el
+scroll como el resto de la página y no la agranda. Es la misma posición
+en todas: con "Volver" arriba, la banda verde (`BandaOfertas` o
+`EncabezadoPagina banda`) empieza a la misma altura que en `/ofertas` y
+deja ver la misma parte del escudo, por encima de la banda y a la
+derecha del "Volver". Solo el inicio cambia `--escudo-arriba`: el hero
+arranca arriba de todo y lo taparía entero, así que el escudo se ancla
+16 px debajo del hero (`anchor-name` en `.hero-inicio`, dentro de
+`@supports (top: anchor(bottom))`; sin anchor positioning queda en −56
+px). Siempre `z-index` −1 dentro de `.app-contenido` (detrás de las
+bandas, las tarjetas y el footer, sin cambiar el contraste de ningún
+texto) y `pointer-events: none`.
 
 No se copia en los componentes. El trébol de la sidebar contraída y de la
 barra del celular (`trebol.png`) es otra pieza y no cambia.
@@ -923,8 +951,8 @@ de `globals.css`.
     `sidebar-texto`); `.btn-secundario` y `.btn-neutro` transparentes, con
     borde blanco al 75 % y texto blanco (hover blanco al 12 %). El foco,
     un anillo blanco por fuera de un borde verde.
--   "Volver", si la pantalla lo tiene, va arriba y fuera de la banda
-    (`BotonVolver destacado`, en verde).
+-   "Volver" va arriba y fuera de la banda (`BotonVolver destacado`, en
+    verde); todas las pantallas lo tienen salvo la portada.
 -   **Banda de la empresa** (`botonesBlancos`, clase
     `.encabezado-banda-acciones--blancos`): todos los botones van con
     fondo blanco, borde blanco y texto `primary`, también los neutros, los
@@ -937,9 +965,10 @@ de `globals.css`.
 -   Con el selector de período desplegable en las acciones (indicadores
     de la empresa, `.selector-periodo-banda`), la banda pasa a `overflow:
     visible` y `z-index` 20 para que la lista salga por debajo; la
-    decoración ya se recorta en su propia capa.
--   Con banda no se muestra el escudo de agua del fondo
-    (`.app-contenido:has(.encabezado-banda)::after`).
+    decoración ya se recorta en su propia capa. El escudo no se mueve:
+    queda en su lugar de siempre, debajo del selector.
+-   El escudo de agua del fondo queda donde en `/ofertas`, arriba a la
+    derecha, detrás de la banda (ver "Escudo de agua").
 -   Mientras carga (`loading.tsx`), la banda ya está con su título; lo que
     falta va en una barra blanca al 20 %.
 
@@ -954,7 +983,11 @@ la misma pantalla; si se llegó por el redirect de una acción, también la
 pantalla donde se hizo. Solo sin una pantalla anterior del sitio
 (pestaña nueva, link de un email, link directo) van a su `href` de
 respaldo, la página padre. Todos los "Volver" del sitio usan estos dos
-componentes. Detalle en la decisión 031, punto 6.
+componentes. Todas las pantallas lo tienen salvo la portada (`/`): las
+secciones de la sidebar (respaldo, el panel del rol), los paneles y las
+páginas públicas (respaldo, la portada). Con banda, va arriba y fuera de
+ella (`BotonVolver destacado`, la banda con `-mt-2` en un `gap-6`).
+Detalle en la decisión 031, punto 6.
 
 ------------------------------------------------------------------------
 
@@ -2138,7 +2171,8 @@ perfil.
 `PaginaNotificaciones banda` usa `ListaNotificacionesAgrupada`
 (`src/components/notificaciones/lista-agrupada.tsx`); la empresa pasa
 además `rol="empresa"`, que cambia solo los íconos y colores (abajo). La
-lista de la oficina no cambia.
+oficina pasa `rol="oficina"`, que cambia además el texto del link (ver
+"Notificaciones de la oficina").
 
 -   **Grupos por fecha** (`src/lib/grupos-notificaciones.ts`), dentro de la
     página que se está viendo (la paginación no cambia): "Últimas 24
@@ -2156,6 +2190,18 @@ lista de la oficina no cambia.
     link (15 px 700 `primary`, 44 px de alto) a la derecha; en el
     celular, debajo del texto. Las nuevas, con el punto `accent` y el
     fondo resaltado de siempre; se marcan como leídas igual que antes.
+-   **Toda la tarjeta es clickeable** si la notificación tiene destino
+    (`.notificacion-con-destino`): el botón del link (`.notificacion-enlace`)
+    estira su `::after` sobre la tarjeta (`absolute`, `inset: 0`), así
+    sigue habiendo un solo control por notificación y entrar la marca
+    como leída igual que el link. `cursor: pointer`; al pasar el mouse,
+    un velo de `rgb(0 30 15 / .035)` sobre el fondo que tenga (también
+    el de las nuevas); el foco del teclado, un contorno de 2 px
+    `primary` con 2 px de separación en toda la tarjeta
+    (`:has(:focus-visible)`). Si una tarjeta suma otro control, va por
+    encima del `::after` (`position: relative; z-index: 1`). Las que no
+    tienen destino no son clickeables. El menú de la campanita usa su
+    propio ítem (un botón que ya ocupa toda la fila).
 -   **Íconos de la empresa** (`IconoCuadro` de 40 px): `Send` `teal`
     (candidato derivado), `CircleCheck` `success` (oferta aprobada y
     solicitud aprobada), `CircleX` `danger` (oferta rechazada y solicitud
@@ -2440,7 +2486,7 @@ celular) con el logo o las iniciales en `primary` 800.
 
 ### Cuentas de la oficina (`/admin/cuentas`)
 
--   Sin "Volver" (es una sección de la sidebar). Banda con el título, la
+-   "Volver" arriba de la banda (respaldo `/admin`). Banda con el título, la
     bajada y el botón blanco "Invitar cuenta" (`UserPlus`).
 -   Cada cuenta, una `.tarjeta .tarjeta-panel`: la foto o las iniciales en
     un círculo de 56 px, el nombre (17 px 800), "Vos" (`EtiquetaRubro
@@ -2654,6 +2700,136 @@ postulante siguen con `badgePostulacion` de `lib/mis-postulaciones.ts`.
     "empresa · Invitado el … por …", el motivo si no aceptó, "Ver la
     postulación ›" si aceptó y el badge del resultado a la derecha.
 
+### Cursos (`/admin/cursos`)
+
+-   Banda (`botonesBlancos`): "Cursos de inserción laboral", la bajada
+    de la regla de rechazos y los botones blancos "Ver cursos
+    completados" (`CheckCircle2`) y "Nuevo curso" (`Plus`).
+-   `PastillaFiltro` con cantidad (Activos, Inactivos) y el `Buscador`
+    "Buscar por nombre…" al lado (22 rem desde lg; a todo el ancho
+    debajo en el celular). Las cantidades y la lista usan el mismo
+    `filtrarCursos` (`src/lib/admin/filtro-cursos.ts`).
+-   Cada curso es una `TarjetaCurso`
+    (`src/components/cursos/tarjeta-curso.tsx`, la misma de "Mis cursos"
+    del postulante): `BookOpen` en un `IconoCuadro` verde, el nombre como
+    link que cubre la tarjeta y el badge Activo / Inactivo, la
+    descripción (3 líneas) y una fila con `Users` "N asignaciones" y
+    `Link` con el link (sin "https://", recortado) o "Sin link". "Ver
+    detalle ›" a la derecha (debajo en el celular) es un link propio con
+    `aria-label` "Ver detalle de …".
+
+### Crear curso (`/admin/cursos/nuevo`)
+
+-   "Volver" arriba de la banda "Crear curso".
+-   `DetalleConLateral desde="xl" anchoLateral={380}` (1fr / 380 px, la
+    misma altura): a la izquierda la tarjeta "Datos del curso" con el
+    Nombre y el Link lado a lado (desde 36 rem de tarjeta; la ayuda
+    "Debe comenzar con https://" debajo del link) y la Descripción y las
+    Indicaciones con su contador; las dos áreas de texto crecen para
+    igualar la altura. Campos `.campo` dentro de `.formulario-oferta`
+    (los mismos bordes y foco que el formulario de oferta).
+-   A la derecha, el rótulo "Vista previa para el postulante" (12 px 800
+    en mayúsculas, `neutral`) por fuera de la tarjeta (`absolute`, como
+    en el formulario de oferta; por eso el formulario lleva `xl:mt-5`).
+    Debajo, la `TarjetaCurso` como la ve el postulante (`inert`):
+    "Asignado", "Asignado el [hoy]", "Empezar curso" y, con un link
+    válido, "Ir al curso"; el nombre y la descripción que faltan van de
+    ejemplo en `placeholder` itálica. Después, "Cómo se usa" (`Info`):
+    tres pasos numerados (crear el curso; asignarlo desde la ficha de un
+    postulante con 3 o más rechazos en 90 días; el postulante lo empieza
+    y lo marca como completado y llega un aviso), que crece hasta igualar
+    la altura.
+-   Abajo a la derecha, sin recuadro: "Cancelar" (`btn-cancelar`, el del
+    formulario de oferta) y "Crear curso". En el celular, a todo el
+    ancho, "Crear curso" arriba.
+
+### Detalle del curso (`/admin/cursos/[id]`)
+
+-   Banda: el nombre con `BadgeBanda` (Activo `success`, Inactivo
+    `neutral`) y "N postulantes asignados · N completados".
+-   Arriba, una fila de dos columnas desde `md` (apiladas en el
+    celular), con la misma altura (`items-stretch`): "Estado" (el badge,
+    una línea sobre qué pasa al desactivar y, al pie, "Desactivar" /
+    "Activar" secundario a todo el ancho, "Eliminar" si no tiene
+    asignaciones y, si tiene, "No se puede eliminar un curso con
+    asignaciones." como una línea con `Lock` debajo del botón, en
+    `muted-foreground-strong` 14 px) y "Asignaciones": un cuadro por
+    estado (Asignado, En curso, Completado; Abandonado solo si quedan, y
+    entonces 2 × 2), número de 26 px 800; gris `secondary` en 0 y
+    `surface-tinted` con número `primary` si tiene valor. Los cuadros
+    crecen (`flex-1 auto-rows-fr`, contenido centrado) hasta el alto de
+    "Estado"; si "Estado" es la más baja, sus botones bajan al pie
+    (`mt-auto`). Sin espacio vacío al final de ninguna de las dos.
+-   Debajo, "Datos del curso" (`CursoForm modo="editar"`) a todo el
+    ancho, sin altura forzada: mide lo que su contenido. En lectura,
+    `CampoLectura estiloPerfil`: el nombre y el link en dos columnas, y
+    la descripción y las indicaciones lado a lado en otras dos (desde
+    `sm`; a todo el ancho en el celular). Lo vacío, "Sin link", "Sin
+    descripción", "Sin indicaciones" en gris. En el encabezado,
+    "Editar" (`BotonEditar`, `Pencil`, `.btn-neutro .btn-chico` con texto
+    `primary`, como "Editar datos" del perfil de la empresa). Al
+    tocarlo, los campos con la misma distribución (nombre y link en una
+    fila, descripción e indicaciones en otra, desde `@xl` del
+    contenedor) y "Cancelar" (`.btn-cancelar` del formulario de oferta)
+    y "Guardar cambios" abajo a la derecha; el foco va al primer campo
+    y, al cerrar, vuelve a "Editar". "Cancelar" con cambios sin guardar
+    abre `DialogoDescartarCambios` (el de las tarjetas de Mi perfil); sin
+    cambios, vuelve directo a lectura. Al guardar bien, vuelve a lectura
+    con los datos nuevos y el aviso "Curso actualizado.". Crear un curso
+    (`/admin/cursos/nuevo`) no cambia: descripción e indicaciones siguen
+    una debajo de la otra.
+-   "Postulantes asignados (N)" (`TituloBloque` con `Users`), a todo el
+    ancho: `PastillaFiltro` por estado con cantidad y la `Tabla` con
+    filete (`violet` asignado y en curso, `success` completado,
+    `neutral` abandonado): Postulante (`CeldaPersona` con iniciales y el
+    nombre como link) 1.3fr · Estado 8.5rem · Fechas (Asignado, Empezado,
+    Completado, en lista) 1fr · Nota interna (`StickyNote`) 1.4fr.
+
+### Cursos completados (`/admin/cursos/completados`)
+
+"Volver", la banda con la bajada de hoy y la `Tabla` con filete
+`success`: Postulante (`CeldaPersona`) · Curso (link) · Completado el ·
+"Ver ficha".
+
+### Mi perfil de la oficina (`/admin/perfil`)
+
+-   "Volver" y la banda "Mi perfil" con su bajada.
+-   `EncabezadoPerfil destacado accionesAlCostado`: la foto o las
+    iniciales (96 px; 76 en el celular), el nombre en Georgia, "Oficina
+    de Empleo", el badge del estado (Activa) y "Cambiar foto" con el
+    tacho rojo a su derecha (solo con foto).
+-   Lado a lado con la misma altura desde lg: "Datos personales"
+    (`DatosContactoForm variante="tarjeta" titulo="Datos personales"`,
+    `IdCard`, "Editar datos" `primary`) y "Cuenta" (`UserCog`): Rol,
+    Estado, Alta (`usuarios.created_at`) y Último ingreso
+    (`auth.users.last_sign_in_at`, en `UsuarioActual.ultimoIngreso`).
+-   "Contraseña" (`SeccionContrasenaCandado`, la misma de la empresa).
+
+### Notificaciones de la oficina (`/admin/notificaciones`)
+
+`PaginaNotificaciones banda rol="oficina"`: la misma lista agrupada del
+postulante y la empresa (ver "Notificaciones del postulante y de la
+empresa"), con el ícono, el color y el texto del link de
+`src/components/notificaciones/estilo-oficina.ts`:
+
+-   Amarillo (`accent` con el ícono `accent-foreground`), lo que hay
+    que revisar: empresa nueva `Building2` y reenviada `RefreshCw`
+    ("Revisar empresa"), comprobante `Receipt` ("Revisar comprobante"),
+    oferta nueva `Briefcase` y editada `Pencil` ("Revisar oferta"). El
+    reenvío y la edición comparten tipo con las nuevas: se distinguen por
+    la `clave` (`empresa_reenviada:`, `oferta_editada:`) o, sin clave,
+    por el título.
+-   Verde `success`: contratación `Award` y postulante que aceptó una
+    invitación `MailCheck` ("Ver postulación"), curso completado
+    `BookOpen` ("Ver postulante").
+-   Azul `info`: postulación nueva `FileText` ("Ver postulación").
+-   Gris `neutral`: postulación retirada `Undo2` ("Ver postulación") y
+    oferta retirada `Archive` ("Ver oferta").
+-   Rojo `danger`: invitación no aceptada `X` ("Ver oferta") y
+    postulante que necesita un curso `UserX` ("Ver postulante").
+-   Un tipo nuevo sin estilo va con `Bell` gris y el texto según la ruta
+    del link ("Ver curso" para `/admin/cursos`).
+
 ## Panel de la empresa
 
 `EncabezadoPagina banda botonesBlancos` "Hola, [razón social]" con "Mis
@@ -2717,29 +2893,45 @@ Debajo, `Paginacion` simple ("Mostrando X–Y de Z").
 
 Mientras la empresa no está aprobada, todo lo que está bajo
 `src/app/empresa/(panel)/` muestra su estado en lugar de la página,
-dentro del `AppShell` y a todo el ancho: `EncabezadoPagina` "Hola,
-[razón social]" y una `Franja` arriba.
+dentro del `AppShell` y a todo el ancho, con la banda (`EncabezadoPagina
+banda botonesBlancos`) "Hola, [razón social]".
 
--   **En revisión:** `Franja` de aviso con el reloj, "Tu cuenta está en
-    revisión" y el texto normal o el de la solicitud reenviada. Debajo,
-    dos tarjetas del mismo alto (una columna en el celular, dos desde
-    768 px de contenido): "Estado de tu solicitud", con una
-    `LineaDeTiempo` de tres pasos (enviada o reenviada con su fecha, "En
-    revisión por la Oficina de Empleo" resaltado como paso actual y
-    "Cuenta aprobada: vas a poder publicar ofertas" pendiente, en gris),
-    y "¿Qué pasa mientras tanto?", con el plazo de 1 a 3 días hábiles y
-    lo que va a poder hacer (publicar ofertas, recibir candidatos
-    preseleccionados, coordinar entrevistas) con íconos en cuadrados
-    `secondary` de 36 px.
--   **Rechazada:** `Franja` de error "Tu solicitud fue rechazada" con el
-    texto y el motivo ("Motivo:" en negrita, en otra línea). Debajo, la
-    tarjeta "Qué podés hacer" con la explicación de que, al reenviarla,
-    la Oficina la vuelve a revisar, y "Corregir y reenviar solicitud"
-    primario (a todo el ancho en el celular).
--   Al pie de los dos, el contacto de la Oficina (`ContactoOficina
-    enTarjeta`) en una tarjeta: logo verde, "Oficina de Empleo" y la
-    dirección (link a Google Maps), el teléfono, el correo y el horario,
-    leídos de `src/lib/oficina.ts`.
+-   **En revisión:** bajada "Tu cuenta está en revisión. Te avisamos por
+    email cuando la Oficina la apruebe." (al aprobarla se manda el email
+    `solicitud_aprobada`). El aviso con el estilo de los candidatos
+    esperando respuesta (`.aviso-respuesta`: tinte amarillo y filete
+    izquierdo `accent`), `Clock` en un `IconoCuadro` amarillo de 44 px,
+    "Tu cuenta está en revisión" y el texto normal o el de la solicitud
+    reenviada. Debajo, dos tarjetas del mismo alto (apiladas en angosto,
+    lado a lado desde 768 px de contenido):
+    -   "Estado de tu solicitud" (`TituloBloque` con `History`):
+        `LineaDeTiempo variante="pasos"`, círculos de 40 px unidos por
+        una línea de 2 px. Hecho: `primary` con `Check` y la línea
+        siguiente `primary`; actual: `accent` con `Clock` y el halo
+        `0 0 0 6px rgba(242,183,5,.22)`, `aria-current="step"`;
+        pendiente: blanco con borde `border-campo`, su ícono
+        (`Building2`) y el texto en gris. Pasos: "Solicitud enviada" (o
+        reenviada) con su fecha, "En revisión por la Oficina de Empleo" y
+        "Cuenta aprobada".
+    -   "¿Qué pasa mientras tanto?" (`Info`): el texto del plazo y tres
+        beneficios con su ícono en un `IconoCuadro` de 40 px
+        (`Briefcase` `primary`, `UserCheck` `teal`, `Calendar`
+        `info`), el título en 800 y una línea en gris.
+    -   Al pie, `ContactoOficina recuadros` a todo el ancho: el escudo
+        verde de 52 px, "Oficina de Empleo", "¿Dudas sobre tu solicitud?
+        Escribinos o acercate." y los cuatro datos de `src/lib/oficina.ts`
+        en recuadros grises (`tabla-fila-hover`, borde
+        `secondary-hover`; 4 columnas desde xl, 2 desde sm, 1 en el
+        celular) con su ícono `primary`, la etiqueta (Dirección,
+        Teléfono, Email, Horario) y el valor; la dirección, el teléfono y
+        el email son links de 44 px.
+-   **Rechazada:** sin cambios salvo la banda. `Franja` de error "Tu
+    solicitud fue rechazada" con el texto y el motivo ("Motivo:" en
+    negrita, en otra línea). Debajo, la tarjeta "Qué podés hacer" con la
+    explicación de que, al reenviarla, la Oficina la vuelve a revisar, y
+    "Corregir y reenviar solicitud" primario (a todo el ancho en el
+    celular). Al pie, `ContactoOficina enTarjeta`: logo verde, "Oficina
+    de Empleo" y los datos en una fila.
 
 ------------------------------------------------------------------------
 
@@ -2905,9 +3097,15 @@ Las tarjetas son `.tarjeta` con radio 18 (`--radius-indicador`), borde
 `border` y `sombra-tarjeta`; los títulos de tarjeta llevan un ícono de 20
 px `primary` antes del texto. Grillas con gap 16 (24 desde lg).
 
--   **Encabezado:** `EncabezadoPagina grande`: "Indicadores" en Georgia
-    400 (`.titulo-portada`) de 52 px (36 en el celular), `heading`, y la
-    bajada de 17 px `muted-foreground`.
+-   **Encabezado:** `EncabezadoPagina banda` (ronda 9), con el
+    `SelectorPeriodoDesplegable enBanda` como en la empresa. La
+    decoración va en su capa (`.banda-ofertas-deco`, con `overflow:
+    hidden`) y la banda con selector queda con `overflow: visible`
+    (`.encabezado-banda:has(.selector-periodo-banda)`), así la lista no
+    se recorta. El escudo queda en el mismo lugar que en todas las
+    bandas, aunque quede debajo del selector: el botón es blanco opaco y
+    el label "Período" va en blanco (5,2:1 sobre la parte más clara del
+    escudo; `sidebar-texto` daba 4,4:1).
 -   **Selector de período** (`SelectorPeriodoDesplegable`): a la
     derecha (a todo el ancho en el celular). Botón blanco de 50 px, radio
     16, borde `border` y `--sombra-selector` (0 6px 18px rgb(0 30 15 /
@@ -3053,8 +3251,9 @@ Clases `.banda-ofertas*` de `globals.css`.
     -   `escudo-blanco.png` de 190 px, opacidad .14, rotado −8°, a 56 px
         de la derecha y 22 px de arriba (en celular, 140 px a −30 px de la
         derecha y −26 px de abajo, detrás del buscador).
--   Título «Ofertas de trabajo» en Georgia (`.titulo-display`), blanco, 48
-    px (34 en celular); la cantidad de ofertas en `sidebar-texto`
+-   Título «Ofertas de trabajo» en Georgia 400, la misma letra que el
+    título de la portada (`.titulo-portada`), blanco, 48 px (34 en
+    celular); la cantidad de ofertas en `sidebar-texto`
     (`#e3f0e8`); el buscador blanco (ver «Buscador con botón»).
 
 ### Explorá por rubro (`ExplorarRubros`)
