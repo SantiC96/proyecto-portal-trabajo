@@ -13,7 +13,7 @@ import { inicialesDeEmpresa, inicialesDePersona } from "@/lib/iniciales";
 import { DatosContactoForm } from "@/components/perfil/datos-contacto-form";
 import { EdicionPerfil } from "@/components/perfil/tarjeta-editable";
 import { CampoLectura, GrillaLectura, SeccionPerfil } from "@/components/perfil/piezas";
-import { SeccionContrasenaEmpresa } from "./seccion-contrasena-empresa";
+import { SeccionContrasenaCandado } from "@/components/perfil/seccion-contrasena-candado";
 
 export const metadata: Metadata = {
   title: "Mi perfil | Portal de Empleo Funes",
@@ -122,7 +122,7 @@ export default async function EmpresaPerfilPage() {
               </SeccionPerfil>
             </div>
 
-            <SeccionContrasenaEmpresa />
+            <SeccionContrasenaCandado />
           </div>
         </EdicionPerfil>
       </section>

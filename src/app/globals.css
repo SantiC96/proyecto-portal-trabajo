@@ -449,9 +449,10 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
   pointer-events: none;
 }
 
-/* Fondo de las pantallas con navegación: degradé verde arriba, puntos en la
-   esquina superior derecha y el escudo (solo escritorio). El inicio no lo
-   lleva (.app-contenido--inicio): su decoración es el hero. */
+/* Fondo de las pantallas con navegación (todas menos /auth): degradé verde
+   arriba, puntos en la esquina superior derecha y el escudo (solo
+   escritorio). El inicio no lleva el degradé ni los puntos
+   (.app-contenido--inicio): su decoración es el hero. */
 .app-contenido {
   --alto-degrade: 240px;
   --alto-puntos: 300px;
@@ -476,19 +477,33 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
   mask-image: radial-gradient(ellipse 70% 100% at 100% 0, #000 15%, transparent 60%);
   pointer-events: none;
 }
+/* Escudo del fondo: arriba a la derecha y absoluto (se va con el scroll, no
+   agranda la página). La misma posición en todas las pantallas: con "Volver"
+   arriba, la banda verde (de /ofertas o EncabezadoPagina banda) empieza a la
+   misma altura y deja ver la misma parte. --escudo-arriba solo cambia en el
+   inicio, donde el hero arranca arriba de todo y lo taparía entero. */
+.app-contenido { --escudo-arriba: -56px; }
 .app-contenido::after { display: none; }
 @media (min-width: 1024px) {
   .app-contenido::after {
     display: block;
-    top: -56px;
+    top: var(--escudo-arriba);
     right: 28px;
     width: 300px;
     height: 300px;
   }
 }
 .app-contenido--inicio { background: var(--color-background); }
-.app-contenido--inicio::before,
-.app-contenido--inicio::after { content: none; }
+.app-contenido--inicio::before { content: none; }
+/* Inicio: el escudo va apenas debajo del hero (anclado a su borde de abajo).
+   Sin anchor positioning queda en -56px, detrás del hero. */
+@supports (top: anchor(bottom)) {
+  .hero-inicio { anchor-name: --hero-inicio; }
+  .app-contenido--inicio::after {
+    position-anchor: --hero-inicio;
+    --escudo-arriba: calc(anchor(bottom) + 16px);
+  }
+}
 
 /* Hero del inicio: banda verde con puntos, brillo, anillo e íconos flotantes
    (las mismas piezas que el panel verde de /auth). z-index 2: el popup del
@@ -692,15 +707,13 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
 .encabezado-banda-acciones--blancos :is(.btn-peligro, .btn-peligro-borde):focus-visible {
   box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 5px var(--color-surface);
 }
-/* Con el selector de período desplegable (indicadores de la empresa), la
-   lista tiene que salir de la banda: la decoración ya se recorta sola
-   (.banda-ofertas-deco) y la banda queda por encima de lo que sigue. */
+/* Con el selector de período desplegable (indicadores de la oficina y de la
+   empresa), la lista tiene que salir de la banda: la decoración ya se recorta
+   sola (.banda-ofertas-deco) y la banda queda por encima de lo que sigue. */
 .encabezado-banda:has(.selector-periodo-banda) {
   overflow: visible;
   z-index: 20;
 }
-/* Con banda, el escudo de agua del fondo sobra: la banda ya lleva el suyo. */
-.app-contenido:has(.encabezado-banda)::after { display: none; }
 
 /* Anillo de progreso (AnilloProgreso). --progreso (0 a 100) mueve el trazo
    y el número a la par: al abrir la página sube desde 0. Sin animación con
@@ -1141,6 +1154,28 @@ a.pie-dato:focus-visible { box-shadow: 0 0 0 3px rgb(255 255 255 / 0.6); }
 .tarjeta-oferta:hover:has(h3 a:focus-visible) { box-shadow: var(--sombra-foco), 0 12px 28px rgb(0 30 15 / 0.14); }
 @media (prefers-reduced-motion: no-preference) {
   .tarjeta-oferta:hover { translate: 0 -3px; }
+}
+
+/* Tarjeta de notificación con destino (ListaNotificacionesAgrupada): el
+   botón de la acción estira su ::after sobre la tarjeta. Al pasar el mouse,
+   un velo apenas más oscuro sobre el fondo que tenga (también el de las
+   nuevas); el foco se dibuja en toda la tarjeta. */
+.notificacion-con-destino {
+  position: relative;
+  cursor: pointer;
+}
+.notificacion-con-destino button { cursor: pointer; }
+.notificacion-con-destino:hover {
+  background-image: linear-gradient(rgb(0 30 15 / 0.035), rgb(0 30 15 / 0.035));
+}
+.notificacion-con-destino:has(:focus-visible) {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+/* Si una tarjeta suma otro control, va por encima del ::after estirado. */
+.notificacion-con-destino :is(a, button, input, select, textarea, summary):not(.notificacion-enlace) {
+  position: relative;
+  z-index: 1;
 }
 
 /* Vista previa del formulario de oferta: lo que falta va como ejemplo, en
