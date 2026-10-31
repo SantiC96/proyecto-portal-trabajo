@@ -1,11 +1,6 @@
-import { EsqueletoLista, EsqueletoTitulo, Esqueleto } from "@/components/ui/esqueleto";
+import { EsqueletoRespaldo } from "@/components/ui/esqueleto";
 
+// Respaldo genérico de la carpeta: el esqueleto de cada pantalla va en su propia carpeta.
 export default function Loading() {
-  return (
-    <section>
-      <EsqueletoTitulo className="mb-2" />
-      <Esqueleto className="mb-6 h-4 w-48" />
-      <EsqueletoLista filas={6} />
-    </section>
-  );
+  return <EsqueletoRespaldo volver="/" como="main" />;
 }

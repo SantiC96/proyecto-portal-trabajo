@@ -264,7 +264,7 @@ function TarjetaInvitacion({
  * Sin invitaciones pendientes: el sobre en un cuadrado verde con halo, sobre
  * un degradé verde muy suave. Los textos son los de antes.
  */
-function SinPendientes({ titulo, accion }: { titulo: string; accion?: React.ReactNode }) {
+export function SinPendientes({ titulo, accion }: { titulo: string; accion?: React.ReactNode }) {
   return (
     <div className="tarjeta tarjeta-panel flex flex-col items-center gap-4 bg-linear-to-b from-surface-tinted to-surface py-8 text-center sm:py-10">
       <IconoCuadro

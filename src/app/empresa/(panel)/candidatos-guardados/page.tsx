@@ -12,7 +12,7 @@ import { inicialesDePersona } from "@/lib/iniciales";
 import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { EsqueletoGuardados } from "./esqueleto";
 import { NotaGuardadoEditor } from "./_components/nota-editor";
 import { QuitarGuardadoBtn } from "./_components/quitar-guardado-btn";
 import { BotonVolver } from "@/components/ui/boton-volver";
@@ -46,7 +46,7 @@ export default async function CandidatosGuardadosPage({
 
       <Suspense
         key={pagina}
-        fallback={<EsqueletoLista filas={3} />}
+        fallback={<EsqueletoGuardados />}
       >
         <ListadoGuardados empresaId={empresa.id} pagina={pagina} searchParams={sp} />
       </Suspense>

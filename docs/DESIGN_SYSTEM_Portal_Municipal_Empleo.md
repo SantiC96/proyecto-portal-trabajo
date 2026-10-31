@@ -970,7 +970,8 @@ de `globals.css`.
 -   El escudo de agua del fondo queda donde en `/ofertas`, arriba a la
     derecha, detrás de la banda (ver "Escudo de agua").
 -   Mientras carga (`loading.tsx`), la banda ya está con su título; lo que
-    falta va en una barra blanca al 20 %.
+    falta va en una barra blanca al 20 % (`EncabezadoEsqueleto`, ver
+    "29. Loading").
 
 ## "Volver"
 
@@ -3713,6 +3714,122 @@ Preferir skeletons que respeten la estructura final.
 Evitar spinners grandes como única respuesta para pantallas completas.
 
 Las acciones puntuales pueden usar spinner dentro del botón.
+
+## Regla de los esqueletos
+
+El esqueleto copia la pantalla real: mismo alto, radio, padding y gap de
+cada pieza, para que al terminar de cargar nada salte. **Lo que no depende
+de los datos va real** (el "Volver", la banda con su decoración, el
+título y la bajada fijos, los títulos de las tarjetas, los nombres de las
+columnas, las etiquetas de las pastillas, los rótulos de los campos);
+**solo lo que depende de los datos va en gris** (`secondary-hover`), o en
+blanco al 20 % sobre la banda verde (`LineaBanda`).
+
+-   Cada pantalla con datos tiene su `loading.tsx` (o uno de su grupo de
+    pantallas con la misma forma).
+-   Las medidas se toman con la letra real: una línea gris va dentro de un
+    renglón con el mismo tamaño y alto de línea que el texto que reemplaza
+    (`EsqueletoEnLinea` dentro de un `<p className="text-[15px]">`), no
+    como un bloque suelto de `h-4`, que mide menos que el renglón.
+-   Los `fallback` de los `Suspense` dentro de las páginas usan la misma
+    pieza que lo que reemplazan (una tabla con filete → `TablaEsqueleto`).
+-   Los textos fijos que se repiten entre la página y su esqueleto (las
+    columnas de una tabla, las etiquetas de las pastillas) viven en un
+    archivo aparte (`listado.ts`, `columnas.ts`, `esqueleto.tsx`) que
+    importan las dos.
+-   Una parte fija que es interactiva (la leyenda de Mis postulaciones, el
+    índice de Mi perfil, "Más herramientas") va real dentro de `inert`:
+    se ve igual y no recibe foco mientras carga.
+
+## `loading.tsx` genéricos y específicos
+
+Next precarga cada ruta solo hasta el **primer** `loading.tsx` de su
+camino, así que el `loading.tsx` de una carpeta se ve un instante antes
+que el de cualquier pantalla de adentro (en producción, mientras se pide
+el resto; en desarrollo, mientras compila). Por eso:
+
+-   **El `loading.tsx` de una carpeta con pantallas adentro es genérico**:
+    solo `EsqueletoRespaldo`: el `BotonVolver` real, en el mismo lugar que
+    en las pantallas, dentro de un contenedor con `aria-busy="true"` y
+    "Cargando…" solo para lectores de pantalla. Sin banda, líneas,
+    tarjetas, listas ni pastillas: no todas las pantallas de adentro
+    tienen banda verde (`/admin/ofertas/[id]/candidatos`,
+    `/mis-cursos/[asignacionId]`, `/empresa/solicitud`…), y una banda que
+    aparece y desaparece se nota más que una pantalla casi vacía. Si el
+    genérico aparece antes que el específico, el cambio solo agrega
+    contenido debajo de "Volver". En `/ofertas` va con `como="main"`,
+    como su página.
+-   **El específico de una pantalla va en su carpeta**. Si la pantalla
+    está en una carpeta que tiene otras pantallas adentro (`/admin`,
+    `/admin/ofertas`, `/admin/ofertas/[id]`, `/panel`, `/mis-cursos`…),
+    la página se mueve a un grupo de rutas con su `loading.tsx`, sin
+    cambiar la URL: `(inicio)` para los paneles (`admin/(inicio)`,
+    `empresa/(panel)/(inicio)`, `(dashboard)/panel/(inicio)`),
+    `(listado)` para los listados y `(detalle)` para los detalles. Lo
+    que usa solo esa página (`listado.ts`, `esqueleto.tsx`, componentes)
+    se mueve con ella; lo compartido con las pantallas de adentro
+    (`actions.ts`, `_components/`) queda en la carpeta.
+-   Carpetas con respaldo genérico hoy: `(dashboard)`, `(dashboard)/panel`,
+    `(dashboard)/mis-cursos`, `admin`, `admin/cursos`, `admin/empresas`,
+    `admin/ofertas`, `admin/ofertas/[id]`, `admin/postulaciones`,
+    `admin/postulantes`, `empresa`, `empresa/(panel)`,
+    `empresa/(panel)/ofertas`, `empresa/(panel)/ofertas/[id]` y
+    `ofertas`.
+
+## Piezas (`src/components/ui/esqueleto.tsx`)
+
+  -------------------------------------------------------------------------------
+  Pieza                       Copia                         Gris
+  --------------------------- ----------------------------- ---------------------
+  `ContenedorEsqueleto`       la zona que carga             `aria-busy` y
+                                                            "Cargando…" (sr-only)
+
+  `EsqueletoRespaldo`         el respaldo de una carpeta:   nada
+                              solo `BotonVolver`
+
+  `EncabezadoEsqueleto`       `BotonVolver` y               título (sin `titulo`),
+                              `EncabezadoPagina banda`      bajada (`bajadaVariable`),
+                              reales                        badge (`junto`), avatar,
+                                                            botones (`accionesVariables`)
+
+  `PastillasEsqueleto`        la fila de pastillas con su   la cantidad
+                              texto; activa la primera
+
+  `BuscadorEsqueleto`,        el campo de 48 px con la lupa el valor del filtro
+  `CampoFiltroEsqueleto`      y el placeholder o el rótulo
+
+  `TablaEsqueleto`            `Tabla`: columnas por props,  los bloques por celda
+                              encabezado real desde @4xl,   (`persona`, `titulo`,
+                              tarjetas en celular, filete   `badge`, `chips`,
+                                                            `boton`…)
+
+  `CuadrosEsqueleto`          la grilla de `CuadroEstado`   ícono y número
+                              con sus etiquetas fijas
+
+  `TarjetaOfertaEsqueleto`    `TarjetaOferta` compacta y    todo menos la forma
+                              detallada
+
+  `DetalleEsqueleto`          `DetalleConLateral` (el mismo los renglones de cada
+                              componente: columnas parejas) `TarjetaEsqueleto`
+
+  `FormularioEsqueleto`,      tarjeta con número y título,  ---
+  `CampoEsqueleto`            rótulos y campos de 48 px
+
+  `NotificacionesEsqueleto`   título de grupo y tarjetas    todo
+                              con el ícono de 40 px
+
+  `NumerosEsqueleto`,         tarjetas de número, donas     todo
+  `GraficoEsqueleto`          (anillo gris), barras y área
+  -------------------------------------------------------------------------------
+
+-   Animación: `animate-pulse`, apagada con
+    `motion-reduce:animate-none`.
+-   Accesibilidad: los bloques grises son `aria-hidden`, ninguno es
+    enfocable y el contenedor lleva `aria-busy="true"` con "Cargando…"
+    para lectores de pantalla.
+-   Esqueletos propios de una pantalla (Mis postulaciones, Invitaciones,
+    Postulantes agrupados, el formulario de oferta) van en un
+    `esqueleto.tsx` al lado de la página y se arman con estas piezas.
 
 ------------------------------------------------------------------------
 

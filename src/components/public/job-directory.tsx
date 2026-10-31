@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio } from "@/components/ui/estado-listado";
-import { EsqueletoTarjeta } from "@/components/ui/esqueleto";
+import { GrillaOfertasEsqueleto, LineaBanda } from "@/components/ui/esqueleto";
 import {
   MODALIDADES,
   buscarOfertasPublicas,
@@ -62,7 +62,7 @@ export function JobDirectory({ ruta, searchParams, categorias, filtros }: JobDir
           cantidad={
             <Suspense
               key={clave}
-              fallback={<span className="inline-block h-4 w-64 max-w-full rounded bg-white/20" />}
+              fallback={<LineaBanda className="w-[22em]" />}
             >
               <ContadorOfertas resultado={resultado} filtros={filtros} />
             </Suspense>
@@ -346,13 +346,5 @@ async function ResultadosOfertas({
 }
 
 function EsqueletoResultados() {
-  return (
-    <div className="@container" aria-busy="true">
-      <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2">
-        {Array.from({ length: 6 }, (_, i) => (
-          <EsqueletoTarjeta key={i} />
-        ))}
-      </div>
-    </div>
-  );
+  return <GrillaOfertasEsqueleto cantidad={6} />;
 }

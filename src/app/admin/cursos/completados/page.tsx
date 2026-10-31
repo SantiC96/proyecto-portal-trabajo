@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { COLUMNAS, EsqueletoCompletados } from "./esqueleto";
 import { Suspense } from "react";
 import Link from "next/link";
 import { BookOpen, Calendar, CheckCircle2 } from "lucide-react";
@@ -10,7 +11,6 @@ import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
 import { DIAS_CURSOS_COMPLETADOS_RECIENTES } from "@/lib/cursos";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { requerirRolPagina } from "@/lib/auth";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
@@ -22,7 +22,6 @@ export const metadata: Metadata = {
 
 const RUTA = "/admin/cursos/completados";
 
-const COLUMNAS = "minmax(0,1.2fr) minmax(0,1.2fr) 9rem auto";
 const CLASE_DATO =
   "flex min-w-0 items-center gap-2 text-sm break-words text-muted-foreground-strong @4xl:block @4xl:text-[15px] @4xl:text-foreground";
 const CLASE_ICONO_DATO = "size-4 shrink-0 text-muted-icon @4xl:hidden";
@@ -48,7 +47,7 @@ export default async function CursosCompletadosPage({
         bajada={`Postulantes que marcaron un curso como completado en los últimos ${DIAS_CURSOS_COMPLETADOS_RECIENTES} días. Sus rechazos anteriores ya no cuentan para un nuevo curso.`}
       />
 
-      <Suspense key={pagina} fallback={<EsqueletoLista filas={4} />}>
+      <Suspense key={pagina} fallback={<EsqueletoCompletados />}>
         <ListadoCompletados pagina={pagina} searchParams={sp} />
       </Suspense>
     </section>

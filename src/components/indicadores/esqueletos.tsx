@@ -1,31 +1,35 @@
-import { Esqueleto, EsqueletoTitulo } from "@/components/ui/esqueleto";
+import { Calendar } from "lucide-react";
+import { Esqueleto, GraficoEsqueleto, NumerosEsqueleto } from "@/components/ui/esqueleto";
 import { cn } from "@/lib/utils";
 
-/** Encabezado de una pantalla de indicadores: título, bajada y selector de período. */
-export function EsqueletoEncabezadoIndicadores() {
+/**
+ * El selector de período sobre la banda (SelectorPeriodoDesplegable `enBanda`)
+ * mientras carga: el rótulo real y el botón blanco de 48 px con el período en gris.
+ */
+export function SelectorPeriodoEsqueleto() {
   return (
-    <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-      <div className="flex flex-col gap-2">
-        <EsqueletoTitulo />
-        <Esqueleto className="h-4 w-72 max-w-full" />
+    <div aria-hidden="true" className="w-full sm:w-auto">
+      <span className="mb-1.5 block text-[13px] font-semibold text-primary-foreground">Período</span>
+      <div className="flex h-12 w-full items-center gap-2.5 rounded-[var(--radius-lg)] bg-surface px-4 sm:w-auto sm:min-w-[232px]">
+        <Calendar className="size-5 shrink-0 text-primary" />
+        <Esqueleto className="h-4 flex-1" />
       </div>
-      <Esqueleto className="h-24 w-full rounded-[var(--radius-lg)] sm:h-12 sm:w-[480px]" />
     </div>
   );
 }
 
-/** Cuatro tarjetas de número. */
+/** Cuatro tarjetas de número (GrillaNumeros). */
 export function EsqueletoNumeros() {
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-      {Array.from({ length: 4 }, (_, i) => (
-        <Esqueleto key={i} className="h-[184px] rounded-[var(--radius-xl)]" />
-      ))}
-    </div>
-  );
+  return <NumerosEsqueleto cantidad={4} />;
 }
 
 /** Una tarjeta de gráfico. */
-export function EsqueletoGrafico({ className }: { className?: string }) {
-  return <Esqueleto className={cn("h-[380px] rounded-[var(--radius-xl)]", className)} />;
+export function EsqueletoGrafico({
+  tipo = "dona",
+  className,
+}: {
+  tipo?: "dona" | "barras" | "area";
+  className?: string;
+}) {
+  return <GraficoEsqueleto tipo={tipo} className={cn("h-[380px]", className)} />;
 }
