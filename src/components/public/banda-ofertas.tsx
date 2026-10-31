@@ -15,7 +15,7 @@ export function BandaOfertas({ cantidad }: { cantidad: ReactNode }) {
       <div className="flex flex-col gap-2">
         <h1
           id="ofertas-titulo"
-          className="titulo-display text-[34px] leading-[1.1] text-white sm:text-5xl"
+          className="titulo-portada text-[34px] leading-[1.1] text-white sm:text-5xl"
         >
           Ofertas de trabajo
         </h1>
