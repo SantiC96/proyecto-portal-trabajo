@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { CalendarClock, CalendarDays, ChevronDown, FileText } from "lucide-react";
+import { Calendar, CalendarClock, ChevronDown, FileText } from "lucide-react";
 import { RetirarPostulacion } from "@/components/postulantes/retirar-postulacion";
 import { Badge, type TonoBadge } from "@/components/ui/badge";
 import { Franja } from "@/components/ui/franja";
-import { formatFecha, formatFechaHora } from "@/lib/fechas";
+import { formatFecha, formatFechaHoraLarga } from "@/lib/fechas";
+import { ModalidadYLugar } from "@/components/entrevistas/cartel-entrevista";
 import { getOfertaEstadoBadge } from "@/lib/oferta-estados";
 import {
   AVISO_OFERTA_RETIRADA,
@@ -13,6 +14,8 @@ import {
   badgePostulacion,
   sePuedeRetirar,
 } from "@/lib/mis-postulaciones";
+import { cn } from "@/lib/utils";
+import { ACENTO_ESTADO } from "@/components/postulantes/acento-estado";
 import type {
   FilaCvDeMiPostulacion,
   FilaEstadoDerivacionPostulante,
@@ -135,22 +138,30 @@ interface Props {
   postulaciones: Postulacion[];
 }
 
+/**
+ * Una tarjeta por postulación. Desde 768 px de ancho disponible, tres columnas
+ * (oferta | estado, fecha y CV | acción) que comparten la grilla de la lista
+ * (subgrid): la columna de la acción mide lo mismo en todas las tarjetas.
+ */
 export function MisPostulacionesLista({ postulaciones }: Props) {
   return (
-    <ul className="flex flex-col gap-3">
-      {postulaciones.map((p) => (
-        <li key={p.id}>
-          <TarjetaPostulacion postulacion={p} />
-        </li>
-      ))}
-    </ul>
+    <div className="@container">
+      <ul
+        aria-label="Mis postulaciones"
+        className="flex flex-col gap-4 @3xl:grid @3xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_auto] @3xl:gap-x-6"
+      >
+        {postulaciones.map((p) => (
+          <FilaPostulacion key={p.id} postulacion={p} />
+        ))}
+      </ul>
+    </div>
   );
 }
 
-/** Las aclaraciones de cada postulación miden lo que su texto, sin pasarse del ancho de la tarjeta. */
+/** Las aclaraciones de cada postulación miden lo que su texto, sin pasarse del ancho de la fila. */
 const CLASE_FRANJA = "w-fit max-w-full";
 
-function TarjetaPostulacion({ postulacion: p }: { postulacion: Postulacion }) {
+function FilaPostulacion({ postulacion: p }: { postulacion: Postulacion }) {
   const oferta = p.oferta;
   const badge = badgePostulacion({
     estado: p.estado,
@@ -166,12 +177,11 @@ function TarjetaPostulacion({ postulacion: p }: { postulacion: Postulacion }) {
   const modificada =
     oferta?.contenido_editado_en != null && oferta.contenido_editado_en > p.created_at;
 
-  const claseTitulo = "text-lg leading-snug font-bold";
-
   const conPreEntrevista =
     (p.estado === "recibida" || p.estado === "en_revision") &&
     p.preEntrevista?.estado === "coordinada";
   const hayAclaraciones =
+    avisoOferta !== null ||
     conPreEntrevista ||
     p.estado === "oferta_retirada" ||
     (p.estado === "derivada" && p.derivacion != null) ||
@@ -179,126 +189,132 @@ function TarjetaPostulacion({ postulacion: p }: { postulacion: Postulacion }) {
     p.estado === "retirada_postulante";
   const puedeRetirar = sePuedeRetirar(p.estado, p.derivacion?.estado_empresa);
 
-  return (
-    <article
-      id={anclaPostulacion(p.id)}
-      className="tarjeta flex scroll-mt-20 flex-col gap-3 px-4 py-[18px] sm:p-6"
-    >
-      <div className="flex flex-col-reverse items-start gap-2 sm:flex-row sm:justify-between sm:gap-4">
-        <div className="min-w-0 flex-1">
-          <h2 className={claseTitulo}>
-            {oferta ? (
-              ofertaActiva ? (
-                <Link
-                  href={`/ofertas/${oferta.id}`}
-                  className="rounded-[var(--radius-sm)] text-heading underline-offset-2 outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
-                >
-                  {oferta.titulo}
-                </Link>
-              ) : (
-                <span className="text-muted-foreground-strong">{oferta.titulo}</span>
-              )
-            ) : (
-              // Sin link: la oferta ya no se puede ver y /ofertas/[id] daría 404.
-              <span className="text-muted-foreground-strong">
-                {p.ofertaNoVisible?.titulo ?? "Oferta no disponible"}
-              </span>
-            )}
-          </h2>
-          {empresa && (
-            <p className="mt-0.5 text-[15px] font-semibold text-texto-bajada">{empresa}</p>
-          )}
-        </div>
-        <Badge tono={badge.tono} estado>
-          {badge.label}
-        </Badge>
-      </div>
-
+  const aclaraciones = hayAclaraciones && (
+    <>
       {avisoOferta && <p className="text-sm font-semibold text-warning-text">{avisoOferta}</p>}
 
-      <ul className="flex flex-col gap-1.5 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:gap-x-5">
-        <li className="flex items-center gap-1.5">
-          <CalendarDays className="size-4 shrink-0" aria-hidden="true" />
-          Te postulaste el {formatFecha(p.created_at)}
-        </li>
+      {conPreEntrevista && (
+        <Franja
+          className={CLASE_FRANJA}
+          tono="info"
+          icono={CalendarClock}
+          titulo="Pre-entrevista con la Oficina de Empleo:"
+        >
+          {formatFechaHoraLarga(p.preEntrevista!.fecha_hora)}
+          <span className="mt-0.5 block break-words">
+            <ModalidadYLugar
+              datos={{
+                modalidad: p.preEntrevista!.modalidad,
+                lugar: p.preEntrevista!.lugar,
+                link: p.preEntrevista!.link,
+              }}
+            />
+          </span>
+        </Franja>
+      )}
+
+      {p.estado === "oferta_retirada" && <Franja className={CLASE_FRANJA} tono="neutra">{AVISO_OFERTA_RETIRADA}</Franja>}
+
+      {p.estado === "derivada" && p.derivacion && <FranjaDerivacion derivacion={p.derivacion} />}
+
+      {modificada && (
+        <Franja className={CLASE_FRANJA} tono="aviso" titulo="Modificada después de tu postulación">
+          ({formatFecha(oferta!.contenido_editado_en!)})
+          {ofertaActiva && (
+            <>
+              {" — "}
+              <Link href={`/ofertas/${oferta!.id}`}>Ver oferta actualizada</Link>
+            </>
+          )}
+        </Franja>
+      )}
+
+      {p.estado === "retirada_postulante" && (
+        <Franja className={CLASE_FRANJA} tono="neutra">
+          Retiraste esta postulación
+          {p.retirada_en ? ` el ${formatFecha(p.retirada_en)}` : ""}.
+        </Franja>
+      )}
+    </>
+  );
+
+  return (
+    <li
+      id={anclaPostulacion(p.id)}
+      className={cn(
+        "tarjeta tarjeta-panel relative flex scroll-mt-20 flex-col gap-4 overflow-hidden pl-[21px] sm:pl-[29px]",
+        "before:absolute before:inset-y-0 before:left-0 before:w-[5px]",
+        "@3xl:col-span-full @3xl:grid @3xl:grid-cols-subgrid @3xl:items-center @3xl:gap-y-4",
+        ACENTO_ESTADO[badge.clave].filete,
+      )}
+    >
+      <div className="flex min-w-0 flex-col items-start gap-1">
+        {oferta && ofertaActiva ? (
+          <Link
+            href={`/ofertas/${oferta.id}`}
+            className="rounded-[var(--radius-sm)] text-lg leading-snug font-extrabold break-words text-heading no-underline outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+          >
+            {oferta.titulo}
+          </Link>
+        ) : (
+          // Sin link: la oferta no está activa o ya no se puede ver (/ofertas/[id] daría 404).
+          <span className="text-lg leading-snug font-extrabold break-words text-muted-foreground-strong">
+            {oferta?.titulo ?? p.ofertaNoVisible?.titulo ?? "Oferta no disponible"}
+          </span>
+        )}
+        {empresa && <span className="text-[15px] font-semibold text-texto-bajada">{empresa}</span>}
+      </div>
+
+      <div className="flex min-w-0 flex-col items-start gap-2 text-sm text-muted-foreground-strong">
+        <Badge tono={badge.tono} estado>
+          <span className="sr-only">Estado: </span>
+          {badge.label}
+        </Badge>
+        <p className="flex items-center gap-1.5 tabular-nums">
+          <Calendar className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span className="sr-only">Te postulaste el </span>
+          {formatFecha(p.created_at)}
+        </p>
         {p.cv && (
-          <li className="flex min-w-0 items-start gap-1.5">
-            <FileText className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <p className="flex min-w-0 items-start gap-1.5">
+            <FileText className="mt-px size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span className="min-w-0 break-all">
-              CV enviado: <span className="font-semibold text-foreground">{p.cv.nombre_original}</span>
+              <span className="sr-only">CV enviado: </span>
+              <span className="font-semibold text-foreground">{p.cv.nombre_original}</span>
               {p.cv.eliminado && " · lo eliminaste de tu perfil"}
             </span>
-          </li>
+          </p>
         )}
-      </ul>
+      </div>
 
-      {(hayAclaraciones || puedeRetirar) && (
-        // Aclaraciones a la izquierda y la acción a la derecha, centradas entre
-        // sí; en celular, una debajo de la otra con el botón a todo el ancho.
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-          {hayAclaraciones && (
-            <div className="flex min-w-0 flex-col gap-3">
-              {conPreEntrevista && (
-                <Franja
-                  className={CLASE_FRANJA}
-                  tono="info"
-                  icono={CalendarClock}
-                  titulo="Pre-entrevista con la Oficina de Empleo:"
-                >
-                  {formatFechaHora(p.preEntrevista!.fecha_hora)}
-                  <span className="mt-0.5 block break-words">{p.preEntrevista!.lugar}</span>
-                </Franja>
-              )}
+      {puedeRetirar ? (
+        <RetirarPostulacion
+          postulacionId={p.id}
+          ofertaTitulo={oferta?.titulo ?? null}
+          derivada={p.estado === "derivada"}
+          conPreEntrevista={p.preEntrevista?.estado === "coordinada"}
+          className={CLASE_ACCION}
+        />
+      ) : p.puedeVolverAPostularse && oferta ? (
+        <Link href={`/ofertas/${oferta.id}`} className={`btn-neutro ${CLASE_ACCION}`}>
+          Volver a postularme
+          <span className="sr-only">: {oferta.titulo}</span>
+        </Link>
+      ) : (
+        <span className="hidden @3xl:block" aria-hidden="true" />
+      )}
 
-              {p.estado === "oferta_retirada" && <Franja className={CLASE_FRANJA} tono="neutra">{AVISO_OFERTA_RETIRADA}</Franja>}
-
-              {p.estado === "derivada" && p.derivacion && <FranjaDerivacion derivacion={p.derivacion} />}
-
-              {modificada && (
-                <Franja className={CLASE_FRANJA} tono="aviso" titulo="Modificada después de tu postulación">
-                  ({formatFecha(oferta!.contenido_editado_en!)})
-                  {ofertaActiva && (
-                    <>
-                      {" — "}
-                      <Link href={`/ofertas/${oferta!.id}`}>Ver oferta actualizada</Link>
-                    </>
-                  )}
-                </Franja>
-              )}
-
-              {p.estado === "retirada_postulante" && (
-                <Franja className={CLASE_FRANJA} tono="neutra">
-                  Retiraste esta postulación
-                  {p.retirada_en ? ` el ${formatFecha(p.retirada_en)}` : ""}.
-                  {p.puedeVolverAPostularse && oferta && (
-                    <Link
-                      href={`/ofertas/${oferta.id}`}
-                      className="mt-1 flex min-h-11 w-fit items-center text-primary sm:min-h-0"
-                    >
-                      Volver a postularme
-                    </Link>
-                  )}
-                </Franja>
-              )}
-            </div>
-          )}
-
-          {puedeRetirar && (
-            <div className="sm:ml-auto sm:shrink-0">
-              <RetirarPostulacion
-                postulacionId={p.id}
-                ofertaTitulo={oferta?.titulo ?? null}
-                derivada={p.estado === "derivada"}
-                conPreEntrevista={p.preEntrevista?.estado === "coordinada"}
-                className="w-full sm:min-h-10! sm:w-auto"
-              />
-            </div>
-          )}
+      {aclaraciones && (
+        <div className="flex min-w-0 flex-col items-start gap-3 @3xl:col-span-full @3xl:max-w-[680px]">
+          {aclaraciones}
         </div>
       )}
-    </article>
+    </li>
   );
 }
+
+/** La acción de la tarjeta: a todo el ancho en angosto. */
+const CLASE_ACCION = "w-full whitespace-nowrap @3xl:w-auto";
 
 /** Resultado de la empresa en una postulación derivada (nunca sus notas). */
 function FranjaDerivacion({ derivacion: d }: { derivacion: FilaEstadoDerivacionPostulante }) {
@@ -314,8 +330,12 @@ function FranjaDerivacion({ derivacion: d }: { derivacion: FilaEstadoDerivacionP
   if (d.estado_empresa === "en_proceso" && d.fecha_entrevista) {
     return (
       <Franja className={CLASE_FRANJA} tono="info" icono={CalendarClock} titulo="Entrevista coordinada:">
-        {formatFechaHora(d.fecha_entrevista)}
-        {d.lugar_entrevista && <span className="mt-0.5 block">{d.lugar_entrevista}</span>}
+        {formatFechaHoraLarga(d.fecha_entrevista)}
+        <span className="mt-0.5 block break-words">
+          <ModalidadYLugar
+            datos={{ modalidad: d.modalidad_entrevista, lugar: d.lugar_entrevista, link: d.link_entrevista }}
+          />
+        </span>
       </Franja>
     );
   }

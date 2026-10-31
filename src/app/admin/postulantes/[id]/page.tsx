@@ -1,17 +1,36 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 import type { QueryData } from "@supabase/supabase-js";
+import {
+  BookOpen,
+  Briefcase,
+  CalendarClock,
+  ChartColumn,
+  ChevronRight,
+  ClipboardList,
+  Clock,
+  IdCard,
+  Mail,
+  MailCheck,
+  ThumbsDown,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { logError } from "@/lib/logger";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { Badge } from "@/components/ui/badge";
+import { Badge, BadgeBanda, type TonoBadge } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { DatosCandidato } from "@/components/admin/datos-candidato";
 import { CvsDelPostulante } from "@/components/admin/cv-candidato";
 import { ProcedenciaCandidato } from "@/components/admin/procedencia-candidato";
-import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
 import { obtenerCandidato } from "@/lib/admin/candidato";
-import { badgePostulacion } from "@/lib/admin/postulacion-estados";
+import {
+  BADGE_ESTADO_VISIBLE,
+  FILETE_ESTADO_VISIBLE,
+  estadoVisiblePostulacion,
+} from "@/lib/admin/postulacion-estados";
 import { AsignarCursoDialog } from "../asignar-curso-dialog";
 import { EstadoCursoBadge } from "@/components/cursos/estado-curso-badge";
 import { formatFecha, formatFechaCorta, formatFechaHoraCorta } from "@/lib/fechas";
@@ -21,6 +40,7 @@ import {
   PRE_ENTREVISTA_TONO,
   esEstadoPreEntrevista,
 } from "@/lib/pre-entrevistas";
+import { ModalidadYLugar } from "@/components/entrevistas/cartel-entrevista";
 import {
   consultarPagina,
   leerPagina,
@@ -29,8 +49,17 @@ import {
 } from "@/lib/paginacion";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { BookOpen, Briefcase, Mail, ThumbsDown } from "lucide-react";
+import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
+import { MotivoRechazo } from "@/components/ui/linea-de-tiempo";
 import {
+  CLASE_ACCION_FILA,
+  FilaTabla,
+  Tabla as TablaListado,
+} from "@/components/ui/tabla";
+import { TituloBloque } from "@/components/ui/titulo-bloque";
+import {
+  ESTADO_CURSO_LABEL,
+  ESTADO_CURSO_TONO,
   UMBRAL_RECHAZOS_CURSO,
   VENTANA_RECHAZOS_DIAS,
   aEstadoCursos,
@@ -48,10 +77,14 @@ import {
   esEstadoInvitacion,
   ofertaAceptaInvitaciones,
   volverALaBusqueda,
+  type EstadoInvitacion,
 } from "@/lib/invitaciones";
 import { esUuid } from "@/lib/validaciones";
 import { InvitarBoton } from "@/components/admin/invitar-boton";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
+import { inicialesDePersona } from "@/lib/iniciales";
+import { textoChipLocalidad, type NivelPrioridad } from "@/lib/procedencia";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Ficha postulante | Panel municipal | Portal de Empleo Funes",
@@ -59,11 +92,20 @@ export const metadata: Metadata = {
 
 const TAMANO_HISTORIAL = 10;
 
+const TARJETA = "tarjeta tarjeta-panel min-w-0";
+
+// Punto del BadgeBanda de la localidad: el mismo color que ChipLocalidad.
+const TONO_NIVEL: Record<NivelPrioridad, TonoBadge> = {
+  1: "success",
+  2: "warning",
+  3: "neutral",
+};
+
 function consultaPostulaciones(supabase: ClienteSupabase, postulanteId: string) {
   return supabase
     .from("postulaciones")
     .select(
-      "id, estado, created_at, ofertas!oferta_id(id, titulo, empresa_nombre), derivaciones(estado_empresa), pre_entrevistas(estado, fecha_hora, lugar, nota_oficina), cv:archivos_usuario!cv_archivo_id(nombre_original, creado_en, eliminado_en)",
+      "id, estado, created_at, ofertas!oferta_id(id, titulo, empresa_nombre), derivaciones(estado_empresa), pre_entrevistas(estado, fecha_hora, modalidad, lugar, link, nota_oficina), cv:archivos_usuario!cv_archivo_id(nombre_original, creado_en, eliminado_en)",
       { count: "exact" }
     )
     .eq("postulante_id", postulanteId);
@@ -238,170 +280,212 @@ export default async function PostulanteFichaPage({
   const cursosPendientesIds = (cursosPendientesResult.data ?? []).map((a) => a.curso_id);
   const nombreCompleto = `${candidato.usuario.nombre} ${candidato.usuario.apellido}`;
 
-  return (
-    <section className="w-full">
-      <BotonVolver href={volverHref} />
+  // "DNI … · N postulaciones · N rechazos de empresas"
+  const bajada = [
+    candidato.postulante.dni ? `DNI ${candidato.postulante.dni}` : null,
+    postulacionesResult.ok
+      ? `${postulacionesResult.total} ${postulacionesResult.total === 1 ? "postulación" : "postulaciones"}`
+      : null,
+    `${rechazosTotales} ${rechazosTotales === 1 ? "rechazo de empresas" : "rechazos de empresas"}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
-      {/* Cabecera */}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
+  const hayAcciones = cantidadCursosPendientes > 0 || puedeRecibirCurso || invitacionAOferta;
+
+  return (
+    <section className="flex w-full flex-col gap-6">
+      <BotonVolver href={volverHref} destacado />
+
+      <EncabezadoPagina
+        banda
+        botonesBlancos
+        className="-mt-2"
+        avatar={
           <AvatarAjustado
             src={candidato.avatar.url}
             alt={nombreCompleto}
             ajuste={candidato.avatar.ajuste}
-            size="lg"
+            iniciales={inicialesDePersona(candidato.usuario.nombre, candidato.usuario.apellido)}
+            size="banda"
+            claro
           />
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              {nombreCompleto}
-            </h1>
-            <BadgeProcedencia
-              nivel={candidato.nivel}
-              localidad={candidato.postulante.localidad}
-              comprobante={candidato.comprobante?.estado ?? null}
-              className="mt-1"
-            />
+        }
+        titulo={nombreCompleto}
+        junto={
+          <>
+            <BadgeBanda tono={TONO_NIVEL[candidato.nivel]}>
+              {textoChipLocalidad(candidato.nivel, candidato.postulante.localidad)}
+            </BadgeBanda>
             {necesitaCurso ? (
-              <Badge tono="warning" estado className="mt-1">
+              <BadgeBanda tono="warning">
                 Necesita curso · {textoRechazos(rechazosVentana)} en {VENTANA_RECHAZOS_DIAS} días
-              </Badge>
+              </BadgeBanda>
             ) : (
               asignacionActivaEstado && (
-                <EstadoCursoBadge estado={asignacionActivaEstado} className="mt-1" />
+                <BadgeBanda tono={ESTADO_CURSO_TONO[asignacionActivaEstado]}>
+                  Curso: {ESTADO_CURSO_LABEL[asignacionActivaEstado]}
+                </BadgeBanda>
               )
             )}
-          </div>
+          </>
+        }
+        bajada={bajada}
+        acciones={
+          hayAcciones ? (
+            <>
+              {invitacionAOferta && (
+                <InvitarBoton
+                  ofertaId={invitacionAOferta.ofertaId}
+                  ofertaTitulo={invitacionAOferta.ofertaTitulo}
+                  postulanteId={postulanteId}
+                  nombre={nombreCompleto}
+                  rechazoAnterior={invitacionAOferta.rechazoAnterior}
+                />
+              )}
+              {cantidadCursosPendientes > 0 && (
+                <a href="#rechazos-y-cursos" className="btn-secundario">
+                  {textoCursosPendientes(cantidadCursosPendientes)}
+                </a>
+              )}
+              {puedeRecibirCurso && (
+                <AsignarCursoDialog
+                  postulanteId={postulanteId}
+                  postulanteNombre={nombreCompleto}
+                  cursosActivos={cursosActivos}
+                  cursosPendientesIds={cursosPendientesIds}
+                  destacado
+                />
+              )}
+            </>
+          ) : undefined
+        }
+      />
+
+      {/* Bloques de a dos (uno en el celular) con la misma altura por fila. */}
+      <div className="@container">
+        <div className="grid grid-cols-1 items-stretch gap-4 @4xl:grid-cols-2 @4xl:gap-5">
+          <section aria-labelledby="titulo-datos" className={TARJETA}>
+            <TituloBloque id="titulo-datos" titulo="Datos del candidato" icono={IdCard} />
+            <div className="mt-5">
+              <DatosCandidato
+                email={candidato.email}
+                dni={candidato.postulante.dni}
+                domicilio={candidato.postulante.domicilio}
+                telefono={candidato.usuario.telefono}
+                categorias={candidato.categorias}
+              />
+            </div>
+          </section>
+
+          <ProcedenciaCandidato
+            localidad={candidato.postulante.localidad}
+            nivel={candidato.nivel}
+            comprobante={candidato.comprobante}
+          />
+
+          <CvsDelPostulante cvs={candidato.cvs} />
+
+          <InformacionLaboralResumen
+            info={candidato.postulante}
+            estiloOficina
+            encabezado={
+              <TituloBloque id="titulo-informacion-laboral" titulo="Información laboral" icono={Briefcase} />
+            }
+            className="tarjeta min-w-0 rounded-[var(--radius-indicador)] px-4 py-[18px] sm:px-6 sm:py-[22px]"
+          />
         </div>
-        {(cantidadCursosPendientes > 0 || puedeRecibirCurso || invitacionAOferta) && (
-          <div className="flex flex-wrap items-center gap-3">
-            {invitacionAOferta && (
-              <InvitarBoton
-                ofertaId={invitacionAOferta.ofertaId}
-                ofertaTitulo={invitacionAOferta.ofertaTitulo}
-                postulanteId={postulanteId}
-                nombre={nombreCompleto}
-                rechazoAnterior={invitacionAOferta.rechazoAnterior}
-              />
-            )}
-            {cantidadCursosPendientes > 0 && (
-              <a
-                href="#rechazos-y-cursos"
-                className="inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground"
-              >
-                {textoCursosPendientes(cantidadCursosPendientes)}
-              </a>
-            )}
-            {puedeRecibirCurso && (
-              <AsignarCursoDialog
-                postulanteId={postulanteId}
-                postulanteNombre={nombreCompleto}
-                cursosActivos={cursosActivos}
-                cursosPendientesIds={cursosPendientesIds}
-                destacado
-              />
-            )}
-          </div>
-        )}
       </div>
 
-      <div className="mt-8 space-y-6">
-        <DatosCandidato
-          email={candidato.email}
-          dni={candidato.postulante.dni}
-          domicilio={candidato.postulante.domicilio}
-          telefono={candidato.usuario.telefono}
-          categorias={candidato.categorias}
-        />
+      {/* Rechazos y cursos */}
+      <section
+        id="rechazos-y-cursos"
+        aria-labelledby="titulo-rechazos-cursos"
+        className={cn(TARJETA, "@container scroll-mt-20")}
+      >
+        <TituloBloque id="titulo-rechazos-cursos" titulo="Rechazos y cursos" icono={ChartColumn} />
 
-        <ProcedenciaCandidato
-          localidad={candidato.postulante.localidad}
-          nivel={candidato.nivel}
-          comprobante={candidato.comprobante}
-        />
-
-        <CvsDelPostulante cvs={candidato.cvs} />
-
-        <InformacionLaboralResumen info={candidato.postulante} className="bg-surface" />
-
-        {/* Rechazos y cursos */}
-        <div
-          id="rechazos-y-cursos"
-          className="rounded-[var(--radius-lg)] border border-border bg-surface p-5"
-        >
-          <h2 className="font-semibold text-foreground">Rechazos y cursos</h2>
-
-          <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-[var(--radius-md)] bg-surface-tinted p-3">
-              <dt className="text-xs text-muted-foreground">
-                Rechazos en los últimos {VENTANA_RECHAZOS_DIAS} días
-              </dt>
-              <dd
-                className={`mt-1 text-2xl font-bold ${
-                  rechazosVentana >= UMBRAL_RECHAZOS_CURSO ? "text-warning-text" : "text-foreground"
-                }`}
-              >
-                {rechazosVentana}
-              </dd>
-              <dd className="mt-0.5 text-xs text-muted-foreground">
-                {estadoCursos?.ultimo_completado_en
-                  ? `Desde el último curso completado (${formatFechaCorta(estadoCursos.ultimo_completado_en)})`
-                  : `Con ${UMBRAL_RECHAZOS_CURSO} o más se le puede asignar un curso`}
-              </dd>
-            </div>
-            <div className="rounded-[var(--radius-md)] bg-surface-tinted p-3">
-              <dt className="text-xs text-muted-foreground">Rechazos totales</dt>
-              <dd className="mt-1 text-2xl font-bold text-foreground">{rechazosTotales}</dd>
-            </div>
-            <div className="rounded-[var(--radius-md)] bg-surface-tinted p-3">
-              <dt className="text-xs text-muted-foreground">Cursos</dt>
-              <dd className="mt-1.5">
+        <dl className="mt-5 grid grid-cols-1 gap-3 @2xl:grid-cols-3">
+          <Numero
+            filete="border-l-primary"
+            etiqueta={`Rechazos en los últimos ${VENTANA_RECHAZOS_DIAS} días`}
+            valor={rechazosVentana}
+            claseValor={rechazosVentana >= UMBRAL_RECHAZOS_CURSO ? "text-warning-text" : undefined}
+            contexto={
+              estadoCursos?.ultimo_completado_en
+                ? `Desde el último curso completado (${formatFechaCorta(estadoCursos.ultimo_completado_en)})`
+                : `Con ${UMBRAL_RECHAZOS_CURSO} o más se le puede asignar un curso`
+            }
+          />
+          <Numero
+            filete="border-l-neutral"
+            etiqueta="Rechazos totales"
+            valor={rechazosTotales}
+            contexto="De empresas, en todas sus postulaciones"
+          />
+          <Numero
+            filete="border-l-info"
+            etiqueta="Cursos"
+            valor={asignaciones.ok ? asignaciones.total : "—"}
+            contexto={
+              <>
                 {necesitaCurso ? (
-                  <Badge tono="warning" estado>
-                    Necesita curso
-                  </Badge>
+                  <span className="font-bold text-warning-text">Necesita curso</span>
                 ) : cantidadCursosPendientes > 0 ? (
-                  <span className="text-sm font-medium text-foreground">
-                    {textoCursosPendientes(cantidadCursosPendientes)}
-                  </span>
+                  textoCursosPendientes(cantidadCursosPendientes)
                 ) : (
-                  <span className="text-sm text-muted-foreground">Sin curso pendiente</span>
+                  "Sin curso pendiente"
                 )}
-              </dd>
-              {cantidadCursosPendientes > 0 && puedeRecibirCurso && (
-                <dd className="mt-1 text-xs text-warning-text">
-                  Tiene {UMBRAL_RECHAZOS_CURSO} o más rechazos recientes: se le puede asignar otro curso.
-                </dd>
-              )}
-            </div>
-          </dl>
+                {cantidadCursosPendientes > 0 && puedeRecibirCurso && (
+                  <span className="mt-1 block text-warning-text">
+                    Tiene {UMBRAL_RECHAZOS_CURSO} o más rechazos recientes: se le puede asignar otro curso.
+                  </span>
+                )}
+              </>
+            }
+          />
+        </dl>
 
-          {/* Rechazos */}
+        <div className="mt-6 grid grid-cols-1 gap-5 @4xl:grid-cols-2">
           <HistorialRechazos
             resultado={rechazosResult}
             ultimoCompletadoEn={estadoCursos?.ultimo_completado_en ?? null}
             ruta={rutaFicha}
             searchParams={sp}
           />
-
-          {/* Historial de cursos */}
           <HistorialCursos resultado={asignaciones} ruta={rutaFicha} searchParams={sp} />
         </div>
+      </section>
 
-        {/* Historial de postulaciones */}
-        <HistorialPostulaciones
-          resultado={postulacionesResult}
-          ruta={rutaFicha}
-          searchParams={sp}
-        />
+      <HistorialPostulaciones resultado={postulacionesResult} ruta={rutaFicha} searchParams={sp} />
 
-        {/* Historial de invitaciones */}
-        <HistorialInvitaciones
-          resultado={invitacionesResult}
-          ruta={rutaFicha}
-          searchParams={sp}
-        />
-      </div>
+      <HistorialInvitaciones resultado={invitacionesResult} ruta={rutaFicha} searchParams={sp} />
     </section>
+  );
+}
+
+/** Un número de "Rechazos y cursos": fondo gris, filete de 4 px, etiqueta, número de 34 px y contexto. */
+function Numero({
+  filete,
+  etiqueta,
+  valor,
+  claseValor,
+  contexto,
+}: {
+  filete: string;
+  etiqueta: string;
+  valor: number | string;
+  claseValor?: string;
+  contexto: ReactNode;
+}) {
+  return (
+    <div className={cn("flex min-w-0 flex-col rounded-[14px] border-l-4 bg-numero-fondo px-4 py-3.5", filete)}>
+      <dt className="text-[13px] leading-[1.4] font-bold text-neutral">{etiqueta}</dt>
+      <dd className={cn("mt-1.5 text-[34px] leading-none font-extrabold text-heading tabular-nums", claseValor)}>
+        {valor}
+      </dd>
+      <dd className="mt-2 text-[13px] leading-snug text-muted-foreground">{contexto}</dd>
+    </div>
   );
 }
 
@@ -488,7 +572,20 @@ type PropsHistorial<T> = {
   searchParams: ParamsUrl;
 };
 
-const TITULO_HISTORIAL = "scroll-mt-20 text-sm font-semibold text-foreground";
+const TITULO_LISTA = "scroll-mt-20 text-[17px] font-extrabold text-heading";
+const LISTA = "divide-y divide-tabla-borde rounded-[14px] border border-border";
+
+/** Ícono de una fila de lista: cuadrado de 36 px con fondo suave del color. */
+function IconoFila({ icono: Icono, clase }: { icono: LucideIcon; clase: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn("grid size-9 shrink-0 place-items-center rounded-[10px] [&_svg]:size-[18px]", clase)}
+    >
+      <Icono />
+    </span>
+  );
+}
 
 function HistorialRechazos({
   resultado,
@@ -498,50 +595,43 @@ function HistorialRechazos({
 }: PropsHistorial<RechazoRow> & { ultimoCompletadoEn: string | null }) {
   const ancla = "historial-rechazos";
   return (
-    <>
-      <h3 id={ancla} className={`mt-6 ${TITULO_HISTORIAL}`}>
+    <div className="flex min-w-0 flex-col gap-3">
+      <h3 id={ancla} className={TITULO_LISTA}>
         Rechazos de empresas{resultado.ok && ` (${resultado.total})`}
       </h3>
       {!resultado.ok ? (
-        <ErrorListado className="mt-2" mensaje="No pudimos cargar los rechazos." />
+        <ErrorListado mensaje="No pudimos cargar los rechazos." />
       ) : resultado.filas.length === 0 ? (
         <EstadoVacio
           tipo="sin-registros"
-          className="mt-2"
           icono={ThumbsDown}
           titulo="Ninguna empresa rechazó a este postulante."
         />
       ) : (
         <>
-          <ul className="mt-2 divide-y divide-border rounded-[var(--radius-md)] border border-border">
+          <ul className={LISTA}>
             {resultado.filas.map((r) => {
               const fecha = r.fecha_respuesta ?? r.updated_at;
               const oferta = r.postulaciones?.ofertas ?? null;
               return (
-                <li
-                  key={r.id}
-                  className="flex flex-col gap-1 px-3 py-2.5 text-sm sm:flex-row sm:items-start sm:justify-between sm:gap-3"
-                >
-                  <div className="min-w-0">
-                    <p className="font-medium text-foreground">
-                      {oferta?.titulo ?? "Oferta eliminada"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {oferta?.empresa_nombre ?? "—"}
-                    </p>
-                    <p className="mt-1 whitespace-pre-line break-words text-xs">
-                      <span className="text-muted-foreground">Motivo: </span>
-                      {r.nota_empresa?.trim() ? (
-                        <span className="text-foreground">{r.nota_empresa}</span>
-                      ) : (
-                        <span className="text-muted-foreground">Sin motivo informado</span>
+                <li key={r.id} className="flex gap-3 px-4 py-3.5">
+                  <IconoFila icono={X} clase="bg-danger/10 text-danger" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+                      <p className="min-w-0 text-[15px] font-bold break-words text-heading">
+                        {oferta?.titulo ?? "Oferta eliminada"}
+                      </p>
+                      {rechazoCuentaParaCurso(fecha, ultimoCompletadoEn) && (
+                        <Badge tono="warning">Cuenta para el curso</Badge>
                       )}
+                    </div>
+                    <p className="text-[13px] text-muted-foreground">
+                      {oferta?.empresa_nombre ?? "—"} · {formatFechaCorta(fecha)}
                     </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
-                    {formatFechaCorta(fecha)}
-                    {rechazoCuentaParaCurso(fecha, ultimoCompletadoEn) && (
-                      <Badge tono="warning">Cuenta para el curso</Badge>
+                    {r.nota_empresa?.trim() ? (
+                      <MotivoRechazo>{r.nota_empresa}</MotivoRechazo>
+                    ) : (
+                      <p className="mt-1.5 text-[13px] text-muted-foreground">Sin motivo informado</p>
                     )}
                   </div>
                 </li>
@@ -549,7 +639,6 @@ function HistorialRechazos({
             })}
           </ul>
           <Paginacion
-            className="mt-3"
             ruta={ruta}
             searchParams={searchParams}
             pagina={resultado.pagina}
@@ -560,63 +649,66 @@ function HistorialRechazos({
           />
         </>
       )}
-    </>
+    </div>
   );
 }
 
 function HistorialCursos({ resultado, ruta, searchParams }: PropsHistorial<AsignacionRow>) {
   const ancla = "historial-cursos";
   return (
-    <>
-      <h3 id={ancla} className={`mt-6 ${TITULO_HISTORIAL}`}>
+    <div className="flex min-w-0 flex-col gap-3">
+      <h3 id={ancla} className={TITULO_LISTA}>
         Historial de cursos{resultado.ok && ` (${resultado.total})`}
       </h3>
       {!resultado.ok ? (
-        <ErrorListado className="mt-2" mensaje="No pudimos cargar el historial de cursos." />
+        <ErrorListado mensaje="No pudimos cargar el historial de cursos." />
       ) : resultado.filas.length === 0 ? (
         <EstadoVacio
           tipo="sin-registros"
-          className="mt-2"
           icono={BookOpen}
           titulo="Todavía no se asignó ningún curso a este postulante."
         />
       ) : (
         <>
-          <ul className="mt-2 divide-y divide-border rounded-[var(--radius-md)] border border-border">
+          <ul className={LISTA}>
             {resultado.filas.map((a) => {
               const curso = a.cursos;
               return (
-                <li key={a.id} className="space-y-1 px-3 py-3 text-sm">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {curso ? (
-                      <Link
-                        href={`/admin/cursos/${curso.id}`}
-                        className="font-medium text-primary hover:underline"
-                      >
-                        {curso.nombre}
-                      </Link>
-                    ) : (
-                      <span className="font-medium text-foreground">Curso eliminado</span>
+                <li key={a.id} className="flex gap-3 px-4 py-3.5">
+                  <IconoFila icono={BookOpen} clase="bg-primary/10 text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      {curso ? (
+                        <Link
+                          href={`/admin/cursos/${curso.id}`}
+                          className="inline-flex min-h-11 items-center rounded-[var(--radius-sm)] text-[15px] font-bold break-words text-primary underline-offset-2 outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)] sm:min-h-0"
+                        >
+                          {curso.nombre}
+                        </Link>
+                      ) : (
+                        <span className="text-[15px] font-bold text-heading">Curso eliminado</span>
+                      )}
+                      <EstadoCursoBadge estado={a.estado} />
+                    </div>
+                    <p className="mt-0.5 text-[13px] text-muted-foreground">
+                      Asignado el {formatFechaCorta(a.created_at)}
+                      {a.iniciado_en && ` · Empezado el ${formatFechaCorta(a.iniciado_en)}`}
+                      {a.completado_en && ` · Completado el ${formatFechaCorta(a.completado_en)}`}
+                      {a.estado === "abandonado" &&
+                        a.abandonado_en &&
+                        ` · Abandonado el ${formatFechaCorta(a.abandonado_en)}`}
+                    </p>
+                    {a.nota && (
+                      <p className="mt-1 text-[13px] break-words whitespace-pre-line text-muted-foreground-strong">
+                        Nota interna: {a.nota}
+                      </p>
                     )}
-                    <EstadoCursoBadge estado={a.estado} />
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Asignado el {formatFechaCorta(a.created_at)}
-                    {a.iniciado_en && ` · Empezado el ${formatFechaCorta(a.iniciado_en)}`}
-                    {a.completado_en && ` · Completado el ${formatFechaCorta(a.completado_en)}`}
-                    {a.estado === "abandonado" &&
-                      a.abandonado_en &&
-                      ` · Abandonado el ${formatFechaCorta(a.abandonado_en)}`}
-                  </p>
-                  {a.nota && (
-                    <p className="text-xs text-muted-foreground">Nota interna: {a.nota}</p>
-                  )}
                 </li>
               );
             })}
           </ul>
           <Paginacion
-            className="mt-3"
             ruta={ruta}
             searchParams={searchParams}
             pagina={resultado.pagina}
@@ -627,9 +719,13 @@ function HistorialCursos({ resultado, ruta, searchParams }: PropsHistorial<Asign
           />
         </>
       )}
-    </>
+    </div>
   );
 }
+
+// Oferta y empresa | Fecha | Estado | CV | Pre-entrevista | acción.
+const COLUMNAS_POSTULACIONES =
+  "minmax(0,1.6fr) minmax(max-content,.7fr) minmax(0,1.1fr) minmax(0,1.2fr) minmax(0,1.2fr) minmax(max-content,.6fr)";
 
 function HistorialPostulaciones({
   resultado,
@@ -638,120 +734,85 @@ function HistorialPostulaciones({
 }: PropsHistorial<PostulacionHistorial>) {
   const ancla = "historial-postulaciones";
   return (
-    <div
-      id={ancla}
-      className="scroll-mt-20 rounded-[var(--radius-lg)] border border-border bg-surface p-5"
-    >
-      <h2 className="font-semibold text-foreground">
-        Historial de postulaciones{resultado.ok && ` (${resultado.total})`}
-      </h2>
+    <section id={ancla} aria-labelledby="titulo-postulaciones" className="flex scroll-mt-20 flex-col gap-4">
+      <TituloBloque
+        id="titulo-postulaciones"
+        titulo={`Historial de postulaciones${resultado.ok ? ` (${resultado.total})` : ""}`}
+        icono={ClipboardList}
+      />
 
       {!resultado.ok ? (
-        <ErrorListado className="mt-3" mensaje="No pudimos cargar el historial de postulaciones." />
+        <ErrorListado mensaje="No pudimos cargar el historial de postulaciones." />
       ) : resultado.filas.length === 0 ? (
         <EstadoVacio
           tipo="sin-registros"
-          className="mt-3"
           icono={Briefcase}
           titulo="Todavía no se postuló a ninguna oferta."
         />
       ) : (
         <>
-          {/* Tabla md+ */}
-          <div className="mt-4 hidden md:block">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="pb-2 pr-4 font-medium text-muted-foreground">Oferta</th>
-                  <th className="pb-2 pr-4 font-medium text-muted-foreground">Empresa</th>
-                  <th className="pb-2 pr-4 font-medium text-muted-foreground">Fecha</th>
-                  <th className="pb-2 pr-4 font-medium text-muted-foreground">Estado</th>
-                  <th className="pb-2 pr-4 font-medium text-muted-foreground">CV</th>
-                  <th className="pb-2 pr-4 font-medium text-muted-foreground">Pre-entrevista</th>
-                  <th className="pb-2"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {resultado.filas.map((p) => {
-                  const badgeCfg = badgePostulacion(p.estado, p.derivaciones?.estado_empresa);
-                  return (
-                    <tr key={p.id} className="align-top">
-                      <td className="py-3 pr-4 font-medium text-foreground">
-                        {p.ofertas?.titulo ?? "Oferta eliminada"}
-                      </td>
-                      <td className="py-3 pr-4 text-foreground">
-                        {p.ofertas?.empresa_nombre ?? "—"}
-                      </td>
-                      <td className="py-3 pr-4 text-muted-foreground">
-                        {formatFecha(p.created_at)}
-                      </td>
-                      <td className="py-3 pr-4">
-                        <Badge tono={badgeCfg.tono} estado>
-                          {badgeCfg.label}
-                        </Badge>
-                      </td>
-                      <td className="py-3 pr-4">
-                        <CvHistorial cv={p.cv} />
-                      </td>
-                      <td className="py-3 pr-4">
-                        <PreEntrevistaHistorial pre={p.pre_entrevistas} />
-                      </td>
-                      <td className="py-3 w-px whitespace-nowrap">
-                        <Link
-                          href={`/admin/postulaciones/${p.id}`}
-                          className="btn-secundario inline-flex items-center gap-1 whitespace-nowrap px-3 py-1.5 text-xs"
-                        >
-                          Ver ficha
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Cards mobile */}
-          <div className="mt-4 space-y-3 md:hidden">
+          <TablaListado
+            columnas={COLUMNAS_POSTULACIONES}
+            etiqueta="Historial de postulaciones"
+            semantica="tabla"
+            encabezados={[
+              "Oferta y empresa",
+              "Fecha",
+              "Estado",
+              "CV",
+              "Pre-entrevista",
+              <span key="a" className="sr-only">
+                Acciones
+              </span>,
+            ]}
+          >
             {resultado.filas.map((p) => {
-              const badgeCfg = badgePostulacion(p.estado, p.derivaciones?.estado_empresa);
+              const visible = estadoVisiblePostulacion(p.estado, p.derivaciones?.estado_empresa);
+              const badge = BADGE_ESTADO_VISIBLE[visible];
+              const titulo = p.ofertas?.titulo ?? "Oferta eliminada";
               return (
-                <div
-                  key={p.id}
-                  className="rounded-[var(--radius-md)] border border-border p-3 space-y-2"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <p className="font-medium text-foreground text-sm">
-                      {p.ofertas?.titulo ?? "Oferta eliminada"}
-                    </p>
-                    <Badge tono={badgeCfg.tono} estado>
-                      {badgeCfg.label}
+                <FilaTabla key={p.id} semantica="tabla" filete={FILETE_ESTADO_VISIBLE[visible]}>
+                  <div role="cell" className="min-w-0 break-words">
+                    <span className="block text-[15px] leading-snug font-extrabold text-heading">
+                      {titulo}
+                    </span>
+                    <span className="mt-0.5 block text-sm text-muted-foreground">
+                      {p.ofertas?.empresa_nombre ?? "—"}
+                    </span>
+                  </div>
+                  <div role="cell" className="text-sm whitespace-nowrap tabular-nums @4xl:text-[15px]">
+                    <span className="text-muted-foreground @4xl:sr-only">Fecha: </span>
+                    {formatFechaCorta(p.created_at)}
+                  </div>
+                  <div role="cell" className="order-first min-w-0 @4xl:order-none">
+                    <Badge tono={badge.tono} estado multilinea>
+                      {badge.label}
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {p.ofertas?.empresa_nombre ?? "—"} · {formatFecha(p.created_at)}
-                  </p>
-                  <div className="text-xs">
-                    <p className="mb-1 text-muted-foreground">CV</p>
+                  <div role="cell" className="min-w-0">
+                    <p className="text-[13px] font-bold text-neutral @4xl:sr-only">CV</p>
                     <CvHistorial cv={p.cv} />
                   </div>
-                  <div className="text-xs">
-                    <p className="mb-1 text-muted-foreground">Pre-entrevista</p>
+                  <div role="cell" className="min-w-0">
+                    <p className="text-[13px] font-bold text-neutral @4xl:sr-only">Pre-entrevista</p>
                     <PreEntrevistaHistorial pre={p.pre_entrevistas} />
                   </div>
-                  <Link
-                    href={`/admin/postulaciones/${p.id}`}
-                    className="btn-secundario inline-flex items-center gap-1 whitespace-nowrap px-3 py-1.5 text-xs"
-                  >
-                    Ver ficha →
-                  </Link>
-                </div>
+                  <div role="cell" className="@4xl:text-right">
+                    <Link
+                      href={`/admin/postulaciones/${p.id}`}
+                      aria-label={`Ver ficha de la postulación a ${titulo}`}
+                      className={`btn-secundario ${CLASE_ACCION_FILA}`}
+                    >
+                      Ver ficha
+                    </Link>
+                  </div>
+                </FilaTabla>
               );
             })}
-          </div>
+          </TablaListado>
 
           <Paginacion
-            className="mt-4"
+            className="mt-1"
             ruta={ruta}
             searchParams={searchParams}
             pagina={resultado.pagina}
@@ -759,10 +820,12 @@ function HistorialPostulaciones({
             tamano={TAMANO_HISTORIAL}
             parametro="pagina_postulaciones"
             ancla={ancla}
+            variante="numeros"
+            elemento={{ singular: "postulación", plural: "postulaciones" }}
           />
         </>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -772,12 +835,12 @@ function HistorialPostulaciones({
  */
 function CvHistorial({ cv }: { cv: PostulacionHistorial["cv"] }) {
   if (!cv) {
-    return <span className="text-xs text-muted-foreground">Sin CV elegido</span>;
+    return <span className="text-sm text-muted-foreground">Sin CV elegido</span>;
   }
   return (
-    <div className="space-y-0.5 text-xs">
-      <p className="break-all text-foreground">{cv.nombre_original}</p>
-      <p className="text-muted-foreground">
+    <div className="text-sm">
+      <p className="font-semibold break-all text-foreground">{cv.nombre_original}</p>
+      <p className="text-[13px] text-muted-foreground">
         Subido el {formatFechaCorta(cv.creado_en)}
         {cv.eliminado_en && " · eliminado del perfil"}
       </p>
@@ -786,28 +849,41 @@ function CvHistorial({ cv }: { cv: PostulacionHistorial["cv"] }) {
 }
 
 /**
- * Pre-entrevista de una postulación (044/045). Esta pantalla es solo de la
+ * Pre-entrevista de una postulación (044/045): la coordinada, en azul con
+ * CalendarClock; las demás, con su estado. Esta pantalla es solo de la
  * oficina, así que muestra también la nota interna.
  */
 function PreEntrevistaHistorial({ pre }: { pre: PostulacionHistorial["pre_entrevistas"] }) {
   if (!pre || !esEstadoPreEntrevista(pre.estado)) {
-    return <span className="text-xs text-muted-foreground">Sin pre-entrevista</span>;
+    return <span className="text-sm text-muted-foreground">Sin pre-entrevista</span>;
   }
+  const coordinada = pre.estado === "coordinada";
   return (
-    <div className="space-y-1 text-xs">
-      <Badge tono={PRE_ENTREVISTA_TONO[pre.estado]} estado>
+    <div className="flex flex-col items-start gap-1 text-[13px]">
+      <Badge tono={PRE_ENTREVISTA_TONO[pre.estado]} icono={coordinada ? CalendarClock : undefined} estado={!coordinada}>
         {PRE_ENTREVISTA_LABEL[pre.estado]}
       </Badge>
-      <p className="text-foreground">{formatFechaHoraCorta(pre.fecha_hora)}</p>
-      <p className="break-words text-muted-foreground">{pre.lugar}</p>
+      <p className={cn("tabular-nums", coordinada ? "font-semibold text-info" : "text-foreground")}>
+        {formatFechaHoraCorta(pre.fecha_hora)}
+      </p>
+      <p className="break-words text-muted-foreground">
+        <ModalidadYLugar datos={{ modalidad: pre.modalidad, lugar: pre.lugar, link: pre.link }} />
+      </p>
       {pre.nota_oficina && (
-        <p className="whitespace-pre-line break-words text-muted-foreground">
+        <p className="break-words whitespace-pre-line text-muted-foreground">
           Nota interna: {pre.nota_oficina}
         </p>
       )}
     </div>
   );
 }
+
+const ICONO_INVITACION: Record<EstadoInvitacion, { icono: LucideIcon; clase: string }> = {
+  pendiente: { icono: Mail, clase: "bg-accent/22 text-invitacion-titulo" },
+  aceptada: { icono: MailCheck, clase: "bg-primary/10 text-primary" },
+  rechazada: { icono: X, clase: "bg-danger/10 text-danger" },
+  vencida: { icono: Clock, clase: "bg-secondary text-neutral" },
+};
 
 /**
  * Invitaciones de la oficina a postularse, a todas las ofertas
@@ -821,26 +897,25 @@ function HistorialInvitaciones({
 }: PropsHistorial<InvitacionHistorial>) {
   const ancla = "historial-invitaciones";
   return (
-    <div
-      id={ancla}
-      className="scroll-mt-20 rounded-[var(--radius-lg)] border border-border bg-surface p-5"
-    >
-      <h2 className="font-semibold text-foreground">
-        Invitaciones a ofertas{resultado.ok && ` (${resultado.total})`}
-      </h2>
+    <section id={ancla} aria-labelledby="titulo-invitaciones" className={cn(TARJETA, "scroll-mt-20")}>
+      <TituloBloque
+        id="titulo-invitaciones"
+        titulo={`Invitaciones a ofertas${resultado.ok ? ` (${resultado.total})` : ""}`}
+        icono={Mail}
+      />
 
       {!resultado.ok ? (
-        <ErrorListado className="mt-3" mensaje="No pudimos cargar las invitaciones." />
+        <ErrorListado className="mt-4" mensaje="No pudimos cargar las invitaciones." />
       ) : resultado.filas.length === 0 ? (
         <EstadoVacio
           tipo="sin-registros"
-          className="mt-3"
+          className="mt-4"
           icono={Mail}
           titulo="La oficina todavía no lo invitó a ninguna oferta."
         />
       ) : (
         <>
-          <ul className="mt-4 space-y-3">
+          <ul className={cn(LISTA, "mt-5")}>
             {resultado.filas.map((inv) => {
               const ofertaAbierta =
                 inv.ofertas?.estado === "activa" &&
@@ -862,17 +937,15 @@ function HistorialInvitaciones({
                       ? `Dijo que no el ${formatFecha(fecha)}`
                       : `Invitación vencida el ${formatFecha(fecha)}`;
               return (
-                <li
-                  key={inv.id}
-                  className="rounded-[var(--radius-md)] border border-border p-3 text-sm"
-                >
-                  <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                <li key={inv.id} className="flex gap-3 px-4 py-3.5">
+                  <IconoFila icono={ICONO_INVITACION[estado].icono} clase={ICONO_INVITACION[estado].clase} />
+                  <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                     <div className="min-w-0">
-                      <p className="font-medium text-foreground">
+                      <p className="text-[15px] font-bold break-words text-heading">
                         {inv.ofertas ? (
                           <Link
                             href={`/admin/ofertas/${inv.ofertas.id}`}
-                            className="underline-offset-2 hover:text-primary hover:underline"
+                            className="rounded-[var(--radius-sm)] underline-offset-2 outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
                           >
                             {inv.ofertas.titulo}
                           </Link>
@@ -880,28 +953,28 @@ function HistorialInvitaciones({
                           "Oferta no disponible"
                         )}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-[13px] text-muted-foreground">
                         {inv.ofertas?.empresa_nombre ?? "—"} · Invitado el{" "}
                         {formatFechaCorta(inv.creada_en)}
-                        {inv.invitador &&
-                          ` por ${inv.invitador.nombre} ${inv.invitador.apellido}`}
+                        {inv.invitador && ` por ${inv.invitador.nombre} ${inv.invitador.apellido}`}
                       </p>
+                      {estado === "rechazada" && inv.motivo_rechazo && (
+                        <MotivoRechazo>{inv.motivo_rechazo}</MotivoRechazo>
+                      )}
+                      {estado === "aceptada" && inv.postulacion_id && (
+                        <Link
+                          href={`/admin/postulaciones/${inv.postulacion_id}`}
+                          className="inline-flex min-h-11 items-center gap-1 rounded-[var(--radius-sm)] text-sm font-bold text-primary underline-offset-2 outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)] sm:min-h-8"
+                        >
+                          Ver la postulación
+                          <ChevronRight aria-hidden="true" className="size-4" />
+                        </Link>
+                      )}
                     </div>
-                    <Badge tono={TONO_INVITACION[estado]}>{texto}</Badge>
+                    <Badge tono={TONO_INVITACION[estado]} multilinea className="sm:shrink-0">
+                      {texto}
+                    </Badge>
                   </div>
-                  {estado === "rechazada" && inv.motivo_rechazo && (
-                    <p className="mt-2 text-xs text-muted-foreground-strong">
-                      Motivo: {inv.motivo_rechazo}
-                    </p>
-                  )}
-                  {estado === "aceptada" && inv.postulacion_id && (
-                    <Link
-                      href={`/admin/postulaciones/${inv.postulacion_id}`}
-                      className="mt-2 inline-flex min-h-11 items-center text-xs font-medium text-primary underline-offset-2 hover:underline sm:min-h-0"
-                    >
-                      Ver la postulación
-                    </Link>
-                  )}
                 </li>
               );
             })}
@@ -919,6 +992,6 @@ function HistorialInvitaciones({
           />
         </>
       )}
-    </div>
+    </section>
   );
 }

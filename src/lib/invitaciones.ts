@@ -151,13 +151,6 @@ export const TONO_INVITACION: Record<EstadoInvitacion, TonoBadge> = {
   vencida: "neutral",
 };
 
-export const ETIQUETA_INVITACION: Record<EstadoInvitacion, string> = {
-  pendiente: "Sin respuesta",
-  aceptada: "Aceptó",
-  rechazada: "Dijo que no",
-  vencida: "Vencida",
-};
-
 /** "Invitado el 3/10/2026, sin respuesta", "Dijo que no el …", etc. */
 export function textoUltimaInvitacion(estado: EstadoInvitacion, fecha: string | null): string {
   const el = fecha ? ` el ${formatFecha(fecha)}` : "";

@@ -1,10 +1,13 @@
-import { CheckCircle2, Clock, MapPin } from "lucide-react";
+import { CheckCircle2, CircleCheck, Clock, MapPin, type LucideIcon } from "lucide-react";
 import {
   detalleSinVerificar,
+  textoChipLocalidad,
+  varianteLocalidad,
   type EstadoComprobante,
   type NivelPrioridad,
+  type VarianteLocalidad,
 } from "@/lib/procedencia";
-import { Badge } from "@/components/ui/badge";
+import { Badge, Chip, type TonoChip } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -54,5 +57,34 @@ export function BadgeProcedencia({ nivel, localidad, comprobante, className }: P
       </span>
       <span className="sr-only">{texto}</span>
     </Badge>
+  );
+}
+
+const CHIP_LOCALIDAD: Record<VarianteLocalidad, { tono: TonoChip; icono: LucideIcon }> = {
+  verificado: { tono: "verde", icono: CircleCheck },
+  "sin-verificar": { tono: "amarillo", icono: Clock },
+  "otra-localidad": { tono: "gris", icono: MapPin },
+};
+
+/**
+ * Chip de localidad de las pantallas de la oficina (ronda 9): un Chip de
+ * 26 px. La variante sale del nivel de prioridad (varianteLocalidad), igual
+ * que BadgeProcedencia.
+ */
+export function ChipLocalidad({
+  nivel,
+  localidad,
+  className,
+}: {
+  nivel: NivelPrioridad;
+  localidad: string | null;
+  className?: string;
+}) {
+  const { tono, icono } = CHIP_LOCALIDAD[varianteLocalidad(nivel)];
+  const texto = textoChipLocalidad(nivel, localidad);
+  return (
+    <Chip tono={tono} icono={icono} title={texto} className={className}>
+      {texto}
+    </Chip>
   );
 }

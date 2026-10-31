@@ -3,6 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { obtenerUsuarioActual } from "@/lib/auth";
+import { logError } from "@/lib/logger";
 import { TAMANO_PAGINA } from "@/lib/paginacion";
 import { anclaPostulacion } from "@/lib/mis-postulaciones";
 import { hrefSeccionPerfil, SECCION_PERFIL } from "@/lib/perfil-secciones";
@@ -68,14 +69,42 @@ export const obtenerNotificacionesNoLeidasPostulante = cache(
 
 export const OFERTAS_RECOMENDADAS = 5;
 
-export function obtenerOfertasRecomendadas(): Promise<ConError<FilaOfertaRecomendada[]>> {
+export type OfertaRecomendada = FilaOfertaRecomendada &
+  Partial<Pick<Tabla<"ofertas">, "descripcion" | "jornada">>;
+
+/**
+ * Las recomendadas, en el orden de la base. La función no trae la descripción
+ * ni la jornada de la tarjeta detallada: salen de una segunda consulta a
+ * ofertas (RLS). Si esa consulta falla o no trae alguna oferta, las tarjetas
+ * se muestran sin esos datos, como en /ofertas.
+ */
+export function obtenerOfertasRecomendadas(): Promise<ConError<OfertaRecomendada[]>> {
   return seguro(async () => {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.rpc("ofertas_recomendadas_para_mi", {
       p_limite: OFERTAS_RECOMENDADAS,
     });
     if (error) return { data: null, error };
-    return { data: data ?? [], error: null };
+    const filas: FilaOfertaRecomendada[] = data ?? [];
+    if (filas.length === 0) return { data: [], error: null };
+
+    const { data: detalles, error: errorDetalles } = await supabase
+      .from("ofertas")
+      .select("id, descripcion, jornada")
+      .in(
+        "id",
+        filas.map((f) => f.id),
+      );
+    if (errorDetalles) logError("panel_postulante:ofertas_detalle", errorDetalles);
+
+    const porId = new Map((detalles ?? []).map((d) => [d.id, d]));
+    return {
+      data: filas.map((f) => {
+        const detalle = porId.get(f.id);
+        return { ...f, descripcion: detalle?.descripcion, jornada: detalle?.jornada };
+      }),
+      error: null,
+    };
   });
 }
 
@@ -102,6 +131,25 @@ export const obtenerInvitacionesPendientes = cache(
       };
     }),
 );
+
+// ── Rubros del perfil ───────────────────────────────────────────────────────
+
+/** ids de los rubros del perfil del postulante con sesión (postulante_categorias). */
+export function obtenerRubrosDelPerfil(): Promise<ConError<string[]>> {
+  return seguro(async () => {
+    const usuario = await obtenerUsuarioActual();
+    if (!usuario) return { data: null, error: "sin sesión de usuario" };
+
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("postulantes")
+      .select("postulante_categorias(categoria_id)")
+      .eq("usuario_id", usuario.id)
+      .maybeSingle();
+    if (error) return { data: null, error };
+    return { data: (data?.postulante_categorias ?? []).map((pc) => pc.categoria_id), error: null };
+  });
+}
 
 // ── Últimos movimientos ─────────────────────────────────────────────────────
 

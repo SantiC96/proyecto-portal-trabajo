@@ -15,13 +15,14 @@ export default async function NuevaOfertaPage() {
 
   return (
     <section className="flex w-full flex-col gap-6">
-      <div className="flex flex-col gap-4">
-        <BotonVolver href="/empresa/ofertas" />
-        <EncabezadoPagina
-          titulo="Publicar oferta"
-          bajada="Completá los datos del puesto. La oferta queda pendiente hasta que la Oficina de Empleo la revise."
-        />
-      </div>
+      <BotonVolver href="/empresa/ofertas" destacado />
+      <EncabezadoPagina
+        banda
+        botonesBlancos
+        className="-mt-2"
+        titulo="Publicar oferta"
+        bajada="Completá los datos del puesto. La oferta queda pendiente hasta que la Oficina de Empleo la revise."
+      />
 
       <OfertaForm categorias={categorias} empresaNombre={empresa.razon_social} />
     </section>

@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { CircleCheck, X } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogResumen,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
@@ -27,6 +29,8 @@ import { useErroresCampo } from "@/lib/use-errores-campo";
 type Props = {
   empresaId: string;
   razonSocial: string;
+  /** CUIT ya formateado, para el resumen de los diálogos. */
+  cuit: string;
   estadoActual: EstadoAprobacion;
 };
 
@@ -35,7 +39,7 @@ type Props = {
  * confirmación. Como hasta ahora, una empresa rechazada se puede aprobar y una
  * aprobada se puede rechazar.
  */
-export function EmpresaAcciones({ empresaId, razonSocial, estadoActual }: Props) {
+export function EmpresaAcciones({ empresaId, razonSocial, cuit, estadoActual }: Props) {
   const router = useRouter();
   const [abrirAprobar, setAbrirAprobar] = useState(false);
   const [abrirRechazar, setAbrirRechazar] = useState(false);
@@ -81,6 +85,13 @@ export function EmpresaAcciones({ empresaId, razonSocial, estadoActual }: Props)
     });
   }
 
+  const resumen = (
+    <DialogResumen>
+      <p className="font-bold break-words text-heading">{razonSocial}</p>
+      <p className="mt-0.5 text-sm text-muted-foreground tabular-nums">CUIT {cuit}</p>
+    </DialogResumen>
+  );
+
   return (
     <div className="flex flex-col gap-3">
       {estadoActual !== "aprobada" && (
@@ -107,7 +118,7 @@ export function EmpresaAcciones({ empresaId, razonSocial, estadoActual }: Props)
       {/* Dialog: Aprobar */}
       <Dialog open={abrirAprobar} onOpenChange={handleAbrirAprobar}>
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader icono={CircleCheck} tonoIcono="primario">
             <DialogTitle>Aprobar empresa</DialogTitle>
             <DialogDescription>
               ¿Confirmás la aprobación de{" "}
@@ -115,6 +126,7 @@ export function EmpresaAcciones({ empresaId, razonSocial, estadoActual }: Props)
               La empresa va a poder acceder al portal y publicar ofertas.
             </DialogDescription>
           </DialogHeader>
+          {resumen}
           <BotonesDialogo
             pendiente={isPending}
             onCancelar={() => handleAbrirAprobar(false)}
@@ -128,7 +140,7 @@ export function EmpresaAcciones({ empresaId, razonSocial, estadoActual }: Props)
       {/* Dialog: Rechazar */}
       <Dialog open={abrirRechazar} onOpenChange={handleAbrirRechazar}>
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader icono={X} tonoIcono="peligro">
             <DialogTitle>Rechazar empresa</DialogTitle>
             <DialogDescription>
               Estás por rechazar la solicitud de{" "}
@@ -136,7 +148,8 @@ export function EmpresaAcciones({ empresaId, razonSocial, estadoActual }: Props)
               El motivo va a ser visible para la empresa.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
+          {resumen}
+          <div className="flex flex-col gap-2">
             <label htmlFor={`motivo-${empresaId}`} className="etiqueta-campo">
               Motivo del rechazo <Obligatorio />
             </label>
@@ -153,8 +166,14 @@ export function EmpresaAcciones({ empresaId, razonSocial, estadoActual }: Props)
               disabled={isPending}
               {...ariaErrorCampo(`motivo-${empresaId}`, campos.errores.motivo)}
             />
-            <ErrorCampo idCampo={`motivo-${empresaId}`} mensaje={campos.errores.motivo} />
-            <ContadorCaracteres actual={motivo.length} maximo={LARGO_MAXIMO.motivo} />
+            <div className="flex items-start justify-between gap-3">
+              <ErrorCampo idCampo={`motivo-${empresaId}`} mensaje={campos.errores.motivo} />
+              <ContadorCaracteres
+                className="ml-auto shrink-0"
+                actual={motivo.length}
+                maximo={LARGO_MAXIMO.motivo}
+              />
+            </div>
           </div>
           <BotonesDialogo
             pendiente={isPending}

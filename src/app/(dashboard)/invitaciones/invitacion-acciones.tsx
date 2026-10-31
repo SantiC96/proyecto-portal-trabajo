@@ -156,7 +156,7 @@ export function InvitacionAcciones({
         open={abierto === "rechaza"}
         onOpenChange={(v) => cambiarAbierto(v ? "rechaza" : null)}
       >
-        <DialogContent tamano="amplio">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>No me interesa esta oferta</DialogTitle>
             <DialogDescription>

@@ -13,13 +13,21 @@ type Props = {
   nombre: string;
   /** La última invitación a esta oferta fue rechazada: se muestra antes de confirmar. */
   rechazoAnterior: { fecha: string | null; motivo: string | null } | null;
+  claseBoton?: string;
 };
 
 /**
  * "Invitar a esta oferta" con el diálogo de confirmación común. Lo usan la
  * búsqueda de postulantes de una oferta y la ficha del postulante.
  */
-export function InvitarBoton({ ofertaId, ofertaTitulo, postulanteId, nombre, rechazoAnterior }: Props) {
+export function InvitarBoton({
+  ofertaId,
+  ofertaTitulo,
+  postulanteId,
+  nombre,
+  rechazoAnterior,
+  claseBoton = "w-full justify-center sm:w-auto",
+}: Props) {
   const router = useRouter();
 
   return (
@@ -31,7 +39,7 @@ export function InvitarBoton({ ofertaId, ofertaTitulo, postulanteId, nombre, rec
         </>
       }
       estiloBoton="primario"
-      claseBoton="w-full justify-center sm:w-auto"
+      claseBoton={claseBoton}
       titulo={rechazoAnterior ? "¿Invitar de nuevo?" : "Invitar a esta oferta"}
       descripcion={
         rechazoAnterior ? (

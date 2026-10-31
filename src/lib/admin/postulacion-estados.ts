@@ -26,16 +26,30 @@ export type BadgePostulacion = {
   tono: TonoBadge;
 };
 
-// Mismos tonos que Mis postulaciones del postulante.
+// Colores de estado de la oficina (ronda 9): recibida gris, en revisión azul,
+// derivada teal, contratado verde, no seleccionado rojo y retirada gris claro.
+// La oferta retirada por la empresa tampoco es un rechazo: va como retirada.
 export const BADGE_ESTADO_VISIBLE: Record<EstadoVisiblePostulacion, BadgePostulacion> = {
   recibida: { label: "Recibida", tono: "neutral" },
   en_revision: { label: "En revisión", tono: "info" },
   derivada: { label: "Derivada", tono: "teal" },
   contratado: { label: "Contratado", tono: "success" },
-  no_seleccionado_empresa: { label: "No seleccionado (por la empresa)", tono: "neutral" },
-  no_seleccionado_oficina: { label: "No seleccionado (por la oficina)", tono: "neutral" },
-  oferta_retirada: { label: "Cerrada (la empresa retiró la oferta)", tono: "neutral" },
-  retirada_postulante: { label: "Retirada por el postulante", tono: "neutral" },
+  no_seleccionado_empresa: { label: "No seleccionado (por la empresa)", tono: "danger" },
+  no_seleccionado_oficina: { label: "No seleccionado (por la oficina)", tono: "danger" },
+  oferta_retirada: { label: "Cerrada (la empresa retiró la oferta)", tono: "apagado" },
+  retirada_postulante: { label: "Retirada por el postulante", tono: "apagado" },
+};
+
+/** Filete izquierdo de la fila (Tabla con filete): el color del estado. */
+export const FILETE_ESTADO_VISIBLE: Record<EstadoVisiblePostulacion, string> = {
+  recibida: "before:bg-neutral",
+  en_revision: "before:bg-info",
+  derivada: "before:bg-teal",
+  contratado: "before:bg-success",
+  no_seleccionado_empresa: "before:bg-danger",
+  no_seleccionado_oficina: "before:bg-danger",
+  oferta_retirada: "before:bg-muted-icon",
+  retirada_postulante: "before:bg-muted-icon",
 };
 
 export function estadoVisiblePostulacion(

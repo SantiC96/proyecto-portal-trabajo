@@ -56,6 +56,12 @@
   /* Decorativo (sección "Para empresas" del inicio) */
   --color-brand-subtle: #b9dcc7;
 
+  /* Solo en los gráficos de los indicadores de la oficina (decisión 032,
+     punto 8): derivadas y contrataciones, y rechazadas. Ninguno llega a 3:1
+     contra el blanco: siempre van con su nombre y su número al lado. */
+  --color-grafico-verde-claro: #8cc63f;
+  --color-grafico-gris:        #c5cec8;
+
   /* Inicio, panel y listas (PR 3 del rediseño) */
   --color-texto-bajada:       #2e4337; /* bajada del inicio, empresa en la tarjeta de oferta */
   --color-invitacion-titulo:  #3a2a00; /* tarjeta y aviso de invitaciones */
@@ -73,12 +79,29 @@
   --color-opcion-elegida:   #f3f8f5; /* fondo de la opción tipo radio elegida */
   --color-texto-parrafo:    #22332a; /* párrafos del detalle de la oferta */
   --color-texto-vence:      #8a1a12; /* "Vence el …" de las invitaciones */
+  --color-pendiente-icono:  #b07a00; /* CircleAlert del índice de Mi perfil (3,7:1 sobre blanco) */
 
   /* Pantallas de la empresa y de la oficina (PR 5 del rediseño) */
   --color-tabla-cabecera:   #f3f5f4; /* encabezado del componente Tabla */
   --color-tabla-fila-hover: #fafbfa; /* hover de fila del componente Tabla */
+  --color-numero-fondo:     #f7f9f8; /* números de "Rechazos y cursos" en el perfil del postulante (oficina) */
+  --color-sin-comprobante:  #7a5a00; /* "Sin comprobante" en la lista de postulantes (6,3:1 sobre blanco) */
   --color-texto-pestana:    #3d4a43; /* pestañas inactivas; cantidad en cero */
   --color-pastilla-gris:    #dde3df; /* cantidad de pestañas y tarjetas de pendiente */
+  --color-aviso-borde:      #e6cf86; /* aviso de candidatos esperando respuesta (panel de la empresa) */
+  --color-aviso-fila-borde: #eaddb0; /* filas de ese aviso */
+
+  /* Formulario de oferta de la empresa (ronda 8) */
+  --color-borde-campo-oferta:  #7f9488; /* borde de los campos del formulario */
+  --color-cancelar-borde:      #7f9488; /* botón Cancelar del formulario de oferta */
+  --color-cancelar-texto:      #2b3a31;
+  --color-cancelar-hover:      #f3f5f4;
+  --color-campo-lectura:      #f3f5f4; /* fondo de la ubicación de solo lectura */
+  --color-texto-ejemplo:      #6e7d74; /* título de ejemplo de la vista previa (texto grande: 4,3:1) */
+  --color-separador-filtro: #c9d4cd; /* línea entre los estados y "Eliminadas" en Mis ofertas */
+
+  /* Candidatos guardados de la empresa (ronda 8) */
+  --color-nota-rotulo: #5c4500; /* "NOTA PRIVADA" sobre el amarillo suave de la nota */
 
   /* Navegación lateral y barra del celular (sobre --color-primary) */
   --color-sidebar-texto: #e3f0e8; /* secciones; bajada del login */
@@ -86,6 +109,7 @@
   --color-sidebar-grupo: #c2dece; /* títulos de grupo */
   --color-tooltip:       #0f1d15;
   --color-danger-fondo:  #fdedec; /* hover de "Cerrar sesión" */
+  --color-motivo-rechazo: #5a1a12; /* texto del motivo de rechazo en el historial (sobre rojo al 7 %) */
 
   /* Pantallas de /auth y login */
   --color-fondo-auth:   #f3f5f4;
@@ -103,6 +127,7 @@
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
   --radius-ofertas: 1.25rem;
+  --radius-indicador: 1.125rem; /* tarjetas de los indicadores de la oficina */
 
   --sombra-foco:          0 0 0 3px rgb(0 104 51 / 0.25);
   --sombra-foco-campo:    0 0 0 3px rgb(0 104 51 / 0.18);
@@ -110,6 +135,7 @@
   --sombra-dialogo:       0 24px 60px rgb(0 40 20 / 0.18);
   --sombra-tarjeta-hover: 0 8px 20px rgb(15 42 27 / 0.08);
   --sombra-buscador:      0 18px 40px rgb(0 30 15 / 0.35); /* sobre el hero verde */
+  --sombra-selector:      0 6px 18px rgb(0 30 15 / 0.08); /* selector de período y su lista */
 }
 
 @layer base {
@@ -146,6 +172,11 @@ h1, h2 { font-weight: 800; }
   font-weight: 400;
   letter-spacing: -0.02em;
 }
+/* El texto de ejemplo se va al enfocar el campo, para que no se lea como un
+   valor ya cargado. Fuera de capa para ganarle a .campo::placeholder y a las
+   utilidades placeholder:text-*. Los labels y las ayudas no cambian. */
+input:focus::placeholder,
+textarea:focus::placeholder { color: transparent; }
 
 @layer components {
   /* Botones: primario, secundario, neutro, peligro y acento. Las variantes de
@@ -233,6 +264,23 @@ h1, h2 { font-weight: 800; }
     color: var(--color-muted-foreground);
   }
 
+  /* Formulario de oferta: borde más marcado y foco con outline de 3 px. */
+  .formulario-oferta :is(.campo, .campo-grupo) {
+    border-color: var(--color-borde-campo-oferta);
+  }
+  .formulario-oferta .campo:focus-visible,
+  .formulario-oferta .campo-grupo:focus-within {
+    border-color: var(--color-primary);
+    box-shadow: none;
+    outline: 3px solid rgb(0 104 51 / 0.35);
+    outline-offset: 0;
+  }
+  .formulario-oferta .campo[aria-invalid="true"],
+  .formulario-oferta .campo-grupo:has([aria-invalid="true"]) {
+    border-color: var(--color-danger);
+    box-shadow: var(--sombra-error-campo);
+  }
+
   .etiqueta-campo {
     font-size: 15px;
     font-weight: 600;
@@ -248,6 +296,15 @@ h1, h2 { font-weight: 800; }
   }
   .tarjeta-clickeable {
     transition: border-color 180ms ease, box-shadow 180ms ease, translate 180ms ease;
+  }
+  /* Tarjeta de las pantallas del postulante (con .tarjeta): radio 18 y
+     padding 22 × 24 (18 × 16 en el celular). */
+  .tarjeta-panel {
+    border-radius: var(--radius-indicador);
+    padding: 18px 16px;
+  }
+  @media (min-width: 640px) {
+    .tarjeta-panel { padding: 22px 24px; }
   }
   .tarjeta-clickeable:hover { border-color: var(--color-border-strong); }
 }
@@ -270,6 +327,26 @@ h1, h2 { font-weight: 800; }
   height: 18px;
   flex-shrink: 0;
 }
+/* Cancelar del formulario de oferta: neutro con borde gris marcado, para que se
+   vea como botón sin competir con el secundario verde. Fuera de capa para ganar
+   al border-transparent del componente Button. */
+.formulario-oferta .btn-cancelar {
+  border-color: var(--color-cancelar-borde);
+  color: var(--color-cancelar-texto);
+}
+.formulario-oferta .btn-cancelar:not(:disabled, [aria-disabled="true"]):hover {
+  background: var(--color-cancelar-hover);
+  color: var(--color-cancelar-texto);
+}
+/* Botón de solo ícono (borrar un archivo): 44 × 44, con aria-label y title.
+   Va después de las medidas comunes para ganarles el padding. */
+.btn-icono {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  padding: 0;
+}
+.btn-icono svg { width: 20px; height: 20px; }
 
 /* Movimiento: solo si el usuario no pidió reducirlo. */
 @media (prefers-reduced-motion: no-preference) {
@@ -319,18 +396,33 @@ button,input { font:inherit; }
 html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
 
 .app-shell { min-height: 100vh; }
+/* Columna principal: la página (.app-pagina) y el footer debajo. La página
+   ocupa al menos el alto de la ventana (menos la barra de 60 px en el
+   celular), así que el footer nunca se ve al abrir una pantalla corta: hay
+   que hacer scroll. En las largas no cambia nada. */
 .app-contenido {
   --relleno-contenido: 16px;
+  --espacio-pie: 48px;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  min-height: calc(100vh - 60px);
-  padding: var(--relleno-contenido);
 }
+.app-pagina {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: calc(100dvh - 60px);
+  padding: var(--relleno-contenido) var(--relleno-contenido) var(--espacio-pie);
+}
+/* Destino del foco de "Volver arriba" (tabindex -1): sin anillo. */
+.app-pagina[tabindex="-1"]:focus,
+.app-pagina main[tabindex="-1"]:focus { outline: none; }
 @media (min-width: 640px) { .app-contenido { --relleno-contenido: 24px; } }
 @media (min-width: 1024px) {
   .app-shell { display: flex; align-items: stretch; }
-  .app-contenido { --relleno-contenido: 32px; flex: 1; min-height: 100vh; }
+  .app-contenido { --relleno-contenido: 32px; flex: 1; }
+  .app-pagina { min-height: 100dvh; }
 }
 
 /* Las páginas ocupan todo el ancho al lado de la sidebar, sin max-width
@@ -341,29 +433,26 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
    con isolation) y no recibe clics. Sin colores nuevos: el verde de marca,
    el amarillo y el blanco con transparencia. "Celular" es menos de 640 px. */
 :root {
-  /* Trébol de Funes para las marcas de agua. Se usa como máscara: el color
-     lo pone el background del elemento. */
-  --trebol: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-100 -100 200 200' fill='none' stroke='black' stroke-width='9' stroke-linejoin='round'%3E%3Cpath transform='rotate(45)' d='M0 -12 L-30 -42 A19 19 0 0 1 -3 -69 L0 -66 L3 -69 A19 19 0 0 1 30 -42 Z'/%3E%3Cpath transform='rotate(135)' d='M0 -12 L-30 -42 A19 19 0 0 1 -3 -69 L0 -66 L3 -69 A19 19 0 0 1 30 -42 Z'/%3E%3Cpath transform='rotate(225)' d='M0 -12 L-30 -42 A19 19 0 0 1 -3 -69 L0 -66 L3 -69 A19 19 0 0 1 30 -42 Z'/%3E%3Cpath transform='rotate(315)' d='M0 -12 L-30 -42 A19 19 0 0 1 -3 -69 L0 -66 L3 -69 A19 19 0 0 1 30 -42 Z'/%3E%3C/svg%3E");
   --sombra-tarjeta: 0 1px 3px rgb(0 30 15 / 0.06);
 }
 
-/* Trébol de agua (fondo del contenido y estados vacíos). */
+/* Escudo de agua (fondo del contenido y estados vacíos): la imagen ya es
+   verde de marca. */
 .app-contenido::after,
 .estado-vacio::after {
   content: "";
   position: absolute;
   z-index: -1;
-  background: var(--color-primary);
+  background: url("/images/escudo-verde.png") center / contain no-repeat;
   opacity: 0.08;
-  transform: rotate(-12deg);
-  -webkit-mask: var(--trebol) center / contain no-repeat;
-  mask: var(--trebol) center / contain no-repeat;
+  transform: rotate(-8deg);
   pointer-events: none;
 }
 
-/* Fondo de las pantallas con navegación: degradé verde arriba, puntos en la
-   esquina superior derecha y el trébol (solo escritorio). El inicio no lo
-   lleva (.app-contenido--inicio): su decoración es el hero. */
+/* Fondo de las pantallas con navegación (todas menos /auth): degradé verde
+   arriba, puntos en la esquina superior derecha y el escudo (solo
+   escritorio). El inicio no lleva el degradé ni los puntos
+   (.app-contenido--inicio): su decoración es el hero. */
 .app-contenido {
   --alto-degrade: 240px;
   --alto-puntos: 300px;
@@ -388,19 +477,33 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
   mask-image: radial-gradient(ellipse 70% 100% at 100% 0, #000 15%, transparent 60%);
   pointer-events: none;
 }
+/* Escudo del fondo: arriba a la derecha y absoluto (se va con el scroll, no
+   agranda la página). La misma posición en todas las pantallas: con "Volver"
+   arriba, la banda verde (de /ofertas o EncabezadoPagina banda) empieza a la
+   misma altura y deja ver la misma parte. --escudo-arriba solo cambia en el
+   inicio, donde el hero arranca arriba de todo y lo taparía entero. */
+.app-contenido { --escudo-arriba: -56px; }
 .app-contenido::after { display: none; }
 @media (min-width: 1024px) {
   .app-contenido::after {
     display: block;
-    top: -56px;
+    top: var(--escudo-arriba);
     right: 28px;
     width: 300px;
     height: 300px;
   }
 }
 .app-contenido--inicio { background: var(--color-background); }
-.app-contenido--inicio::before,
-.app-contenido--inicio::after { content: none; }
+.app-contenido--inicio::before { content: none; }
+/* Inicio: el escudo va apenas debajo del hero (anclado a su borde de abajo).
+   Sin anchor positioning queda en -56px, detrás del hero. */
+@supports (top: anchor(bottom)) {
+  .hero-inicio { anchor-name: --hero-inicio; }
+  .app-contenido--inicio::after {
+    position-anchor: --hero-inicio;
+    --escudo-arriba: calc(anchor(bottom) + 16px);
+  }
+}
 
 /* Hero del inicio: banda verde con puntos, brillo, anillo e íconos flotantes
    (las mismas piezas que el panel verde de /auth). z-index 2: el popup del
@@ -483,8 +586,351 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
 .hero-icono:nth-child(3) { top: 128px; left: 0; animation-delay: -3s; }
 .hero-icono:nth-child(4) { top: 184px; right: 18%; animation-delay: -4.5s; }
 
+/* Banda verde del listado de ofertas (/ofertas): título, cantidad y buscador.
+   Como el hero, el recorte va en la capa decorativa (.banda-ofertas-deco) y
+   no en la banda, para no cortar nada que salga de ella. */
+.banda-ofertas {
+  position: relative;
+  isolation: isolate;
+  z-index: 2;
+  padding: 24px 18px 20px;
+  border-radius: 20px;
+  background-color: var(--color-primary);
+  background-image: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+.banda-ofertas-deco {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.banda-ofertas-anillo {
+  position: absolute;
+  right: -110px;
+  bottom: -120px;
+  width: 300px;
+  height: 300px;
+  border: 40px solid rgb(255 255 255 / 0.06);
+  border-radius: 50%;
+}
+/* En el celular queda abajo a la derecha, detrás del buscador. */
+.banda-ofertas-escudo {
+  position: absolute;
+  right: -30px;
+  bottom: -26px;
+  width: 140px;
+  height: auto;
+  opacity: 0.14;
+  transform: rotate(-8deg);
+}
+@media (min-width: 640px) {
+  .banda-ofertas {
+    padding: 40px 44px 36px;
+    border-radius: 24px;
+    background-size: 28px 28px;
+  }
+  .banda-ofertas-anillo {
+    top: -240px;
+    right: -180px;
+    bottom: auto;
+    width: 560px;
+    height: 560px;
+    border-width: 60px;
+  }
+  .banda-ofertas-escudo {
+    top: 22px;
+    right: 56px;
+    bottom: auto;
+    width: 190px;
+  }
+}
+
+/* Encabezado con banda verde (EncabezadoPagina banda, pantallas del
+   postulante). La decoración es la de la banda de ofertas; en el celular el
+   anillo baja un poco más y el escudo es más tenue. */
+.encabezado-banda {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 22px 18px;
+  border-radius: 20px;
+  background-color: var(--color-primary);
+  background-image: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+@media (max-width: 639.98px) {
+  .encabezado-banda .banda-ofertas-anillo { right: -120px; bottom: -140px; }
+  .encabezado-banda .banda-ofertas-escudo { opacity: 0.12; }
+}
+@media (min-width: 640px) {
+  .encabezado-banda {
+    padding: 34px 40px;
+    border-radius: 24px;
+    background-size: 28px 28px;
+  }
+  .encabezado-banda .banda-ofertas-escudo { opacity: 0.13; }
+}
+/* Botones sobre el verde: el principal blanco y los secundarios con borde
+   blanco. El foco, blanco por fuera de un borde verde. */
+.encabezado-banda-acciones .btn-primario {
+  background: var(--color-surface);
+  color: var(--color-primary);
+}
+.encabezado-banda-acciones .btn-primario:not(:disabled, [aria-disabled="true"]):hover {
+  background: var(--color-sidebar-texto);
+}
+.encabezado-banda-acciones :is(.btn-secundario, .btn-neutro) {
+  background: transparent;
+  border-color: rgb(255 255 255 / 0.75);
+  color: var(--color-primary-foreground);
+}
+.encabezado-banda-acciones :is(.btn-secundario, .btn-neutro):not(:disabled, [aria-disabled="true"]):hover {
+  background: rgb(255 255 255 / 0.12);
+}
+.encabezado-banda-acciones :is(.btn-primario, .btn-secundario, .btn-neutro):focus-visible {
+  box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 5px var(--color-surface);
+}
+/* Banda de la empresa (EncabezadoPagina botonesBlancos): todos los botones
+   blancos con texto verde, también los secundarios y los de baja. */
+.encabezado-banda-acciones--blancos :is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-peligro-borde) {
+  background: var(--color-surface);
+  border-color: var(--color-surface);
+  color: var(--color-primary);
+}
+.encabezado-banda-acciones--blancos :is(.btn-primario, .btn-secundario, .btn-neutro, .btn-peligro, .btn-peligro-borde):not(:disabled, [aria-disabled="true"]):hover {
+  background: var(--color-sidebar-texto);
+  border-color: var(--color-sidebar-texto);
+}
+.encabezado-banda-acciones--blancos :is(.btn-peligro, .btn-peligro-borde):focus-visible {
+  box-shadow: 0 0 0 2px var(--color-primary), 0 0 0 5px var(--color-surface);
+}
+/* Con el selector de período desplegable (indicadores de la oficina y de la
+   empresa), la lista tiene que salir de la banda: la decoración ya se recorta
+   sola (.banda-ofertas-deco) y la banda queda por encima de lo que sigue. */
+.encabezado-banda:has(.selector-periodo-banda) {
+  overflow: visible;
+  z-index: 20;
+}
+
+/* Anillo de progreso (AnilloProgreso). --progreso (0 a 100) mueve el trazo
+   y el número a la par: al abrir la página sube desde 0. Sin animación con
+   movimiento reducido. */
+@property --progreso {
+  syntax: "<integer>";
+  inherits: true;
+  initial-value: 0;
+}
+.anillo-progreso {
+  position: relative;
+  flex-shrink: 0;
+  width: 96px;
+  height: 96px;
+}
+.anillo-progreso svg { display: block; width: 100%; height: 100%; }
+.anillo-progreso-fondo { stroke: var(--color-secondary-hover); }
+.anillo-progreso-valor {
+  stroke: var(--color-primary);
+  stroke-linecap: round;
+  stroke-dasharray: 100px;
+  stroke-dashoffset: calc((100 - var(--progreso)) * 1px);
+}
+.anillo-progreso-numero {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--color-heading);
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  counter-reset: progreso var(--progreso);
+}
+.anillo-progreso-numero::after { content: counter(progreso) "%"; }
+@media (prefers-reduced-motion: no-preference) {
+  .anillo-progreso { animation: llenar-anillo 1.4s cubic-bezier(0.2, 0.7, 0.2, 1) 0.2s backwards; }
+}
+@keyframes llenar-anillo {
+  from { --progreso: 0; }
+}
+/* Anillo chico (64 px): la tarjeta de la foto de Mi perfil. */
+.anillo-progreso-64 { width: 64px; height: 64px; }
+.anillo-progreso-64 .anillo-progreso-numero { font-size: 16px; }
+
+/* Botón chico ("Editar" de las tarjetas de Mi perfil): 36 px desde sm; en
+   el celular, 44 px como todos. Después de las medidas comunes para ganarles. */
+.btn-chico { padding-inline: 12px; font-size: 14px; }
+.btn-chico svg { width: 16px; height: 16px; }
+@media (min-width: 640px) { .btn-chico { min-height: 36px; } }
+
+/* Aviso de candidatos esperando respuesta (panel de la empresa): amarillo
+   suave sobre blanco, borde dorado y filete izquierdo de 5 px. */
+.aviso-respuesta {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--color-aviso-borde);
+  border-radius: var(--radius-indicador);
+  background-color: var(--color-surface);
+  background-image: linear-gradient(180deg, rgb(242 183 5 / 0.18), rgb(242 183 5 / 0.07));
+  padding: 18px 16px 18px 21px;
+}
+.aviso-respuesta::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 5px;
+  background: var(--color-accent);
+}
+@media (min-width: 640px) {
+  .aviso-respuesta { padding: 22px 24px 22px 29px; }
+}
+
+/* Banda de resumen (Mis cursos): el verde con puntos de la banda del
+   encabezado y un aro blanco decorativo a la derecha. */
+.banda-resumen {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 18px 16px;
+  border-radius: var(--radius-indicador);
+  background-color: var(--color-primary);
+  background-image: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1.5px);
+  background-size: 24px 24px;
+  color: var(--color-primary-foreground);
+}
+.banda-resumen::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: -90px;
+  right: -70px;
+  width: 220px;
+  height: 220px;
+  border: 34px solid rgb(255 255 255 / 0.08);
+  border-radius: 50%;
+  pointer-events: none;
+}
+@media (min-width: 640px) {
+  .banda-resumen { padding: 22px 24px; background-size: 28px 28px; }
+  .banda-resumen::after { top: -120px; right: -40px; width: 300px; height: 300px; border-width: 44px; }
+}
+
+/* Tarjetas de "Explorá por rubro": 112 × 104 px en la fila desplazable;
+   cuando la sección (@container) mide 1024 px o más, ocho columnas iguales
+   (.fila-rubros pasa a grilla). */
+.tarjeta-rubro {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  flex-shrink: 0;
+  width: 112px;
+  height: 104px;
+  padding: 10px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-surface);
+  color: var(--color-heading);
+  box-shadow: var(--sombra-tarjeta);
+  text-align: left;
+  outline: none;
+  transition: border-color 150ms, box-shadow 150ms, background-color 150ms;
+}
+.tarjeta-rubro:hover { border-color: var(--color-primary); box-shadow: var(--sombra-tarjeta-hover); }
+.tarjeta-rubro:focus-visible { box-shadow: var(--sombra-foco); border-color: var(--color-primary); }
+.tarjeta-rubro-icono {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: rgb(0 104 51 / 0.12);
+  color: var(--color-primary);
+}
+.tarjeta-rubro-icono svg { width: 18px; height: 18px; }
+.tarjeta-rubro-nombre {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.tarjeta-rubro-detalle {
+  margin-top: auto;
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--color-muted-foreground);
+}
+/* Elegida (aria-current) o "Ver todos" con rubros elegidos fuera de la fila. */
+.tarjeta-rubro--elegida {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+  background-image: radial-gradient(rgb(255 255 255 / 0.1) 1px, transparent 1.5px);
+  background-size: 14px 14px;
+  color: #fff;
+}
+.tarjeta-rubro--elegida:hover { background-color: var(--color-primary-hover); }
+.tarjeta-rubro--elegida .tarjeta-rubro-icono { background: rgb(255 255 255 / 0.16); color: #fff; }
+.tarjeta-rubro--elegida .tarjeta-rubro-detalle { color: var(--color-sidebar-texto); }
+.tarjeta-rubro--elegida:focus-visible { box-shadow: 0 0 0 2px #fff, 0 0 0 5px var(--color-primary); }
+.tarjeta-rubro-tilde {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+}
+.tarjeta-rubro-tilde svg { width: 13px; height: 13px; stroke-width: 3; }
+.tarjeta-rubro--ver-todos:not(.tarjeta-rubro--elegida) {
+  border: 2px dashed var(--color-primary);
+  box-shadow: none;
+}
+@container (min-width: 64rem) {
+  .fila-rubros {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    overflow: visible;
+  }
+  .tarjeta-rubro { width: auto; height: auto; min-height: 120px; gap: 8px; padding: 12px; }
+  .tarjeta-rubro-icono { width: 36px; height: 36px; border-radius: 10px; }
+  .tarjeta-rubro-icono svg { width: 20px; height: 20px; }
+  .tarjeta-rubro-nombre { font-size: 14px; line-height: 1.2; }
+  .tarjeta-rubro-detalle { font-size: 13px; }
+}
+
+/* Panel "Todos los rubros": lateral derecho de 400 px desde sm; en el
+   celular, a pantalla completa. */
+.panel-rubros-fondo { background: rgb(8 20 13 / 0.55); }
+.panel-rubros-cabecera {
+  background-color: var(--color-primary);
+  background-image: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1.5px);
+  background-size: 20px 20px;
+  color: #fff;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .panel-rubros { transition: transform 200ms ease-out, opacity 200ms ease-out; }
+  .panel-rubros[data-starting-style],
+  .panel-rubros[data-ending-style] { transform: translateX(24px); opacity: 0; }
+  .panel-rubros-fondo { transition: opacity 200ms ease-out; }
+  .panel-rubros-fondo[data-starting-style],
+  .panel-rubros-fondo[data-ending-style] { opacity: 0; }
+}
+
 /* "Cómo funciona" y "Tu actividad": banda a todo el ancho del contenido. El
-   margen negativo es igual al padding de .app-contenido, así que no sale de
+   margen negativo es igual al padding de .app-pagina, así que no sale de
    él ni genera scroll horizontal. */
 .banda-inicio {
   margin-inline: calc(-1 * var(--relleno-contenido));
@@ -493,12 +939,160 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
   background: rgb(0 104 51 / 0.07);
 }
 @media (min-width: 640px) { .banda-inicio { padding-block: 40px 48px; } }
+/* Si es la última sección, llega hasta el footer (tapa el padding de abajo
+   de .app-pagina). */
 .banda-inicio:last-child {
   flex-grow: 1;
-  margin-bottom: calc(-1 * var(--relleno-contenido));
+  margin-bottom: calc(-1 * var(--espacio-pie));
 }
 
-/* Estados vacíos: degradé, puntos detrás del ícono, halo y trébol. Los puntos
+/* Footer (components/layout/footer.tsx): debajo de .app-pagina, a todo el
+   ancho del contenido. Verde con puntos, esquinas de arriba redondeadas, un
+   acento amarillo arriba a la izquierda y el escudo blanco recortado en la
+   esquina inferior derecha. "Celular" es menos de 640 px. */
+.pie-portal {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  container-type: inline-size;
+  padding: 40px 20px 0;
+  border-radius: 24px 24px 0 0;
+  background-color: var(--color-primary);
+  background-image: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1.5px);
+  background-size: 24px 24px;
+  color: var(--color-sidebar-texto);
+}
+.pie-portal::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 20px;
+  width: 64px;
+  height: 4px;
+  background: var(--color-accent);
+}
+.pie-escudo {
+  position: absolute;
+  z-index: -1;
+  right: -60px;
+  bottom: -50px;
+  width: 230px;
+  height: auto;
+  opacity: 0.09;
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
+@media (min-width: 640px) {
+  .pie-portal { padding: 56px 48px 0; border-radius: 28px 28px 0 0; }
+  .pie-portal::before { left: 48px; }
+  .pie-escudo { bottom: -110px; width: 400px; }
+}
+.pie-columnas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 40px;
+}
+@container (min-width: 720px) {
+  .pie-columnas {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1.4fr);
+    gap: 48px;
+  }
+}
+.pie-logo { width: 160px; height: auto; }
+@media (min-width: 640px) { .pie-logo { width: 180px; } }
+/* El amarillo sobre este verde no pasa AA: el título va en blanco y el
+   amarillo queda en la rayita. */
+.pie-titulo {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+}
+.pie-titulo::after {
+  content: "";
+  display: block;
+  width: 28px;
+  height: 3px;
+  margin-top: 10px;
+  background: var(--color-accent);
+}
+.pie-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  text-align: left;
+  outline: none;
+}
+@media (min-width: 640px) { .pie-link { min-height: 38px; } }
+.pie-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.pie-link:focus-visible,
+.pie-arriba:focus-visible { box-shadow: 0 0 0 3px rgb(255 255 255 / 0.6); }
+.pie-dato {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding-block: 10px;
+  font-size: 15px;
+}
+.pie-dato svg { flex-shrink: 0; width: 18px; height: 18px; margin-top: 2px; color: var(--color-accent); }
+a.pie-dato { border-radius: var(--radius-md); outline: none; }
+a.pie-dato:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+a.pie-dato:focus-visible { box-shadow: 0 0 0 3px rgb(255 255 255 / 0.6); }
+.pie-barra {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 40px;
+  padding-block: 20px 24px;
+  border-top: 1px solid rgb(255 255 255 / 0.22);
+}
+@media (min-width: 640px) {
+  .pie-barra { flex-direction: row; align-items: center; justify-content: space-between; margin-top: 48px; }
+}
+.pie-arriba {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgb(255 255 255 / 0.45);
+  border-radius: 9999px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  outline: none;
+}
+.pie-arriba:hover { background: rgb(255 255 255 / 0.12); }
+@media (prefers-reduced-motion: no-preference) {
+  .pie-arriba { transition: background-color 150ms ease-out; }
+}
+.pie-red {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgb(255 255 255 / 0.4);
+  border-radius: 9999px;
+  color: #fff;
+  outline: none;
+}
+.pie-red svg { width: 20px; height: 20px; }
+.pie-red:hover { background: rgb(255 255 255 / 0.12); }
+.pie-red:focus-visible { box-shadow: 0 0 0 3px rgb(255 255 255 / 0.6); }
+@media (prefers-reduced-motion: no-preference) {
+  .pie-red { transition: background-color 150ms ease-out; }
+}
+
+/* Estados vacíos: degradé, puntos detrás del ícono, halo y escudo. Los puntos
    salen del ícono para quedar centrados en él en cualquier estado vacío, y
    terminan antes del título. */
 .estado-vacio {
@@ -542,7 +1136,7 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
 
 /* Tarjeta de oferta (components/ofertas/tarjeta-oferta.tsx): tinte verde que
    sale de la esquina superior derecha, borde verde con franja arriba, ícono
-   de maletín y botón tonal. El mismo verde para todas: el rubro va solo en
+   de maletín y botón "Ver oferta" verde sólido (btn-primario). El mismo verde para todas: el rubro va solo en
    las etiquetas. El foco del título se dibuja en la tarjeta (el overflow
    recortaría el del link). La elevación necesita 20 px libres arriba y 40 px
    abajo dentro de un contenedor con scroll (ver el carrusel). */
@@ -561,11 +1155,46 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
 @media (prefers-reduced-motion: no-preference) {
   .tarjeta-oferta:hover { translate: 0 -3px; }
 }
+
+/* Tarjeta de notificación con destino (ListaNotificacionesAgrupada): el
+   botón de la acción estira su ::after sobre la tarjeta. Al pasar el mouse,
+   un velo apenas más oscuro sobre el fondo que tenga (también el de las
+   nuevas); el foco se dibuja en toda la tarjeta. */
+.notificacion-con-destino {
+  position: relative;
+  cursor: pointer;
+}
+.notificacion-con-destino button { cursor: pointer; }
+.notificacion-con-destino:hover {
+  background-image: linear-gradient(rgb(0 30 15 / 0.035), rgb(0 30 15 / 0.035));
+}
+.notificacion-con-destino:has(:focus-visible) {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+/* Si una tarjeta suma otro control, va por encima del ::after estirado. */
+.notificacion-con-destino :is(a, button, input, select, textarea, summary):not(.notificacion-enlace) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Vista previa del formulario de oferta: lo que falta va como ejemplo, en
+   gris e itálica. El título (20 px 700, texto grande) usa texto-ejemplo; el
+   rubro (13 px) usa placeholder para llegar a 4,5:1; la descripción ya es
+   muted-foreground (4,75:1 sobre el tinte) y solo pasa a itálica. */
+.vista-previa-oferta[data-sin-titulo] .tarjeta-oferta h3 a {
+  color: var(--color-texto-ejemplo);
+  font-style: italic;
+}
+.vista-previa-oferta[data-sin-rubro] .tarjeta-oferta-rubro {
+  color: var(--color-placeholder);
+  font-style: italic;
+  box-shadow: inset 0 0 0 1.5px var(--color-muted-icon);
+}
+.vista-previa-oferta[data-sin-descripcion] .tarjeta-oferta-descripcion { font-style: italic; }
 .tarjeta-oferta-icono {
-  position: absolute;
-  top: 16px;
-  right: 16px;
   display: grid;
+  flex-shrink: 0;
   place-items: center;
   width: 44px;
   height: 44px;
@@ -575,17 +1204,18 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
   box-shadow: 0 6px 14px rgb(0 30 15 / 0.18);
   pointer-events: none;
 }
-/* Lugar para el ícono: 16 px de margen + 44 de ícono, menos los 24 de padding
-   de la tarjeta, más aire. */
-.tarjeta-oferta-etiquetas { padding-right: 48px; }
-/* Variante tonal del botón secundario, solo en esta tarjeta. Mantiene el
-   borde transparente para medir lo mismo que el secundario. */
-.tarjeta-oferta .tarjeta-oferta-tonal {
-  border-color: transparent;
-  background: rgb(0 104 51 / 0.12);
-  color: var(--color-primary-hover);
+/* Variante compacta: el ícono va en la esquina superior derecha. Lugar para
+   el ícono en las etiquetas: 16 px de margen + 44 de ícono, menos los 24 de
+   padding de la tarjeta, más aire. */
+.tarjeta-oferta-compacta .tarjeta-oferta-icono {
+  position: absolute;
+  top: 16px;
+  right: 16px;
 }
-.tarjeta-oferta:hover .tarjeta-oferta-tonal { background: rgb(0 104 51 / 0.2); }
+.tarjeta-oferta-compacta .tarjeta-oferta-etiquetas { padding-right: 48px; }
+/* El link del título cubre la tarjeta: el botón (solo visual) toma el hover
+   de toda la tarjeta. */
+.tarjeta-oferta:hover .tarjeta-oferta-boton { background: var(--color-primary-hover); }
 
 /* Listas que se desplazan de costado (carrusel): sin barra visible. */
 .sin-barra-scroll { scrollbar-width: none; }
@@ -1290,3 +1920,53 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
   .hero-icono { animation: none; }
 }
 @keyframes pulsar { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+
+/* Aparición al hacer scroll (AparecerAlScroll, indicadores de la oficina).
+   El servidor no pone el atributo: sin JavaScript todo se ve. El componente
+   marca "oculto" solo lo que está debajo de la pantalla al cargar, y
+   "visible" cuando entra. translate no mueve el layout (sin CLS). Con
+   movimiento reducido no se oculta nada. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-aparecer="oculto"] {
+    opacity: 0;
+    translate: 0 16px;
+  }
+  [data-aparecer="visible"] {
+    transition: opacity 400ms ease-out, translate 400ms ease-out;
+  }
+}
+@media print {
+  [data-aparecer] { opacity: 1; translate: none; }
+}
+
+/* Gráficos que se dibujan al verse (AnimarAlVerse, indicadores de la empresa
+   y de la oficina). El servidor no pone data-animar: sin JavaScript, con
+   movimiento reducido o al imprimir, el gráfico se ve completo. Solo se
+   animan transform, stroke-dasharray y opacity: los anchos, altos y largos
+   finales son los del servidor y el layout no se mueve.
+   - Barras: crecen desde 0 en 600 ms ease-out, 60 ms entre una y otra (--i).
+   - Tramos de la dona: van de 0 a su largo, en orden; --retraso y --duracion
+     los calcula la dona para que el anillo entero tarde 800 ms en ease-out.
+   - Centro de la dona: aparece junto con el anillo. */
+.grafico-barra-x { transform-origin: left center; }
+.grafico-barra-y { transform-origin: center bottom; }
+@media screen and (prefers-reduced-motion: no-preference) {
+  [data-animar="espera"] .grafico-barra-x { transform: scaleX(0); }
+  [data-animar="espera"] .grafico-barra-y { transform: scaleY(0); }
+  [data-animar="espera"] .grafico-tramo { stroke-dasharray: 0 var(--circunferencia); }
+  [data-animar="espera"] .grafico-centro { opacity: 0; }
+
+  [data-animar="animando"] .grafico-barra-x {
+    animation: crecer-x 600ms ease-out calc(var(--i, 0) * 60ms) both;
+  }
+  [data-animar="animando"] .grafico-barra-y {
+    animation: crecer-y 600ms ease-out calc(var(--i, 0) * 60ms) both;
+  }
+  [data-animar="animando"] .grafico-tramo {
+    animation: dibujar-tramo var(--duracion, 800ms) linear var(--retraso, 0ms) both;
+  }
+  [data-animar="animando"] .grafico-centro { animation: aparecer 800ms ease-out both; }
+}
+@keyframes crecer-x { from { transform: scaleX(0); } }
+@keyframes crecer-y { from { transform: scaleY(0); } }
+@keyframes dibujar-tramo { from { stroke-dasharray: 0 var(--circunferencia); } }

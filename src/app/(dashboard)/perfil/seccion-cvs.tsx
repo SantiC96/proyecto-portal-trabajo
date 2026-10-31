@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, FileText, Upload, X } from "lucide-react";
+import { ExternalLink, FileText, Trash2, Upload } from "lucide-react";
 import { subirCV, eliminarCV } from "./actions";
 import type { CvVista } from "@/lib/cvs";
 import type { ErrorAccion } from "@/lib/resultado";
@@ -10,7 +10,7 @@ import { mostrarAviso } from "@/lib/avisos";
 import { useAccion } from "@/lib/use-accion";
 import { Spinner } from "@/components/ui/spinner";
 import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
-import { MensajeError, SeccionPerfil } from "@/components/perfil/piezas";
+import { FilaArchivoPerfil, MensajeError, SeccionPerfil } from "@/components/perfil/piezas";
 import { Franja } from "@/components/ui/franja";
 import { cn } from "@/lib/utils";
 import { formatFecha } from "@/lib/fechas";
@@ -91,6 +91,7 @@ export function SeccionCvs({ cvs }: { cvs: CvVista[] }) {
     <SeccionPerfil
       id={SECCION_PERFIL.cvs}
       titulo="CVs"
+      icono={FileText}
       ayuda={`Podés tener hasta ${CV_MAXIMOS} CVs y elegir cuál usar en cada postulación.`}
     >
       {cvs.length === 0 ? (
@@ -103,58 +104,49 @@ export function SeccionCvs({ cvs }: { cvs: CvVista[] }) {
       ) : (
         <ul className="flex flex-col gap-2">
           {cvs.map((cv) => (
-            <li
-              key={cv.id}
-              className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border bg-surface px-4 py-3 sm:flex-row sm:items-center"
-            >
-              <div className="flex min-w-0 flex-1 items-start gap-3">
-                <FileText className="mt-0.5 size-6 shrink-0 text-primary" aria-hidden="true" />
-                <div className="min-w-0">
-                  <p className="break-all text-[15px] font-bold text-heading">
-                    {cv.nombreOriginal}
-                  </p>
-                  <p className="text-[13px] text-muted-foreground">
-                    {cv.tamano > 0 ? `${textoTamanoArchivo(cv.tamano)} · ` : ""}
-                    PDF · Cargado el {formatFecha(cv.subidoEn)}
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-                {cv.url && (
-                  <a
-                    href={subiendo ? undefined : cv.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-disabled={subiendo}
-                    tabIndex={subiendo ? -1 : undefined}
-                    className={cn("btn-neutro sm:min-h-10!", subiendo && "pointer-events-none")}
-                  >
-                    <ExternalLink aria-hidden="true" />
-                    Ver
-                  </a>
-                )}
-                <DialogoConfirmacion
-                  textoBoton={
-                    <>
-                      <X aria-hidden="true" />
-                      Eliminar
-                    </>
-                  }
-                  estiloBoton="peligroBorde"
-                  claseBoton="sm:min-h-10!"
-                  deshabilitado={subiendo}
-                  titulo="¿Eliminar este CV?"
-                  descripcion="Las postulaciones que ya hiciste con este CV no cambian."
-                  textoConfirmar="Sí, eliminar"
-                  textoPendiente="Eliminando…"
-                  destructivo
-                  accion={() => eliminarCV(cv.id)}
-                  onExito={() => {
-                    setAvisoLimite(false);
-                    router.refresh();
-                  }}
-                />
-              </div>
+            <li key={cv.id}>
+              <FilaArchivoPerfil
+                nombre={cv.nombreOriginal}
+                detalle={`${cv.tamano > 0 ? `${textoTamanoArchivo(cv.tamano)} · ` : ""}PDF · Cargado el ${formatFecha(cv.subidoEn)}`}
+                acciones={
+                  <>
+                    {cv.url && (
+                      <a
+                        href={subiendo ? undefined : cv.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-disabled={subiendo}
+                        tabIndex={subiendo ? -1 : undefined}
+                        className={cn(
+                          "btn-neutro flex-1 sm:flex-none",
+                          subiendo && "pointer-events-none",
+                        )}
+                      >
+                        <ExternalLink aria-hidden="true" />
+                        Ver
+                      </a>
+                    )}
+                    <DialogoConfirmacion
+                      textoBoton={<Trash2 aria-hidden="true" />}
+                      etiquetaBoton={`Eliminar CV «${cv.nombreOriginal}»`}
+                      ayudaBoton={`Eliminar CV «${cv.nombreOriginal}»`}
+                      estiloBoton="peligroBorde"
+                      claseBoton="btn-icono"
+                      deshabilitado={subiendo}
+                      titulo="¿Eliminar este CV?"
+                      descripcion="Las postulaciones que ya hiciste con este CV no cambian."
+                      textoConfirmar="Sí, eliminar"
+                      textoPendiente="Eliminando…"
+                      destructivo
+                      accion={() => eliminarCV(cv.id)}
+                      onExito={() => {
+                        setAvisoLimite(false);
+                        router.refresh();
+                      }}
+                    />
+                  </>
+                }
+              />
             </li>
           ))}
         </ul>
@@ -171,11 +163,22 @@ export function SeccionCvs({ cvs }: { cvs: CvVista[] }) {
         {error && <MensajeError error={error} />}
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-[15px] text-muted-foreground-strong" aria-live="polite">
-          Tenés {cvs.length} de {CV_MAXIMOS} CVs cargados.
-          <span className="block text-[13px] text-muted-foreground">{CV_HELP_TEXT}</span>
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+        <div className="min-w-0 sm:w-80">
+          <p className="text-sm text-muted-foreground-strong" aria-live="polite">
+            <span className="font-bold text-heading">
+              {cvs.length} de {CV_MAXIMOS} CVs
+            </span>{" "}
+            · {CV_HELP_TEXT}
+          </p>
+          {/* Lo dice el texto de arriba: la barra es solo visual. */}
+          <div aria-hidden="true" className="mt-2 h-2 overflow-hidden rounded-full bg-progreso-fondo">
+            <div
+              className="h-full rounded-full bg-primary"
+              style={{ width: `${Math.min(100, (cvs.length / CV_MAXIMOS) * 100)}%` }}
+            />
+          </div>
+        </div>
         <button
           type="button"
           onClick={abrirSelector}

@@ -1,11 +1,16 @@
-import { Esqueleto, EsqueletoLista, EsqueletoTitulo } from "@/components/ui/esqueleto";
+import { ContenedorEsqueleto, EncabezadoEsqueleto } from "@/components/ui/esqueleto";
+import { EsqueletoInvitaciones } from "./esqueleto";
 
 export default function Loading() {
   return (
-    <section>
-      <Esqueleto className="h-5 w-40" />
-      <EsqueletoTitulo className="mt-6 mb-6" />
-      <EsqueletoLista filas={3} />
-    </section>
+    <ContenedorEsqueleto como="section" className="flex flex-col gap-6">
+      <EncabezadoEsqueleto
+        volver="/panel"
+        className="-mt-2"
+        titulo="Invitaciones"
+        bajada="Ofertas que la Oficina de Empleo te propone"
+      />
+      <EsqueletoInvitaciones />
+    </ContenedorEsqueleto>
   );
 }

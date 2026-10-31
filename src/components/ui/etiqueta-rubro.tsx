@@ -14,7 +14,8 @@ export function EtiquetaRubro({
   return (
     <span
       className={cn(
-        "inline-flex min-h-[26px] max-w-full items-center gap-1.5 rounded-[13px] bg-surface px-2.5 py-0.5 text-[13px] font-semibold",
+        // break-words: una palabra larga pasa de línea en lugar de salirse.
+        "inline-flex min-h-[26px] max-w-full min-w-0 items-center gap-1.5 rounded-[13px] bg-surface px-2.5 py-0.5 text-[13px] font-semibold break-words",
         verde
           ? "text-primary-hover shadow-[inset_0_0_0_1.5px_var(--color-primary)]"
           : "text-muted-foreground-strong shadow-[inset_0_0_0_1.5px_var(--color-muted-icon)]",

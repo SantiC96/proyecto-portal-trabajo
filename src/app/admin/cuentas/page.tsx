@@ -1,22 +1,27 @@
 import type { Metadata } from "next";
-import { X, RotateCcw, UserCog } from "lucide-react";
+import { Calendar, Clock, Mail, RotateCcw, UserCog, X } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirRolPagina } from "@/lib/auth";
 import { fotosDePerfil } from "@/lib/fotos-perfil";
 import { logError } from "@/lib/logger";
 import { formatFechaCorta } from "@/lib/fechas";
+import { inicialesDePersona } from "@/lib/iniciales";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { Badge } from "@/components/ui/badge";
 import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
-import { BotonVolver } from "@/components/ui/boton-volver";
+import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { DialogoConfirmacion } from "@/components/ui/dialogo-confirmacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { desactivarCuenta, reactivarCuenta } from "./actions";
 import { InvitarCuenta } from "./invitar-cuenta";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Cuentas de la oficina | Panel municipal | Portal de Empleo Funes",
 };
+
+// Acciones de la tarjeta: a todo el ancho en el celular, 40 px desde sm.
+const CLASE_ACCION = "w-full shrink-0 sm:w-auto sm:min-h-10";
 
 export default async function AdminCuentasPage() {
   const usuario = await requerirRolPagina("municipalidad");
@@ -27,20 +32,15 @@ export default async function AdminCuentasPage() {
   let contenido: React.ReactNode;
   if (error) {
     const ref = logError("admin_cuentas_listado", error);
-    contenido = <ErrorListado className="mt-6" refError={ref} />;
+    contenido = <ErrorListado refError={ref} />;
   } else if (!cuentas || cuentas.length === 0) {
     contenido = (
-      <EstadoVacio
-        tipo="sin-registros"
-        className="mt-6"
-        icono={UserCog}
-        titulo="No hay cuentas de la oficina."
-      />
+      <EstadoVacio tipo="sin-registros" icono={UserCog} titulo="No hay cuentas de la oficina." />
     );
   } else {
     const fotos = await fotosDePerfil(cuentas.map((c) => c.id));
     contenido = (
-      <ul className="mt-6 space-y-3">
+      <ul aria-label="Cuentas de la oficina" className="flex flex-col gap-3">
         {cuentas.map((cuenta) => {
           const esPropia = cuenta.id === usuario.id;
           const nombreCompleto = `${cuenta.nombre} ${cuenta.apellido}`.trim() || "Sin nombre";
@@ -48,67 +48,87 @@ export default async function AdminCuentasPage() {
           return (
             <li
               key={cuenta.id}
-              className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-border bg-surface p-4 sm:flex-row sm:items-center sm:justify-between"
+              className="tarjeta tarjeta-panel flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
             >
-              <div className="flex min-w-0 items-center gap-3">
+              <div className="flex min-w-0 items-start gap-4">
                 <AvatarAjustado
                   src={foto?.url}
                   ajuste={foto?.ajuste}
+                  iniciales={inicialesDePersona(cuenta.nombre, cuenta.apellido)}
                   alt={`Foto de ${nombreCompleto}`}
                   size="md"
                 />
-                <div className="min-w-0">
+                <div className="flex min-w-0 flex-col gap-1.5">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="break-words font-semibold text-foreground">{nombreCompleto}</p>
+                    <p className="text-[17px] leading-snug font-extrabold break-words text-heading">
+                      {nombreCompleto}
+                    </p>
                     {esPropia && <EtiquetaRubro verde>Vos</EtiquetaRubro>}
                     <Badge tono={cuenta.activo ? "success" : "neutral"} estado>
                       {cuenta.activo ? "Activa" : "Desactivada"}
                     </Badge>
                   </div>
-                  <p className="break-all text-sm text-muted-foreground">{cuenta.email}</p>
-                  <p className="mt-0.5 text-xs text-muted-icon">
-                    Alta: {formatFechaCorta(cuenta.creado_en)} ·{" "}
-                    {cuenta.ultimo_ingreso
-                      ? `Último ingreso: ${formatFechaCorta(cuenta.ultimo_ingreso)}`
-                      : "Todavía no ingresó"}
+                  <p className="flex min-w-0 items-center gap-2 text-[15px] text-control-foreground">
+                    <Mail aria-hidden="true" className="size-4 shrink-0 text-muted-icon" />
+                    <span className="min-w-0 break-all">{cuenta.email}</span>
+                  </p>
+                  <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Calendar aria-hidden="true" className="size-4 shrink-0 text-muted-icon" />
+                      Alta: {formatFechaCorta(cuenta.creado_en)}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <Clock aria-hidden="true" className="size-4 shrink-0 text-muted-icon" />
+                      {cuenta.ultimo_ingreso
+                        ? `Último ingreso: ${formatFechaCorta(cuenta.ultimo_ingreso)}`
+                        : "Todavía no ingresó"}
+                    </span>
                   </p>
                 </div>
               </div>
 
-              {!esPropia &&
-                (cuenta.activo ? (
-                  <DialogoConfirmacion
-                    textoBoton={
-                      <>
-                        <X className="h-4 w-4" aria-hidden="true" />
-                        Desactivar
-                      </>
-                    }
-                    estiloBoton="peligro"
-                    claseBoton="shrink-0 sm:min-h-9"
-                    titulo={`¿Desactivar la cuenta de ${nombreCompleto}?`}
-                    descripcion="No va a poder ingresar al portal y pierde el acceso en su próxima acción. Su historial (aprobaciones, cursos, derivaciones) se conserva. Podés reactivarla cuando quieras."
-                    textoConfirmar="Sí, desactivar"
-                    textoPendiente="Desactivando…"
-                    destructivo
-                    accion={desactivarCuenta.bind(null, cuenta.id)}
-                  />
-                ) : (
-                  <DialogoConfirmacion
-                    textoBoton={
-                      <>
-                        <RotateCcw className="h-4 w-4" aria-hidden="true" />
-                        Reactivar
-                      </>
-                    }
-                    claseBoton="shrink-0 sm:min-h-9"
-                    titulo={`¿Reactivar la cuenta de ${nombreCompleto}?`}
-                    descripcion="Va a poder ingresar de nuevo con su contraseña y tener los mismos permisos que el resto de la oficina."
-                    textoConfirmar="Sí, reactivar"
-                    textoPendiente="Reactivando…"
-                    accion={reactivarCuenta.bind(null, cuenta.id)}
-                  />
-                ))}
+              {esPropia ? (
+                <p className="text-sm text-muted-foreground sm:max-w-56 sm:text-right">
+                  No podés desactivar tu propia cuenta.
+                </p>
+              ) : cuenta.activo ? (
+                <DialogoConfirmacion
+                  textoBoton={
+                    <>
+                      <X className="h-4 w-4" aria-hidden="true" />
+                      Desactivar
+                    </>
+                  }
+                  estiloBoton="peligro"
+                  claseBoton={CLASE_ACCION}
+                  etiquetaBoton={`Desactivar la cuenta de ${nombreCompleto}`}
+                  titulo={`¿Desactivar la cuenta de ${nombreCompleto}?`}
+                  descripcion="No va a poder ingresar al portal y pierde el acceso en su próxima acción. Su historial (aprobaciones, cursos, derivaciones) se conserva. Podés reactivarla cuando quieras."
+                  icono={X}
+                  textoConfirmar="Sí, desactivar"
+                  textoPendiente="Desactivando…"
+                  destructivo
+                  accion={desactivarCuenta.bind(null, cuenta.id)}
+                />
+              ) : (
+                <DialogoConfirmacion
+                  textoBoton={
+                    <>
+                      <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                      Reactivar
+                    </>
+                  }
+                  claseBoton={CLASE_ACCION}
+                  etiquetaBoton={`Reactivar la cuenta de ${nombreCompleto}`}
+                  titulo={`¿Reactivar la cuenta de ${nombreCompleto}?`}
+                  descripcion="Va a poder ingresar de nuevo con su contraseña y tener los mismos permisos que el resto de la oficina."
+                  icono={RotateCcw}
+                  tonoIcono="primario"
+                  textoConfirmar="Sí, reactivar"
+                  textoPendiente="Reactivando…"
+                  accion={reactivarCuenta.bind(null, cuenta.id)}
+                />
+              )}
             </li>
           );
         })}
@@ -117,21 +137,16 @@ export default async function AdminCuentasPage() {
   }
 
   return (
-    <section>
-      <BotonVolver href="/admin" />
-
-      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Cuentas de la oficina
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Todas las cuentas activas tienen los mismos permisos. Una cuenta desactivada no
-            puede ingresar, pero su historial se conserva.
-          </p>
-        </div>
-        <InvitarCuenta />
-      </div>
+    <section className="flex flex-col gap-6">
+      <BotonVolver href="/admin" destacado />
+      <EncabezadoPagina
+        banda
+        className="-mt-2"
+        botonesBlancos
+        titulo="Cuentas de la oficina"
+        bajada="Todas las cuentas activas tienen los mismos permisos. Una cuenta desactivada no puede ingresar, pero su historial se conserva."
+        acciones={<InvitarCuenta />}
+      />
 
       {contenido}
     </section>

@@ -17,13 +17,22 @@ type Props = {
   inputClassName?: string;
   /** Texto de un botón para buscar al lado del campo (por ejemplo "Buscar"). */
   boton?: string;
+  /** La etiqueta se ve arriba del campo, como la de los filtros de al lado. */
+  etiquetaVisible?: boolean;
 };
 
 /**
  * Campo de búsqueda que escribe "q" en la URL (con debounce) y vuelve a la
  * página 1. Usa router.replace para no llenar el historial con cada tecla.
  */
-export function Buscador({ placeholder, etiqueta, className, inputClassName, boton }: Props) {
+export function Buscador({
+  placeholder,
+  etiqueta,
+  className,
+  inputClassName,
+  boton,
+  etiquetaVisible = false,
+}: Props) {
   const idCampo = useId();
   const router = useRouter();
   const pathname = usePathname();
@@ -90,9 +99,11 @@ export function Buscador({ placeholder, etiqueta, className, inputClassName, bot
         className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-icon"
         aria-hidden="true"
       />
-      <label htmlFor={idCampo} className="sr-only">
-        {etiqueta ?? placeholder}
-      </label>
+      {!etiquetaVisible && (
+        <label htmlFor={idCampo} className="sr-only">
+          {etiqueta ?? placeholder}
+        </label>
+      )}
       <input
         id={idCampo}
         type="search"
@@ -130,8 +141,16 @@ export function Buscador({ placeholder, etiqueta, className, inputClassName, bot
     <form
       role="search"
       onSubmit={handleSubmit}
-      className={cn(boton ? "flex flex-col gap-3 sm:flex-row" : "relative", className)}
+      className={cn(
+        boton ? "flex flex-col gap-3 sm:flex-row" : etiquetaVisible ? "flex flex-col gap-1.5" : "relative",
+        className,
+      )}
     >
+      {etiquetaVisible && (
+        <label htmlFor={idCampo} className="etiqueta-campo">
+          {etiqueta ?? placeholder}
+        </label>
+      )}
       {campo}
       {boton && (
         <button type="submit" className="btn-primario min-h-[52px]! px-7!">

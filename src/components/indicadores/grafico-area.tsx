@@ -9,24 +9,34 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import type { Agrupacion } from "@/lib/indicadores-periodo";
-import { escalaRedonda, formatNumero } from "./formato";
-import { useMovimientoReducido } from "./use-movimiento-reducido";
+import { escalaDeCinco, formatNumero } from "./formato";
+import { useAnimarAlVerse } from "./animar-al-verse";
 
 export type PuntoArea = {
   /** Identificador del punto: el primer día del día, la semana o el mes ("2026-10-01"). */
   clave: string;
-  cantidad: number;
+  /** Valor de cada serie, por su clave. */
+  valores: Record<string, number>;
   /** Etiqueta corta del eje X ("12 oct", "oct"); el año de los meses lo agrega el gráfico. */
   eje: string;
   /** Fecha completa o rango, para el tooltip ("Del 6 al 12 de octubre de 2026"). */
   detalle: string;
 };
 
+/** Una línea del gráfico. La primera lleva el área en degradé debajo. */
+export type SerieArea = {
+  clave: string;
+  nombre: string;
+  color: string;
+  /** Grosor de la línea en px. */
+  grosor: number;
+};
+
 type Props = {
   datos: PuntoArea[];
   agrupacion: Agrupacion;
-  /** Nombre de la serie en el tooltip ("Postulaciones"). */
-  serie: string;
+  /** Las líneas, en orden: la primera va con el área y abajo de las demás. */
+  series: SerieArea[];
   /** Resumen del gráfico para lectores de pantalla. */
   resumen: string;
   /** Rango completo del período, debajo del eje ("Del 25 de septiembre al 25 de octubre de 2026"). */
@@ -124,19 +134,30 @@ function useAncho<T extends HTMLElement>() {
   return [ref, ancho] as const;
 }
 
+/** Opacidad del degradé debajo de la primera línea, arriba. */
+const OPACIDAD_AREA = 0.16;
+
 /**
- * Área de una serie en el tiempo: degradé verde, línea de 2 px, curva suave,
- * eje Y con valores redondos alineados a la grilla horizontal y eje X con
- * fechas cada tantos puntos según el ancho (siempre la primera y la última),
- * cada una con una marca hacia su punto. Debajo, el rango del período.
+ * Evolución en el tiempo de una o más series: líneas con un punto en cada
+ * valor (la primera con un área en degradé debajo), curva suave, eje Y con 5
+ * valores redondos alineados a la grilla horizontal y eje X con fechas cada
+ * tantos puntos según el ancho (siempre la primera y la última), cada una con
+ * una marca hacia su punto. Debajo, el rango del período. El tooltip muestra
+ * la fecha y el valor de cada serie. Las líneas se dibujan la primera vez
+ * que el gráfico entra a la pantalla (los ejes y la grilla ya están).
  */
-export function GraficoArea({ datos, agrupacion, serie, resumen, rango }: Props) {
-  const reducido = useMovimientoReducido();
+export function GraficoArea({ datos, agrupacion, series, resumen, rango }: Props) {
+  const [refAnimar, fase] = useAnimarAlVerse<HTMLDivElement>();
   const idDegrade = `degrade-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const [refContenedor, ancho] = useAncho<HTMLDivElement>();
-  const config = { cantidad: { label: serie, color: "var(--color-primary)" } } satisfies ChartConfig;
+  const config: ChartConfig = Object.fromEntries(
+    series.map((s) => [s.clave, { label: s.nombre, color: s.color }]),
+  );
   const porClave = new Map(datos.map((p) => [p.clave, p]));
-  const valoresEje = escalaRedonda(Math.max(0, ...datos.map((p) => p.cantidad)));
+  const filas = datos.map((p) => ({ clave: p.clave, ...p.valores }));
+  const valoresEje = escalaDeCinco(
+    Math.max(0, ...datos.flatMap((p) => series.map((s) => p.valores[s.clave] ?? 0))),
+  );
 
   // El eje Y ocupa su valor más largo más el tickMargin.
   const anchoEjeY = formatNumero(valoresEje[valoresEje.length - 1]).length * ANCHO_CARACTER + 6;
@@ -176,75 +197,92 @@ export function GraficoArea({ datos, agrupacion, serie, resumen, rango }: Props)
 
   return (
     <div role="img" aria-label={resumen} ref={refContenedor}>
-      <ChartContainer
-        config={config}
-        className="aspect-auto h-[236px] w-full sm:h-[276px] [&_.recharts-yAxis_text]:tabular-nums"
-      >
-        <AreaChart
-          accessibilityLayer
-          data={datos}
-          margin={{ top: 8, right: MARGEN_DERECHO, bottom: 0, left: MARGEN_IZQUIERDO }}
+      <div ref={refAnimar}>
+        <ChartContainer
+          config={config}
+          className="aspect-auto h-[236px] w-full sm:h-[276px] [&_.recharts-yAxis_text]:tabular-nums"
         >
-          <defs>
-            <linearGradient id={idDegrade} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.35} />
-              <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid vertical={false} />
-          <YAxis
-            type="number"
-            domain={[0, valoresEje[valoresEje.length - 1]]}
-            ticks={valoresEje}
-            interval={0}
-            allowDecimals={false}
-            tickLine={false}
-            axisLine={false}
-            tickMargin={6}
-            width="auto"
-            tickFormatter={(valor: number) => formatNumero(valor)}
-          />
-          <XAxis
-            dataKey="clave"
-            ticks={etiquetas.indices.map((i) => datos[i].clave)}
-            interval={0}
-            height={32}
-            tickLine={false}
-            axisLine={false}
-            tickMargin={0}
-            tick={dibujarEtiqueta}
-          />
-          <ChartTooltip
-            cursor={{ strokeWidth: 1.5 }}
-            content={
-              <ChartTooltipContent
-                indicator="line"
-                labelFormatter={(_, payload) => {
-                  const clave = payload?.[0]?.payload?.clave;
-                  return typeof clave === "string" ? (porClave.get(clave)?.detalle ?? "") : "";
-                }}
-                formatter={(valor) => (
-                  <div className="flex w-full items-center justify-between gap-4">
-                    <span className="text-muted-foreground-strong">{serie}</span>
-                    <span className="font-bold text-foreground tabular-nums">
-                      {formatNumero(Number(valor))}
-                    </span>
-                  </div>
-                )}
+          <AreaChart
+            accessibilityLayer
+            data={filas}
+            margin={{ top: 8, right: MARGEN_DERECHO, bottom: 0, left: MARGEN_IZQUIERDO }}
+          >
+            <defs>
+              <linearGradient id={idDegrade} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={series[0]?.color} stopOpacity={OPACIDAD_AREA} />
+                <stop offset="100%" stopColor={series[0]?.color} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid vertical={false} />
+            <YAxis
+              type="number"
+              domain={[0, valoresEje[valoresEje.length - 1]]}
+              ticks={valoresEje}
+              interval={0}
+              allowDecimals={false}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={6}
+              width="auto"
+              tickFormatter={(valor: number) => formatNumero(valor)}
+            />
+            <XAxis
+              dataKey="clave"
+              ticks={etiquetas.indices.map((i) => datos[i].clave)}
+              interval={0}
+              height={32}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={0}
+              tick={dibujarEtiqueta}
+            />
+            <ChartTooltip
+              cursor={{ strokeWidth: 1.5 }}
+              content={
+                <ChartTooltipContent
+                  hideIndicator
+                  labelFormatter={(_, payload) => {
+                    const clave = payload?.[0]?.payload?.clave;
+                    return typeof clave === "string" ? (porClave.get(clave)?.detalle ?? "") : "";
+                  }}
+                  formatter={(valor, nombre) => {
+                    const s = series.find((x) => x.clave === nombre);
+                    return (
+                      <div className="flex w-full items-center gap-2">
+                        <span
+                          aria-hidden="true"
+                          className="size-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: s?.color }}
+                        />
+                        <span className="text-muted-foreground-strong">{s?.nombre ?? nombre}</span>
+                        <span className="ml-auto pl-4 font-bold text-foreground tabular-nums">
+                          {formatNumero(Number(valor))}
+                        </span>
+                      </div>
+                    );
+                  }}
+                />
+              }
+            />
+            {/* En espera no se montan: Recharts anima al montar, así que la
+                animación empieza cuando el gráfico entra a la pantalla. */}
+            {fase !== "espera" && series.map((s, i) => (
+              <Area
+                key={s.clave}
+                dataKey={s.clave}
+                name={s.clave}
+                type="monotone"
+                stroke={s.color}
+                strokeWidth={s.grosor}
+                fill={i === 0 ? `url(#${idDegrade})` : "none"}
+                dot={{ r: 3, fill: s.color, stroke: "var(--color-surface)", strokeWidth: 1 }}
+                activeDot={{ r: 5, strokeWidth: 2, stroke: "var(--color-surface)", fill: s.color }}
+                isAnimationActive={fase === "animando"}
               />
-            }
-          />
-          <Area
-            dataKey="cantidad"
-            type="monotone"
-            stroke="var(--color-primary)"
-            strokeWidth={2}
-            fill={`url(#${idDegrade})`}
-            activeDot={{ r: 5, strokeWidth: 2, stroke: "var(--color-surface)" }}
-            isAnimationActive={!reducido}
-          />
-        </AreaChart>
-      </ChartContainer>
+            ))}
+          </AreaChart>
+        </ChartContainer>
+      </div>
       {rango && (
         <p className="mt-1 text-right text-xs text-muted-foreground tabular-nums">
           {rango}

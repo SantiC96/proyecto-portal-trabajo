@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { Check, Circle, CircleCheck, CircleX, Clock, Search, Send, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { IconoCuadro } from "@/components/ui/icono-cuadro";
 
 export type EventoLinea = {
   /** Clave estable del evento. */
@@ -12,7 +14,35 @@ export type EventoLinea = {
    * estado, el último evento es el resaltado.
    */
   estado?: "hecho" | "actual" | "pendiente";
+  /**
+   * Con ícono, el evento va con su ícono en un cuadrado de 44 px del color
+   * de `claseIcono` en lugar del punto (últimos movimientos del panel).
+   */
+  icono?: LucideIcon;
+  claseIcono?: string;
+  /** A la derecha del texto (un badge); en angosto, debajo. Solo con ícono. */
+  extra?: ReactNode;
+  /** Debajo del detalle: el motivo de un rechazo (MotivoRechazo). Solo con ícono. */
+  nota?: ReactNode;
 };
+
+/** Ícono y color de cada tipo de evento del historial de revisión (variante "historial"). */
+export const ICONO_HISTORIAL = {
+  enviado: { icono: Send, claseIcono: "bg-neutral" },
+  revisado: { icono: Search, claseIcono: "bg-info" },
+  aprobado: { icono: CircleCheck, claseIcono: "bg-primary" },
+  rechazado: { icono: CircleX, claseIcono: "bg-danger" },
+  actualizado: { icono: Clock, claseIcono: "bg-teal" },
+} satisfies Record<string, { icono: LucideIcon; claseIcono: string }>;
+
+/** Motivo de un rechazo dentro del historial: recuadro rojo suave con "Motivo:" en negrita. */
+export function MotivoRechazo({ children }: { children: ReactNode }) {
+  return (
+    <p className="mt-2 rounded-[10px] bg-danger/7 px-3 py-2 text-sm leading-normal break-words whitespace-pre-line text-motivo-rechazo">
+      <strong className="font-bold">Motivo:</strong> {children}
+    </p>
+  );
+}
 
 /**
  * Historial en orden: un punto de 12 px por evento unido por una línea
@@ -20,11 +50,32 @@ export type EventoLinea = {
  * `estado`, el resaltado es el paso "actual" y los "pendiente" van con el
  * punto hueco y el texto en gris.
  */
-export function LineaDeTiempo({ eventos, className }: { eventos: EventoLinea[]; className?: string }) {
+export function LineaDeTiempo({
+  eventos,
+  variante,
+  className,
+}: {
+  eventos: EventoLinea[];
+  /**
+   * "historial" (revisión de la oficina): cada evento con ícono en un
+   * cuadrado de 40 px (ICONO_HISTORIAL), el título en 800 y la fecha y el
+   * autor en gris debajo.
+   *
+   * "pasos" (cuenta de empresa en revisión): un círculo de 40 px por paso
+   * según su `estado`. Hecho: verde con Check y la línea siguiente verde;
+   * actual: amarillo con Clock y un halo (aria-current="step"); pendiente:
+   * blanco con borde gris, su `icono` y el texto en gris.
+   */
+  variante?: "historial" | "pasos";
+  className?: string;
+}) {
   return (
     <ol className={cn("flex flex-col", className)}>
       {eventos.map((e, i) => {
         const ultimo = i === eventos.length - 1;
+        if (variante === "historial") return <EventoHistorial key={e.clave} evento={e} ultimo={ultimo} />;
+        if (variante === "pasos") return <Paso key={e.clave} evento={e} ultimo={ultimo} />;
+        if (e.icono) return <EventoConIcono key={e.clave} evento={e} ultimo={ultimo} />;
         const actual = e.estado ? e.estado === "actual" : ultimo;
         const pendiente = e.estado === "pendiente";
         return (
@@ -68,5 +119,102 @@ export function LineaDeTiempo({ eventos, className }: { eventos: EventoLinea[]; 
         );
       })}
     </ol>
+  );
+}
+
+/**
+ * Evento con ícono de 44 px; la línea de 2 px (`secondary-hover`) lo une con
+ * el siguiente. El texto y `extra` van lado a lado desde 28 rem de ancho
+ * disponible (container query de la lista: la usa quien la contenga).
+ */
+function EventoConIcono({ evento: e, ultimo }: { evento: EventoLinea; ultimo: boolean }) {
+  return (
+    <li className="relative flex gap-3.5 pb-5 last:pb-0">
+      {!ultimo && (
+        <span
+          aria-hidden="true"
+          className="absolute top-12 bottom-1 left-[21px] w-0.5 rounded-full bg-secondary-hover"
+        />
+      )}
+      {e.icono && <IconoCuadro icono={e.icono} tamano={44} className={e.claseIcono} />}
+      <div className="flex min-w-0 flex-1 flex-col items-start gap-2 @md:flex-row @md:justify-between @md:gap-4">
+        <div className="min-w-0 text-[15px] leading-[1.45] text-foreground">
+          <p className="break-words">{e.titulo}</p>
+          {e.detalle && <div className="mt-0.5 break-words">{e.detalle}</div>}
+        </div>
+        {e.extra && <div className="shrink-0">{e.extra}</div>}
+      </div>
+    </li>
+  );
+}
+
+/** Paso de la variante "pasos": círculo de 40 px unido al siguiente por una línea de 2 px. */
+function Paso({ evento: e, ultimo }: { evento: EventoLinea; ultimo: boolean }) {
+  const estado = e.estado ?? "pendiente";
+  const Icono = estado === "hecho" ? Check : estado === "actual" ? Clock : (e.icono ?? Circle);
+  return (
+    <li
+      aria-current={estado === "actual" ? "step" : undefined}
+      className="relative flex gap-4 pb-6 last:pb-0"
+    >
+      {!ultimo && (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "absolute top-11 bottom-1 left-[19px] w-0.5 rounded-full",
+            estado === "hecho" ? "bg-primary" : "bg-secondary-hover",
+          )}
+        />
+      )}
+      <span
+        aria-hidden="true"
+        className={cn(
+          "grid size-10 shrink-0 place-items-center rounded-full [&_svg]:size-5",
+          estado === "hecho" && "bg-primary text-primary-foreground",
+          estado === "actual" &&
+            "bg-accent text-accent-foreground shadow-[0_0_0_6px_rgba(242,183,5,.22)]",
+          estado === "pendiente" && "border-2 border-border-campo bg-surface text-muted-icon",
+        )}
+      >
+        <Icono />
+      </span>
+      <div className="min-w-0 flex-1 pt-2">
+        <p
+          className={cn(
+            "text-[15px] leading-snug font-extrabold break-words",
+            estado === "pendiente" ? "text-muted-foreground" : "text-heading",
+          )}
+        >
+          {e.titulo}
+          {estado === "pendiente" && <span className="sr-only"> (pendiente)</span>}
+          {estado === "hecho" && <span className="sr-only"> (hecho)</span>}
+        </p>
+        {e.detalle && (
+          <p className="mt-0.5 text-sm break-words text-muted-foreground">{e.detalle}</p>
+        )}
+      </div>
+    </li>
+  );
+}
+
+/** Evento del historial: ícono de 40 px unido al siguiente por una línea de 2 px. */
+function EventoHistorial({ evento: e, ultimo }: { evento: EventoLinea; ultimo: boolean }) {
+  return (
+    <li className="relative flex gap-3.5 pb-5 last:pb-0">
+      {!ultimo && (
+        <span
+          aria-hidden="true"
+          className="absolute top-11 bottom-1 left-[19px] w-0.5 rounded-full bg-secondary-hover"
+        />
+      )}
+      {e.icono && <IconoCuadro icono={e.icono} className={e.claseIcono} />}
+      <div className="min-w-0 flex-1 pt-0.5">
+        <p className="text-[15px] leading-snug font-extrabold break-words text-heading">{e.titulo}</p>
+        {e.detalle && (
+          <p className="mt-0.5 text-sm break-words text-muted-foreground">{e.detalle}</p>
+        )}
+        {e.nota}
+      </div>
+    </li>
   );
 }

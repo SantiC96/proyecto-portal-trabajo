@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
+import { COLUMNAS, EsqueletoCandidatos, EsqueletoYaSePostularon } from "./esqueleto";
+import { Fragment, Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Building, ChevronDown, Clock, Users } from "lucide-react";
@@ -23,12 +24,21 @@ import { formatFechaCorta } from "@/lib/fechas";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { Badge, claseTono } from "@/components/ui/badge";
 import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
 import { BadgeCoincidencia, MotivosCoincidencia } from "@/components/ofertas/coincidencia";
 import { BadgePorInvitacion } from "@/components/admin/badge-por-invitacion";
 import type { FilaCandidatoParaOferta } from "@/types/db";
+import { inicialesDePersona } from "@/lib/iniciales";
+import { fotosDePerfil } from "@/lib/fotos-perfil";
+import {
+  CLASE_ACCION_FILA,
+  CeldaPersona,
+  CeldaTabla,
+  FilaTabla,
+  SeparadorTabla,
+  Tabla,
+} from "@/components/ui/tabla";
 import { cn } from "@/lib/utils";
 import { InvitarBoton } from "@/components/admin/invitar-boton";
 import { NoInteresado } from "./no-interesado";
@@ -41,6 +51,8 @@ export const metadata: Metadata = {
 const TAMANO = 20;
 /** Cuántas postulaciones muestra "Ya se postularon"; el resto, en Postulaciones. */
 const POSTULADOS_MAXIMO = 50;
+
+// Postulante | Procedencia | Coincidencia | Invitación | acciones.
 
 export default async function CandidatosOfertaPage({
   params,
@@ -111,7 +123,7 @@ export default async function CandidatosOfertaPage({
         jornada={oferta.jornada}
       />
 
-      <Suspense key={pagina} fallback={<EsqueletoLista filas={4} className="mt-6" />}>
+      <Suspense key={pagina} fallback={<EsqueletoCandidatos />}>
         <ListaCandidatos
           ofertaId={ofertaId}
           ofertaTitulo={oferta.titulo}
@@ -122,7 +134,7 @@ export default async function CandidatosOfertaPage({
         />
       </Suspense>
 
-      <Suspense fallback={<EsqueletoLista filas={1} className="mt-8" />}>
+      <Suspense fallback={<EsqueletoYaSePostularon />}>
         <YaSePostularon ofertaId={ofertaId} />
       </Suspense>
     </section>
@@ -182,10 +194,11 @@ async function ListaCandidatos({
     );
   }
 
-  const comprobantes = await estadosDeComprobantes(
-    supabase,
-    filas.map((f) => f.usuario_id),
-  );
+  const usuarioIds = filas.map((f) => f.usuario_id);
+  const [comprobantes, fotos] = await Promise.all([
+    estadosDeComprobantes(supabase, usuarioIds),
+    fotosDePerfil(usuarioIds),
+  ]);
 
   // Separador "Ya invitados" solo en la página donde empieza ese grupo. Si la
   // página arranca con un invitado, el grupo empezó acá solo si la fila
@@ -217,31 +230,25 @@ async function ListaCandidatos({
           ? "1 postulante coincide"
           : `${resultado.total} postulantes coinciden`}
       </p>
-      <ul className="space-y-3">
+      <Tabla
+        columnas={COLUMNAS}
+        etiqueta="Postulantes que coinciden"
+        encabezados={["Postulante", "Procedencia", "Coincidencia", "Invitación", ""]}
+      >
         {filas.map((f, i) => (
-          <li key={f.postulante_id}>
-            {i === indiceSeparador && (
-              <h2
-                className={cn(
-                  "mb-3 flex items-center gap-3 text-sm font-semibold text-muted-foreground-strong",
-                  i > 0 && "mt-6",
-                )}
-              >
-                <span className="h-px flex-1 bg-border" aria-hidden="true" />
-                Ya invitados a esta oferta
-                <span className="h-px flex-1 bg-border" aria-hidden="true" />
-              </h2>
-            )}
-            <TarjetaCandidato
+          <Fragment key={f.postulante_id}>
+            {i === indiceSeparador && <SeparadorTabla>Ya invitados a esta oferta</SeparadorTabla>}
+            <FilaCandidato
               fila={f}
               ofertaId={ofertaId}
               ofertaTitulo={ofertaTitulo}
               comprobante={comprobantes.get(f.usuario_id) ?? null}
+              foto={fotos.get(f.usuario_id)}
               hrefFicha={hrefFicha(f.postulante_id)}
             />
-          </li>
+          </Fragment>
         ))}
-      </ul>
+      </Tabla>
       <Paginacion
         className="mt-6"
         ruta={ruta}
@@ -254,65 +261,67 @@ async function ListaCandidatos({
   );
 }
 
-function TarjetaCandidato({
+function FilaCandidato({
   fila: f,
   ofertaId,
   ofertaTitulo,
   comprobante,
+  foto,
   hrefFicha,
 }: {
   fila: FilaCandidatoParaOferta;
   ofertaId: string;
   ofertaTitulo: string;
   comprobante: Parameters<typeof BadgeProcedencia>[0]["comprobante"];
+  foto: { url: string | null; ajuste?: { x: number; y: number; zoom: number } } | undefined;
   hrefFicha: string;
 }) {
   const nombre = `${f.nombre} ${f.apellido}`.trim();
   const estado = esEstadoInvitacion(f.ultima_invitacion_estado) ? f.ultima_invitacion_estado : null;
 
   return (
-    <article
-      aria-label={nombre}
-      className={cn(
-        "rounded-[var(--radius-lg)] border p-4 sm:p-5",
-        f.ya_invitado ? "border-border bg-surface-tinted" : "border-border bg-surface shadow-xs",
-      )}
-    >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 space-y-1.5">
-          <h3 className="break-words font-semibold text-foreground">{nombre}</h3>
-          <BadgeProcedencia
-            nivel={nivelDe(f.nivel_prioridad)}
-            localidad={f.localidad}
-            comprobante={comprobante}
-          />
-        </div>
+    <FilaTabla className={f.ya_invitado ? "bg-surface-tinted" : undefined}>
+      <CeldaPersona
+        nombre={nombre}
+        href={hrefFicha}
+        foto={foto}
+        iniciales={inicialesDePersona(f.nombre, f.apellido)}
+      />
+      <CeldaTabla etiqueta="Procedencia">
+        <BadgeProcedencia
+          nivel={nivelDe(f.nivel_prioridad)}
+          localidad={f.localidad}
+          comprobante={comprobante}
+        />
+      </CeldaTabla>
+      <CeldaTabla etiqueta="Coincidencia" className="flex flex-col items-start gap-2">
         <BadgeCoincidencia nivel={f.coincidencia} puntaje={f.puntaje} />
-      </div>
-
-      <MotivosCoincidencia datos={f} className="mt-3" />
-
-      {estado && (
-        <div className="mt-3">
-          {estado === "rechazada" ? (
-            <NoInteresado
-              motivo={f.ultima_invitacion_motivo}
-              className={claseTono(TONO_INVITACION.rechazada)}
-            />
-          ) : (
-            <p
-              className={cn(
-                "rounded-[var(--radius-md)] px-3 py-2 text-sm font-semibold",
-                claseTono(TONO_INVITACION[estado]),
-              )}
-            >
-              {textoUltimaInvitacion(estado, f.ultima_invitacion_fecha)}
-            </p>
-          )}
-        </div>
-      )}
-
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <MotivosCoincidencia datos={f} />
+      </CeldaTabla>
+      <CeldaTabla etiqueta="Invitación" className={estado ? undefined : "hidden @4xl:block"}>
+        {estado === "rechazada" ? (
+          <NoInteresado
+            motivo={f.ultima_invitacion_motivo}
+            className={claseTono(TONO_INVITACION.rechazada)}
+          />
+        ) : estado ? (
+          <p
+            className={cn(
+              "w-fit rounded-[var(--radius-md)] px-3 py-2 text-sm font-semibold",
+              claseTono(TONO_INVITACION[estado]),
+            )}
+          >
+            {textoUltimaInvitacion(estado, f.ultima_invitacion_fecha)}
+          </p>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
+      </CeldaTabla>
+      <div className="flex flex-col gap-2 @4xl:flex-row @4xl:justify-end">
+        <Link href={hrefFicha} className={`btn-neutro ${CLASE_ACCION_FILA}`}>
+          Ver ficha
+          <span className="sr-only">: {nombre}</span>
+        </Link>
         {estado !== "pendiente" && (
           <InvitarBoton
             ofertaId={ofertaId}
@@ -324,16 +333,11 @@ function TarjetaCandidato({
                 ? { fecha: f.ultima_invitacion_fecha, motivo: f.ultima_invitacion_motivo }
                 : null
             }
+            claseBoton={CLASE_ACCION_FILA}
           />
         )}
-        <Link
-          href={hrefFicha}
-          className="btn-secundario inline-flex min-h-11 items-center justify-center px-4 text-sm font-medium"
-        >
-          Ver ficha
-        </Link>
       </div>
-    </article>
+    </FilaTabla>
   );
 }
 

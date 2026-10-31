@@ -1,11 +1,13 @@
 import "server-only";
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 import type { ErrorConsulta } from "@/lib/paginacion";
+import { patronIlike } from "@/lib/busqueda";
 import { esUuid } from "@/lib/validaciones";
 import type { ClienteSupabase } from "@/types/db";
 
 // Pestañas de /admin/postulaciones. Las condiciones de cada una están solo
-// acá: las usan el listado y el desplegable de ofertas, así nunca difieren.
+// acá: las usan el listado, las cantidades de las pastillas y el desplegable
+// de ofertas, así nunca difieren.
 //   pendiente   → postulaciones recibidas o en revisión.
 //   derivada    → derivadas cuya derivación sigue abierta (la empresa no dio
 //                 un resultado final: pendiente o en_proceso).
@@ -50,6 +52,118 @@ export function filtrarPestanaPostulaciones<Q extends ConsultaFiltrable<Q>>(
 /** Condición de "Contratado", que se consulta sobre `derivaciones`. */
 export function filtrarContratados<Q extends ConsultaFiltrable<Q>>(query: Q): Q {
   return query.eq("estado_empresa", "contratado");
+}
+
+/** Lo que eligió la oficina además de la pestaña: la oferta y la búsqueda. */
+export type FiltrosPostulaciones = {
+  /** "" sin oferta elegida. */
+  ofertaId: string;
+  /** Postulantes que coinciden con la búsqueda; null sin búsqueda. */
+  postulanteIds: string[] | null;
+};
+
+// Un id que no existe: una búsqueda sin coincidencias filtra por él y no
+// devuelve filas (in() con una lista vacía no es válido en PostgREST).
+const ID_INEXISTENTE = "00000000-0000-0000-0000-000000000000";
+
+/**
+ * La oferta y la búsqueda sobre la consulta de una pestaña. "Contratado" se
+ * consulta sobre `derivaciones` y filtra por la postulación embebida
+ * (`postulaciones!inner(...)`); las demás, por sus propias columnas (también
+ * la función de "No seleccionado").
+ */
+export function filtrarOfertaYBusqueda<Q extends ConsultaFiltrable<Q>>(
+  query: Q,
+  pestana: PestanaPostulaciones,
+  { ofertaId, postulanteIds }: FiltrosPostulaciones,
+): Q {
+  const prefijo = pestana === "contratado" ? "postulaciones." : "";
+  let q = query;
+  if (ofertaId) q = q.eq(`${prefijo}oferta_id`, ofertaId);
+  if (postulanteIds) {
+    q = q.in(`${prefijo}postulante_id`, postulanteIds.length > 0 ? postulanteIds : [ID_INEXISTENTE]);
+  }
+  return q;
+}
+
+/**
+ * Postulantes cuyo nombre, apellido o DNI contiene `busqueda` (ya pasada por
+ * limpiarBusqueda). null sin búsqueda.
+ */
+export async function postulantesDeBusqueda(
+  supabase: ClienteSupabase,
+  busqueda: string,
+): Promise<Resultado<string[] | null>> {
+  if (!busqueda) return { ok: true, valor: null };
+  const patron = patronIlike(busqueda);
+  const [usuariosRes, postulantesRes] = await Promise.all([
+    supabase.from("usuarios").select("id").or(`nombre.ilike.${patron},apellido.ilike.${patron}`),
+    supabase.from("postulantes").select("id").ilike("dni", patron),
+  ]);
+  const error = usuariosRes.error ?? postulantesRes.error;
+  if (error) return { ok: false, error };
+
+  const idsPorDni = (postulantesRes.data ?? []).map((p) => p.id);
+  const usuarioIds = (usuariosRes.data ?? []).map((u) => u.id);
+  if (usuarioIds.length === 0) return { ok: true, valor: idsPorDni };
+
+  const porUsuario = await supabase.from("postulantes").select("id").in("usuario_id", usuarioIds);
+  if (porUsuario.error) return { ok: false, error: porUsuario.error };
+  return {
+    ok: true,
+    valor: [...new Set([...idsPorDni, ...(porUsuario.data ?? []).map((p) => p.id)])],
+  };
+}
+
+/**
+ * Cantidad de cada pestaña con la misma oferta y la misma búsqueda que la
+ * lista (conteos sin filas, en paralelo). null si falló un conteo.
+ */
+export async function cantidadesPorPestana(
+  supabase: ClienteSupabase,
+  filtros: FiltrosPostulaciones,
+): Promise<Record<PestanaPostulaciones, number | null>> {
+  const contar = { count: "exact", head: true } as const;
+  const respuestas = await Promise.all([
+    filtrarOfertaYBusqueda(
+      filtrarPestanaPostulaciones(supabase.from("postulaciones").select("id", contar), "pendiente"),
+      "pendiente",
+      filtros,
+    ),
+    filtrarOfertaYBusqueda(
+      filtrarPestanaPostulaciones(
+        supabase.from("postulaciones").select("id, derivaciones!inner(estado_empresa)", contar),
+        "derivada",
+      ),
+      "derivada",
+      filtros,
+    ),
+    filtrarOfertaYBusqueda(
+      filtrarContratados(
+        supabase
+          .from("derivaciones")
+          .select("id, postulaciones!inner(oferta_id, postulante_id)", contar),
+      ),
+      "contratado",
+      filtros,
+    ),
+    filtrarOfertaYBusqueda(
+      supabase.rpc("postulaciones_no_seleccionadas", undefined, contar),
+      "rechazada_municipalidad",
+      filtros,
+    ),
+    filtrarOfertaYBusqueda(
+      filtrarPestanaPostulaciones(
+        supabase.from("postulaciones").select("id", contar),
+        "retirada_postulante",
+      ),
+      "retirada_postulante",
+      filtros,
+    ),
+  ]);
+  const [pendiente, derivada, contratado, rechazada_municipalidad, retirada_postulante] =
+    respuestas.map((r) => (r.error ? null : (r.count ?? 0)));
+  return { pendiente, derivada, contratado, rechazada_municipalidad, retirada_postulante };
 }
 
 export type OpcionOferta = {

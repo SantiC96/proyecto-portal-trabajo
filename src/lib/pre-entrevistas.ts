@@ -1,12 +1,14 @@
 import type { TonoBadge } from "@/components/ui/badge";
 import { formatFechaHoraCorta } from "@/lib/fechas";
-import { LARGO_MAXIMO, MENSAJE_OBLIGATORIO, validarTextoOpcional } from "@/lib/validaciones";
+import { validarDatosEntrevista, type CampoEntrevista, type DatosEntrevista } from "@/lib/entrevistas";
+import { LARGO_MAXIMO, validarTextoOpcional } from "@/lib/validaciones";
 import type { Tabla } from "@/types/db";
 
 // Pre-entrevista de la Oficina de Empleo con el postulante, opcional antes de
 // derivar (migration_044 y 045, docs/decisiones/017-pre-entrevista.md). Hay
 // una por postulación. "cancelada": estaba coordinada y el postulante retiró
-// la postulación (migration_053); es final.
+// la postulación (migration_053); es final. Presencial u online, con lugar o
+// link (migration_064).
 
 export const ESTADOS_PRE_ENTREVISTA = ["coordinada", "realizada", "no_asistio", "cancelada"] as const;
 export type EstadoPreEntrevista = (typeof ESTADOS_PRE_ENTREVISTA)[number];
@@ -25,7 +27,7 @@ export function esResultadoPreEntrevista(valor: unknown): valor is ResultadoPreE
 
 export type PreEntrevista = Pick<
   Tabla<"pre_entrevistas">,
-  "id" | "estado" | "fecha_hora" | "lugar" | "nota_oficina" | "updated_at"
+  "id" | "estado" | "fecha_hora" | "modalidad" | "lugar" | "link" | "nota_oficina" | "updated_at"
 >;
 
 export const PRE_ENTREVISTA_LABEL: Record<EstadoPreEntrevista | "sin_coordinar", string> = {
@@ -65,29 +67,21 @@ export function preEntrevistaYaPaso(fechaHora: string, ahora: number = Date.now(
 }
 
 /** Campos del formulario de la pre-entrevista que valida el servidor. */
-export type CampoPreEntrevista = "fechaHora" | "lugar" | "nota";
+export type CampoPreEntrevista = CampoEntrevista | "nota";
 
 /**
- * Validación de servidor de fecha, lugar y nota. La base repite estos
- * controles (validar_datos_pre_entrevista, 044).
+ * Validación de servidor de la fecha, la modalidad, el lugar o el link y la
+ * nota. La base repite estos controles (validar_datos_pre_entrevista, 064).
  */
 export function validarDatosPreEntrevista(
-  fechaHoraISO: unknown,
-  lugar: unknown,
+  datos: DatosEntrevista,
   nota: unknown,
 ): { campo: CampoPreEntrevista; mensaje: string } | null {
-  if (typeof fechaHoraISO !== "string") return { campo: "fechaHora", mensaje: "La fecha no es válida." };
-  const fecha = new Date(fechaHoraISO);
-  if (isNaN(fecha.getTime())) return { campo: "fechaHora", mensaje: "La fecha no es válida." };
-  if (fecha.getTime() <= Date.now())
-    return {
-      campo: "fechaHora",
-      mensaje: "La fecha de la pre-entrevista tiene que ser posterior al momento actual.",
-    };
-
-  if (typeof lugar !== "string" || !lugar.trim()) return { campo: "lugar", mensaje: MENSAJE_OBLIGATORIO };
-  const errLugar = validarTextoOpcional(lugar, LARGO_MAXIMO.lugarEntrevista);
-  if (errLugar) return { campo: "lugar", mensaje: errLugar };
+  const errDatos = validarDatosEntrevista(
+    datos,
+    "La fecha de la pre-entrevista tiene que ser posterior al momento actual.",
+  );
+  if (errDatos) return errDatos;
 
   const errNota = validarTextoOpcional(nota, LARGO_MAXIMO.nota);
   if (errNota) return { campo: "nota", mensaje: errNota };

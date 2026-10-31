@@ -3,7 +3,8 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { obtenerPostulanteActual, requerirRolPagina } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { LineaBanda } from "@/components/ui/esqueleto";
+import { EsqueletoInvitaciones } from "./esqueleto";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { SeccionInvitaciones, BajadaInvitaciones, type ConsultaInvitaciones } from "./seccion-invitaciones";
@@ -26,18 +27,19 @@ export default async function InvitacionesPage() {
 
   return (
     <section className="flex flex-col gap-6">
-      <BotonVolver href="/perfil" destacado />
+      <BotonVolver href="/panel" destacado />
       <EncabezadoPagina
+        banda
         className="-mt-2"
         titulo="Invitaciones"
         bajada={
-          <Suspense fallback={<span className="inline-block h-4 w-64 rounded bg-secondary-hover" />}>
+          <Suspense fallback={<LineaBanda className="w-[26em]" />}>
             <BajadaInvitaciones consulta={consulta} />
           </Suspense>
         }
       />
 
-      <Suspense fallback={<EsqueletoLista filas={3} />}>
+      <Suspense fallback={<EsqueletoInvitaciones />}>
         <SeccionInvitaciones consulta={consulta} usuarioId={postulante.usuario_id} />
       </Suspense>
     </section>

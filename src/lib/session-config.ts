@@ -29,10 +29,6 @@ export function cookieReintentoOptions(path: string) {
   };
 }
 
-export function recoveryCookieOptions() {
-  return cookieReintentoOptions(RECOVERY_COOKIE_PATH);
-}
-
 // @supabase/ssr forces maxAge: 400 days on writes and maxAge: 0 on removals.
 // Strip positive maxAge/expires to make auth cookies session-only (cleared on
 // browser close), but keep maxAge: 0 so signOut immediately deletes cookies.

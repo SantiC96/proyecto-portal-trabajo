@@ -1,16 +1,89 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { DecoracionBanda } from "@/components/ui/decoracion-banda";
 
 type Props = {
   titulo: ReactNode;
   bajada?: ReactNode;
   /** Botones a la derecha, alineados abajo; en el celular pasan debajo del título. */
   acciones?: ReactNode;
+  /**
+   * Banda verde con anillo y escudo (pantallas del postulante): título
+   * Georgia 400 blanco de 48 px (34 en el celular). En las acciones, el
+   * `.btn-primario` va blanco y los `.btn-secundario`/`.btn-neutro`,
+   * transparentes con borde blanco; en el celular, a todo el ancho.
+   */
+  banda?: boolean;
+  /**
+   * Solo con `banda` (pantallas de la empresa): todos los botones de las
+   * acciones van blancos con texto `primary`, también los secundarios y los
+   * de baja.
+   */
+  botonesBlancos?: boolean;
+  /** Solo con `banda`: algo al lado del título, como el badge del estado. */
+  junto?: ReactNode;
+  /** Solo con `banda`: el logo o las iniciales a la izquierda del título (AvatarAjustado `claro`). */
+  avatar?: ReactNode;
   className?: string;
 };
 
 /** Título de la página en Georgia (32 px 700; 26 px en el celular) con su bajada y acciones opcionales. */
-export function EncabezadoPagina({ titulo, bajada, acciones, className }: Props) {
+export function EncabezadoPagina({
+  titulo,
+  bajada,
+  acciones,
+  banda = false,
+  botonesBlancos = false,
+  junto,
+  avatar,
+  className,
+}: Props) {
+  if (banda) {
+    const h1 = (
+      <h1 className="titulo-portada min-w-0 text-[34px] leading-[1.1] break-words text-primary-foreground sm:text-5xl">
+        {titulo}
+      </h1>
+    );
+    return (
+      <header
+        className={cn(
+          "encabezado-banda flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-6",
+          className,
+        )}
+      >
+        <DecoracionBanda />
+        <div className={cn("min-w-0", avatar && "flex items-center gap-4 sm:gap-5")}>
+          {avatar}
+          <div className="min-w-0">
+            {junto ? (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                {h1}
+                {junto}
+              </div>
+            ) : (
+              h1
+            )}
+            {bajada && (
+              <p className="mt-2 text-[15px] leading-normal text-sidebar-texto sm:text-[17px]">
+                {bajada}
+              </p>
+            )}
+          </div>
+        </div>
+        {acciones && (
+          <div
+            className={cn(
+              "encabezado-banda-acciones flex shrink-0 flex-col gap-3 sm:flex-row sm:flex-wrap",
+              botonesBlancos && "encabezado-banda-acciones--blancos",
+            )}
+          >
+            {acciones}
+          </div>
+        )}
+      </header>
+    );
+  }
+
   return (
     <header
       className={cn(
@@ -19,7 +92,7 @@ export function EncabezadoPagina({ titulo, bajada, acciones, className }: Props)
       )}
     >
       <div className="min-w-0">
-        <h1 className="titulo-display break-words text-[26px] leading-[1.15] sm:text-[32px] text-heading">
+        <h1 className="titulo-display break-words text-[26px] leading-[1.15] text-heading sm:text-[32px]">
           {titulo}
         </h1>
         {bajada && <p className="mt-1.5 text-base text-muted-foreground">{bajada}</p>}

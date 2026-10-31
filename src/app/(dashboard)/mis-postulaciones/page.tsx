@@ -24,11 +24,11 @@ import {
 } from "@/lib/mis-postulaciones";
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 import { obtenerIndicadoresPostulante } from "@/lib/postulante/panel";
-import { formatNumero } from "@/components/indicadores/formato";
 import { GrupoPastillas, PastillaFiltro } from "@/components/ui/pastilla-filtro";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { LineaBanda } from "@/components/ui/esqueleto";
+import { EsqueletoMisPostulaciones } from "./esqueleto";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import {
   LeyendaEstados,
@@ -156,14 +156,15 @@ export default async function MisPostulacionesPage({
 
   return (
     <section className="flex flex-col gap-6">
-      <BotonVolver href="/perfil" destacado />
+      <BotonVolver href="/panel" destacado />
       <EncabezadoPagina
+        banda
         className="-mt-2"
         titulo="Mis postulaciones"
         bajada={
           <Suspense
-            key={clave}
-            fallback={<span className="inline-block h-4 w-72 max-w-full rounded bg-secondary-hover" />}
+            key={`${clave}:bajada`}
+            fallback={<LineaBanda className="w-[30em]" />}
           >
             <BajadaMisPostulaciones resultado={resultado} />
           </Suspense>
@@ -190,7 +191,7 @@ export default async function MisPostulacionesPage({
         />
       </Suspense>
 
-      <Suspense key={clave} fallback={<EsqueletoLista filas={3} />}>
+      <Suspense key={`${clave}:lista`} fallback={<EsqueletoMisPostulaciones />}>
         <ListadoMisPostulaciones
           postulanteId={postulante.id}
           resultado={resultado}
@@ -227,23 +228,22 @@ function FiltroEstados({
   ];
 
   return (
-    <GrupoPastillas
-      id="filtro-estado"
-      titulo="Estado"
-      unaLinea={{ textoAnteriores: "Ver estados anteriores", textoSiguientes: "Ver más estados" }}
-    >
-      {opciones.map((o) => (
-        <PastillaFiltro
-          key={o.valor ?? "todas"}
-          href={hrefConParams(RUTA, searchParams, { estado: o.valor, pagina: null })}
-          activa={o.valor === filtro}
-        >
-          {o.etiqueta}
-          {o.cantidad !== undefined && (
-            <span className="ml-1.5 font-bold tabular-nums">{formatNumero(o.cantidad)}</span>
-          )}
-        </PastillaFiltro>
-      ))}
+    // En el celular, una fila con scroll horizontal; desde sm bajan de renglón.
+    <GrupoPastillas id="filtro-estado" titulo="Estado">
+      {opciones.map((o) => {
+        const activa = o.valor === filtro;
+        return (
+          <PastillaFiltro
+            key={o.valor ?? "todas"}
+            href={hrefConParams(RUTA, searchParams, { estado: o.valor, pagina: null })}
+            activa={activa}
+            cantidad={o.cantidad}
+            className="sm:h-11"
+          >
+            {o.etiqueta}
+          </PastillaFiltro>
+        );
+      })}
     </GrupoPastillas>
   );
 }

@@ -2,7 +2,7 @@
 
 import { Combobox } from "@base-ui/react/combobox"
 import { ChevronDown, X } from "lucide-react"
-import { useRef, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 
 import { cn } from "@/lib/utils"
 import { PopupCombobox, normalizarBusqueda, type OpcionCombobox } from "@/components/ui/combobox"
@@ -15,8 +15,19 @@ interface MultiComboboxProps {
   id?: string
   vacioTexto?: string
   campoClassName?: string
-  /** aria-invalid / aria-describedby del input cuando el campo tiene un error. */
-  ariaInput?: { "aria-invalid"?: true; "aria-describedby"?: string }
+  /** aria-invalid / aria-describedby del input cuando el campo tiene un error; aria-labelledby si el rótulo no es un <label>. */
+  ariaInput?: { "aria-invalid"?: true; "aria-describedby"?: string; "aria-labelledby"?: string }
+  /**
+   * Texto corto de lo elegido ("Gastronomía y 2 más") que reemplaza a los
+   * chips, para un campo de una sola línea (filtro del celular). Se quita
+   * desmarcando en la lista.
+   */
+  resumen?: string
+  /** Lo elegido se muestra fuera del campo (chips del formulario de oferta): el campo es solo el buscador. */
+  sinChips?: boolean
+  /** Enfoca el buscador y abre la lista al aparecer (botón "Agregar rubro"). */
+  abrirAlMontar?: boolean
+  onOpenChange?: (abierto: boolean) => void
 }
 
 export function MultiCombobox({
@@ -28,17 +39,27 @@ export function MultiCombobox({
   vacioTexto = "No hay rubros que coincidan",
   campoClassName,
   ariaInput,
+  resumen,
+  sinChips = false,
+  abrirAlMontar = false,
+  onOpenChange,
 }: MultiComboboxProps) {
+  const idResumen = useId()
+  const conResumen = resumen !== undefined
   const [inputValue, setInputValue] = useState("")
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(abrirAlMontar)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (abrirAlMontar) inputRef.current?.focus()
+  }, [abrirAlMontar])
 
   const filtradas = inputValue
     ? opciones.filter((o) => normalizarBusqueda(o.nombre).includes(normalizarBusqueda(inputValue)))
     : opciones
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Backspace" && inputValue === "" && seleccionados.length > 0) {
+    if (!sinChips && e.key === "Backspace" && inputValue === "" && seleccionados.length > 0) {
       onChange(seleccionados.slice(0, -1))
     }
   }
@@ -52,7 +73,10 @@ export function MultiCombobox({
         setInputValue("")
       }}
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={(abierto) => {
+        setOpen(abierto)
+        onOpenChange?.(abierto)
+      }}
       autoComplete="none"
       inputValue={inputValue}
       onInputValueChange={setInputValue}
@@ -67,7 +91,12 @@ export function MultiCombobox({
       >
         {/* Chips + input en fila inline */}
         <div className="flex flex-1 flex-wrap items-center gap-1.5 pt-px">
-          {seleccionados.map((sid) => {
+          {conResumen && seleccionados.length > 0 && (
+            <span id={idResumen} className="text-base font-semibold text-foreground">
+              {resumen}
+            </span>
+          )}
+          {!conResumen && !sinChips && seleccionados.map((sid) => {
             const opcion = opciones.find((o) => o.id === sid)
             if (!opcion) return null
             return (
@@ -93,8 +122,9 @@ export function MultiCombobox({
           <Combobox.Input
             ref={inputRef}
             id={id}
-            placeholder={seleccionados.length === 0 ? placeholder : ""}
+            placeholder={sinChips || seleccionados.length === 0 ? placeholder : ""}
             onKeyDown={handleKeyDown}
+            aria-describedby={conResumen && seleccionados.length > 0 ? idResumen : undefined}
             {...ariaInput}
             className="min-w-[8rem] flex-1 bg-transparent text-base text-foreground placeholder:text-placeholder focus:outline-none"
           />

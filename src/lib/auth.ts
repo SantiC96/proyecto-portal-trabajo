@@ -18,6 +18,8 @@ export type UsuarioActual = {
   id: string;
   email: string | null;
   metadata: Record<string, unknown>;
+  /** auth.users.last_sign_in_at (Mi perfil de la oficina); null si no se sabe. */
+  ultimoIngreso: string | null;
   /** Fila de public.usuarios; null si todavía no existe o no se pudo leer. */
   perfil: Tabla<"usuarios"> | null;
 };
@@ -56,6 +58,7 @@ export const obtenerUsuarioActual = cache(async (): Promise<UsuarioActual | null
     id: user.id,
     email: user.email ?? null,
     metadata: user.user_metadata ?? {},
+    ultimoIngreso: user.last_sign_in_at ?? null,
     perfil,
   };
 });

@@ -20,13 +20,20 @@ export function FilaDesplazable({
   textoAnteriores,
   textoSiguientes,
   children,
+  className,
+  fondo = "surface",
 }: {
   /** id del título del grupo (role="group" aria-labelledby). */
   etiquetaId: string;
   textoAnteriores: string;
   textoSiguientes: string;
   children: ReactNode;
+  /** Clases extra de la fila (por ejemplo, una grilla desde cierto ancho). */
+  className?: string;
+  /** Color sobre el que va la fila: el degradé de los bordes lo usa. */
+  fondo?: "surface" | "background";
 }) {
+  const desde = fondo === "background" ? "from-background" : "from-surface";
   const filaRef = useRef<HTMLDivElement>(null);
   const [puedeAnterior, setPuedeAnterior] = useState(false);
   const [puedeSiguiente, setPuedeSiguiente] = useState(false);
@@ -85,7 +92,10 @@ export function FilaDesplazable({
         role="group"
         aria-labelledby={etiquetaId}
         onFocus={alEnfocar}
-        className="sin-barra-scroll flex gap-2 overflow-x-auto scroll-px-4 px-4 py-1 sm:px-0 sm:scroll-px-0 md:scroll-px-14"
+        className={cn(
+          "sin-barra-scroll flex gap-2 overflow-x-auto scroll-px-4 px-4 py-1 sm:px-0 sm:scroll-px-0 md:scroll-px-14",
+          className,
+        )}
       >
         {children}
       </div>
@@ -93,14 +103,16 @@ export function FilaDesplazable({
       <div
         aria-hidden="true"
         className={cn(
-          "pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-surface to-transparent transition-opacity duration-150 md:w-16",
+          "pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r to-transparent transition-opacity duration-150 md:w-16",
+          desde,
           puedeAnterior ? "opacity-100" : "opacity-0",
         )}
       />
       <div
         aria-hidden="true"
         className={cn(
-          "pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-surface to-transparent transition-opacity duration-150 md:w-16",
+          "pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l to-transparent transition-opacity duration-150 md:w-16",
+          desde,
           puedeSiguiente ? "opacity-100" : "opacity-0",
         )}
       />

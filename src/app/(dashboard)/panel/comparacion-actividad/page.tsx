@@ -16,6 +16,7 @@ import { BarraProgreso } from "@/components/ui/barra-progreso";
 import { ContactoOficina } from "@/components/public/contacto-oficina";
 import { EstadoVacioPostulaciones } from "@/components/public/estado-vacio-postulaciones";
 import { requerirRolPagina } from "@/lib/auth";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Comparación de Tu actividad | Portal de Empleo Funes",
@@ -549,6 +550,7 @@ export default async function ComparacionActividadPage() {
 
   return (
     <main className="flex flex-1 flex-col gap-8">
+      <BotonVolver href="/panel" destacado className="-mb-4" />
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-extrabold">Comparación de “Tu actividad”</h1>
         <p className="max-w-3xl text-[15px] leading-relaxed text-muted-foreground-strong">

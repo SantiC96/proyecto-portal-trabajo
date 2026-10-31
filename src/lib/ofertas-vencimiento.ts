@@ -14,6 +14,14 @@ export function esDuracionOferta(valor: unknown): valor is DuracionOferta {
   return DURACIONES_OFERTA.some((d) => d === valor);
 }
 
+/**
+ * Cuándo vencería la oferta si la Oficina la aprobara en `desde` (ms): la
+ * base calcula vence_en = now() + duracion_dias al aprobarla.
+ */
+export function venceSiSeApruebaEn(desde: number, duracionDias: number): Date {
+  return new Date(desde + duracionDias * MS_DIA);
+}
+
 export type EstadoVencimiento = {
   /** La oferta está activa y vence_en ya pasó. */
   vencida: boolean;

@@ -1,13 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight, ExternalLink } from "lucide-react";
+import {
+  Briefcase,
+  Calendar,
+  ChevronRight,
+  ExternalLink,
+  History,
+  NotebookPen,
+  Undo2,
+  User,
+} from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { Badge } from "@/components/ui/badge";
+import { Badge, BadgeBanda } from "@/components/ui/badge";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { obtenerCandidato, obtenerCvDePostulacion } from "@/lib/admin/candidato";
-import { BadgeProcedencia } from "@/components/postulantes/badge-procedencia";
+import { ChipLocalidad } from "@/components/postulantes/badge-procedencia";
 import { BadgePorInvitacion } from "@/components/admin/badge-por-invitacion";
+import { DatosCandidato } from "@/components/admin/datos-candidato";
 import {
   BADGE_ESTADO_VISIBLE,
   estadoVisiblePostulacion,
@@ -24,15 +34,24 @@ import { logError } from "@/lib/logger";
 import { aEstadoCursos, avisoCursoAlDerivar } from "@/lib/cursos";
 import { requerirRolPagina } from "@/lib/auth";
 import { preEntrevistaYaPaso } from "@/lib/pre-entrevistas";
+import { detalleSinVerificar } from "@/lib/procedencia";
 import { PreEntrevistaSeccion } from "./pre-entrevista-seccion";
 import { MarcarFichaAbierta } from "./marcar-ficha-abierta";
+import { ResumenPostulacion } from "./resumen-postulacion";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { DetalleConLateral } from "@/components/ui/detalle-con-lateral";
-import { DatosClave } from "@/components/ui/datos-clave";
+import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { EtiquetaRubro } from "@/components/ui/etiqueta-rubro";
-import { FilaArchivo } from "@/components/ui/fila-archivo";
+import { FilaArchivoPerfil } from "@/components/perfil/piezas";
+import { BotonVerArchivo } from "@/components/admin/boton-ver-archivo";
 import { Franja } from "@/components/ui/franja";
-import { LineaDeTiempo, type EventoLinea } from "@/components/ui/linea-de-tiempo";
+import {
+  ICONO_HISTORIAL,
+  LineaDeTiempo,
+  type EventoLinea,
+} from "@/components/ui/linea-de-tiempo";
+import { TarjetaDecision, type EstadoDecision } from "@/components/ui/tarjeta-decision";
+import { TituloBloque } from "@/components/ui/titulo-bloque";
 import { InicialesEmpresa } from "@/components/ofertas/iniciales-empresa";
 import { inicialesDePersona } from "@/lib/iniciales";
 import { textoTamanoArchivo } from "@/lib/archivos";
@@ -41,6 +60,10 @@ export const metadata: Metadata = {
   title: "Ficha | Postulaciones | Panel municipal | Portal de Empleo Funes",
 };
 
+const TARJETA = "tarjeta tarjeta-panel min-w-0";
+
+const CLASE_LINK =
+  "inline-flex min-h-11 w-fit items-center gap-1.5 rounded-[var(--radius-sm)] text-[15px] font-bold text-primary underline-offset-2 outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]";
 
 export default async function PostulacionFichaPage({
   params,
@@ -90,7 +113,7 @@ export default async function PostulacionFichaPage({
       ? supabase
           .from("derivaciones")
           .select(
-            "id, nota_municipalidad, created_at, updated_at, estado_empresa, fecha_entrevista, lugar_entrevista, fecha_respuesta, nota_empresa"
+            "id, nota_municipalidad, created_at, updated_at, estado_empresa, fecha_entrevista, modalidad_entrevista, lugar_entrevista, link_entrevista, fecha_respuesta, nota_empresa"
           )
           .eq("postulacion_id", postulacion.id)
           .maybeSingle()
@@ -107,7 +130,7 @@ export default async function PostulacionFichaPage({
       : Promise.resolve({ data: null, error: null }),
     supabase
       .from("pre_entrevistas")
-      .select("id, estado, fecha_hora, lugar, nota_oficina, updated_at")
+      .select("id, estado, fecha_hora, modalidad, lugar, link, nota_oficina, updated_at")
       .eq("postulacion_id", postulacion.id)
       .maybeSingle(),
   ]);
@@ -166,6 +189,7 @@ export default async function PostulacionFichaPage({
       clave: "recibida",
       titulo: "Postulación recibida",
       detalle: formatFechaHora(postulacion.created_at),
+      ...ICONO_HISTORIAL.enviado,
     },
   ];
   if (postulacion.revisado_por) {
@@ -173,6 +197,7 @@ export default async function PostulacionFichaPage({
       clave: "revisada",
       titulo: "Revisada por la Oficina de Empleo",
       detalle: revisor ? `Por ${revisor.nombre} ${revisor.apellido}` : "Por un usuario eliminado",
+      ...ICONO_HISTORIAL.revisado,
     });
   }
   if (postulacion.retirada_en) {
@@ -180,6 +205,8 @@ export default async function PostulacionFichaPage({
       clave: "retirada",
       titulo: "Retirada por el postulante",
       detalle: formatFechaHora(postulacion.retirada_en),
+      icono: Undo2,
+      claseIcono: "bg-muted-icon",
     });
   }
   if (postulacion.updated_at && postulacion.updated_at !== postulacion.created_at) {
@@ -187,6 +214,7 @@ export default async function PostulacionFichaPage({
       clave: "actualizada",
       titulo: "Última actualización",
       detalle: formatFechaHora(postulacion.updated_at),
+      ...ICONO_HISTORIAL.actualizado,
     });
   }
 
@@ -207,8 +235,33 @@ export default async function PostulacionFichaPage({
           ? "Decisión"
           : null;
 
+  // Filete de la tarjeta Decisión: amarillo mientras se puede derivar; después,
+  // el color del resultado.
+  const estadoDecision: EstadoDecision = puedeDerivarse
+    ? "pendiente"
+    : estadoVisible === "contratado"
+      ? "aprobada"
+      : estadoVisible === "no_seleccionado_empresa" || estadoVisible === "no_seleccionado_oficina"
+        ? "rechazada"
+        : estadoVisible === "derivada"
+          ? "derivada"
+          : "cerrada";
+
+  const iniciales = candidato
+    ? inicialesDePersona(candidato.usuario.nombre, candidato.usuario.apellido)
+    : undefined;
+  const resumen = (
+    <ResumenPostulacion
+      nombre={nombre}
+      iniciales={iniciales}
+      oferta={oferta?.titulo ?? null}
+      empresa={oferta?.empresa_nombre ?? null}
+    />
+  );
+
   const tarjetaCandidato = (
-    <section key="candidato" aria-labelledby="candidato-titulo" className="tarjeta flex flex-col gap-5 p-5 sm:p-6">
+    <section key="candidato" aria-labelledby="candidato-titulo" className={`${TARJETA} flex flex-col gap-5`}>
+      <TituloBloque id="candidato-titulo" titulo="Postulante" icono={User} />
       {candidato ? (
         <>
           <div className="flex min-w-0 items-center gap-4">
@@ -216,64 +269,42 @@ export default async function PostulacionFichaPage({
               src={candidato.avatar.url}
               alt=""
               ajuste={candidato.avatar.ajuste}
-              iniciales={inicialesDePersona(candidato.usuario.nombre, candidato.usuario.apellido)}
+              iniciales={iniciales}
               size="ficha"
             />
             <div className="flex min-w-0 flex-col items-start gap-1.5">
-              <h2 id="candidato-titulo" className="text-xl leading-tight font-extrabold break-words text-heading">
-                {nombre}
-              </h2>
-              <BadgeProcedencia
-                nivel={candidato.nivel}
-                localidad={candidato.postulante.localidad}
-                comprobante={candidato.comprobante?.estado ?? null}
-              />
+              <p className="text-xl leading-tight font-extrabold break-words text-heading">{nombre}</p>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <ChipLocalidad nivel={candidato.nivel} localidad={candidato.postulante.localidad} />
+                {candidato.nivel === 2 && (
+                  <span className="text-[13px] font-semibold text-sin-comprobante">
+                    {detalleSinVerificar(candidato.comprobante?.estado ?? null)}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
-          <DatosClave
-            datos={[
-              {
-                etiqueta: "DNI",
-                valor: <span className="tabular-nums">{candidato.postulante.dni ?? "—"}</span>,
-              },
-              { etiqueta: "Teléfono", valor: candidato.usuario.telefono || "—" },
-              {
-                etiqueta: "Email",
-                valor: candidato.email ? <span className="break-all">{candidato.email}</span> : "—",
-              },
-              { etiqueta: "Domicilio", valor: candidato.postulante.domicilio || "—" },
-              {
-                etiqueta: "Rubros de interés",
-                valor:
-                  candidato.categorias.length > 0 ? (
-                    <span className="flex flex-wrap gap-1.5">
-                      {candidato.categorias.map((c) => (
-                        <EtiquetaRubro key={c.id}>{c.nombre}</EtiquetaRubro>
-                      ))}
-                    </span>
-                  ) : (
-                    "—"
-                  ),
-              },
-            ]}
+          <DatosCandidato
+            email={candidato.email}
+            dni={candidato.postulante.dni}
+            domicilio={candidato.postulante.domicilio}
+            telefono={candidato.usuario.telefono}
+            categorias={candidato.categorias}
           />
 
-          <div className="flex flex-col gap-2.5">
-            <h3 className="text-[15px] font-bold text-control-foreground">
+          <div className="flex flex-col gap-2">
+            <h3 className="text-[13px] leading-[1.4] font-bold text-neutral">
               CV elegido para esta postulación
             </h3>
             {cvPostulacion ? (
-              <FilaArchivo
+              <FilaArchivoPerfil
                 nombre={cvPostulacion.cv.nombreOriginal}
                 detalle={`${
-                  cvPostulacion.cv.tamano > 0
-                    ? `${textoTamanoArchivo(cvPostulacion.cv.tamano)} · `
-                    : ""
+                  cvPostulacion.cv.tamano > 0 ? `${textoTamanoArchivo(cvPostulacion.cv.tamano)} · ` : ""
                 }Cargado el ${formatFecha(cvPostulacion.cv.subidoEn)}`}
                 nota={notaCv}
-                url={cvPostulacion.cv.url}
-                textoBoton="Ver CV"
+                acciones={<BotonVerArchivo url={cvPostulacion.cv.url} texto="Ver CV" />}
               />
             ) : (
               <p className="text-[15px] text-muted-foreground">
@@ -283,29 +314,22 @@ export default async function PostulacionFichaPage({
           </div>
 
           {postulanteId && (
-            <Link
-              href={`/admin/postulantes/${postulanteId}`}
-              className="inline-flex min-h-11 w-fit items-center gap-1.5 rounded-[var(--radius-sm)] text-[15px] font-bold text-primary underline-offset-2 outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
-            >
+            <Link href={`/admin/postulantes/${postulanteId}`} className={CLASE_LINK}>
               Ver ficha completa del postulante
-              <ArrowRight aria-hidden="true" className="size-[18px]" />
+              <ChevronRight aria-hidden="true" className="size-4" />
             </Link>
           )}
         </>
       ) : (
-        <p id="candidato-titulo" className="text-[15px] text-muted-foreground">
-          Candidato no encontrado.
-        </p>
+        <p className="text-[15px] text-muted-foreground">Candidato no encontrado.</p>
       )}
     </section>
   );
 
   const tarjetaOferta = (
-    <section key="oferta" aria-labelledby="oferta-titulo" className="tarjeta flex flex-col gap-4 p-5 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="oferta-titulo" className="text-xl font-extrabold text-heading">
-          Oferta
-        </h2>
+    <section key="oferta" aria-labelledby="oferta-titulo" className={`${TARJETA} flex flex-col gap-4`}>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <TituloBloque id="oferta-titulo" titulo="Oferta" icono={Briefcase} />
         {estadoOferta && (
           <Badge tono={ESTADO_OFERTA_EMPRESA_TONO[estadoOferta] ?? "neutral"} estado>
             {ESTADO_OFERTA_EMPRESA_LABEL[estadoOferta] ?? estadoOferta}
@@ -317,7 +341,7 @@ export default async function PostulacionFichaPage({
           <div className="flex min-w-0 items-center gap-3">
             <InicialesEmpresa empresa={oferta.empresa_nombre} tamano={44} />
             <div className="min-w-0">
-              <p className="text-base leading-snug font-bold break-words text-heading">
+              <p className="text-base leading-snug font-extrabold break-words text-heading">
                 {oferta.titulo}
               </p>
               <p className="text-sm break-words text-texto-bajada">{oferta.empresa_nombre}</p>
@@ -337,8 +361,9 @@ export default async function PostulacionFichaPage({
               la empresa cambió la oferta el {formatFecha(oferta.contenido_editado_en)}.
             </Franja>
           )}
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <p className="text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+            <p className="flex items-center gap-1.5 text-sm text-muted-foreground-strong">
+              <Calendar aria-hidden="true" className="size-4 shrink-0 text-muted-icon" />
               {oferta.vence_en
                 ? `${estadoOferta === "vencida" ? "Venció" : "Vence"} el ${formatFecha(oferta.vence_en)}`
                 : "Sin fecha de vencimiento"}
@@ -347,7 +372,7 @@ export default async function PostulacionFichaPage({
               href={`/ofertas/${oferta.id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--radius-sm)] text-[15px] font-bold text-primary underline-offset-2 outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+              className={CLASE_LINK}
             >
               Ver oferta
               <ExternalLink aria-hidden="true" className="size-4" />
@@ -362,46 +387,28 @@ export default async function PostulacionFichaPage({
   );
 
   const tarjetaHistorial = (
-    <section key="historial" aria-labelledby="historial-titulo" className="tarjeta p-5 sm:p-6">
-      <h2 id="historial-titulo" className="mb-4 text-xl font-extrabold text-heading">
-        Historial de estados
-      </h2>
-      <LineaDeTiempo eventos={eventos} />
+    <section key="historial" aria-labelledby="historial-titulo" className={TARJETA}>
+      <TituloBloque id="historial-titulo" titulo="Historial de estados" icono={History} />
+      <LineaDeTiempo variante="historial" className="mt-5" eventos={eventos} />
     </section>
   );
 
-  // Pre-entrevista, nota interna y decisión.
+  const tarjetasIzquierda = [tarjetaCandidato, tarjetaOferta, tarjetaHistorial];
+
+  // Decisión, pre-entrevista y nota interna.
   const hayLateral = Boolean(puedeDerivarse || preEntrevista || postulacion.nota_oficina || tituloDecision);
   const tarjetasLaterales = (
     <>
-      {(puedeDerivarse || preEntrevista) && (
-        <PreEntrevistaSeccion
-          key={preEntrevista?.updated_at ?? "sin-pre-entrevista"}
-          postulacionId={postulacion.id}
-          preEntrevista={preEntrevista}
-          gestionable={puedeDerivarse}
-          fechaPasada={preEntrevistaFechaPasada}
-        />
-      )}
-
-      {/* La nota interna se carga al no seleccionar la postulación. */}
-      {postulacion.nota_oficina && (
-        <section aria-labelledby="nota-titulo" className="tarjeta p-5 sm:p-6">
-          <h2 id="nota-titulo" className="text-xl font-extrabold text-heading">
-            Nota interna
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">Solo la ve la Oficina de Empleo.</p>
-          <p className="mt-3 text-[15px] leading-[1.5] whitespace-pre-line break-words text-texto-parrafo">
-            {postulacion.nota_oficina}
-          </p>
-        </section>
-      )}
-
       {tituloDecision && (
-        <section aria-labelledby="decision-titulo" className="tarjeta p-5 sm:p-6">
-          <h2 id="decision-titulo" className="mb-4 text-xl font-extrabold text-heading">
-            {tituloDecision}
-          </h2>
+        <TarjetaDecision
+          titulo={tituloDecision}
+          estado={estadoDecision}
+          descripcion={
+            puedeDerivarse
+              ? "Derivá la postulación si el perfil encaja con la oferta. Antes podés coordinar una pre-entrevista (es opcional)."
+              : undefined
+          }
+        >
           <FichaAcciones
             postulacionId={postulacion.id}
             estado={postulacion.estado}
@@ -410,62 +417,83 @@ export default async function PostulacionFichaPage({
             ofertaEstado={oferta?.estado}
             derivacion={derivacion}
             avisoCurso={avisoCurso}
+            resumen={resumen}
           />
+        </TarjetaDecision>
+      )}
+
+      {(puedeDerivarse || preEntrevista) && (
+        <PreEntrevistaSeccion
+          key={preEntrevista?.updated_at ?? "sin-pre-entrevista"}
+          postulacionId={postulacion.id}
+          preEntrevista={preEntrevista}
+          gestionable={puedeDerivarse}
+          fechaPasada={preEntrevistaFechaPasada}
+          resumen={resumen}
+        />
+      )}
+
+      {/* La nota interna se carga al no seleccionar la postulación. */}
+      {postulacion.nota_oficina && (
+        <section aria-labelledby="nota-titulo" className={TARJETA}>
+          <TituloBloque
+            id="nota-titulo"
+            titulo="Nota interna"
+            icono={NotebookPen}
+            bajada="Solo la ve la Oficina de Empleo."
+          />
+          <p className="mt-4 text-[15px] leading-[1.5] whitespace-pre-line break-words text-texto-parrafo">
+            {postulacion.nota_oficina}
+          </p>
         </section>
       )}
     </>
   );
 
-  // Las tarjetas de la izquierda que acompañan a la lateral con el mismo alto;
-  // el resto va debajo, a todo el ancho. Pendiente: las tres. No seleccionado
-  // por la oficina (nota interna y decisión a la derecha): datos y oferta. El
-  // resto (derivada, contratado, retirada…): solo los datos del postulante.
-  const izquierdaArriba = puedeDerivarse ? 3 : postulacion.estado === "rechazada_municipalidad" ? 2 : 1;
-  const tarjetasIzquierda = [tarjetaCandidato, tarjetaOferta, tarjetaHistorial];
-  const arriba = tarjetasIzquierda.slice(0, izquierdaArriba);
-  const debajo = tarjetasIzquierda.slice(izquierdaArriba);
-
   return (
-    <section className="w-full">
+    <section className="flex w-full flex-col gap-6">
       {postulacion.estado === "recibida" && <MarcarFichaAbierta postulacionId={postulacionId} />}
       <BotonVolver href="/admin/postulaciones" destacado />
 
-      {/* Cabecera */}
-      <header className="mt-4">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 className="text-[26px] leading-[1.15] font-extrabold tracking-[-0.01em] break-words text-heading sm:text-[32px]">
-            Postulación de {nombre}
-          </h1>
-          <Badge tono={badge.tono} estado>
-            {badge.label}
-          </Badge>
-          {postulacion.origen === "invitacion" && <BadgePorInvitacion />}
-        </div>
-        <p className="mt-1.5 text-base break-words text-muted-foreground">
-          {oferta ? `${oferta.titulo} · ${oferta.empresa_nombre} · ` : ""}
-          recibida el {formatFecha(postulacion.created_at)}
-        </p>
-        {fechaContratacion && (
-          <p className="mt-1 text-[15px] text-muted-foreground">
-            Contratado por{" "}
-            <span className="font-semibold text-foreground">
-              {oferta?.empresa_nombre ?? "la empresa"}
-            </span>{" "}
-            el {formatFecha(fechaContratacion)}
-          </p>
-        )}
-      </header>
+      <EncabezadoPagina
+        banda
+        botonesBlancos
+        className="-mt-2"
+        titulo={`Postulación de ${nombre}`}
+        junto={
+          <>
+            <BadgeBanda tono={badge.tono}>{badge.label}</BadgeBanda>
+            {postulacion.origen === "invitacion" && <BadgePorInvitacion />}
+          </>
+        }
+        bajada={
+          <>
+            {oferta ? `${oferta.titulo} · ${oferta.empresa_nombre} · ` : ""}
+            recibida el {formatFecha(postulacion.created_at)}
+            {fechaContratacion && (
+              <span className="mt-1 block">
+                Contratado por{" "}
+                <span className="font-bold text-primary-foreground">
+                  {oferta?.empresa_nombre ?? "la empresa"}
+                </span>{" "}
+                el {formatFecha(fechaContratacion)}
+              </span>
+            )}
+          </>
+        }
+      />
 
       {hayLateral ? (
         <DetalleConLateral
-          className="mt-8"
+          anchoLateral={380}
+          separacion="gap-4"
+          separacionColumnas="gap-5"
           lateralEnCelular="al-final"
-          principal={<>{arriba}</>}
+          principal={<>{tarjetasIzquierda}</>}
           lateral={tarjetasLaterales}
-          debajo={debajo.length > 0 ? <>{debajo}</> : undefined}
         />
       ) : (
-        <div className="mt-8 flex flex-col gap-6">{tarjetasIzquierda}</div>
+        <div className="flex flex-col gap-4">{tarjetasIzquierda}</div>
       )}
     </section>
   );

@@ -14,20 +14,38 @@ import {
   type ResultadoError,
 } from "@/lib/resultado";
 import { esUuid, LARGO_MAXIMO, MENSAJE_OBLIGATORIO, validarTextoOpcional } from "@/lib/validaciones";
+import {
+  normalizarDatosEntrevista,
+  validarDatosEntrevista,
+  type ModalidadEntrevista,
+} from "@/lib/entrevistas";
 import { programarEnvioEmails } from "@/lib/emails/cola";
 
-// Los campos "fecha" y "lugar" son los del diálogo de entrevista de la empresa.
-function validarEntrevista(fechaEntrevistaISO: string, lugarEntrevista: string): ResultadoError | null {
-  if (typeof fechaEntrevistaISO !== "string") return errCampo("fecha", "Fecha inválida.");
-  const fechaDate = new Date(fechaEntrevistaISO);
-  if (isNaN(fechaDate.getTime())) return errCampo("fecha", "Fecha inválida.");
-  if (fechaDate <= new Date()) return errCampo("fecha", "La fecha debe ser posterior al momento actual.");
+/** Lo que manda el formulario de la entrevista (migration_064). */
+type DatosEntrevistaEmpresa = {
+  fechaHoraISO: string;
+  modalidad: ModalidadEntrevista;
+  lugar: string;
+  link: string;
+};
 
-  if (typeof lugarEntrevista !== "string" || !lugarEntrevista.trim())
-    return errCampo("lugar", MENSAJE_OBLIGATORIO);
-  const errLugar = validarTextoOpcional(lugarEntrevista, LARGO_MAXIMO.lugarEntrevista);
-  if (errLugar) return errCampo("lugar", errLugar);
-  return null;
+// Los campos del error son los del formulario: fechaHora, modalidad, lugar y link.
+function validarEntrevista(datos: DatosEntrevistaEmpresa): ResultadoError | null {
+  if (typeof datos !== "object" || datos === null) return err("DATOS_INVALIDOS");
+  const error = validarDatosEntrevista(datos);
+  return error ? errCampo(error.campo, error.mensaje) : null;
+}
+
+/** Columnas de la entrevista: presencial con lugar y sin link, online con link y sin lugar. */
+function columnasEntrevista(datos: DatosEntrevistaEmpresa) {
+  const { lugar, link } = normalizarDatosEntrevista(datos.modalidad, datos.lugar, datos.link);
+  return {
+    estado_empresa: "en_proceso" as const,
+    fecha_entrevista: datos.fechaHoraISO,
+    modalidad_entrevista: datos.modalidad,
+    lugar_entrevista: lugar,
+    link_entrevista: link,
+  };
 }
 
 function revalidarOferta(ofertaId: string) {
@@ -39,28 +57,23 @@ function revalidarOferta(ofertaId: string) {
 export async function coordinarEntrevista(
   derivacionId: string,
   ofertaId: string,
-  fechaEntrevistaISO: string,
-  lugarEntrevista: string
+  datos: DatosEntrevistaEmpresa
 ): Promise<Resultado<void>> {
   const auth = await requerirEmpresa({ aprobada: true });
   if (!auth.ok) return auth;
 
   if (!esUuid(derivacionId) || !esUuid(ofertaId)) return err("DATOS_INVALIDOS");
 
-  const errEntrevista = validarEntrevista(fechaEntrevistaISO, lugarEntrevista);
+  const errEntrevista = validarEntrevista(datos);
   if (errEntrevista) return errEntrevista;
 
-  // El trigger derivaciones_empresa_update (028/029) valida la transición; sus
-  // mensajes (P0001) llegan al usuario, por ejemplo si otra pestaña ya cerró
-  // el proceso.
+  // El trigger derivaciones_empresa_update (028, última versión en la 064)
+  // valida la transición y los datos; sus mensajes (P0001) llegan al usuario,
+  // por ejemplo si otra pestaña ya cerró el proceso.
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase
     .from("derivaciones")
-    .update({
-      estado_empresa: "en_proceso",
-      fecha_entrevista: fechaEntrevistaISO,
-      lugar_entrevista: lugarEntrevista.trim(),
-    })
+    .update(columnasEntrevista(datos))
     .eq("id", derivacionId);
 
   if (error) {
@@ -71,31 +84,26 @@ export async function coordinarEntrevista(
 
   programarEnvioEmails();
   revalidarOferta(ofertaId);
-  return okMsg("Entrevista coordinada.");
+  return okMsg("Entrevista coordinada. Le avisamos al candidato.");
 }
 
 export async function reprogramarEntrevista(
   derivacionId: string,
   ofertaId: string,
-  fechaEntrevistaISO: string,
-  lugarEntrevista: string
+  datos: DatosEntrevistaEmpresa
 ): Promise<Resultado<void>> {
   const auth = await requerirEmpresa({ aprobada: true });
   if (!auth.ok) return auth;
 
   if (!esUuid(derivacionId) || !esUuid(ofertaId)) return err("DATOS_INVALIDOS");
 
-  const errEntrevista = validarEntrevista(fechaEntrevistaISO, lugarEntrevista);
+  const errEntrevista = validarEntrevista(datos);
   if (errEntrevista) return errEntrevista;
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase
     .from("derivaciones")
-    .update({
-      estado_empresa: "en_proceso",
-      fecha_entrevista: fechaEntrevistaISO,
-      lugar_entrevista: lugarEntrevista.trim(),
-    })
+    .update(columnasEntrevista(datos))
     .eq("id", derivacionId);
 
   if (error) {
@@ -106,7 +114,7 @@ export async function reprogramarEntrevista(
 
   programarEnvioEmails();
   revalidarOferta(ofertaId);
-  return okMsg("Entrevista reprogramada.");
+  return okMsg("Entrevista reprogramada. Le avisamos al candidato.");
 }
 
 export async function seleccionarCandidato(

@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { Briefcase, ChartColumn, Clock, Megaphone, Plus, UserCheck, Users } from "lucide-react";
+import { Award, Briefcase, ChartColumn, Clock, Plus, Send } from "lucide-react";
 import { requerirEmpresaPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { obtenerIndicadoresEmpresa } from "@/lib/empresa/indicadores";
 import { leerPeriodo, type Periodo } from "@/lib/indicadores-periodo";
 import { indicadoresDeEjemplo } from "@/lib/indicadores-ejemplo";
 import { estadoVencimiento } from "@/lib/ofertas-vencimiento";
+import { ACENTO_ESTADO_OFERTA } from "@/lib/empresa/filtro-ofertas";
+import { cn } from "@/lib/utils";
+import { CLASE_CUADRO_ESTADO } from "@/components/ui/cuadro-estado";
 import {
   ESTADO_OFERTA_EMPRESA_LABEL,
   ESTADO_OFERTA_EMPRESA_TONO,
@@ -19,13 +22,15 @@ import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
 import { Badge } from "@/components/ui/badge";
 import { BarraProgreso } from "@/components/ui/barra-progreso";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
-import { SelectorPeriodo } from "@/components/indicadores/selector-periodo";
+import { SelectorPeriodoDesplegable } from "@/components/indicadores/selector-periodo-desplegable";
 import { GrillaNumeros, TarjetaNumero } from "@/components/indicadores/tarjeta-numero";
 import { TarjetaGrafico, type TablaDatos } from "@/components/indicadores/tarjeta-grafico";
 import { GraficoDona, type ParteDona } from "@/components/indicadores/grafico-dona";
-import { BarrasOferta, LeyendaMedidasOferta } from "@/components/indicadores/barras-oferta";
+import { BarrasOferta, LeyendaMedidasOferta, MEDIDAS_OFERTA } from "@/components/indicadores/barras-oferta";
+import { AnimarAlVerse } from "@/components/indicadores/animar-al-verse";
 import { formatDecimal, formatNumero, formatPorcentaje } from "@/components/indicadores/formato";
 import { EsqueletoIndicadoresEmpresa } from "./esqueleto-indicadores-empresa";
+import { BotonVolver } from "@/components/ui/boton-volver";
 
 export const metadata: Metadata = {
   title: "Indicadores | Panel de empresa | Portal de Empleo Funes",
@@ -44,11 +49,13 @@ export default async function IndicadoresEmpresaPage({
 
   return (
     <section className="flex flex-col gap-6">
+      <BotonVolver href="/empresa" destacado />
       <EncabezadoPagina
-        className="sm:flex-col sm:items-stretch xl:flex-row xl:items-end"
+        banda
+        className="-mt-2"
         titulo="Indicadores"
         bajada="Cómo les va a tus ofertas y a tus candidatos."
-        acciones={<SelectorPeriodo ruta={RUTA} periodo={periodo} />}
+        acciones={<SelectorPeriodoDesplegable ruta={RUTA} periodo={periodo} enBanda />}
       />
 
       <Suspense key={periodo} fallback={<EsqueletoIndicadoresEmpresa />}>
@@ -104,19 +111,24 @@ async function ContenidoIndicadores({ periodo }: { periodo: Periodo }) {
     <div className="flex flex-col gap-6">
       <GrillaNumeros>
         <TarjetaNumero
-          icono={Megaphone}
+          icono={Briefcase}
+          claseFilete="before:bg-primary"
           valor={formatNumero(i.ofertas_vigentes)}
           etiqueta="Ofertas vigentes"
           subtitulo="Publicadas hoy en el portal"
         />
         <TarjetaNumero
-          icono={Users}
+          icono={Send}
+          claseIcono="bg-teal"
+          claseFilete="before:bg-teal"
           valor={formatNumero(i.candidatos_derivados)}
           etiqueta="Candidatos derivados"
           subtitulo={`${formatNumero(i.entrevistas_coordinadas)} ${i.entrevistas_coordinadas === 1 ? "entrevista coordinada" : "entrevistas coordinadas"} en el período`}
         />
         <TarjetaNumero
-          icono={UserCheck}
+          icono={Award}
+          claseIcono="bg-accent text-accent-foreground"
+          claseFilete="before:bg-accent"
           valor={formatNumero(i.seleccionados)}
           etiqueta="Seleccionados"
           subtitulo={
@@ -127,6 +139,8 @@ async function ContenidoIndicadores({ periodo }: { periodo: Periodo }) {
         />
         <TarjetaNumero
           icono={Clock}
+          claseIcono="bg-info"
+          claseFilete="before:bg-info"
           valor={
             i.dias_promedio_contratacion === null ? "—" : formatDecimal(i.dias_promedio_contratacion)
           }
@@ -226,35 +240,72 @@ function resumenDona(titulo: string, partes: ParteDona[]): string {
   return `Gráfico de dona. ${titulo}. Total: ${formatNumero(total)}. ${detalle}.`;
 }
 
-const CONCLUSION_OFERTAS: Record<string, string> = {
-  vigentes: "La mayoría de tus ofertas están publicadas",
-  revision: "La mayor parte de tus ofertas espera la revisión de la Oficina",
-  rechazadas: "La mayor parte de tus ofertas fue rechazada: revisá el motivo y corregilas",
-  cerradas: "La mayor parte de tus ofertas ya está cerrada",
-  vencidas: "La mayor parte de tus ofertas venció: podés renovarlas desde Mis ofertas",
+type Plural = [singular: string, plural: string];
+
+/**
+ * Conclusión de una dona: la parte mayor sobre el total ("2 de tus 5 ofertas
+ * están vigentes."), en singular o plural y con el género del sustantivo.
+ */
+function conclusionDona(
+  parte: number,
+  total: number,
+  sustantivo: Plural,
+  femenino: boolean,
+  estado: Plural,
+): string {
+  if (total === 1) return `Tu ${femenino ? "única" : "único"} ${sustantivo[0]} ${estado[0]}.`;
+  if (parte === total) {
+    return `${femenino ? "Todas" : "Todos"} tus ${formatNumero(total)} ${sustantivo[1]} ${estado[1]}.`;
+  }
+  return `${formatNumero(parte)} de tus ${formatNumero(total)} ${sustantivo[1]} ${parte === 1 ? estado[0] : estado[1]}.`;
+}
+
+const ESTADO_CONCLUSION_OFERTAS: Record<string, Plural> = {
+  vigentes: ["está vigente", "están vigentes"],
+  revision: ["espera la revisión de la Oficina", "esperan la revisión de la Oficina"],
+  rechazadas: [
+    "fue rechazada: revisá el motivo y corregila",
+    "fueron rechazadas: revisá el motivo y corregilas",
+  ],
+  cerradas: ["está cerrada", "están cerradas"],
+  vencidas: [
+    "venció: podés renovarla desde Mis ofertas",
+    "vencieron: podés renovarlas desde Mis ofertas",
+  ],
 };
 
 function TusOfertas({ i }: { i: FilaIndicadoresEmpresa }) {
   const partes: ParteDona[] = [
-    { clave: "vigentes", nombre: "Vigentes", cantidad: i.ofertas_vigentes },
-    { clave: "revision", nombre: "En revisión", cantidad: i.ofertas_pendientes },
-    { clave: "rechazadas", nombre: "Rechazadas", cantidad: i.ofertas_rechazadas },
-    { clave: "cerradas", nombre: "Cerradas", cantidad: i.ofertas_cerradas },
-    { clave: "vencidas", nombre: "Vencidas", cantidad: i.ofertas_vencidas },
+    { clave: "vigentes", nombre: "Vigentes", cantidad: i.ofertas_vigentes, color: "var(--color-success)" },
+    { clave: "revision", nombre: "En revisión", cantidad: i.ofertas_pendientes, color: "var(--color-accent)" },
+    { clave: "rechazadas", nombre: "Rechazadas", cantidad: i.ofertas_rechazadas, color: "var(--color-danger)" },
+    { clave: "cerradas", nombre: "Cerradas", cantidad: i.ofertas_cerradas, color: "var(--color-neutral)" },
+    { clave: "vencidas", nombre: "Vencidas", cantidad: i.ofertas_vencidas, color: "var(--color-danger)" },
   ];
   const mayor = mayorParte(partes);
 
   return (
     <TarjetaGrafico
+      variante="empresa"
       titulo="Tus ofertas"
       descripcion="En qué estado están hoy. No depende del período elegido."
-      conclusion={mayor ? CONCLUSION_OFERTAS[mayor.clave] : undefined}
+      conclusion={
+        mayor
+          ? conclusionDona(
+              mayor.cantidad,
+              totalDe(partes),
+              ["oferta", "ofertas"],
+              true,
+              ESTADO_CONCLUSION_OFERTAS[mayor.clave],
+            )
+          : undefined
+      }
       tabla={mayor ? tablaDona("Tus ofertas por estado", "Estado", partes) : undefined}
     >
       <GraficoDona
+        variante="anillo"
         partes={partes}
         unidad="ofertas"
-        resaltada={mayor?.clave}
         resumen={resumenDona("Tus ofertas por estado", partes)}
         vacio="No tenés ofertas enviadas a la Oficina."
       />
@@ -262,33 +313,44 @@ function TusOfertas({ i }: { i: FilaIndicadoresEmpresa }) {
   );
 }
 
-const CONCLUSION_CANDIDATOS: Record<string, string> = {
-  seleccionados: "La mayoría de tus candidatos fueron seleccionados",
-  no_seleccionados: "La mayoría de tus candidatos no fueron seleccionados",
-  proceso: "La mayoría de tus candidatos están en proceso",
+const ESTADO_CONCLUSION_CANDIDATOS: Record<string, Plural> = {
+  seleccionados: ["fue seleccionado", "fueron seleccionados"],
+  no_seleccionados: ["no fue seleccionado", "no fueron seleccionados"],
+  proceso: ["está en proceso", "están en proceso"],
 };
 
 function TusCandidatos({ i }: { i: FilaIndicadoresEmpresa }) {
   // Derivados del período sin un resultado contado en el período.
   const enProceso = Math.max(0, i.candidatos_derivados - i.seleccionados - i.no_seleccionados);
   const partes: ParteDona[] = [
-    { clave: "seleccionados", nombre: "Seleccionados", cantidad: i.seleccionados },
-    { clave: "no_seleccionados", nombre: "No seleccionados", cantidad: i.no_seleccionados },
-    { clave: "proceso", nombre: "En proceso", cantidad: enProceso },
+    { clave: "seleccionados", nombre: "Seleccionados", cantidad: i.seleccionados, color: "var(--color-success)" },
+    { clave: "no_seleccionados", nombre: "No seleccionados", cantidad: i.no_seleccionados, color: "var(--color-neutral)" },
+    { clave: "proceso", nombre: "En proceso", cantidad: enProceso, color: "var(--color-info)" },
   ];
   const mayor = mayorParte(partes);
 
   return (
     <TarjetaGrafico
+      variante="empresa"
       titulo="Tus candidatos"
       descripcion="Los que te derivó la Oficina de Empleo en el período y su resultado."
-      conclusion={mayor ? CONCLUSION_CANDIDATOS[mayor.clave] : undefined}
+      conclusion={
+        mayor
+          ? conclusionDona(
+              mayor.cantidad,
+              totalDe(partes),
+              ["candidato", "candidatos"],
+              false,
+              ESTADO_CONCLUSION_CANDIDATOS[mayor.clave],
+            )
+          : undefined
+      }
       tabla={mayor ? tablaDona("Tus candidatos por resultado", "Resultado", partes) : undefined}
     >
       <GraficoDona
+        variante="anillo"
         partes={partes}
         unidad="candidatos"
-        resaltada={mayor?.clave}
         resumen={resumenDona("Tus candidatos por resultado", partes)}
         vacio="No te derivaron candidatos en el período."
       />
@@ -321,6 +383,9 @@ function PorOferta({ ofertas }: { ofertas: FilaIndicadoresPorOfertaEmpresa[] }) 
 
   return (
     <TarjetaGrafico
+      variante="empresa"
+      tablaEnEncabezado
+      icono={Briefcase}
       titulo="Por oferta"
       descripcion="Derivados, entrevistas y seleccionados del período. Las vacantes cubiertas son desde la publicación."
       conclusion={
@@ -363,13 +428,18 @@ function PorOferta({ ofertas }: { ofertas: FilaIndicadoresPorOfertaEmpresa[] }) 
       {ofertas.length === 0 ? (
         <p className="text-sm text-muted-foreground">No hay ofertas con datos para mostrar.</p>
       ) : (
-        <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {ofertas.map((o) => (
-            <li key={o.oferta_id}>
-              <TarjetaPorOferta oferta={o} maximo={maximo} enlazar={enlazar} />
-            </li>
-          ))}
-        </ul>
+        <div className="@container">
+          <ul className="grid grid-cols-1 gap-4 @2xl:grid-cols-2">
+            {ofertas.map((o) => (
+              <li key={o.oferta_id}>
+                {/* Las barras de cada tarjeta crecen cuando la tarjeta entra a la pantalla. */}
+                <AnimarAlVerse className="h-full">
+                  <TarjetaPorOferta oferta={o} maximo={maximo} enlazar={enlazar} />
+                </AnimarAlVerse>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </TarjetaGrafico>
   );
@@ -389,9 +459,9 @@ function TarjetaPorOferta({
   const porcentaje = o.vacantes ? (o.cubiertas * 100) / o.vacantes : 0;
 
   return (
-    <article className="flex h-full flex-col gap-4 rounded-[var(--radius-lg)] border border-border bg-surface p-4">
+    <article className={cn(CLASE_CUADRO_ESTADO, ACENTO_ESTADO_OFERTA[estado].filete)}>
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <h3 className="min-w-0 flex-1 basis-40 text-base leading-snug font-bold break-words">
+        <h3 className="min-w-0 flex-1 basis-40 text-base leading-snug font-extrabold break-words">
           {enlazar ? (
             <Link
               href={`/empresa/ofertas/${o.oferta_id}`}
@@ -414,13 +484,14 @@ function TarjetaPorOferta({
         resumen={`${o.titulo}: ${formatNumero(o.derivados)} derivados, ${formatNumero(o.entrevistas)} entrevistas y ${formatNumero(o.seleccionados)} seleccionados en el período.`}
       />
 
-      <div className="mt-auto flex flex-col gap-2">
+      <div className="mt-auto flex flex-col gap-2 border-t border-tabla-borde pt-3">
         <p className="flex justify-between gap-3 text-sm">
           <span className="font-semibold text-control-foreground">Vacantes cubiertas</span>
           <span className="font-bold text-foreground tabular-nums">{textoCobertura(o)}</span>
         </p>
         {o.vacantes !== null && (
           <BarraProgreso
+            animarIndice={MEDIDAS_OFERTA.length}
             porcentaje={porcentaje}
             etiqueta={`Vacantes cubiertas: ${formatNumero(o.cubiertas)} de ${formatNumero(o.vacantes)}`}
           />

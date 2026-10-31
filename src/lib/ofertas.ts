@@ -2,6 +2,7 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
 import { limpiarBusqueda } from "@/lib/busqueda";
 import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
+import type { RubroConOfertas } from "@/lib/rubros-destacados";
 import { VALORES_ENUM, type FilaOfertaPublica, type Tabla } from "@/types/db";
 import type { Modalidad, OfertaLaboral } from "@/types/oferta";
 
@@ -68,8 +69,8 @@ function mapRow(row: DbOfertaRow): OfertaLaboral {
 }
 
 /**
- * buscar_ofertas_publicas (migration_034) devuelve modalidad y jornada como
- * text; se descartan las filas con un valor fuera del enum en lugar de forzar
+ * buscar_ofertas_publicas (034) y buscar_ofertas_publicas_multiple (062)
+ * devuelven modalidad y jornada como text; se descartan las filas con un valor fuera del enum en lugar de forzar
  * el tipo (no deberían existir: las columnas de ofertas son enums).
  */
 function mapFilaPublica(fila: FilaOfertaPublica): OfertaLaboral[] {
@@ -103,25 +104,39 @@ function esJornada(valor: string): valor is OfertaLaboral["jornada"] {
 export type FiltrosOfertasPublicas = {
   /** Texto ya pasado por limpiarBusqueda. */
   q: string;
-  categoria: string | null;
-  modalidad: Modalidad | null;
+  /** Rubros elegidos (por nombre), en el orden del catálogo, sin repetidos. */
+  categorias: string[];
+  /** Modalidades elegidas, en el orden de MODALIDADES, sin repetidas. */
+  modalidades: Modalidad[];
   pagina: number;
 };
 
-/** Lee y valida q, categoria, modalidad y pagina; los valores desconocidos no filtran. */
+function valoresParam(valor: ParamsUrl[string]): string[] {
+  if (valor === undefined) return [];
+  return Array.isArray(valor) ? valor : [valor];
+}
+
+/**
+ * Lee y valida q, categoria, modalidad y pagina. categoria y modalidad se
+ * pueden repetir (?categoria=A&categoria=B); un solo valor, como en los links
+ * del buscador del inicio, también sirve. Los valores desconocidos no filtran.
+ */
 export function leerFiltrosOfertasPublicas(
   searchParams: ParamsUrl,
   categorias: string[],
 ): FiltrosOfertasPublicas {
-  const primero = (v: ParamsUrl[string]) => (Array.isArray(v) ? v[0] : v) ?? "";
-  const categoria = primero(searchParams.categoria);
-  const modalidad = primero(searchParams.modalidad);
+  const pedidas = new Set(valoresParam(searchParams.categoria));
+  const modalidades = new Set(valoresParam(searchParams.modalidad));
   return {
     q: limpiarBusqueda(searchParams.q),
-    categoria: categorias.includes(categoria) ? categoria : null,
-    modalidad: MODALIDADES.find((m) => m === modalidad) ?? null,
+    categorias: categorias.filter((c) => pedidas.has(c)),
+    modalidades: MODALIDADES.filter((m) => modalidades.has(m)),
     pagina: leerPagina(searchParams.pagina),
   };
+}
+
+export function hayFiltrosOfertas(filtros: FiltrosOfertasPublicas): boolean {
+  return filtros.categorias.length > 0 || filtros.modalidades.length > 0;
 }
 
 export type ResultadoOfertasPublicas =
@@ -136,10 +151,10 @@ export async function buscarOfertasPublicas(
   const resultado = await consultarPagina<FilaOfertaPublica>(
     filtros.pagina,
     async (desde, hasta) => {
-      const respuesta = await supabase.rpc("buscar_ofertas_publicas", {
+      const respuesta = await supabase.rpc("buscar_ofertas_publicas_multiple", {
         p_q: filtros.q || undefined,
-        p_categoria: filtros.categoria ?? undefined,
-        p_modalidad: filtros.modalidad ?? undefined,
+        p_categorias: filtros.categorias.length > 0 ? filtros.categorias : undefined,
+        p_modalidades: filtros.modalidades.length > 0 ? filtros.modalidades : undefined,
         p_limite: hasta - desde + 1,
         p_desplazamiento: desde,
       });
@@ -152,7 +167,7 @@ export async function buscarOfertasPublicas(
   );
 
   if (!resultado.ok) {
-    const refError = logError("buscar_ofertas_publicas", resultado.error);
+    const refError = logError("buscar_ofertas_publicas_multiple", resultado.error);
     return { ok: false, ofertas: [], total: 0, pagina: 1, refError };
   }
 
@@ -161,6 +176,51 @@ export async function buscarOfertasPublicas(
     ofertas: resultado.filas.flatMap(mapFilaPublica),
     total: resultado.total,
     pagina: resultado.pagina,
+  };
+}
+
+export type ConteoModalidad = { modalidad: Modalidad; cantidad: number };
+
+/**
+ * Cuántas ofertas visibles cumplen el texto y los rubros, por modalidad (sin
+ * filtrar por modalidad). Para sugerir otra modalidad en el estado vacío; si
+ * falla, se registra y se devuelve una lista vacía (el estado vacío común).
+ */
+export async function contarOfertasPorModalidad(
+  q: string,
+  categorias: string[],
+): Promise<ConteoModalidad[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("contar_ofertas_por_modalidad", {
+    p_q: q || undefined,
+    p_categorias: categorias.length > 0 ? categorias : undefined,
+  });
+  if (error) {
+    logError("contar_ofertas_por_modalidad", error);
+    return [];
+  }
+  return (data ?? []).flatMap((f) => {
+    const cantidad = Number(f.cantidad);
+    return esModalidad(f.modalidad) && cantidad > 0 ? [{ modalidad: f.modalidad, cantidad }] : [];
+  });
+}
+
+/**
+ * Rubros con al menos una oferta vigente y cuántas tiene cada uno, por
+ * nombre. Para "Explorá por rubro" y el panel "Todos los rubros" de /ofertas.
+ */
+export async function contarOfertasVigentesPorRubro(): Promise<
+  { ok: true; rubros: RubroConOfertas[] } | { ok: false; refError: string }
+> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("contar_ofertas_vigentes_por_rubro");
+  if (error) return { ok: false, refError: logError("contar_ofertas_vigentes_por_rubro", error) };
+  return {
+    ok: true,
+    rubros: (data ?? []).flatMap((f) => {
+      const cantidad = Number(f.cantidad);
+      return cantidad > 0 ? [{ id: f.categoria_id, nombre: f.rubro, cantidad }] : [];
+    }),
   };
 }
 

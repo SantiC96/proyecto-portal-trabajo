@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Info, Mail } from "lucide-react";
+import { AvisoSpam } from "@/components/auth/aviso-spam";
 import { PantallaAuth } from "@/components/auth/pantalla-auth";
 import { Aviso } from "@/components/ui/aviso";
 
@@ -29,6 +30,7 @@ export default async function VerificarEmailPage({
       icono={<Mail aria-hidden="true" />}
       bajada="Te enviamos un correo de confirmación. Hacé clic en el enlace para activar tu cuenta y empezar a buscar empleo."
     >
+      <AvisoSpam />
       {comprobanteSinSubir && (
         <Aviso tono="warning" icono={Info}>
           Tu cuenta se creó, pero no pudimos subir tu comprobante de domicilio. Podés

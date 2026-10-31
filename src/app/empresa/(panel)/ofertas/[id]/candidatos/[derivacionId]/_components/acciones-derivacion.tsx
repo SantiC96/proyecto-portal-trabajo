@@ -2,9 +2,15 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import { CampoFechaHora, fechaHoraISO, horarioYaPaso } from "@/components/ui/campo-fecha-hora";
+import {
+  CamposEntrevista,
+  validarEntrevistaEnCliente,
+  valoresEntrevista,
+  type ValoresEntrevista,
+} from "@/components/entrevistas/campos-entrevista";
+import { CartelEntrevista, type DatosEntrevistaCoordinada } from "@/components/entrevistas/cartel-entrevista";
+import type { CampoEntrevista } from "@/lib/entrevistas";
 import {
   Dialog,
   DialogContent,
@@ -32,53 +38,50 @@ import {
   ariaErrorCampo,
 } from "@/components/ui/obligatorio";
 import { useErroresCampo } from "@/lib/use-errores-campo";
-import { formatFechaHora } from "@/lib/fechas";
 import { Franja } from "@/components/ui/franja";
 import { OpcionRadio } from "@/components/ui/opcion-radio";
 import { Spinner } from "@/components/ui/spinner";
 
-/** "fecha" es el error de fecha y hora que devuelve el servidor; va debajo del horario. */
-type CampoEntrevista = "dia" | "hora" | "fecha" | "lugar";
+const CAMPOS_SERVIDOR = ["fechaHora", "modalidad", "lugar", "link"] as const;
 
 /**
- * Coordinar (o reprogramar, si ya hay una) la entrevista, en la tarjeta de
- * gestión. Mismas acciones y validaciones que el diálogo anterior.
+ * Coordinar o reprogramar la entrevista, en la tarjeta de gestión. Al
+ * reprogramar viene precargado y con "Cancelar" para volver al cartel.
  */
 function FormularioEntrevista({
   derivacionId,
   ofertaId,
-  modo,
-  lugarActual,
+  entrevista,
+  onCancelar,
+  onGuardado,
 }: {
   derivacionId: string;
   ofertaId: string;
-  modo: "coordinar" | "reprogramar";
-  lugarActual: string | null;
+  /** La entrevista coordinada, si se está reprogramando. */
+  entrevista: DatosEntrevistaCoordinada | null;
+  onCancelar?: () => void;
+  onGuardado?: () => void;
 }) {
   const router = useRouter();
   const { pendiente: isPending, ejecutar } = useAccion();
-  const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined);
-  const [selectedTime, setSelectedTime] = useState<string>("");
-  const [lugar, setLugar] = useState(lugarActual ?? "");
+  const [valores, setValores] = useState<ValoresEntrevista>(() =>
+    valoresEntrevista(entrevista ?? undefined)
+  );
   const campos = useErroresCampo<CampoEntrevista>();
+  const modo = entrevista ? "reprogramar" : "coordinar";
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = e.currentTarget;
-    if (!campos.validar({ dia: selectedDay, hora: selectedTime, lugar }, form) || !selectedDay) return;
-    if (horarioYaPaso(selectedDay, selectedTime)) {
-      campos.marcar("hora", "El horario elegido ya pasó. Seleccioná uno futuro.", form);
-      return;
-    }
-    const fechaISO = fechaHoraISO(selectedDay, selectedTime);
+    const fechaHoraISO = validarEntrevistaEnCliente(valores, campos, e.currentTarget);
+    if (!fechaHoraISO) return;
+    const datos = { fechaHoraISO, modalidad: valores.modalidad, lugar: valores.lugar, link: valores.link };
     const action = modo === "coordinar" ? coordinarEntrevista : reprogramarEntrevista;
     ejecutar(async () => {
-      const result = await action(derivacionId, ofertaId, fechaISO, lugar.trim());
-      if (!campos.tomarDelServidor(result, ["fecha", "lugar"])) mostrarAviso(result);
+      const result = await action(derivacionId, ofertaId, datos);
+      if (!campos.tomarDelServidor(result, CAMPOS_SERVIDOR)) mostrarAviso(result);
       if (result.ok) {
-        setSelectedDay(undefined);
-        setSelectedTime("");
         campos.limpiarTodos();
+        onGuardado?.();
         router.refresh();
       }
     });
@@ -86,52 +89,35 @@ function FormularioEntrevista({
 
   return (
     <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <h3 className="text-[17px] font-extrabold text-heading">
-        {modo === "coordinar" ? "Coordinar entrevista" : "Reprogramar entrevista"}
-      </h3>
-      <CampoFechaHora
-        compacto
-        idHorario="entrevista-hora"
-        dia={selectedDay}
-        hora={selectedTime}
-        onDiaChange={(dia) => {
-          setSelectedDay(dia);
-          campos.limpiar("dia");
-          campos.limpiar("fecha");
-        }}
-        onHoraChange={(hora) => {
-          setSelectedTime(hora);
-          campos.limpiar("hora");
-          campos.limpiar("fecha");
-        }}
-        deshabilitado={isPending}
-        errorDia={campos.errores.dia}
-        errorHora={campos.errores.hora ?? campos.errores.fecha}
-      />
       <div>
-        <label htmlFor="lugar-input" className="etiqueta-campo mb-1.5 block">
-          Lugar <Obligatorio />
-        </label>
-        <input
-          id="lugar-input"
-          type="text"
-          value={lugar}
-          onChange={(e) => {
-            setLugar(e.target.value);
-            campos.limpiar("lugar");
-          }}
-          placeholder="Dirección, piso, o link de videollamada"
-          maxLength={LARGO_MAXIMO.lugarEntrevista}
-          disabled={isPending}
-          {...ariaErrorCampo("lugar-input", campos.errores.lugar)}
-          className="campo"
-        />
-        <ErrorCampo idCampo="lugar-input" mensaje={campos.errores.lugar} className="mt-1.5" />
+        <h3 className="text-[17px] font-extrabold text-heading">
+          {modo === "coordinar" ? "Coordinar entrevista" : "Reprogramar entrevista"}
+        </h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {modo === "coordinar"
+            ? "Es opcional: podés seleccionar al candidato sin entrevista. Le avisamos con la fecha, la hora y el lugar o el link."
+            : "Le avisamos al candidato con los datos nuevos."}
+        </p>
       </div>
-      <button type="submit" disabled={isPending} aria-busy={isPending} className="btn-secundario w-full">
-        {isPending && <Spinner />}
-        {isPending ? "Guardando…" : "Guardar entrevista"}
-      </button>
+      <CamposEntrevista
+        idBase="entrevista"
+        valores={valores}
+        onCambiar={(cambio) => setValores((v) => ({ ...v, ...cambio }))}
+        errores={campos.errores}
+        onLimpiar={campos.limpiar}
+        deshabilitado={isPending}
+      />
+      <div className="flex flex-col gap-2">
+        <button type="submit" disabled={isPending} aria-busy={isPending} className="btn-secundario w-full">
+          {isPending && <Spinner />}
+          {isPending ? "Guardando…" : modo === "coordinar" ? "Guardar entrevista" : "Guardar cambios"}
+        </button>
+        {onCancelar && (
+          <button type="button" onClick={onCancelar} disabled={isPending} className="btn-neutro w-full">
+            Cancelar
+          </button>
+        )}
+      </div>
     </form>
   );
 }
@@ -149,8 +135,12 @@ type Props = {
   derivacionId: string;
   ofertaId: string;
   estado: EstadoDerivacionEmpresa;
-  fechaEntrevista: string | null;
-  lugarEntrevista: string | null;
+  entrevista: {
+    fechaHora: string | null;
+    modalidad: string | null;
+    lugar: string | null;
+    link: string | null;
+  };
   vacantesCubiertas: boolean;
 };
 
@@ -159,8 +149,7 @@ export function AccionesDerivacion({
   derivacionId,
   ofertaId,
   estado,
-  fechaEntrevista,
-  lugarEntrevista,
+  entrevista,
   vacantesCubiertas,
 }: Props) {
   const router = useRouter();
@@ -170,20 +159,19 @@ export function AccionesDerivacion({
   const [openOfertaCerrada, setOpenOfertaCerrada] = useState(false);
   const [opcion, setOpcion] = useState<string | null>(null);
   const [otroMotivo, setOtroMotivo] = useState("");
+  const [reprogramando, setReprogramando] = useState(false);
   const camposRechazo = useErroresCampo<"motivo">();
 
   const motivo = opcion === OTRO_MOTIVO ? otroMotivo : (opcion ?? "");
 
-  // Entrevista ya pasada → empresa puede seleccionar
-  const entrevistaYaPaso =
-    estado === "en_proceso" &&
-    fechaEntrevista !== null &&
-    new Date(fechaEntrevista) <= new Date();
-
+  // Se puede seleccionar sin entrevista o antes de la fecha (migration_064):
+  // solo lo frena tener las vacantes cubiertas.
   const motivoSeleccionNoDisponible = vacantesCubiertas
     ? "Ya cubriste todas las vacantes de esta oferta."
-    : !entrevistaYaPaso
-      ? "Disponible después de la entrevista"
+    : null;
+  const coordinada =
+    estado === "en_proceso" && entrevista.fechaHora
+      ? { ...entrevista, fechaHora: entrevista.fechaHora }
       : null;
 
   function cerrarRechazo() {
@@ -257,29 +245,36 @@ export function AccionesDerivacion({
 
   return (
     <div className="flex flex-col gap-5">
-      {estado === "en_proceso" && fechaEntrevista && (
-        <Franja tono="info" icono={CalendarClock} titulo="Entrevista coordinada:">
-          {formatFechaHora(fechaEntrevista)}
-          {lugarEntrevista ? ` · ${lugarEntrevista}` : ""}
-        </Franja>
+      {coordinada && !reprogramando ? (
+        <div className="flex flex-col gap-3">
+          <CartelEntrevista titulo="Entrevista coordinada" datos={coordinada} />
+          <button
+            type="button"
+            onClick={() => setReprogramando(true)}
+            disabled={isPending}
+            className="btn-secundario w-full"
+          >
+            Reprogramar
+          </button>
+        </div>
+      ) : (
+        <FormularioEntrevista
+          derivacionId={derivacionId}
+          ofertaId={ofertaId}
+          entrevista={coordinada}
+          onCancelar={coordinada ? () => setReprogramando(false) : undefined}
+          onGuardado={() => setReprogramando(false)}
+        />
       )}
-
-      <FormularioEntrevista
-        // Al guardar cambia la fecha: el formulario vuelve a empezar vacío.
-        key={fechaEntrevista ?? "sin-entrevista"}
-        derivacionId={derivacionId}
-        ofertaId={ofertaId}
-        modo={estado === "pendiente" ? "coordinar" : "reprogramar"}
-        lugarActual={lugarEntrevista}
-      />
 
       <hr className="border-border" />
 
       <div className="flex flex-col gap-3">
         <div>
           <h3 className="text-[17px] font-extrabold text-heading">Resultado</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Marcalo cuando termines el proceso con este candidato.
+          <p id="resultado-ayuda" className="mt-1 text-sm text-muted-foreground">
+            Podés seleccionar al candidato en cualquier momento, aunque no hayan tenido una entrevista o
+            todavía no haya pasado la fecha.
           </p>
         </div>
         <div className="flex flex-col gap-1.5">
@@ -287,10 +282,10 @@ export function AccionesDerivacion({
             type="button"
             onClick={() => setOpenSeleccion(true)}
             disabled={isPending || motivoSeleccionNoDisponible !== null}
-            aria-describedby={motivoSeleccionNoDisponible ? "motivo-seleccion" : undefined}
+            aria-describedby={motivoSeleccionNoDisponible ? "motivo-seleccion" : "resultado-ayuda"}
             className="btn-primario w-full"
           >
-            Contratado
+            Seleccionar
           </button>
           {motivoSeleccionNoDisponible && (
             <p id="motivo-seleccion" className="text-[13px] text-muted-foreground">
@@ -339,7 +334,7 @@ export function AccionesDerivacion({
           if (!v && !isPending) cerrarRechazo();
         }}
       >
-        <DialogContent tamano="amplio">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>No seleccionar candidato</DialogTitle>
             <DialogDescription>

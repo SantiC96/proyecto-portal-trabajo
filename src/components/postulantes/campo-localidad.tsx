@@ -1,6 +1,7 @@
 "use client";
 
 import { MapPin } from "lucide-react";
+import { Combobox } from "@/components/ui/combobox";
 import {
   CLASE_CONTROL_INVALIDO,
   ErrorCampo,
@@ -38,6 +39,11 @@ type Props = {
   estiloPerfil?: boolean;
 };
 
+const OPCIONES_COMBOBOX = [
+  ...LOCALIDADES.map((l) => ({ id: l, nombre: l })),
+  { id: OTRA_LOCALIDAD, nombre: "Otra localidad" },
+];
+
 const ETIQUETA_PERFIL = "text-[15px] font-bold text-control-foreground";
 const CAMPO_PERFIL = "campo min-h-12 rounded-[var(--radius-md)] border-border-campo text-base";
 const ERROR_PERFIL = "text-[13px] font-semibold";
@@ -71,25 +77,20 @@ export function CampoLocalidad({
         >
           ¿De dónde sos? <Obligatorio />
         </label>
-        <select
+        <Combobox
           id={id}
-          required
-          value={elegida}
-          disabled={deshabilitado}
-          onChange={(e) => onElegida(e.target.value)}
-          className={estiloPerfil ? CAMPO_PERFIL : claseSelect}
+          requerido
+          opciones={OPCIONES_COMBOBOX}
+          valor={elegida}
+          onCambiar={onElegida}
+          deshabilitado={deshabilitado}
+          placeholder="Elegí tu localidad"
+          placeholderBusqueda="Buscar localidad"
+          etiquetaBusqueda="Buscar localidad"
+          vacioTexto="No está en la lista: buscá «Otra localidad»"
+          triggerClassName={cn(estiloPerfil ? CAMPO_PERFIL : claseSelect, "cursor-pointer", CLASE_CONTROL_INVALIDO)}
           {...ariaErrorCampo(id, errorLocalidad)}
-        >
-          <option value="" disabled>
-            Elegí tu localidad
-          </option>
-          {LOCALIDADES.map((localidad) => (
-            <option key={localidad} value={localidad}>
-              {localidad}
-            </option>
-          ))}
-          <option value={OTRA_LOCALIDAD}>Otra localidad</option>
-        </select>
+        />
         <ErrorCampo
           idCampo={id}
           mensaje={errorLocalidad}

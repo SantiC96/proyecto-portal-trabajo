@@ -15,16 +15,18 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 
 | Rol | Email | Contraseña | Qué probar |
 |---|---|---|---|
-| Postulante | PENDIENTE_DATOS_DEMO | PENDIENTE_DATOS_DEMO | Completar el perfil, subir el CV, postularse a una oferta y seguir su estado. |
-| Empresa | PENDIENTE_DATOS_DEMO | PENDIENTE_DATOS_DEMO | Publicar una oferta, ver los candidatos derivados y coordinar una entrevista. |
-| Oficina de Empleo | PENDIENTE_DATOS_DEMO | PENDIENTE_DATOS_DEMO | Aprobar empresas y ofertas, derivar postulaciones, asignar cursos y ver indicadores. |
+| Postulante | santicancio2@gmail.com | Password123 | Completar el perfil, subir el CV, postularse a una oferta, responder una invitación y seguir el estado de cada postulación. |
+| Empresa | santiago.cancio96@gmail.com | Password123 | Publicar una oferta, ver los candidatos derivados, coordinar una entrevista, guardar candidatos y ver los indicadores. |
+| Empresa | scancio637@gmail.com | Password123 | Lo mismo que la otra empresa, con otras ofertas y otros candidatos. |
+| Oficina de Empleo | user@admin.com | Password123 | Aprobar empresas, ofertas y comprobantes de domicilio, derivar postulaciones, invitar postulantes a ofertas, asignar cursos y ver los indicadores. |
 
 ## Funcionalidades
 
 ### Postulante
 
 - Panel de inicio: cómo están sus postulaciones, aviso de invitaciones para responder, últimos movimientos, qué le falta al perfil y ofertas que coinciden con su perfil (con el mismo puntaje que usa la oficina).
-- Buscar ofertas por texto, rubro y modalidad, sin necesidad de registrarse.
+- Buscar ofertas por texto, rubros y modalidades, sin necesidad de registrarse. Se pueden elegir varios rubros y varias modalidades a la vez (alcanza con que la oferta tenga uno de los rubros y una de las modalidades elegidas); si no hay resultados, el listado avisa cuántas ofertas hay de esos rubros en otra modalidad.
+- En el listado de ofertas, "Explorá por rubro": tarjetas con los rubros que tienen más ofertas vigentes (con sesión de postulante, primero los de su perfil) y un panel "Todos los rubros" con buscador para elegir varios a la vez. Los filtros activos se ven como chips que se quitan con un toque.
 - Inicio con buscador (puesto o palabra clave y rubro, lleva al listado de ofertas), accesos por rubro y un carrusel con las últimas 10 ofertas publicadas.
 - Postularse a una oferta eligiendo con cuál de sus CVs (el más reciente viene elegido) y retirarla en cualquier momento salvo si ya fue seleccionado; la retirada queda en el historial y se puede volver a postular mientras la oferta siga abierta.
 - Ver el estado de cada postulación, con qué CV se postuló, la pre-entrevista y la entrevista con la empresa.
@@ -69,6 +71,10 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 - Cierre de sesión automático después de 30 minutos sin actividad.
 - Cada rol entra solo a su panel; después de iniciar sesión se vuelve a la página pedida.
 
+### Preguntas frecuentes
+
+- Página pública `/preguntas-frecuentes` (en la navegación sin sesión y en el footer) con las preguntas agrupadas en "Postulantes", "Empresas" y "Sobre el portal", en desplegables, y al final el teléfono y el correo de la Oficina. Con sesión de postulante se ven "Postulantes" y "Sobre el portal"; con sesión de empresa, "Empresas" y "Sobre el portal" (sin sesión y para la Oficina, las tres). El link "Ver todas las preguntas" (`?ver=todas`) muestra las tres.
+
 ### Avisos y emails
 
 - Campanita con avisos para los tres roles (derivaciones, entrevistas, aprobaciones, vencimientos, cursos, invitaciones a ofertas).
@@ -77,13 +83,14 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 
 ### Dashboard de indicadores de la oficina
 
-- Postulantes, ofertas vigentes y empresas por estado.
-- Postulaciones, derivaciones, contrataciones y cursos del período elegido.
-- Tasa de contratación, días promedio hasta la derivación, postulaciones por día, semana o mes según el período y gráfico por rubro.
+- Selector de período desplegable: últimos 30 días, últimos 90 días, este año o desde el inicio.
+- Postulantes registrados, ofertas vigentes, postulaciones nuevas y contrataciones, cada una con su mini línea de tendencia y la variación contra el período anterior de la misma duración.
+- Evolución general (postulaciones y contrataciones por día, semana o mes), estado de las postulaciones del período, ofertas vigentes por área, las últimas cinco postulaciones y un resumen con derivaciones, contrataciones y tasa de contratación.
+- Más abajo, postulaciones por rubro, resultado de las derivaciones, empresas por estado y el proceso de la Oficina (pre-entrevistas, no seleccionados, días hasta la derivación y cursos). Las tarjetas que están fuera de la pantalla aparecen al llegar con el scroll.
 
 ### Datos de ejemplo en los indicadores
 
-Para presentaciones, la variable de entorno de servidor `INDICADORES_DE_EJEMPLO=true` hace que las pantallas de indicadores de la oficina y de la empresa muestren datos ficticios de un año de uso. **La pantalla no muestra ninguna marca de que son datos de ejemplo**: se ve igual que con los datos reales, así que hay que apagar el modo después de cada presentación. No escribe en la base ni manda correos, y el resto del portal sigue con los datos reales. Sin la variable, o con otro valor, todo funciona como siempre.
+Para presentaciones, la variable de entorno de servidor `INDICADORES_DE_EJEMPLO=true` hace que las pantallas de indicadores de la oficina y de la empresa muestren datos ficticios (dos años de uso en la oficina). **La pantalla no muestra ninguna marca de que son datos de ejemplo**: se ve igual que con los datos reales, así que hay que apagar el modo después de cada presentación. No escribe en la base ni manda correos, y el resto del portal sigue con los datos reales. Sin la variable, o con otro valor, todo funciona como siempre.
 
 - **Local:** agregar `INDICADORES_DE_EJEMPLO=true` a `.env.local` y reiniciar `npm run dev`. Para apagarlo, borrar la línea y reiniciar.
 - **Vercel:** en *Settings → Environment Variables*, agregar `INDICADORES_DE_EJEMPLO` = `true` y volver a desplegar. Para apagarlo, borrar la variable y volver a desplegar: el cambio no aplica hasta el próximo deploy.
@@ -96,6 +103,7 @@ Para presentaciones, la variable de entorno de servidor `INDICADORES_DE_EJEMPLO=
 - **Emails por Gmail (SMTP)** con una cola en la base y un cron diario de respaldo.
 - **Interfaz con Tailwind CSS y shadcn/ui:** verde institucional, Public Sans y estados en colores sólidos según el [design system](docs/DESIGN_SYSTEM_Portal_Municipal_Empleo.md). Los gráficos de los indicadores usan los charts de shadcn/ui sobre **Recharts**.
 - **Navegación lateral por rol:** sidebar a la izquierda (contraíble) y, en el celular, barra superior con panel; las pantallas de `/auth` van sin navegación.
+- **Footer en todas las pantallas con navegación** (no en `/auth`): marca, datos de la Oficina de Empleo (dirección con link a Google Maps, horario, teléfono y correo), Instagram y Facebook de la Municipalidad y enlaces según la sesión. Los datos de la Oficina están en un solo lugar: `src/lib/oficina.ts`.
 - **Git** con `main` (producción) y `develop` (integración), ramas `feat/`, `fix/`, `refactor/`, `docs/` y pull requests.
 
 El detalle (arquitectura, base de datos, seguridad, storage, puesta en marcha y deploy) está en la [documentación técnica](docs/documentacion-tecnica.md).

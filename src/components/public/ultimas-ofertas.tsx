@@ -4,8 +4,9 @@ import { CarruselOfertas } from "@/components/public/carrusel-ofertas";
 import { TarjetaOferta } from "@/components/ofertas/tarjeta-oferta";
 import { Badge } from "@/components/ui/badge";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { Esqueleto, EsqueletoTarjeta } from "@/components/ui/esqueleto";
+import { Esqueleto, TarjetaOfertaEsqueleto } from "@/components/ui/esqueleto";
 import { ultimasOfertasPublicas } from "@/lib/ofertas";
+import { formatAntiguedadPublicacion } from "@/lib/fechas";
 import { rutaBuscarPostulantes } from "@/lib/invitaciones";
 import { obtenerInvitacionesPendientes } from "@/lib/postulante/panel";
 
@@ -67,6 +68,8 @@ export async function UltimasOfertas({
     );
   }
 
+  const ahora = new Date();
+
   return (
     <CarruselOfertas titulo={TITULO} bajada={BAJADA} enlace={ENLACE}>
       {resultado.ofertas.map((oferta) => (
@@ -79,12 +82,13 @@ export async function UltimasOfertas({
           modalidad={oferta.modalidad}
           lugar={oferta.ubicacion}
           jornada={oferta.jornada}
+          publicada={formatAntiguedadPublicacion(oferta.fechaPublicacion, ahora)}
           badges={invitadas.has(oferta.id) && <Badge tono="warning">Te invitaron</Badge>}
           accionExtra={
             esOficina && (
               <Link
                 href={rutaBuscarPostulantes(oferta.id, { volver: "/" })}
-                className="btn-primario"
+                className="btn-secundario"
               >
                 <UserSearch aria-hidden="true" />
                 Buscar postulantes
@@ -121,9 +125,10 @@ export function EsqueletoUltimasOfertas() {
       <Esqueleto className="mt-2 h-4 w-3/4 sm:w-96" />
       <div className="mt-6 grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
         {Array.from({ length: 3 }, (_, i) => (
-          <EsqueletoTarjeta
+          <TarjetaOfertaEsqueleto
             key={i}
-            className={i === 1 ? "hidden @xl:block" : i === 2 ? "hidden @4xl:block" : undefined}
+            variante="compacta"
+            className={i === 1 ? "hidden @xl:flex" : i === 2 ? "hidden @4xl:flex" : undefined}
           />
         ))}
       </div>

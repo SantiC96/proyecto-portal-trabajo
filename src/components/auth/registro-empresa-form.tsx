@@ -11,6 +11,7 @@ import type { Tabla } from "@/types/db";
 import { useErroresCampo } from "@/lib/use-errores-campo";
 import { useAccion } from "@/lib/use-accion";
 import { Aviso } from "@/components/ui/aviso";
+import { Combobox } from "@/components/ui/combobox";
 import { SeccionNumerada } from "@/components/ui/seccion-numerada";
 import { cn } from "@/lib/utils";
 import {
@@ -172,26 +173,22 @@ export function RegistroEmpresaForm({ categorias }: Props) {
               obligatorio
               error={campos.errores.rubro}
             >
-              <select
+              <Combobox
                 id="reg-rubro"
-                required
-                value={rubro}
-                onChange={(e) => {
-                  setRubro(e.target.value);
+                requerido
+                opciones={categorias.map((c) => ({ id: c.nombre, nombre: c.nombre }))}
+                valor={rubro}
+                onCambiar={(valor) => {
+                  setRubro(valor);
                   campos.limpiar("rubro");
                 }}
-                className="campo cursor-pointer"
+                placeholder="Seleccioná un rubro…"
+                placeholderBusqueda="Buscar rubro"
+                etiquetaBusqueda="Buscar rubro"
+                vacioTexto="No hay rubros con ese nombre"
+                triggerClassName="campo min-h-12 cursor-pointer"
                 {...ariaCampo("reg-rubro", campos.errores.rubro)}
-              >
-                <option value="" disabled>
-                  Seleccioná un rubro…
-                </option>
-                {categorias.map((c) => (
-                  <option key={c.id} value={c.nombre}>
-                    {c.nombre}
-                  </option>
-                ))}
-              </select>
+              />
             </CampoRegistro>
 
             <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-2">

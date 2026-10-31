@@ -260,7 +260,9 @@ export type Database = {
           fecha_entrevista: string | null
           fecha_respuesta: string | null
           id: string
+          link_entrevista: string | null
           lugar_entrevista: string | null
+          modalidad_entrevista: string
           municipalidad_usuario_id: string | null
           nota_empresa: string | null
           nota_municipalidad: string | null
@@ -273,7 +275,9 @@ export type Database = {
           fecha_entrevista?: string | null
           fecha_respuesta?: string | null
           id?: string
+          link_entrevista?: string | null
           lugar_entrevista?: string | null
+          modalidad_entrevista?: string
           municipalidad_usuario_id?: string | null
           nota_empresa?: string | null
           nota_municipalidad?: string | null
@@ -286,7 +290,9 @@ export type Database = {
           fecha_entrevista?: string | null
           fecha_respuesta?: string | null
           id?: string
+          link_entrevista?: string | null
           lugar_entrevista?: string | null
+          modalidad_entrevista?: string
           municipalidad_usuario_id?: string | null
           nota_empresa?: string | null
           nota_municipalidad?: string | null
@@ -880,7 +886,9 @@ export type Database = {
           estado: string
           fecha_hora: string
           id: string
-          lugar: string
+          link: string | null
+          lugar: string | null
+          modalidad: string
           nota_oficina: string | null
           postulacion_id: string
           updated_at: string
@@ -891,7 +899,9 @@ export type Database = {
           estado?: string
           fecha_hora: string
           id?: string
-          lugar: string
+          link?: string | null
+          lugar?: string | null
+          modalidad?: string
           nota_oficina?: string | null
           postulacion_id: string
           updated_at?: string
@@ -902,7 +912,9 @@ export type Database = {
           estado?: string
           fecha_hora?: string
           id?: string
-          lugar?: string
+          link?: string | null
+          lugar?: string | null
+          modalidad?: string
           nota_oficina?: string | null
           postulacion_id?: string
           updated_at?: string
@@ -974,31 +986,20 @@ export type Database = {
         Args: { p_asignacion_id: string; p_estado: string }
         Returns: undefined
       }
-      actualizar_mi_perfil_postulante:
-        | {
-            Args: {
-              p_apellido: string
-              p_dni: string
-              p_domicilio: string
-              p_nombre: string
-              p_telefono: string
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_apellido: string
-              p_disponibilidad: string
-              p_dni: string
-              p_domicilio: string
-              p_experiencia_laboral: string
-              p_nivel_educativo: string
-              p_nombre: string
-              p_situacion_laboral: string
-              p_telefono: string
-            }
-            Returns: undefined
-          }
+      actualizar_mi_perfil_postulante: {
+        Args: {
+          p_apellido: string
+          p_disponibilidad: string
+          p_dni: string
+          p_domicilio: string
+          p_experiencia_laboral: string
+          p_nivel_educativo: string
+          p_nombre: string
+          p_situacion_laboral: string
+          p_telefono: string
+        }
+        Returns: undefined
+      }
       archivos_a_purgar: {
         Args: { p_limite?: number }
         Returns: {
@@ -1078,6 +1079,30 @@ export type Database = {
           ubicacion: string
         }[]
       }
+      buscar_ofertas_publicas_multiple: {
+        Args: {
+          p_categorias?: string[]
+          p_desplazamiento?: number
+          p_limite?: number
+          p_modalidades?: string[]
+          p_q?: string
+        }
+        Returns: {
+          beneficios: string[]
+          categorias: string[]
+          created_at: string
+          descripcion: string
+          empresa_nombre: string
+          id: string
+          jornada: string
+          modalidad: string
+          publicado_en: string
+          requisitos: string[]
+          titulo: string
+          total_count: number
+          ubicacion: string
+        }[]
+      }
       candidato_para_empresa: {
         Args: { p_postulante_id: string }
         Returns: {
@@ -1116,12 +1141,29 @@ export type Database = {
         Args: { p_ids: string[] }
         Returns: number
       }
+      contar_ofertas_por_modalidad: {
+        Args: { p_categorias?: string[]; p_q?: string }
+        Returns: {
+          cantidad: number
+          modalidad: string
+        }[]
+      }
+      contar_ofertas_vigentes_por_rubro: {
+        Args: never
+        Returns: {
+          cantidad: number
+          categoria_id: string
+          rubro: string
+        }[]
+      }
       contar_postulantes_esperando_curso: { Args: never; Returns: number }
       contratados_en_oferta: { Args: { p_oferta_id: string }; Returns: number }
       coordinar_pre_entrevista: {
         Args: {
           p_fecha_hora: string
+          p_link?: string
           p_lugar: string
+          p_modalidad?: string
           p_nota: string
           p_postulacion_id: string
         }
@@ -1179,7 +1221,9 @@ export type Database = {
           estado_empresa: Database["public"]["Enums"]["estado_empresa"]
           fecha_entrevista: string
           fecha_respuesta: string
+          link_entrevista: string
           lugar_entrevista: string
+          modalidad_entrevista: string
           nota_municipalidad: string
           postulante_id: string
         }[]
@@ -1214,6 +1258,15 @@ export type Database = {
       desactivar_cuenta_oficina: {
         Args: { p_usuario_id: string }
         Returns: boolean
+      }
+      detalle_entrevista_aviso: {
+        Args: {
+          p_fecha_hora: string
+          p_link: string
+          p_lugar: string
+          p_modalidad: string
+        }
+        Returns: string
       }
       disponibilidad_compatible: {
         Args: { p_disponibilidad: string; p_jornada: string }
@@ -1311,7 +1364,19 @@ export type Database = {
         Returns: {
           estado_empresa: Database["public"]["Enums"]["estado_empresa"]
           fecha_entrevista: string
+          link_entrevista: string
           lugar_entrevista: string
+          modalidad_entrevista: string
+        }[]
+      }
+      estado_postulaciones_periodo: {
+        Args: { p_desde?: string }
+        Returns: {
+          de_ofertas_retiradas: number
+          derivadas: number
+          en_revision: number
+          rechazadas: number
+          retiradas: number
         }[]
       }
       experiencia_tsv: { Args: { p_texto: string }; Returns: unknown }
@@ -1336,6 +1401,25 @@ export type Database = {
           p_ubicacion: string
         }
         Returns: string
+      }
+      indicadores_comparados: {
+        Args: { p_desde?: string }
+        Returns: {
+          contrataciones: number
+          contrataciones_anterior: number
+          derivaciones: number
+          derivaciones_anterior: number
+          ofertas_publicadas: number
+          ofertas_publicadas_anterior: number
+          ofertas_vigentes: number
+          postulaciones_nuevas: number
+          postulaciones_nuevas_anterior: number
+          postulantes_nuevos: number
+          postulantes_nuevos_anterior: number
+          postulantes_registrados: number
+          tasa_contratacion: number
+          tasa_contratacion_anterior: number
+        }[]
       }
       indicadores_empresa: {
         Args: { p_desde?: string }
@@ -1475,7 +1559,9 @@ export type Database = {
         Returns: {
           estado: string
           fecha_hora: string
+          link: string
           lugar: string
+          modalidad: string
           postulacion_id: string
         }[]
       }
@@ -1599,20 +1685,6 @@ export type Database = {
           usuario_id: string
         }[]
       }
-      postulaciones_por_mes: {
-        Args: never
-        Returns: {
-          cantidad: number
-          mes: string
-        }[]
-      }
-      postulaciones_por_periodo: {
-        Args: { p_agrupacion?: string; p_desde?: string }
-        Returns: {
-          cantidad: number
-          inicio: string
-        }[]
-      }
       postulaciones_por_rubro: {
         Args: { p_desde?: string; p_limite?: number }
         Returns: {
@@ -1723,7 +1795,9 @@ export type Database = {
       reprogramar_pre_entrevista: {
         Args: {
           p_fecha_hora: string
+          p_link?: string
           p_lugar: string
+          p_modalidad?: string
           p_nota: string
           p_pre_entrevista_id: string
         }
@@ -1765,6 +1839,16 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["rol_usuario"]
       }
+      series_indicadores: {
+        Args: { p_agrupacion?: string; p_desde?: string }
+        Returns: {
+          contrataciones: number
+          inicio: string
+          ofertas_publicadas: number
+          postulaciones: number
+          postulantes_nuevos: number
+        }[]
+      }
       ultimos_movimientos_postulante: {
         Args: { p_limite?: number }
         Returns: {
@@ -1779,7 +1863,13 @@ export type Database = {
         }[]
       }
       validar_datos_pre_entrevista: {
-        Args: { p_fecha_hora: string; p_lugar: string; p_nota: string }
+        Args: {
+          p_fecha_hora: string
+          p_link: string
+          p_lugar: string
+          p_modalidad: string
+          p_nota: string
+        }
         Returns: undefined
       }
       vencer_invitaciones_de_ofertas_vencidas: { Args: never; Returns: number }

@@ -75,6 +75,39 @@ export function formatFechaHora(iso: string | null | undefined): string {
   return `${parte("day")} de ${parte("month")} de ${parte("year")} a las ${parte("hour")}:${parte("minute")}`;
 }
 
+const FORMATO_FECHA_HORA_LARGA = new Intl.DateTimeFormat("es-AR", {
+  timeZone: TZ,
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+/**
+ * "Martes 3 de noviembre, 10:30 h": el día de la semana con mayúscula, sin
+ * el año si es el año en curso (en Argentina). Para las entrevistas.
+ */
+export function formatFechaHoraLarga(iso: string | null | undefined, ahora: Date = new Date()): string {
+  const d = parseFecha(iso);
+  if (!d) return "—";
+  const parte = partes(FORMATO_FECHA_HORA_LARGA, d);
+  const anioActual = partes(FORMATO_FECHA_HORA_LARGA, ahora)("year");
+  const diaSemana = parte("weekday");
+  const anio = parte("year") === anioActual ? "" : ` de ${parte("year")}`;
+  return `${diaSemana.charAt(0).toUpperCase()}${diaSemana.slice(1)} ${parte("day")} de ${parte("month")}${anio}, ${parte("hour")}:${parte("minute")} h`;
+}
+
+/** "16:15": solo la hora, en Argentina. */
+export function formatHora(iso: string | null | undefined): string {
+  const d = parseFecha(iso);
+  if (!d) return "—";
+  const parte = partes(FORMATO_FECHA_HORA_CORTA, d);
+  return `${parte("hour")}:${parte("minute")}`;
+}
+
 /** "20/10 16:15": fecha y hora compactas para listados y badges. */
 export function formatFechaHoraCorta(iso: string | null | undefined): string {
   const d = parseFecha(iso);
@@ -109,6 +142,44 @@ export function formatFechaRelativa(
   const { unidad, segundos: tamano } =
     UNIDADES_RELATIVAS.find((u) => abs >= u.segundos) ?? UNIDADES_RELATIVAS[3];
   return rtf.format(Math.trunc(segundos / tamano), unidad);
+}
+
+const FORMATO_DIA_ARGENTINA = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** Día calendario en Argentina como número de días desde 1970 (para restar fechas). */
+function diaArgentina(d: Date): number {
+  const [anio, mes, dia] = FORMATO_DIA_ARGENTINA.format(d).split("-").map(Number);
+  return Date.UTC(anio, mes - 1, dia) / (24 * 60 * 60 * 1000);
+}
+
+function plural(n: number, singular: string, plural: string): string {
+  return `${n} ${n === 1 ? singular : plural}`;
+}
+
+/**
+ * "Publicada hoy", "Publicada ayer", "Publicada hace 3 días", "hace 2
+ * semanas", "hace 1 mes". Cuenta días calendario en Argentina (no horas):
+ * una oferta de anoche a las 23 es "ayer" aunque hayan pasado 2 horas.
+ * Se calcula en el servidor para que no cambie al hidratar.
+ */
+export function formatAntiguedadPublicacion(
+  iso: string | null | undefined,
+  ahora: Date = new Date(),
+): string | null {
+  const d = parseFecha(iso);
+  if (!d) return null;
+  const dias = Math.max(0, diaArgentina(ahora) - diaArgentina(d));
+  if (dias === 0) return "Publicada hoy";
+  if (dias === 1) return "Publicada ayer";
+  if (dias < 7) return `Publicada hace ${dias} días`;
+  if (dias < 30) return `Publicada hace ${plural(Math.floor(dias / 7), "semana", "semanas")}`;
+  if (dias < 365) return `Publicada hace ${plural(Math.floor(dias / 30), "mes", "meses")}`;
+  return `Publicada hace ${plural(Math.floor(dias / 365), "año", "años")}`;
 }
 
 /** Momento de hace `dias` días, en ISO (para filtros relativos a ahora). */

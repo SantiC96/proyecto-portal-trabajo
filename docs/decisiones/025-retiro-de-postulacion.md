@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-10-20
 **Estado:** Vigente
-**Migración:** `migration_053_retiro_postulacion.sql`
+**Migración:** `migration_053_retiro_postulacion.sql`; `migration_063_retiro_postulacion_recibida.sql` (retiro de una `recibida`, 2026-10-29)
 
 ---
 
@@ -19,7 +19,7 @@
 
 | Estado | Al retirar |
 |---|---|
-| `recibida` | Se borra la fila, como antes. Nadie la revisó; no se avisa a nadie. |
+| `recibida` | La postulación pasa a `retirada_postulante` con `retirada_en`, igual que las demás (desde 063; antes se borraba la fila). Nadie la revisó: no se avisa a nadie. |
 | `en_revision` (con o sin pre-entrevista) | La postulación pasa a `retirada_postulante` con `retirada_en`. La pre-entrevista `coordinada` pasa a `cancelada`. Aviso a la oficina. |
 | `derivada`, derivación `pendiente` o `en_proceso` (también con entrevista coordinada) | Igual, y la derivación pasa a `retirada_postulante`. Aviso a la oficina y a la empresa (con email). |
 | `derivada` con `contratado` | No se puede: "Ya fuiste seleccionado para este puesto". |
@@ -47,7 +47,7 @@
 
 ### 5. Avisos
 
-- Oficina: `postulacion_retirada`, siempre que la postulación ya estaba revisada (en revisión o derivada), con link a la ficha. Solo en el portal.
+- Oficina: `postulacion_retirada`, siempre que la postulación ya estaba revisada (en revisión o derivada), con link a la ficha. Solo en el portal. Una `recibida` retirada no avisa: el trigger excluye `OLD.estado = 'recibida'` (063).
 - Empresa: `candidato_retirado` ("[Nombre Apellido] retiró su postulación a «Oferta».") si estaba derivada, con link a la oferta y con email.
 - Al postulante no se le avisa (fue su acción).
 - Salen de un trigger `AFTER UPDATE` que nunca hace fallar el retiro.
@@ -58,10 +58,21 @@
 - Empresa: "Se retiró", sin acciones, en la lista de candidatos y en la ficha.
 - Oficina: "Retirada por el postulante" sin acciones; pestaña y contador "Retiradas" en Postulaciones; la ficha muestra la fecha de retiro y la derivación anterior.
 
+### 7. Retiro de una postulación `recibida` (063)
+
+- Desde `migration_063`, retirar una `recibida` ya no borra la fila: queda `retirada_postulante` con `retirada_en`, por el mismo camino que una en revisión (marca `ftl.retiro_postulacion`). `retirar_postulacion` devuelve siempre `'retirada'`; antes devolvía `'eliminada'` para la `recibida`. La acción no lee el valor, así que funciona con la migración corrida o sin correr.
+- **Por qué:** que quede en el historial (Mis postulaciones y la oficina, en la pestaña "Retiradas") y que cuente en "Retiradas" del panel del postulante.
+- Sin aviso a nadie, como antes: el trigger `postulaciones_notificar_retiro` no se dispara cuando el estado anterior era `recibida`. En revisión y derivada avisan igual.
+- La protección del estado no cambia: con la marca encendida, `postulaciones_proteger_retiro_postulante` ya permitía pasar desde cualquier estado.
+- Volver a postularse sigue igual: la retirada tiene `retirada_en` y sale del índice `postulaciones_vigente_unica`.
+- Las `recibida` que se retiraron antes de correr 063 se borraron y **no se recuperan**.
+- El total de postulaciones de los indicadores de la oficina (047/061) cuenta filas: ahora incluye estas retiradas, como ya incluía las retiradas en revisión.
+
 ---
 
 ## Alternativas descartadas
 
+- **Borrar la `recibida` al retirarla (053, reemplazado en 063):** no quedaba en el historial del postulante ni de la oficina y no contaba en "Retiradas" (panel del postulante, `indicadores_postulante` de 058, filtro de Mis postulaciones).
 - **Borrar siempre la fila:** se pierde el historial de la oficina y de la empresa, y una derivación con entrevista desaparecería sin aviso.
 - **Reusar la misma fila al volver a postularse:** pisaría el historial (pre-entrevista, derivación, notas) de la postulación anterior.
 - **Usar `rechazado` o `rechazada_municipalidad`:** contaría para la regla de cursos y como "no seleccionado".

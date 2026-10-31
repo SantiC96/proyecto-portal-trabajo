@@ -4,6 +4,7 @@ import {
   Briefcase,
   Building2,
   ChartColumn,
+  CircleHelp,
   CirclePlus,
   FileCheck,
   FileText,
@@ -37,10 +38,11 @@ export type SeccionRol = {
 
 const INICIO: SeccionRol = { label: "Inicio", href: "/", Icono: House };
 const OFERTAS: SeccionRol = { label: "Ofertas", href: "/ofertas", Icono: Briefcase };
+const PREGUNTAS: SeccionRol = { label: "Preguntas frecuentes", href: "/preguntas-frecuentes", Icono: CircleHelp };
 
 /** Secciones de la navegación lateral de cada rol, en orden. */
 export function seccionesDeRol(rol: Rol | null | undefined, conSesion: boolean): SeccionRol[] {
-  if (!conSesion) return [INICIO, OFERTAS];
+  if (!conSesion) return [INICIO, OFERTAS, PREGUNTAS];
 
   if (rol === "empresa") {
     return [
@@ -98,6 +100,13 @@ export function rutaPerfil(rol: Rol | null | undefined): string {
   if (rol === "empresa") return "/empresa/perfil";
   if (rol === "municipalidad") return "/admin/perfil";
   return "/perfil";
+}
+
+/** "Mi panel" del footer. Mismo destino que panelDeRol (src/lib/auth.ts, solo servidor). */
+export function rutaPanel(rol: Rol | null | undefined): string {
+  if (rol === "empresa") return "/empresa";
+  if (rol === "municipalidad") return "/admin";
+  return "/panel";
 }
 
 export function etiquetaRol(rol?: Rol | null): string {

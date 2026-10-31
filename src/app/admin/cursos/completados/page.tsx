@@ -1,23 +1,30 @@
 import type { Metadata } from "next";
+import { COLUMNAS, EsqueletoCompletados } from "./esqueleto";
 import { Suspense } from "react";
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
+import { BookOpen, Calendar, CheckCircle2 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { logError } from "@/lib/logger";
 import { formatFechaCorta, haceDiasISO } from "@/lib/fechas";
+import { inicialesDePersona } from "@/lib/iniciales";
 import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
 import { DIAS_CURSOS_COMPLETADOS_RECIENTES } from "@/lib/cursos";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { requerirRolPagina } from "@/lib/auth";
 import { BotonVolver } from "@/components/ui/boton-volver";
+import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
+import { CLASE_ACCION_FILA, CeldaPersona, FilaTabla, Tabla } from "@/components/ui/tabla";
 
 export const metadata: Metadata = {
   title: "Cursos completados | Panel municipal | Portal de Empleo Funes",
 };
 
 const RUTA = "/admin/cursos/completados";
+
+const CLASE_DATO =
+  "flex min-w-0 items-center gap-2 text-sm break-words text-muted-foreground-strong @4xl:block @4xl:text-[15px] @4xl:text-foreground";
+const CLASE_ICONO_DATO = "size-4 shrink-0 text-muted-icon @4xl:hidden";
 
 export default async function CursosCompletadosPage({
   searchParams,
@@ -29,19 +36,18 @@ export default async function CursosCompletadosPage({
   const pagina = leerPagina(sp.pagina);
 
   return (
-    <section>
-      <BotonVolver href="/admin/cursos" />
+    <section className="flex flex-col gap-6">
+      <BotonVolver href="/admin/cursos" destacado />
 
-      <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-        Cursos completados
-      </h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Postulantes que marcaron un curso como completado en los últimos{" "}
-        {DIAS_CURSOS_COMPLETADOS_RECIENTES} días. Sus rechazos anteriores ya no cuentan
-        para un nuevo curso.
-      </p>
+      <EncabezadoPagina
+        banda
+        botonesBlancos
+        className="-mt-2"
+        titulo="Cursos completados"
+        bajada={`Postulantes que marcaron un curso como completado en los últimos ${DIAS_CURSOS_COMPLETADOS_RECIENTES} días. Sus rechazos anteriores ya no cuentan para un nuevo curso.`}
+      />
 
-      <Suspense key={pagina} fallback={<EsqueletoLista filas={4} className="mt-6" />}>
+      <Suspense key={pagina} fallback={<EsqueletoCompletados />}>
         <ListadoCompletados pagina={pagina} searchParams={sp} />
       </Suspense>
     </section>
@@ -76,7 +82,6 @@ async function ListadoCompletados({
     const ref = logError("admin_cursos_completados", resultado.error);
     return (
       <ErrorListado
-        className="mt-6"
         mensaje="No pudimos cargar los cursos completados."
         refError={ref}
       />
@@ -87,7 +92,6 @@ async function ListadoCompletados({
     return (
       <EstadoVacio
         tipo="sin-registros"
-        className="mt-6"
         icono={CheckCircle2}
         titulo={`Nadie completó un curso en los últimos ${DIAS_CURSOS_COMPLETADOS_RECIENTES} días`}
       />
@@ -96,45 +100,69 @@ async function ListadoCompletados({
 
   return (
     <>
-      <ul className="mt-6 divide-y divide-border rounded-[var(--radius-lg)] border border-border bg-surface">
+      <Tabla
+        columnas={COLUMNAS}
+        etiqueta="Cursos completados"
+        semantica="tabla"
+        encabezados={[
+          "Postulante",
+          "Curso",
+          "Completado el",
+          <span key="a" className="sr-only">
+            Acciones
+          </span>,
+        ]}
+      >
         {resultado.filas.map((a) => {
           const u = a.postulantes?.usuarios;
           const nombre = u ? `${u.nombre} ${u.apellido}` : "Postulante eliminado";
           return (
-            <li
-              key={a.id}
-              className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="min-w-0">
-                <p className="font-medium text-foreground">{nombre}</p>
-                <p className="text-sm text-muted-foreground">
+            <FilaTabla key={a.id} semantica="tabla" filete="before:bg-success">
+              <div role="cell" className="min-w-0">
+                <CeldaPersona
+                  nombre={nombre}
+                  iniciales={u ? inicialesDePersona(u.nombre, u.apellido) : undefined}
+                />
+              </div>
+              <div role="cell" className={CLASE_DATO}>
+                <BookOpen aria-hidden="true" className={CLASE_ICONO_DATO} />
+                <span className="min-w-0">
+                  <span className="sr-only">Curso: </span>
                   {a.cursos ? (
                     <Link
                       href={`/admin/cursos/${a.cursos.id}`}
-                      className="text-primary hover:underline"
+                      className="font-semibold text-primary hover:underline"
                     >
                       {a.cursos.nombre}
                     </Link>
                   ) : (
                     "Curso eliminado"
-                  )}{" "}
-                  · Completado el {formatFechaCorta(a.completado_en)}
-                </p>
+                  )}
+                </span>
               </div>
-              {a.postulantes && (
-                <Link
-                  href={`/admin/postulantes/${a.postulantes.id}`}
-                  className="btn-secundario inline-flex min-h-11 shrink-0 items-center justify-center px-3 text-sm sm:min-h-9"
-                >
-                  Ver ficha
-                </Link>
-              )}
-            </li>
+              <div role="cell" className={`${CLASE_DATO} whitespace-nowrap tabular-nums`}>
+                <Calendar aria-hidden="true" className={CLASE_ICONO_DATO} />
+                <span>
+                  <span className="@4xl:sr-only">Completado el </span>
+                  {formatFechaCorta(a.completado_en)}
+                </span>
+              </div>
+              <div role="cell" className="@4xl:text-right">
+                {a.postulantes && (
+                  <Link
+                    href={`/admin/postulantes/${a.postulantes.id}`}
+                    aria-label={`Ver ficha de ${nombre}`}
+                    className={`btn-secundario ${CLASE_ACCION_FILA}`}
+                  >
+                    Ver ficha
+                  </Link>
+                )}
+              </div>
+            </FilaTabla>
           );
         })}
-      </ul>
+      </Tabla>
       <Paginacion
-        className="mt-6"
         ruta={RUTA}
         searchParams={searchParams}
         pagina={resultado.pagina}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Mail } from "lucide-react";
+import { AvisoSpam } from "@/components/auth/aviso-spam";
 import { PantallaAuth } from "@/components/auth/pantalla-auth";
 
 export const metadata: Metadata = {
@@ -47,6 +48,8 @@ export default function VerificarEmailEmpresaPage() {
           </li>
         ))}
       </ol>
+
+      <AvisoSpam />
 
       <p className="text-sm text-muted-foreground">
         ¿Ya confirmaste?{" "}

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Clock, ExternalLink, FileText, Upload, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, ExternalLink, MapPin, Upload, XCircle } from "lucide-react";
 import { actualizarLocalidad, subirComprobanteDomicilio } from "./actions";
 import type { ErrorAccion } from "@/lib/resultado";
 import { mostrarAviso } from "@/lib/avisos";
@@ -19,10 +19,21 @@ import {
 import { BotonesDialogo } from "@/components/ui/dialogo-confirmacion";
 import {
   CLASE_AYUDA_PERFIL,
+  CampoLectura,
+  FilaArchivoPerfil,
+  GrillaLectura,
   MensajeError,
   PieSeccion,
   SeccionPerfil,
 } from "@/components/perfil/piezas";
+import {
+  BotonEditar,
+  PieEdicion,
+  useInformarCambios,
+  useTarjetaEditable,
+  type TarjetaEditable,
+} from "@/components/perfil/tarjeta-editable";
+import { SIN_COMPLETAR } from "@/lib/informacion-laboral";
 import { Franja } from "@/components/ui/franja";
 import { CampoLocalidad } from "@/components/postulantes/campo-localidad";
 import { formatFecha } from "@/lib/fechas";
@@ -86,8 +97,8 @@ function avisoCambioLocalidad(
 
 /**
  * Sección "Procedencia" del perfil del postulante (migration_055): la
- * localidad editable y, si es Funes, el comprobante de domicilio con su
- * estado de verificación.
+ * localidad, en modo lectura con "Editar", y, si es Funes, el comprobante de
+ * domicilio con su estado de verificación y su botón para subirlo.
  */
 export function SeccionProcedencia({
   localidad,
@@ -97,13 +108,12 @@ export function SeccionProcedencia({
   comprobante: ComprobantePerfil | null;
 }) {
   const router = useRouter();
-  const inicial = opcionDeLocalidad(localidad);
-
-  const [elegida, setElegida] = useState(inicial.elegida);
-  const [escrita, setEscrita] = useState(inicial.escrita);
-  const [confirmarCambio, setConfirmarCambio] = useState<string | null>(null);
-  const campos = useErroresCampo<CampoProcedencia>();
-  const { pendiente: guardando, ejecutar: ejecutarGuardar } = useAccion();
+  // La guardada se muestra apenas se guarda, sin esperar el refresh.
+  const [guardada, setGuardada] = useState(localidad);
+  const tarjeta = useTarjetaEditable(SECCION_PERFIL.procedencia, {
+    titulo: "Procedencia",
+    incompleta: !guardada,
+  });
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [archivo, setArchivo] = useState<File | null>(null);
@@ -112,41 +122,6 @@ export function SeccionProcedencia({
   const { pendiente: subiendo, ejecutar: ejecutarSubida } = useAccion();
 
   const esFunes = esLocalidadFunes(localidad);
-
-  function guardar(nueva: string) {
-    ejecutarGuardar(async () => {
-      const result = await actualizarLocalidad({ localidad: elegida, otraLocalidad: escrita });
-      if (!campos.tomarDelServidor(result, CAMPOS)) mostrarAviso(result);
-      if (!result.ok) return;
-      setConfirmarCambio(null);
-      // Lo escrito a mano puede coincidir con una de la lista ("perez" → "Pérez").
-      const guardada = opcionDeLocalidad(result.data?.localidad ?? nueva);
-      setElegida(guardada.elegida);
-      setEscrita(guardada.escrita);
-      router.refresh();
-    });
-  }
-
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const obligatorios =
-      elegida === OTRA_LOCALIDAD ? { localidad: elegida, otraLocalidad: escrita } : { localidad: elegida };
-    if (!campos.validar(obligatorios, form)) return;
-
-    const resuelta = resolverLocalidad(elegida, escrita);
-    if (!resuelta.ok) {
-      campos.marcar(resuelta.campo, resuelta.mensaje, form);
-      return;
-    }
-    if (resuelta.localidad === localidad) return;
-    // Sin localidad previa no hay verificación que reiniciar.
-    if (localidad === null) {
-      guardar(resuelta.localidad);
-      return;
-    }
-    setConfirmarCambio(resuelta.localidad);
-  }
 
   function abrirSelector() {
     setErrorArchivo(null);
@@ -184,77 +159,59 @@ export function SeccionProcedencia({
   const estado = comprobante ? ESTADO_COMPROBANTE[comprobante.estado] : null;
 
   return (
-    <SeccionPerfil id={SECCION_PERFIL.procedencia} titulo="Procedencia">
-      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
-        <CampoLocalidad
-          id="p-localidad"
-          elegida={elegida}
-          escrita={escrita}
-          onElegida={(valor) => {
-            setElegida(valor);
-            campos.limpiar("localidad");
-            campos.limpiar("otraLocalidad");
+    <SeccionPerfil
+      id={SECCION_PERFIL.procedencia}
+      titulo="Procedencia"
+      icono={MapPin}
+      acciones={
+        !tarjeta.editando && <BotonEditar tarjeta={tarjeta} etiqueta="Editar procedencia" />
+      }
+    >
+      {tarjeta.editando ? (
+        <FormLocalidad
+          tarjeta={tarjeta}
+          localidad={guardada}
+          comprobante={comprobante}
+          onGuardada={(nueva) => {
+            setGuardada(nueva);
+            router.refresh();
           }}
-          onEscrita={(valor) => {
-            setEscrita(valor);
-            campos.limpiar("otraLocalidad");
-          }}
-          errorLocalidad={campos.errores.localidad}
-          errorOtra={campos.errores.otraLocalidad}
-          deshabilitado={guardando}
-          estiloPerfil
-          className="sm:max-w-[calc(50%-8px)]"
         />
-        <PieSeccion>
-          <button
-            type="submit"
-            disabled={guardando}
-            aria-busy={guardando}
-            className="btn-primario"
-          >
-            {guardando && <Spinner />}
-            {guardando ? "Guardando…" : "Guardar"}
-          </button>
-        </PieSeccion>
-      </form>
+      ) : (
+        <GrillaLectura>
+          <CampoLectura estiloPerfil label="¿De dónde sos?" valor={guardada ?? ""} vacio={SIN_COMPLETAR} />
+        </GrillaLectura>
+      )}
 
       {esFunes && (
         <div className="flex flex-col gap-3 border-t border-border pt-5">
           <h3 className="text-base font-bold text-heading">Comprobante de domicilio</h3>
 
           {comprobante && estado ? (
-            <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border bg-surface px-4 py-3 sm:flex-row sm:items-center">
-              <div className="flex min-w-0 flex-1 items-start gap-3">
-                <FileText className="mt-0.5 size-6 shrink-0 text-primary" aria-hidden="true" />
-                <div className="min-w-0 flex-1">
-                  <p className="break-all text-[15px] font-bold text-heading">
-                    {comprobante.nombreOriginal}
-                  </p>
-                  <p className="text-[13px] text-muted-foreground">
-                    {comprobante.tamano > 0 ? `${textoTamanoArchivo(comprobante.tamano)} · ` : ""}
-                    Cargado el {formatFecha(comprobante.subidoEn)}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
+            <FilaArchivoPerfil
+              nombre={comprobante.nombreOriginal}
+              detalle={`${comprobante.tamano > 0 ? `${textoTamanoArchivo(comprobante.tamano)} · ` : ""}Cargado el ${formatFecha(comprobante.subidoEn)}`}
+              badge={
                 <Badge tono={estado.tono} icono={estado.Icono}>
                   {estado.texto}
                 </Badge>
-                {comprobante.url && (
+              }
+              acciones={
+                comprobante.url && (
                   <a
                     href={subiendo ? undefined : comprobante.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-disabled={subiendo}
                     tabIndex={subiendo ? -1 : undefined}
-                    className={cn("btn-neutro sm:min-h-10!", subiendo && "pointer-events-none")}
+                    className={cn("btn-neutro", subiendo && "pointer-events-none")}
                   >
                     <ExternalLink aria-hidden="true" />
                     Ver
                   </a>
-                )}
-              </div>
-            </div>
+                )
+              }
+            />
           ) : (
             <p className="text-[15px] text-muted-foreground">Todavía no subiste un comprobante.</p>
           )}
@@ -310,32 +267,6 @@ export function SeccionProcedencia({
         </div>
       )}
 
-      {/* Confirmación: cambiar la localidad reinicia la verificación */}
-      <Dialog
-        open={confirmarCambio !== null}
-        onOpenChange={(abierto) => {
-          if (guardando) return;
-          if (!abierto) setConfirmarCambio(null);
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>¿Cambiar tu localidad a {confirmarCambio}?</DialogTitle>
-            <DialogDescription>
-              {confirmarCambio !== null &&
-                avisoCambioLocalidad(localidad, confirmarCambio, comprobante)}
-            </DialogDescription>
-          </DialogHeader>
-          <BotonesDialogo
-            pendiente={guardando}
-            onCancelar={() => setConfirmarCambio(null)}
-            onConfirmar={() => confirmarCambio !== null && guardar(confirmarCambio)}
-            textoConfirmar="Sí, cambiar"
-            textoPendiente="Guardando…"
-          />
-        </DialogContent>
-      </Dialog>
-
       {/* Confirmación: reemplazar un comprobante ya verificado */}
       <Dialog
         open={confirmarReemplazo}
@@ -361,5 +292,117 @@ export function SeccionProcedencia({
         </DialogContent>
       </Dialog>
     </SeccionPerfil>
+  );
+}
+
+/**
+ * La localidad en edición. Si cambia una localidad que ya tenía, pregunta
+ * antes de guardar: la verificación del domicilio se reinicia.
+ */
+function FormLocalidad({
+  tarjeta,
+  localidad,
+  comprobante,
+  onGuardada,
+}: {
+  tarjeta: TarjetaEditable;
+  localidad: string | null;
+  comprobante: ComprobantePerfil | null;
+  onGuardada: (localidad: string) => void;
+}) {
+  const inicial = opcionDeLocalidad(localidad);
+  const [elegida, setElegida] = useState(inicial.elegida);
+  const [escrita, setEscrita] = useState(inicial.escrita);
+  const [confirmarCambio, setConfirmarCambio] = useState<string | null>(null);
+  const campos = useErroresCampo<CampoProcedencia>();
+  const { pendiente: guardando, ejecutar: ejecutarGuardar } = useAccion();
+  useInformarCambios(tarjeta, elegida !== inicial.elegida || escrita !== inicial.escrita);
+
+  function guardar(nueva: string) {
+    ejecutarGuardar(async () => {
+      const result = await actualizarLocalidad({ localidad: elegida, otraLocalidad: escrita });
+      if (!campos.tomarDelServidor(result, CAMPOS)) mostrarAviso(result);
+      if (!result.ok) return;
+      setConfirmarCambio(null);
+      // Lo escrito a mano puede coincidir con una de la lista ("perez" → "Pérez").
+      onGuardada(result.data?.localidad ?? nueva);
+      tarjeta.cerrar();
+    });
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const obligatorios =
+      elegida === OTRA_LOCALIDAD ? { localidad: elegida, otraLocalidad: escrita } : { localidad: elegida };
+    if (!campos.validar(obligatorios, form)) return;
+
+    const resuelta = resolverLocalidad(elegida, escrita);
+    if (!resuelta.ok) {
+      campos.marcar(resuelta.campo, resuelta.mensaje, form);
+      return;
+    }
+    // Sin cambios no hay nada que guardar: vuelve al modo lectura.
+    if (resuelta.localidad === localidad) {
+      tarjeta.cerrar();
+      return;
+    }
+    // Sin localidad previa no hay verificación que reiniciar.
+    if (localidad === null) {
+      guardar(resuelta.localidad);
+      return;
+    }
+    setConfirmarCambio(resuelta.localidad);
+  }
+
+  return (
+    <form id={tarjeta.idFormulario} onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+      <CampoLocalidad
+        id="p-localidad"
+        elegida={elegida}
+        escrita={escrita}
+        onElegida={(valor) => {
+          setElegida(valor);
+          campos.limpiar("localidad");
+          campos.limpiar("otraLocalidad");
+        }}
+        onEscrita={(valor) => {
+          setEscrita(valor);
+          campos.limpiar("otraLocalidad");
+        }}
+        errorLocalidad={campos.errores.localidad}
+        errorOtra={campos.errores.otraLocalidad}
+        deshabilitado={guardando}
+        estiloPerfil
+        className="sm:max-w-[calc(50%-8px)]"
+      />
+      <PieEdicion pendiente={guardando} onCancelar={tarjeta.cerrar} />
+
+      {/* Confirmación: cambiar la localidad reinicia la verificación */}
+      <Dialog
+        open={confirmarCambio !== null}
+        onOpenChange={(abierto) => {
+          if (guardando) return;
+          if (!abierto) setConfirmarCambio(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>¿Cambiar tu localidad a {confirmarCambio}?</DialogTitle>
+            <DialogDescription>
+              {confirmarCambio !== null &&
+                avisoCambioLocalidad(localidad, confirmarCambio, comprobante)}
+            </DialogDescription>
+          </DialogHeader>
+          <BotonesDialogo
+            pendiente={guardando}
+            onCancelar={() => setConfirmarCambio(null)}
+            onConfirmar={() => confirmarCambio !== null && guardar(confirmarCambio)}
+            textoConfirmar="Sí, cambiar"
+            textoPendiente="Guardando…"
+          />
+        </DialogContent>
+      </Dialog>
+    </form>
   );
 }

@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -5,11 +6,18 @@ type Props = {
   porcentaje: number;
   /** Texto accesible, por ejemplo "Perfil completo al 70%". */
   etiqueta: string;
+  /** 8 px de alto con fondo `secondary-hover` (vacantes del detalle de la oferta). */
+  fina?: boolean;
+  /**
+   * Orden de la barra dentro de un AnimarAlVerse: crece al verse, con 60 ms
+   * por cada número (indicadores de la empresa). Sin él, no se anima.
+   */
+  animarIndice?: number;
   className?: string;
 };
 
-/** Barra de 10 px de alto: fondo gris verdoso y avance en verde. */
-export function BarraProgreso({ porcentaje, etiqueta, className }: Props) {
+/** Barra de 10 px de alto (8 con `fina`): fondo gris verdoso y avance en verde. */
+export function BarraProgreso({ porcentaje, etiqueta, fina = false, animarIndice, className }: Props) {
   const valor = Math.min(100, Math.max(0, Math.round(porcentaje)));
   return (
     <div
@@ -18,9 +26,20 @@ export function BarraProgreso({ porcentaje, etiqueta, className }: Props) {
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={valor}
-      className={cn("h-2.5 w-full overflow-hidden rounded-[5px] bg-progreso-fondo", className)}
+      className={cn(
+        "w-full overflow-hidden",
+        fina ? "h-2 rounded-[4px] bg-secondary-hover" : "h-2.5 rounded-[5px] bg-progreso-fondo",
+        className,
+      )}
     >
-      <div className="h-full rounded-[5px] bg-primary" style={{ width: `${valor}%` }} />
+      <div
+        className={cn(
+          "h-full bg-primary",
+          fina ? "rounded-[4px]" : "rounded-[5px]",
+          animarIndice !== undefined && "grafico-barra-x",
+        )}
+        style={{ width: `${valor}%`, "--i": animarIndice } as CSSProperties}
+      />
     </div>
   );
 }

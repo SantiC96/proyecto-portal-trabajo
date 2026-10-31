@@ -15,6 +15,7 @@ import {
 import { formatearCUIT } from "@/lib/cuit";
 import { LARGO_MAXIMO, validarCuitConMensaje, validarTelefono } from "@/lib/validaciones";
 import { ContadorCaracteres } from "@/components/ui/contador-caracteres";
+import { Combobox } from "@/components/ui/combobox";
 import { reenviarSolicitudEmpresa } from "@/app/empresa/actions";
 import { toErrorAccion, type ErrorAccion } from "@/lib/resultado";
 import { useAccion } from "@/lib/use-accion";
@@ -54,8 +55,9 @@ const inputClass =
   "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-placeholder outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 " +
   CLASE_CONTROL_INVALIDO;
 
+// Disparador del Combobox de rubro: mismo aspecto que los inputs de al lado.
 const selectClass =
-  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-8 text-sm text-foreground outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 appearance-none cursor-pointer " +
+  "w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-3 text-sm text-foreground outline-none transition focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer " +
   CLASE_CONTROL_INVALIDO;
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -239,27 +241,23 @@ export function CorregirSolicitudForm({ datos }: { datos: DatosIniciales }) {
               </label>
               <InputWrapper>
                 <FieldIcon icon={Briefcase} />
-                <select
+                <Combobox
                   id="sol-rubro"
-                  required
-                  value={rubro}
-                  onChange={(e) => {
-                    setRubro(e.target.value);
+                  requerido
+                  opciones={datos.rubros.map((c) => ({ id: c.nombre, nombre: c.nombre }))}
+                  valor={rubro}
+                  onCambiar={(valor) => {
+                    setRubro(valor);
                     campos.limpiar("rubro");
                   }}
-                  className={selectClass}
-                  disabled={isPending}
+                  deshabilitado={isPending}
+                  placeholder="Seleccioná un rubro…"
+                  placeholderBusqueda="Buscar rubro"
+                  etiquetaBusqueda="Buscar rubro"
+                  vacioTexto="No hay rubros con ese nombre"
+                  triggerClassName={selectClass}
                   {...ariaErrorCampo("sol-rubro", campos.errores.rubro)}
-                >
-                  <option value="" disabled>
-                    Seleccioná un rubro…
-                  </option>
-                  {datos.rubros.map((c) => (
-                    <option key={c.id} value={c.nombre}>
-                      {c.nombre}
-                    </option>
-                  ))}
-                </select>
+                />
               </InputWrapper>
               <ErrorCampo idCampo="sol-rubro" mensaje={campos.errores.rubro} />
             </div>

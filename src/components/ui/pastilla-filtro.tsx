@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { FilaDesplazable } from "@/components/ui/fila-desplazable";
+import { formatNumero } from "@/components/indicadores/formato";
 
 /** Clases de una pastilla de filtro: 44 px en el celular, 40 px desde sm. */
 export function clasePastilla(activa: boolean, className?: string): string {
@@ -16,25 +17,41 @@ export function clasePastilla(activa: boolean, className?: string): string {
 
 /**
  * Pastilla de filtro que es un link (el filtro vive en la URL). La activa se
- * marca con aria-current: aria-pressed no es válido en un link.
+ * marca con aria-current: aria-pressed no es válido en un link. Con
+ * `cantidad`, el número va dentro en un círculo de 28 px (Mis postulaciones,
+ * Mis ofertas).
  */
 export function PastillaFiltro({
   href,
   activa,
+  cantidad,
   children,
+  className,
 }: {
   href: string;
   activa: boolean;
+  cantidad?: number;
   children: ReactNode;
+  className?: string;
 }) {
   return (
     <Link
       href={href}
       scroll={false}
       aria-current={activa ? "true" : undefined}
-      className={clasePastilla(activa)}
+      className={clasePastilla(activa, className)}
     >
       {children}
+      {cantidad !== undefined && (
+        <span
+          className={cn(
+            "-mr-2 ml-2 inline-grid h-7 min-w-7 place-items-center rounded-full px-1.5 text-[13px] font-bold tabular-nums",
+            activa ? "bg-surface text-primary" : "bg-secondary text-control-foreground",
+          )}
+        >
+          {formatNumero(cantidad)}
+        </span>
+      )}
     </Link>
   );
 }

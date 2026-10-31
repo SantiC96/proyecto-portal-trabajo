@@ -19,7 +19,23 @@ export function nivelDe(valor: number): NivelPrioridad {
   return esNivelPrioridad(valor) ? valor : 3;
 }
 
-export const ESTADOS_COMPROBANTE = ["pendiente", "aprobado", "rechazado"] as const;
+/**
+ * Grupos de la lista de postulantes de la oficina: las filas llegan
+ * ordenadas por nivel y se agrupan las consecutivas del mismo nivel.
+ */
+export function agruparPorNivel<T extends { nivel: NivelPrioridad }>(
+  filas: T[],
+): { nivel: NivelPrioridad; filas: T[] }[] {
+  const grupos: { nivel: NivelPrioridad; filas: T[] }[] = [];
+  for (const p of filas) {
+    const ultimo = grupos.at(-1);
+    if (ultimo?.nivel === p.nivel) ultimo.filas.push(p);
+    else grupos.push({ nivel: p.nivel, filas: [p] });
+  }
+  return grupos;
+}
+
+export const ESTADOS_COMPROBANTE =["pendiente", "aprobado", "rechazado"] as const;
 export type EstadoComprobante = (typeof ESTADOS_COMPROBANTE)[number];
 
 export function esEstadoComprobante(valor: unknown): valor is EstadoComprobante {
@@ -35,3 +51,24 @@ export function detalleSinVerificar(comprobante: EstadoComprobante | null): stri
 
 /** Largo máximo del motivo de rechazo (CHECK de archivos_usuario, migration_055). */
 export const MOTIVO_RECHAZO_COMPROBANTE_MAXIMO = 500;
+
+export type VarianteLocalidad = "verificado" | "sin-verificar" | "otra-localidad";
+
+/**
+ * Variante del chip de localidad de la oficina, según el nivel de prioridad:
+ * 1 verificado, 2 sin verificar, 3 otra localidad (o sin informar).
+ */
+export function varianteLocalidad(nivel: NivelPrioridad): VarianteLocalidad {
+  if (nivel === 1) return "verificado";
+  if (nivel === 2) return "sin-verificar";
+  return "otra-localidad";
+}
+
+/** Texto del chip de localidad. */
+export function textoChipLocalidad(nivel: NivelPrioridad, localidad: string | null): string {
+  const variante = varianteLocalidad(nivel);
+  if (variante === "verificado") return "Funes · Verificado";
+  if (variante === "sin-verificar") return "Funes · Sin verificar";
+  const ciudad = localidad?.trim();
+  return ciudad ? `Otra localidad: ${ciudad}` : "Localidad sin informar";
+}

@@ -197,8 +197,12 @@ export default async function CandidatoFichaPage({
         derivacionId={derivacionId}
         ofertaId={ofertaId}
         estado={derivacion.estado_empresa}
-        fechaEntrevista={derivacion.fecha_entrevista}
-        lugarEntrevista={derivacion.lugar_entrevista}
+        entrevista={{
+          fechaHora: derivacion.fecha_entrevista,
+          modalidad: derivacion.modalidad_entrevista,
+          lugar: derivacion.lugar_entrevista,
+          link: derivacion.link_entrevista,
+        }}
         vacantesCubiertas={vacantesCubiertas}
       />
     </section>

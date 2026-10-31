@@ -113,7 +113,7 @@ export async function login(credentials: {
   // caso en que el ban no se pudo aplicar (decisión 023).
   const { data: perfil, error: perfilError } = await supabaseAdmin
     .from("usuarios")
-    .select("activo")
+    .select("activo, rol")
     .eq("id", ingreso.user.id)
     .maybeSingle();
   if (perfilError) logError("login:activo", perfilError, { userId: ingreso.user.id });
@@ -127,7 +127,16 @@ export async function login(credentials: {
   const cookieStore = await cookies();
   cookieStore.set(LAST_ACTIVITY_COOKIE, String(Date.now()), lastActivityCookieOptions());
 
-  redirect(rutaInterna(credentials.redirectTo));
+  // Sin una ruta de vuelta, la Oficina entra a sus indicadores y la empresa a
+  // su panel (si está en revisión o rechazada, el layout de /empresa muestra
+  // esa pantalla); el postulante, al inicio.
+  const porDefecto =
+    perfil?.rol === "municipalidad"
+      ? "/admin/indicadores"
+      : perfil?.rol === "empresa"
+        ? "/empresa"
+        : "/";
+  redirect(rutaInterna(credentials.redirectTo, porDefecto));
 }
 
 /**

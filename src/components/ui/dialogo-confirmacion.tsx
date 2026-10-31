@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogResumen,
   DialogTitle,
+  type TonoIconoDialogo,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -37,8 +40,8 @@ export const CLASE_BOTON = {
 export type EstiloBoton = keyof typeof CLASE_BOTON;
 
 /**
- * Pie de todos los diálogos con una acción: Cancelar a la izquierda y la
- * acción a la derecha (en el celular, la acción arriba). Mientras la acción
+ * Pie gris de todos los diálogos con una acción: Cancelar y la acción a la
+ * derecha (en el celular, la acción arriba). Mientras la acción
  * corre los dos quedan deshabilitados y el de confirmar muestra la carga.
  * Si la acción no es un botón (un link, un formulario), va como `children`
  * con las clases de CLASE_ACCION_DIALOGO.
@@ -52,6 +55,7 @@ export function BotonesDialogo({
   destructivo = false,
   deshabilitado = false,
   textoCancelar = "Cancelar",
+  iconoConfirmar: IconoConfirmar,
   children,
 }: {
   pendiente: boolean;
@@ -63,6 +67,8 @@ export function BotonesDialogo({
   textoPendiente?: string;
   destructivo?: boolean;
   deshabilitado?: boolean;
+  /** Ícono a la izquierda del texto de confirmar (Send en "Derivar candidato"). */
+  iconoConfirmar?: LucideIcon;
 }) {
   return (
     <DialogFooter>
@@ -82,7 +88,7 @@ export function BotonesDialogo({
           aria-busy={pendiente}
           variant={destructivo ? "destructive" : "default"}
         >
-          {pendiente && <Spinner />}
+          {pendiente ? <Spinner /> : IconoConfirmar && <IconoConfirmar aria-hidden="true" />}
           {pendiente ? (textoPendiente ?? "Guardando…") : textoConfirmar}
         </Button>
       )}
@@ -99,9 +105,18 @@ type Props<T> = {
   deshabilitado?: boolean;
   /** Texto de ayuda del botón (tooltip). */
   ayudaBoton?: string;
+  /** Nombre accesible del botón cuando muestra solo un ícono. */
+  etiquetaBoton?: string;
   titulo: string;
+  /** Una sola línea de explicación debajo del título. */
   descripcion?: ReactNode;
-  /** Contenido extra entre la descripción y los botones. */
+  /** Ícono del encabezado, en un círculo de 44 px del tono `tonoIcono`. */
+  icono?: LucideIcon;
+  /** "peligro" (rechazar), "teal" (derivar) o "primario" (invitar, aprobar). Por defecto, rojo si es destructivo. */
+  tonoIcono?: TonoIconoDialogo;
+  /** Recuadro gris con lo que se está confirmando (título, empresa, fecha). */
+  resumen?: ReactNode;
+  /** Contenido extra (los campos) entre el encabezado y los botones. */
   children?: ReactNode;
   textoConfirmar: string;
   textoPendiente: string;
@@ -124,8 +139,12 @@ export function DialogoConfirmacion<T>({
   claseBoton,
   deshabilitado = false,
   ayudaBoton,
+  etiquetaBoton,
   titulo,
   descripcion,
+  icono,
+  tonoIcono,
+  resumen,
   children,
   textoConfirmar,
   textoPendiente,
@@ -154,6 +173,7 @@ export function DialogoConfirmacion<T>({
         onClick={() => setAbierto(true)}
         disabled={deshabilitado || pendiente}
         title={ayudaBoton}
+        aria-label={etiquetaBoton}
         className={cn(
           CLASE_BOTON[estiloBoton],
           "whitespace-nowrap",
@@ -171,10 +191,12 @@ export function DialogoConfirmacion<T>({
         }}
       >
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader icono={icono} tonoIcono={tonoIcono ?? (destructivo ? "peligro" : "primario")}>
             <DialogTitle>{titulo}</DialogTitle>
             {descripcion && <DialogDescription>{descripcion}</DialogDescription>}
           </DialogHeader>
+
+          {resumen && <DialogResumen>{resumen}</DialogResumen>}
 
           {children}
 
