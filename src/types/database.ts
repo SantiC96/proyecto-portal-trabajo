@@ -986,31 +986,20 @@ export type Database = {
         Args: { p_asignacion_id: string; p_estado: string }
         Returns: undefined
       }
-      actualizar_mi_perfil_postulante:
-        | {
-            Args: {
-              p_apellido: string
-              p_dni: string
-              p_domicilio: string
-              p_nombre: string
-              p_telefono: string
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_apellido: string
-              p_disponibilidad: string
-              p_dni: string
-              p_domicilio: string
-              p_experiencia_laboral: string
-              p_nivel_educativo: string
-              p_nombre: string
-              p_situacion_laboral: string
-              p_telefono: string
-            }
-            Returns: undefined
-          }
+      actualizar_mi_perfil_postulante: {
+        Args: {
+          p_apellido: string
+          p_disponibilidad: string
+          p_dni: string
+          p_domicilio: string
+          p_experiencia_laboral: string
+          p_nivel_educativo: string
+          p_nombre: string
+          p_situacion_laboral: string
+          p_telefono: string
+        }
+        Returns: undefined
+      }
       archivos_a_purgar: {
         Args: { p_limite?: number }
         Returns: {
@@ -1694,20 +1683,6 @@ export type Database = {
           postulante_id: string
           rechazado_por: string
           usuario_id: string
-        }[]
-      }
-      postulaciones_por_mes: {
-        Args: never
-        Returns: {
-          cantidad: number
-          mes: string
-        }[]
-      }
-      postulaciones_por_periodo: {
-        Args: { p_agrupacion?: string; p_desde?: string }
-        Returns: {
-          cantidad: number
-          inicio: string
         }[]
       }
       postulaciones_por_rubro: {
