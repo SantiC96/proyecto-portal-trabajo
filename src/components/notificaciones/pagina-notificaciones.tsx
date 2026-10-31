@@ -8,7 +8,7 @@ import { formatFechaHora, formatFechaRelativa } from "@/lib/fechas";
 import { cn } from "@/lib/utils";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { EsqueletoLista, NotificacionesEsqueleto } from "@/components/ui/esqueleto";
 import { BotonFormulario } from "@/components/ui/boton-formulario";
 import { MarcarLeidasAlEntrar } from "./acciones-notificaciones";
 import { FormAbrirNotificacion } from "./form-abrir-notificacion";
@@ -76,7 +76,16 @@ export async function PaginaNotificaciones({
         </div>
       )}
 
-      <Suspense key={pagina} fallback={<EsqueletoLista filas={5} className="mt-6" />}>
+      <Suspense
+        key={pagina}
+        fallback={
+          banda ? (
+            <NotificacionesEsqueleto className="mt-6" />
+          ) : (
+            <EsqueletoLista filas={5} className="mt-6" />
+          )
+        }
+      >
         <ListadoNotificaciones
           usuarioId={usuarioId}
           pagina={pagina}

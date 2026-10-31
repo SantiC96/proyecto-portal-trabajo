@@ -4,7 +4,7 @@ import { CarruselOfertas } from "@/components/public/carrusel-ofertas";
 import { TarjetaOferta } from "@/components/ofertas/tarjeta-oferta";
 import { Badge } from "@/components/ui/badge";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { Esqueleto, EsqueletoTarjeta } from "@/components/ui/esqueleto";
+import { Esqueleto, TarjetaOfertaEsqueleto } from "@/components/ui/esqueleto";
 import { ultimasOfertasPublicas } from "@/lib/ofertas";
 import { formatAntiguedadPublicacion } from "@/lib/fechas";
 import { rutaBuscarPostulantes } from "@/lib/invitaciones";
@@ -125,9 +125,10 @@ export function EsqueletoUltimasOfertas() {
       <Esqueleto className="mt-2 h-4 w-3/4 sm:w-96" />
       <div className="mt-6 grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
         {Array.from({ length: 3 }, (_, i) => (
-          <EsqueletoTarjeta
+          <TarjetaOfertaEsqueleto
             key={i}
-            className={i === 1 ? "hidden @xl:block" : i === 2 ? "hidden @4xl:block" : undefined}
+            variante="compacta"
+            className={i === 1 ? "hidden @xl:flex" : i === 2 ? "hidden @4xl:flex" : undefined}
           />
         ))}
       </div>
