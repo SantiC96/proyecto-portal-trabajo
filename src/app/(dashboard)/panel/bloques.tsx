@@ -409,15 +409,16 @@ export async function BloqueOfertas() {
         {ofertas.map((o) => (
           <li key={o.id}>
             <TarjetaOferta
+              variante="detallada"
               href={`/ofertas/${o.id}`}
               titulo={o.titulo}
               empresa={o.empresa_nombre}
               rubros={o.rubros_coincidentes ?? []}
               modalidad={o.modalidad}
               lugar={o.lugar}
+              descripcion={o.descripcion}
+              jornada={o.jornada}
               badges={<BadgeCoincidencia nivel={o.nivel} puntaje={o.puntaje} />}
-              textoAccion="Postularme"
-              accionPrimaria
             />
           </li>
         ))}

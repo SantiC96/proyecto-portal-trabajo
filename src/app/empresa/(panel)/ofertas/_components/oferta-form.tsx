@@ -55,6 +55,7 @@ const MODALIDADES = ["Presencial", "Híbrido", "Remoto"] as const;
 const JORNADAS = ["Tiempo completo", "Part-time", "Pasantía", "Por proyecto"] as const;
 // La ubicación no se elige: el servidor la fija (UBICACION_OFERTA en actions.ts).
 const UBICACION = "Funes, Santa Fe";
+const DESCRIPCION_EJEMPLO = "Las tareas, las responsabilidades y el contexto del puesto.";
 const MAXIMO_ITEMS = 15;
 const MAXIMO_RUBROS = 5;
 
@@ -440,8 +441,10 @@ export function OfertaForm({
               className="vista-previa-oferta flex flex-col xl:flex-1"
               data-sin-titulo={titulo.trim() ? undefined : ""}
               data-sin-rubro={nombresRubros.length > 0 ? undefined : ""}
+              data-sin-descripcion={descripcion.trim() ? undefined : ""}
             >
               <TarjetaOferta
+                variante="detallada"
                 href="#"
                 titulo={titulo.trim() || "Título del puesto"}
                 empresa={empresaNombre}
@@ -449,6 +452,7 @@ export function OfertaForm({
                 modalidad={modalidad}
                 jornada={jornada}
                 lugar={UBICACION}
+                descripcion={descripcion.trim() || DESCRIPCION_EJEMPLO}
                 className="xl:flex-1"
               />
             </div>
