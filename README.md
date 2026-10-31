@@ -15,9 +15,10 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 
 | Rol | Email | Contraseña | Qué probar |
 |---|---|---|---|
-| Postulante | PENDIENTE_DATOS_DEMO | PENDIENTE_DATOS_DEMO | Completar el perfil, subir el CV, postularse a una oferta y seguir su estado. |
-| Empresa | PENDIENTE_DATOS_DEMO | PENDIENTE_DATOS_DEMO | Publicar una oferta, ver los candidatos derivados y coordinar una entrevista. |
-| Oficina de Empleo | PENDIENTE_DATOS_DEMO | PENDIENTE_DATOS_DEMO | Aprobar empresas y ofertas, derivar postulaciones, asignar cursos y ver indicadores. |
+| Postulante | santicancio2@gmail.com | Password123 | Completar el perfil, subir el CV, postularse a una oferta, responder una invitación y seguir el estado de cada postulación. |
+| Empresa | santiago.cancio96@gmail.com | Password123 | Publicar una oferta, ver los candidatos derivados, coordinar una entrevista, guardar candidatos y ver los indicadores. |
+| Empresa | scancio637@gmail.com | Password123 | Lo mismo que la otra empresa, con otras ofertas y otros candidatos. |
+| Oficina de Empleo | user@admin.com | Password123 | Aprobar empresas, ofertas y comprobantes de domicilio, derivar postulaciones, invitar postulantes a ofertas, asignar cursos y ver los indicadores. |
 
 ## Funcionalidades
 
