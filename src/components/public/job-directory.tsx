@@ -308,19 +308,21 @@ async function ResultadosOfertas({
         {datos.ofertas.map((oferta) => (
           <li key={oferta.id}>
             <TarjetaOferta
+              variante="detallada"
               href={`/ofertas/${oferta.id}`}
               titulo={oferta.titulo}
               empresa={oferta.empresa}
               rubros={oferta.categorias}
               modalidad={oferta.modalidad}
               lugar={oferta.ubicacion}
+              descripcion={oferta.descripcion}
               jornada={oferta.jornada}
               badges={invitadas.has(oferta.id) && <Badge tono="warning">Te invitaron</Badge>}
               accionExtra={
                 esOficina && (
                   <Link
                     href={rutaBuscarPostulantes(oferta.id, { volver })}
-                    className="btn-primario"
+                    className="btn-secundario"
                   >
                     <UserSearch aria-hidden="true" />
                     Buscar postulantes

@@ -88,7 +88,7 @@ export async function UltimasOfertas({
             esOficina && (
               <Link
                 href={rutaBuscarPostulantes(oferta.id, { volver: "/" })}
-                className="btn-primario"
+                className="btn-secundario"
               >
                 <UserSearch aria-hidden="true" />
                 Buscar postulantes
