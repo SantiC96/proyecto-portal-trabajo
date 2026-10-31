@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { COLUMNAS } from "./columnas";
+import { EsqueletoDerivados } from "./esqueleto";
 import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -23,7 +25,6 @@ import { formatFecha, formatFechaHora } from "@/lib/fechas";
 import { consultarPagina, leerPagina, type ParamsUrl } from "@/lib/paginacion";
 import { Paginacion } from "@/components/ui/paginacion";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
 import { DERIVACION_ESTADO_LABEL, DERIVACION_ESTADO_TONO } from "@/lib/derivacion-estados";
 import { Badge, BadgeBanda } from "@/components/ui/badge";
 import { BarraProgreso } from "@/components/ui/barra-progreso";
@@ -47,8 +48,8 @@ import {
   type EstadoOfertaEmpresa,
 } from "@/lib/oferta-estados";
 import { inicialesDePersona } from "@/lib/iniciales";
-import { RenovarOfertaBtn } from "../_components/renovar-oferta-btn";
-import { BajaOfertaBtn } from "../_components/baja-oferta-btn";
+import { RenovarOfertaBtn } from "../../_components/renovar-oferta-btn";
+import { BajaOfertaBtn } from "../../_components/baja-oferta-btn";
 import { bajasDeOfertas } from "@/lib/empresa/bajas-oferta";
 import { BotonVolver } from "@/components/ui/boton-volver";
 import { fotosDeCandidatosEmpresa } from "@/lib/fotos-perfil";
@@ -57,8 +58,6 @@ export const metadata: Metadata = {
   title: "Detalle de oferta | Portal de Empleo Funes",
 };
 
-// Candidato | Derivado el | Nota de la Oficina | Estado | acción.
-const COLUMNAS = "minmax(0,1.5fr) 7.5rem minmax(0,2fr) minmax(0,1.3fr) auto";
 
 export default async function OfertaDetallePage({
   params,
@@ -271,7 +270,7 @@ export default async function OfertaDetallePage({
           icono={Users}
           bajada="Los perfiles que la Oficina preseleccionó para esta oferta."
         />
-        <Suspense key={pagina} fallback={<EsqueletoLista filas={3} className="mt-4" />}>
+        <Suspense key={pagina} fallback={<EsqueletoDerivados />}>
           <ListadoDerivados ofertaId={ofertaId} pagina={pagina} searchParams={sp} />
         </Suspense>
       </section>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { Bookmark, ChartColumn, List, Plus, Send, UserCheck } from "lucide-react";
+import { Send, UserCheck } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { requerirEmpresaPagina } from "@/lib/auth";
 import { logError } from "@/lib/logger";
@@ -13,16 +13,12 @@ import { CuadroEstado, CLASE_GRILLA_CUADROS, claseCeldaCuadro } from "@/componen
 import { TituloBloque } from "@/components/ui/titulo-bloque";
 import { AvatarAjustado } from "@/components/ui/avatar-ajustado";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
-import { TarjetaAcceso } from "@/components/ui/tarjeta-acceso";
 import { CandidatosSinResultado } from "./_components/candidatos-sin-resultado";
 import { DIAS_AVISO_VENCIMIENTO } from "@/lib/ofertas-vencimiento";
-import {
-  ACENTO_ESTADO_OFERTA,
-  aplicarFiltroOfertas,
-  type FiltroOfertas,
-} from "@/lib/empresa/filtro-ofertas";
-import type { EstadoOfertaEmpresa } from "@/lib/oferta-estados";
+import { ACENTO_ESTADO_OFERTA, aplicarFiltroOfertas } from "@/lib/empresa/filtro-ofertas";
+import { CUADROS } from "./cuadros";
+import { EsqueletoPorContactar } from "./esqueletos";
+import { AccionesPanelEmpresa, MasHerramientas } from "./bloques-fijos";
 import { generarAvisosVencimientoEmpresa } from "@/lib/notificaciones";
 import { dentroDeDiasISO, formatFecha } from "@/lib/fechas";
 import { inicialesDePersona } from "@/lib/iniciales";
@@ -39,28 +35,6 @@ const MIS_OFERTAS = "/empresa/ofertas";
 
 /** Candidatos por contactar que se muestran en el panel; el resto está en cada oferta. */
 const MAXIMO_POR_CONTACTAR = 8;
-
-/**
- * Cuadros por estado: cada uno lleva a Mis ofertas con ese filtro y cuenta
- * con el mismo criterio. `accesible`: singular y plural del nombre accesible.
- */
-const CUADROS: {
-  filtro: FiltroOfertas;
-  estado: EstadoOfertaEmpresa;
-  etiqueta: string;
-  accesible: [string, string];
-}[] = [
-  { filtro: "publicada", estado: "activa", etiqueta: "Publicadas", accesible: ["publicada", "publicadas"] },
-  {
-    filtro: "pendiente",
-    estado: "pendiente_aprobacion",
-    etiqueta: "En revisión",
-    accesible: ["en revisión", "en revisión"],
-  },
-  { filtro: "rechazada", estado: "rechazada", etiqueta: "Rechazadas", accesible: ["rechazada", "rechazadas"] },
-  { filtro: "cerrada", estado: "cerrada", etiqueta: "Cerradas", accesible: ["cerrada", "cerradas"] },
-  { filtro: "vencida", estado: "vencida", etiqueta: "Vencidas", accesible: ["vencida", "vencidas"] },
-];
 
 export default async function EmpresaDashboardPage() {
   const empresa = await requerirEmpresaPagina();
@@ -100,18 +74,7 @@ export default async function EmpresaDashboardPage() {
         botonesBlancos
         titulo={`Hola, ${empresa.razon_social}`}
         bajada="Así están tus ofertas y tus candidatos."
-        acciones={
-          <>
-            <Link href={MIS_OFERTAS} className="btn-neutro">
-              <List aria-hidden="true" />
-              Mis ofertas
-            </Link>
-            <Link href="/empresa/ofertas/nueva" className="btn-primario">
-              <Plus aria-hidden="true" />
-              Publicar oferta
-            </Link>
-          </>
-        }
+        acciones={<AccionesPanelEmpresa />}
       />
 
       <Suspense fallback={null}>
@@ -156,39 +119,12 @@ export default async function EmpresaDashboardPage() {
               icono={Send}
               bajada="Derivados por la Oficina de Empleo y todavía pendientes."
             />
-            <Suspense fallback={<EsqueletoLista filas={3} className="mt-4" />}>
+            <Suspense fallback={<EsqueletoPorContactar />}>
               <CandidatosPorContactar empresaId={empresa.id} />
             </Suspense>
           </section>
 
-          <section aria-labelledby="panel-accesos" className="relative flex min-w-0 flex-col gap-3">
-            <h2
-              id="panel-accesos"
-              className="text-[13px] font-extrabold tracking-[0.04em] text-neutral uppercase @3xl:absolute @3xl:bottom-[calc(100%+8px)] @3xl:left-0"
-            >
-              Más herramientas
-            </h2>
-            <div className="grid @3xl:flex-1">
-              <TarjetaAcceso
-                href="/empresa/candidatos-guardados"
-                icono={<Bookmark className="size-[22px]" />}
-                claseIcono="bg-info text-white"
-                elevable
-                titulo="Candidatos guardados"
-                descripcion="Perfiles para futuras búsquedas"
-              />
-            </div>
-            <div className="grid @3xl:flex-1">
-              <TarjetaAcceso
-                href="/empresa/indicadores"
-                icono={<ChartColumn className="size-[22px]" />}
-                claseIcono="bg-teal text-white"
-                elevable
-                titulo="Indicadores"
-                descripcion="Derivaciones, entrevistas y vacantes cubiertas"
-              />
-            </div>
-          </section>
+          <MasHerramientas />
         </div>
       </div>
 

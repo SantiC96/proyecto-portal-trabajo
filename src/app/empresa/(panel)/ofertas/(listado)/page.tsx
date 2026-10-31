@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { COLUMNAS, COLUMNAS_ELIMINADAS } from "./columnas";
 import { Suspense } from "react";
 import Link from "next/link";
 import { Plus, Briefcase, Calendar, Pencil, Trash2 } from "lucide-react";
@@ -7,7 +8,8 @@ import { Buscador } from "@/components/ui/buscador";
 import { Paginacion } from "@/components/ui/paginacion";
 import { GrupoPastillas, PastillaFiltro } from "@/components/ui/pastilla-filtro";
 import { EstadoVacio, ErrorListado } from "@/components/ui/estado-listado";
-import { EsqueletoLista } from "@/components/ui/esqueleto";
+import { LineaBanda } from "@/components/ui/esqueleto";
+import { EsqueletoMisOfertas } from "./esqueleto";
 import { EncabezadoPagina } from "@/components/ui/encabezado-pagina";
 import { Aviso } from "@/components/ui/aviso";
 import { Badge } from "@/components/ui/badge";
@@ -32,9 +34,9 @@ import {
   leerPagina,
   type ParamsUrl,
 } from "@/lib/paginacion";
-import { BajaOfertaBtn } from "./_components/baja-oferta-btn";
-import { RestaurarOfertaBtn } from "./_components/restaurar-oferta-btn";
-import { RenovarOfertaBtn } from "./_components/renovar-oferta-btn";
+import { BajaOfertaBtn } from "../_components/baja-oferta-btn";
+import { RestaurarOfertaBtn } from "../_components/restaurar-oferta-btn";
+import { RenovarOfertaBtn } from "../_components/renovar-oferta-btn";
 import { estadoVencimiento, textoDiasRestantes } from "@/lib/ofertas-vencimiento";
 import { dentroDeDiasISO, formatFecha } from "@/lib/fechas";
 import {
@@ -59,11 +61,6 @@ export const metadata: Metadata = {
 
 const RUTA = "/empresa/ofertas";
 
-// Oferta | Estado | Rubros | Vence | acciones.
-const COLUMNAS =
-  "minmax(0,1.75fr) minmax(0,1.05fr) minmax(0,1.15fr) minmax(0,0.7fr) minmax(0,1.75fr)";
-// Oferta | Eliminada | acción.
-const COLUMNAS_ELIMINADAS = "minmax(0,2fr) minmax(0,1.6fr) auto";
 
 /** Rubros que se ven en la fila; el resto va en "+N". */
 const RUBROS_VISIBLES = 2;
@@ -158,7 +155,7 @@ export default async function MisOfertasPage({
         bajada={
           <Suspense
             key={`${clave}:bajada`}
-            fallback={<span className="inline-block h-4 w-72 max-w-full rounded bg-primary-foreground/20" />}
+            fallback={<LineaBanda className="w-[30em]" />}
           >
             <BajadaMisOfertas resultado={resultado} eliminadas={eliminadas} />
           </Suspense>
@@ -195,7 +192,7 @@ export default async function MisOfertasPage({
         </div>
       </div>
 
-      <Suspense key={`${clave}:lista`} fallback={<EsqueletoLista filas={4} />}>
+      <Suspense key={`${clave}:lista`} fallback={<EsqueletoMisOfertas />}>
         <ListadoMisOfertas
           supabase={supabase}
           resultado={resultado}
