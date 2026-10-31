@@ -1136,7 +1136,7 @@ a.pie-dato:focus-visible { box-shadow: 0 0 0 3px rgb(255 255 255 / 0.6); }
 
 /* Tarjeta de oferta (components/ofertas/tarjeta-oferta.tsx): tinte verde que
    sale de la esquina superior derecha, borde verde con franja arriba, ícono
-   de maletín y botón tonal. El mismo verde para todas: el rubro va solo en
+   de maletín y botón "Ver oferta" verde sólido (btn-primario). El mismo verde para todas: el rubro va solo en
    las etiquetas. El foco del título se dibuja en la tarjeta (el overflow
    recortaría el del link). La elevación necesita 20 px libres arriba y 40 px
    abajo dentro de un contenedor con scroll (ver el carrusel). */
@@ -1180,21 +1180,21 @@ a.pie-dato:focus-visible { box-shadow: 0 0 0 3px rgb(255 255 255 / 0.6); }
 
 /* Vista previa del formulario de oferta: lo que falta va como ejemplo, en
    gris e itálica. El título (20 px 700, texto grande) usa texto-ejemplo; el
-   rubro (13 px) usa placeholder para llegar a 4,5:1. */
+   rubro (13 px) usa placeholder para llegar a 4,5:1; la descripción ya es
+   muted-foreground (4,75:1 sobre el tinte) y solo pasa a itálica. */
 .vista-previa-oferta[data-sin-titulo] .tarjeta-oferta h3 a {
   color: var(--color-texto-ejemplo);
   font-style: italic;
 }
-.vista-previa-oferta[data-sin-rubro] .tarjeta-oferta-etiquetas > :first-child {
+.vista-previa-oferta[data-sin-rubro] .tarjeta-oferta-rubro {
   color: var(--color-placeholder);
   font-style: italic;
   box-shadow: inset 0 0 0 1.5px var(--color-muted-icon);
 }
+.vista-previa-oferta[data-sin-descripcion] .tarjeta-oferta-descripcion { font-style: italic; }
 .tarjeta-oferta-icono {
-  position: absolute;
-  top: 16px;
-  right: 16px;
   display: grid;
+  flex-shrink: 0;
   place-items: center;
   width: 44px;
   height: 44px;
@@ -1204,17 +1204,18 @@ a.pie-dato:focus-visible { box-shadow: 0 0 0 3px rgb(255 255 255 / 0.6); }
   box-shadow: 0 6px 14px rgb(0 30 15 / 0.18);
   pointer-events: none;
 }
-/* Lugar para el ícono: 16 px de margen + 44 de ícono, menos los 24 de padding
-   de la tarjeta, más aire. */
-.tarjeta-oferta-etiquetas { padding-right: 48px; }
-/* Variante tonal del botón secundario, solo en esta tarjeta. Mantiene el
-   borde transparente para medir lo mismo que el secundario. */
-.tarjeta-oferta .tarjeta-oferta-tonal {
-  border-color: transparent;
-  background: rgb(0 104 51 / 0.12);
-  color: var(--color-primary-hover);
+/* Variante compacta: el ícono va en la esquina superior derecha. Lugar para
+   el ícono en las etiquetas: 16 px de margen + 44 de ícono, menos los 24 de
+   padding de la tarjeta, más aire. */
+.tarjeta-oferta-compacta .tarjeta-oferta-icono {
+  position: absolute;
+  top: 16px;
+  right: 16px;
 }
-.tarjeta-oferta:hover .tarjeta-oferta-tonal { background: rgb(0 104 51 / 0.2); }
+.tarjeta-oferta-compacta .tarjeta-oferta-etiquetas { padding-right: 48px; }
+/* El link del título cubre la tarjeta: el botón (solo visual) toma el hover
+   de toda la tarjeta. */
+.tarjeta-oferta:hover .tarjeta-oferta-boton { background: var(--color-primary-hover); }
 
 /* Listas que se desplazan de costado (carrusel): sin barra visible. */
 .sin-barra-scroll { scrollbar-width: none; }
