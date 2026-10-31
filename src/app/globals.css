@@ -470,7 +470,7 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
 .hero-icono:nth-child(3) { top: 128px; left: 0; animation-delay: -3s; }
 .hero-icono:nth-child(4) { top: 184px; right: 18%; animation-delay: -4.5s; }
 
-/* "Cómo funciona" y "Tu actividad": banda a todo el ancho del contenido. El
+/* "Cómo funciona" y "Últimas postulaciones": banda a todo el ancho del contenido. El
    margen negativo es igual al padding de .app-contenido, así que no sale de
    él ni genera scroll horizontal. */
 .banda-inicio {

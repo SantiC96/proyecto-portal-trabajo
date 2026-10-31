@@ -2,7 +2,10 @@ import { Suspense } from "react";
 import { Hero } from "@/components/public/hero";
 import { HowItWorks } from "@/components/public/how-it-works";
 import { UltimasOfertas, EsqueletoUltimasOfertas } from "@/components/public/ultimas-ofertas";
-import { TuActividad, EsqueletoTuActividad } from "@/components/public/tu-actividad";
+import {
+  EsqueletoUltimasPostulaciones,
+  UltimasPostulaciones,
+} from "@/components/public/ultimas-postulaciones";
 import { ContactoOficina } from "@/components/public/contacto-oficina";
 import { getCategorias } from "@/lib/ofertas";
 import { obtenerSesionActual } from "@/lib/sesion";
@@ -90,8 +93,8 @@ export default async function HomePage({
 
         {postulante && (
           <div className="banda-inicio">
-            <Suspense fallback={<EsqueletoTuActividad />}>
-              <TuActividad postulanteId={postulante.id} />
+            <Suspense fallback={<EsqueletoUltimasPostulaciones />}>
+              <UltimasPostulaciones postulanteId={postulante.id} />
             </Suspense>
           </div>
         )}
