@@ -17,6 +17,14 @@ export type TonoBadge =
   | "violet"
   /** Gris claro `muted-icon` con texto oscuro (retirada): el blanco no llega a AA. */
   | "apagado"
+  /** Estados de una postulación: escala de verdes (src/lib/estados-postulacion.ts) y gris de cierre. */
+  | "estado-recibida"
+  | "estado-revision"
+  | "estado-preentrevista"
+  | "estado-derivada"
+  | "estado-entrevista"
+  | "estado-seleccionado"
+  | "estado-cerrado"
 
 const CLASE_TONO: Record<TonoBadge, string> = {
   info: "bg-info text-white",
@@ -27,6 +35,13 @@ const CLASE_TONO: Record<TonoBadge, string> = {
   danger: "bg-danger text-white",
   violet: "bg-violet text-white",
   apagado: "bg-muted-icon text-heading",
+  "estado-recibida": "bg-estado-recibida text-estado-recibida-texto",
+  "estado-revision": "bg-estado-revision text-estado-revision-texto",
+  "estado-preentrevista": "bg-estado-preentrevista text-estado-preentrevista-texto",
+  "estado-derivada": "bg-estado-derivada text-estado-derivada-texto",
+  "estado-entrevista": "bg-estado-entrevista text-estado-entrevista-texto",
+  "estado-seleccionado": "bg-estado-seleccionado text-estado-seleccionado-texto",
+  "estado-cerrado": "bg-estado-cerrado text-estado-cerrado-texto",
 }
 
 /** Fondo y texto de un tono, para un elemento que no es un Badge (un botón, un aviso corto). */
@@ -45,6 +60,13 @@ const CLASE_TEXTO_TONO: Record<TonoBadge, string> = {
   danger: "text-danger",
   violet: "text-violet",
   apagado: "text-muted-foreground",
+  "estado-recibida": "text-estado-recibida-texto",
+  "estado-revision": "text-estado-revision-texto",
+  "estado-preentrevista": "text-estado-preentrevista-texto",
+  "estado-derivada": "text-estado-derivada-texto",
+  "estado-entrevista": "text-estado-entrevista",
+  "estado-seleccionado": "text-estado-seleccionado",
+  "estado-cerrado": "text-estado-cerrado",
 }
 
 /** El tono como texto de color, para un estado escrito sin pastilla. */
@@ -116,6 +138,13 @@ const CLASE_PUNTO: Record<TonoPuntoBanda, string> = {
   danger: "bg-danger",
   violet: "bg-violet",
   apagado: "bg-muted-icon",
+  "estado-recibida": "bg-estado-recibida-texto",
+  "estado-revision": "bg-estado-revision-texto",
+  "estado-preentrevista": "bg-estado-preentrevista-texto",
+  "estado-derivada": "bg-estado-derivada",
+  "estado-entrevista": "bg-estado-entrevista",
+  "estado-seleccionado": "bg-estado-seleccionado",
+  "estado-cerrado": "bg-estado-cerrado",
 }
 
 /**

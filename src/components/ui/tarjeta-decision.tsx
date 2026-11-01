@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { CircleCheck, CircleX, Scale, Send, Undo2, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ESTILO_ETAPA } from "@/lib/estados-postulacion";
 import { IconoCuadro } from "@/components/ui/icono-cuadro";
 
 const FILETE = {
@@ -8,9 +9,9 @@ const FILETE = {
   aprobada: "before:bg-primary",
   rechazada: "before:bg-danger",
   /** Postulación derivada a la empresa, esperando su resultado. */
-  derivada: "before:bg-teal",
+  derivada: ESTILO_ETAPA.derivada.filete,
   /** Cerrada sin decisión (retirada por el postulante o por la empresa). */
-  cerrada: "before:bg-muted-icon",
+  cerrada: ESTILO_ETAPA.cerrado.filete,
 } as const;
 
 export type EstadoDecision = keyof typeof FILETE;

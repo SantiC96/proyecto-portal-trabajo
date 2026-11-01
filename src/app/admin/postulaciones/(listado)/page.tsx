@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ESTADOS_FILTRO, LABEL_FILTRO, COLUMNAS } from "../listado";
 import { Suspense } from "react";
 import Link from "next/link";
+import { ESTILO_ETAPA } from "@/lib/estados-postulacion";
 import Form from "next/form";
 import { Calendar, CalendarClock, ClipboardList } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
@@ -667,8 +668,7 @@ async function ListadoPostulaciones({
             <FilaTabla
               key={fila.postulacionId}
               semantica="tabla"
-              // Con una pre-entrevista coordinada, azul como "en revisión".
-              filete={preCoordinada ? "before:bg-info" : FILETE_ESTADO_VISIBLE[fila.visible]}
+              filete={preCoordinada ? ESTILO_ETAPA.preentrevista.filete : FILETE_ESTADO_VISIBLE[fila.visible]}
             >
               <div role="cell" className="min-w-0">
                 <CeldaPersona
