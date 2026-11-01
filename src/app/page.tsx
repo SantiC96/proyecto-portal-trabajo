@@ -2,7 +2,11 @@ import { Suspense } from "react";
 import { Hero } from "@/components/public/hero";
 import { HowItWorks } from "@/components/public/how-it-works";
 import { UltimasOfertas, EsqueletoUltimasOfertas } from "@/components/public/ultimas-ofertas";
-import { TuActividad, EsqueletoTuActividad } from "@/components/public/tu-actividad";
+import {
+  EsqueletoTuActividad,
+  TuActividad,
+} from "@/components/public/tu-actividad";
+import { ContactoOficina } from "@/components/public/contacto-oficina";
 import { getCategorias } from "@/lib/ofertas";
 import { obtenerSesionActual } from "@/lib/sesion";
 import { esOficinaActiva, obtenerPostulanteActual, obtenerUsuarioActual } from "@/lib/auth";
