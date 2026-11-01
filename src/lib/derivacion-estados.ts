@@ -1,4 +1,5 @@
 import type { TonoBadge } from "@/components/ui/badge";
+import { ESTILO_ETAPA } from "@/lib/estados-postulacion";
 import type { Enum } from "@/types/db";
 
 export type EstadoDerivacionEmpresa = Enum<"estado_empresa">;
@@ -13,12 +14,12 @@ export const DERIVACION_ESTADO_LABEL: Record<EstadoDerivacionEmpresa, string> = 
 };
 
 export const DERIVACION_ESTADO_TONO: Record<EstadoDerivacionEmpresa, TonoBadge> = {
-  pendiente: "warning",
-  en_proceso: "info",
-  contratado: "success",
-  rechazado: "neutral",
-  oferta_retirada: "neutral",
-  retirada_postulante: "neutral",
+  pendiente: ESTILO_ETAPA.derivada.tono,
+  en_proceso: ESTILO_ETAPA.entrevista.tono,
+  contratado: ESTILO_ETAPA.seleccionado.tono,
+  rechazado: ESTILO_ETAPA.cerrado.tono,
+  oferta_retirada: ESTILO_ETAPA.cerrado.tono,
+  retirada_postulante: ESTILO_ETAPA.cerrado.tono,
 };
 
 /**

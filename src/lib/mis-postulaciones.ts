@@ -1,4 +1,5 @@
 import type { TonoBadge } from "@/components/ui/badge";
+import { ESTILO_ETAPA } from "@/lib/estados-postulacion";
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 import type { Enum, FilaIndicadoresPostulante } from "@/types/db";
 
@@ -45,13 +46,13 @@ export function badgePostulacion({
   ofertaNoVisible?: boolean;
 }): BadgeMiPostulacion {
   if (estado === "retirada_postulante") {
-    return { label: "Retirada", tono: "neutral", clave: "retirada" };
+    return { label: "Retirada", tono: ESTILO_ETAPA.cerrado.tono, clave: "retirada" };
   }
   if (estadoEmpresa === "contratado") {
-    return { label: "Seleccionado", tono: "success", clave: "seleccionado" };
+    return { label: "Seleccionado", tono: ESTILO_ETAPA.seleccionado.tono, clave: "seleccionado" };
   }
   if (estado === "rechazada_municipalidad" || estadoEmpresa === "rechazado") {
-    return { label: "No seleccionado", tono: "neutral", clave: "no-seleccionado" };
+    return { label: "No seleccionado", tono: ESTILO_ETAPA.cerrado.tono, clave: "no-seleccionado" };
   }
   if (
     estado === "oferta_retirada" ||
@@ -59,15 +60,15 @@ export function badgePostulacion({
     ofertaEstado === "cerrada" ||
     ofertaNoVisible
   ) {
-    return { label: "Oferta cerrada", tono: "neutral", clave: "oferta-cerrada" };
+    return { label: "Oferta cerrada", tono: ESTILO_ETAPA.cerrado.tono, clave: "oferta-cerrada" };
   }
   switch (estado) {
     case "en_revision":
-      return { label: "En revisión", tono: "info", clave: "en-revision" };
+      return { label: "En revisión", tono: ESTILO_ETAPA.revision.tono, clave: "en-revision" };
     case "derivada":
-      return { label: "Enviada a la empresa", tono: "teal", clave: "derivada" };
+      return { label: "Enviada a la empresa", tono: ESTILO_ETAPA.derivada.tono, clave: "derivada" };
     default:
-      return { label: "Recibida", tono: "neutral", clave: "recibida" };
+      return { label: "Recibida", tono: ESTILO_ETAPA.recibida.tono, clave: "recibida" };
   }
 }
 
@@ -92,6 +93,7 @@ export function sePuedeRetirar(
 
 // ── Filtro por estado (?estado=) ────────────────────────────────────────────
 
+/** Los cuadros del panel (/panel), uno por indicador de indicadores_postulante(). */
 export const FILTROS_MIS_POSTULACIONES = [
   "en-revision",
   "derivadas",
@@ -100,20 +102,25 @@ export const FILTROS_MIS_POSTULACIONES = [
   "retiradas",
 ] as const;
 
-export type FiltroMisPostulaciones = (typeof FILTROS_MIS_POSTULACIONES)[number];
+/** Las pastillas de Mis postulaciones: las del panel y "Recibidas" antes de "En revisión". */
+export const PASTILLAS_MIS_POSTULACIONES = ["recibidas", ...FILTROS_MIS_POSTULACIONES] as const;
+
+export type FiltroMisPostulaciones = (typeof PASTILLAS_MIS_POSTULACIONES)[number];
 
 /** El filtro de la URL, o null (todas) si falta o no es válido. */
 export function leerFiltroMisPostulaciones(
   valor: string | string[] | undefined,
 ): FiltroMisPostulaciones | null {
   const texto = Array.isArray(valor) ? valor[0] : valor;
-  return FILTROS_MIS_POSTULACIONES.find((f) => f === texto) ?? null;
+  return PASTILLAS_MIS_POSTULACIONES.find((f) => f === texto) ?? null;
 }
 
 /**
- * Qué postulaciones entran en cada filtro: las mismas condiciones que cada
- * número de indicadores_postulante() (migration_058, BLOQUE 3), para que el
- * cuadro del panel y la lista filtrada den lo mismo.
+ * Qué postulaciones entran en cada filtro. Salvo "Recibidas" y "En revisión",
+ * son las mismas condiciones que cada número de indicadores_postulante()
+ * (migration_058, BLOQUE 3), para que el cuadro del panel y la lista filtrada
+ * den lo mismo. Ese indicador cuenta recibidas y en revisión juntas; en la
+ * lista van separadas.
  *   estados        postulaciones.estado que entran sin mirar la derivación.
  *   derivadaCon    además, las 'derivada' cuyo resultado de la empresa
  *                  (derivaciones.estado_empresa, null sin derivación) cumple
@@ -127,7 +134,8 @@ export const CRITERIO_FILTRO: Record<
     derivadaCon?: (estadoEmpresa: EstadoDerivacionEmpresa | null) => boolean;
   }
 > = {
-  "en-revision": { estados: ["recibida", "en_revision"] },
+  recibidas: { estados: ["recibida"] },
+  "en-revision": { estados: ["en_revision"] },
   derivadas: { estados: [], derivadaCon: derivadaSinResultado },
   seleccionadas: { estados: [], derivadaCon: (e) => e === "contratado" },
   "no-seleccionadas": { estados: ["rechazada_municipalidad"], derivadaCon: (e) => e === "rechazado" },
@@ -140,7 +148,7 @@ function derivadaSinResultado(estadoEmpresa: EstadoDerivacionEmpresa | null): bo
 
 /** Columna de indicadores_postulante() con el número de cada filtro. */
 export const INDICADOR_FILTRO: Record<
-  FiltroMisPostulaciones,
+  (typeof FILTROS_MIS_POSTULACIONES)[number],
   Exclude<keyof FilaIndicadoresPostulante, "invitaciones_pendientes">
 > = {
   "en-revision": "en_revision",
@@ -152,6 +160,7 @@ export const INDICADOR_FILTRO: Record<
 
 /** Etiqueta de cada filtro: la misma en el cuadro del panel y en la pastilla. */
 export const ETIQUETA_FILTRO: Record<FiltroMisPostulaciones, string> = {
+  recibidas: "Recibidas",
   "en-revision": "En revisión",
   derivadas: "Enviadas a la empresa",
   seleccionadas: "Seleccionadas",
@@ -164,6 +173,7 @@ export function cantidadConEstado(filtro: FiltroMisPostulaciones, cantidad: numb
   const uno = cantidad === 1;
   const sustantivo = uno ? "postulación" : "postulaciones";
   const estado: Record<FiltroMisPostulaciones, string> = {
+    recibidas: uno ? "recibida" : "recibidas",
     "en-revision": "en revisión",
     derivadas: uno ? "enviada a la empresa" : "enviadas a la empresa",
     seleccionadas: uno ? "seleccionada" : "seleccionadas",
@@ -175,6 +185,7 @@ export function cantidadConEstado(filtro: FiltroMisPostulaciones, cantidad: numb
 
 /** Estado vacío de Mis postulaciones con un filtro sin resultados. */
 export const VACIO_FILTRO: Record<FiltroMisPostulaciones, string> = {
+  recibidas: "No tenés postulaciones recibidas.",
   "en-revision": "No tenés postulaciones en revisión.",
   derivadas: "No tenés postulaciones enviadas a la empresa.",
   seleccionadas: "No tenés postulaciones seleccionadas.",

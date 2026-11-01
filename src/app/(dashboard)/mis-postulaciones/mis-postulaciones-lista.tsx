@@ -15,6 +15,7 @@ import {
   sePuedeRetirar,
 } from "@/lib/mis-postulaciones";
 import { cn } from "@/lib/utils";
+import { ESTILO_ETAPA } from "@/lib/estados-postulacion";
 import { ACENTO_ESTADO } from "@/components/postulantes/acento-estado";
 import type {
   FilaCvDeMiPostulacion,
@@ -75,34 +76,34 @@ function avisoEstadoOferta(p: Postulacion): string | null {
 const LEYENDA: { label: string; tono: TonoBadge; texto: string }[] = [
   {
     label: "Recibida",
-    tono: "neutral",
+    tono: ESTILO_ETAPA.recibida.tono,
     texto: "Tu postulación llegó y está esperando revisión por la Oficina de Empleo.",
   },
   {
     label: "En revisión",
-    tono: "info",
+    tono: ESTILO_ETAPA.revision.tono,
     texto: "La Oficina de Empleo está evaluando tu perfil para esta oferta.",
   },
   {
     label: "Enviada a la empresa",
-    tono: "teal",
+    tono: ESTILO_ETAPA.derivada.tono,
     texto:
       "La Oficina de Empleo derivó tu postulación. La empresa te contactará para coordinar una entrevista.",
   },
-  { label: "Seleccionado", tono: "success", texto: "La empresa te eligió para el puesto." },
+  { label: "Seleccionado", tono: ESTILO_ETAPA.seleccionado.tono, texto: "La empresa te eligió para el puesto." },
   {
     label: "No seleccionado",
-    tono: "neutral",
+    tono: ESTILO_ETAPA.cerrado.tono,
     texto: "La Oficina de Empleo o la empresa no seleccionaron tu perfil para esta búsqueda.",
   },
   {
     label: "Oferta cerrada",
-    tono: "neutral",
+    tono: ESTILO_ETAPA.cerrado.tono,
     texto: "La oferta ya no recibe postulaciones y tu proceso terminó sin un resultado.",
   },
   {
     label: "Retirada",
-    tono: "neutral",
+    tono: ESTILO_ETAPA.cerrado.tono,
     texto: "Retiraste tu postulación. Si la oferta sigue abierta, podés volver a postularte.",
   },
 ];
