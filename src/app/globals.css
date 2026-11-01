@@ -929,7 +929,7 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
   .panel-rubros-fondo[data-ending-style] { opacity: 0; }
 }
 
-/* "Cómo funciona" y "Últimas postulaciones": banda a todo el ancho del contenido. El
+/* "Cómo funciona" y "Tu actividad": banda a todo el ancho del contenido. El
    margen negativo es igual al padding de .app-contenido, así que no sale de
    él ni genera scroll horizontal. */
 .banda-inicio {
