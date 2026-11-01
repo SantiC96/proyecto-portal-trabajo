@@ -660,7 +660,7 @@ function SeccionRubros({
                 >
                   <Icono className="size-4" />
                 </span>
-                {c.nombre}
+                <span className="min-w-0 break-words">{c.nombre}</span>
               </li>
             );
           })}
