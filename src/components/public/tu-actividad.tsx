@@ -149,6 +149,7 @@ function FilaPostulacion({ movimiento }: { movimiento: Movimiento }) {
   );
 }
 
+
 function InvitacionPendiente({
   invitacion,
   cantidad,
@@ -156,54 +157,59 @@ function InvitacionPendiente({
   invitacion: FilaMiInvitacion;
   cantidad: number;
 }) {
-  const hrefOferta = `/ofertas/${invitacion.oferta_id}`;
+  const tieneVarias = cantidad > 1;
+  const href = tieneVarias
+    ? "/invitaciones"
+    : `/ofertas/${invitacion.oferta_id}`;
 
   return (
     <section
       aria-label="Invitación pendiente"
-      className="rounded-[var(--radius-lg)] border border-border bg-surface-tinted p-4"
+      className="flex flex-1 flex-col"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h4 className="font-bold text-foreground">Invitación pendiente</h4>
-        <Badge tono="warning">Invitación</Badge>
-      </div>
+      <div className="flex flex-1 flex-col gap-3">
+        <div>
+          <Link
+            href={`/ofertas/${invitacion.oferta_id}`}
+            className="inline-block rounded-[var(--radius-sm)] font-bold text-foreground outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+          >
+            {invitacion.oferta_titulo}
+          </Link>
 
-      <Link
-        href={hrefOferta}
-        className="mt-3 inline-block rounded-[var(--radius-sm)] font-bold text-foreground outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
-      >
-        {invitacion.oferta_titulo}
-      </Link>
-      {invitacion.empresa_nombre && (
-        <p className="mt-1 text-sm font-semibold text-muted-foreground-strong">
-          {invitacion.empresa_nombre}
+          {invitacion.empresa_nombre && (
+            <p className="mt-1 text-sm font-semibold text-muted-foreground-strong">
+              {invitacion.empresa_nombre}
+            </p>
+          )}
+        </div>
+
+        <p className="text-sm text-muted-foreground-strong">
+          Invitación recibida: {formatFecha(invitacion.creada_en)}
         </p>
-      )}
-      <p className="mt-1 text-sm text-muted-foreground-strong">
-        Invitación recibida: {formatFecha(invitacion.creada_en)}
-      </p>
-      <p className="mt-3 text-sm leading-relaxed text-muted-foreground-strong">
-        La Oficina de Empleo te sugirió esta oferta.
-      </p>
 
-      <div className="mt-4 flex justify-end">
-        <Link href={hrefOferta} className="btn-primario w-full justify-center sm:w-auto">
-          Postularme
-        </Link>
+        <p className="text-sm leading-relaxed text-muted-foreground-strong">
+          La Oficina de Empleo te sugirió esta oferta.
+        </p>
+
+        {tieneVarias && (
+          <p className="text-sm font-medium text-muted-foreground-strong">
+            Tenés {cantidad} invitaciones pendientes para revisar.
+          </p>
+        )}
       </div>
 
-      {cantidad > 1 && (
+      <div className="pt-5">
         <Link
-          href="/invitaciones"
-          className="mt-3 inline-flex min-h-11 items-center gap-1 rounded-[var(--radius-md)] text-sm font-bold text-primary outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+          href={href}
+          className="btn-primario inline-flex w-full justify-center sm:w-auto"
         >
-          Ver todas las invitaciones ({cantidad})
-          <ChevronRight aria-hidden="true" className="size-4" />
+          {tieneVarias ? "Ver mis invitaciones" : "Ver invitación"}
         </Link>
-      )}
+      </div>
     </section>
   );
 }
+
 
 function TarjetaInvitaciones({
   invitacion,
@@ -251,7 +257,6 @@ function PerfilIncompleto({
       id={id}
       className={cn(
         "tarjeta order-first flex h-full flex-col gap-4 p-4 sm:p-6 xl:order-none",
-        destacado && "border-primary/40 bg-surface-tinted",
       )}
     >
       <h3 className="text-lg font-extrabold">Completá tu perfil</h3>
@@ -401,7 +406,7 @@ function TarjetaPostulaciones({
               Ver mis postulaciones
             </Link>
           ) : (
-            <Link href="/mis-postulaciones" className="btn-secundario justify-center">
+            <Link href="/mis-postulaciones" className="btn-primario justify-center">
               Ver mis postulaciones
             </Link>
           )
