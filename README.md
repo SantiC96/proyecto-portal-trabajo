@@ -11,6 +11,16 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 - Santiago Cancio
 - Jessica Lopez
 
+## Usuarios demo
+
+## Usuarios demo
+
+| Rol | Email | Contraseña |
+|---|---|---|
+| Postulante | santicancio2@gmail.com | Password123 |
+| Empresa | santiago.cancio96@gmail.com | Password123 |
+| Oficina de Empleo | user@admin.com | Password123 |
+
 ## Stack y tecnologías
 
 - **Next.js 16** con App Router, **React 19** y **TypeScript**.
