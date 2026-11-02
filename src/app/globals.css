@@ -1783,12 +1783,30 @@ html[data-sidebar="colapsada"] .sidebar[data-modo="escritorio"] .sidebar-visitan
 }
 
 .login-columna {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex: 1;
   align-items: center;
   justify-content: center;
   min-width: 0;
   padding: 24px 16px;
+}
+.login-columna-video {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.42;
+}
+.login-columna-contenido {
+  position: relative;
+  z-index: 1;
+}
+@media (max-width: 767px) {
+  .login-columna-video { display: none; }
 }
 @media (min-width: 640px) { .login-columna { padding: 48px 24px; } }
 .login-tarjeta { display: flex; flex-direction: column; gap: 22px; }
