@@ -88,16 +88,18 @@ export function TarjetaOferta({
         <div className="tarjeta-oferta-etiquetas flex flex-wrap items-center gap-2">
           {etiquetas}
           {badges}
-          {publicada && <Publicada texto={publicada} className="ml-auto whitespace-nowrap" />}
         </div>
 
         {encabezado}
 
         {datos()}
 
-        <div className="mt-auto flex flex-wrap items-center gap-2 pt-1.5">
+        <div className="mt-auto flex flex-wrap items-end gap-2 pt-1.5">
           {accionExtra && <div className="relative z-10">{accionExtra}</div>}
           {boton}
+          {publicada && (
+            <Publicada texto={publicada} className="ml-auto self-end whitespace-nowrap text-right" />
+          )}
         </div>
       </article>
     );
