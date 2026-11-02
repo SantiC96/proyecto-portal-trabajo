@@ -9,6 +9,7 @@ import { NavegacionMovil } from "@/components/layout/navegacion-movil";
 import { RegistroNavegacion } from "@/components/layout/registro-navegacion";
 import { Sidebar } from "@/components/layout/sidebar";
 import { CampanaNotificaciones } from "@/components/notificaciones/campana-notificaciones";
+import { AparecerTarjetasAlScroll } from "@/components/layout/aparecer-tarjetas-al-scroll";
 import type { PendientesOficina } from "@/lib/admin/pendientes";
 import type { SesionData } from "@/lib/sesion";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
@@ -131,6 +132,7 @@ export function AppShell({
     return (
       <>
         {children}
+        <AparecerTarjetasAlScroll pathname={pathname} />
         {modalRegistro}
         {registroNavegacion}
       </>
@@ -174,7 +176,10 @@ export function AppShell({
 
       {/* El inicio no lleva el fondo decorado: su decoración es el hero. */}
       <div className={cn("app-contenido", pathname === "/" && "app-contenido--inicio")}>
-        <div className="app-pagina">{children}</div>
+        <div className="app-pagina">
+          {children}
+          <AparecerTarjetasAlScroll pathname={pathname} />
+        </div>
         <Footer sesion={sesion} onRegistrarme={abrirRegistro} />
       </div>
       {modalRegistro}

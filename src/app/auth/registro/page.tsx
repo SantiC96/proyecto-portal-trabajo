@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { FondoVideoAuth } from "@/components/auth/fondo-video-auth";
 import { LinkVolverAuth } from "@/components/auth/link-volver-auth";
 import { PanelMarca } from "@/components/auth/panel-marca";
 import { RegistroPostulanteForm } from "@/components/auth/registro-postulante-form";
@@ -52,7 +53,8 @@ export default async function RegistroPage({ searchParams }: Props) {
       <PanelMarca {...panel} fijo volver={<LinkVolverAuth claro saltearAuth={false} />} />
 
       <div className="login-columna">
-        <div className="w-full max-w-[720px]">
+        <FondoVideoAuth />
+        <div className="login-columna-contenido w-full max-w-[720px]">
           {/* En el celular el link va dentro del panel verde. */}
           <div className="hidden lg:block">
             <LinkVolverAuth saltearAuth={false} />

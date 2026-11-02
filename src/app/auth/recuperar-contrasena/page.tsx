@@ -18,6 +18,7 @@ export default async function RecuperarContrasenaPage({
 
   return (
     <PantallaRecuperacion
+      fondoVideo
       titulo="Recuperar contraseña"
       bajada="Ingresá tu email y te enviamos un enlace para crear una nueva contraseña."
     >
