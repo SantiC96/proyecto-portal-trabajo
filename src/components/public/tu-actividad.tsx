@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Badge, claseTextoTono } from "@/components/ui/badge";
 import { BarraProgreso } from "@/components/ui/barra-progreso";
+import { AnimarAlVerse } from "@/components/indicadores/animar-al-verse";
 import { Esqueleto, EsqueletoTarjeta } from "@/components/ui/esqueleto";
 import { EstadoVacioPostulaciones } from "@/components/public/estado-vacio-postulaciones";
 import { badgePostulacion } from "@/lib/mis-postulaciones";
@@ -32,7 +33,7 @@ const ULTIMAS_INVITACIONES = 2;
 function EncabezadoTuActividad() {
   return (
     <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-      <h2 id="tu-actividad-titulo" className="text-[26px] leading-tight font-extrabold">
+      <h2 id="tu-actividad-titulo" className="titulo-display text-[26px] leading-tight">
         Tu actividad
       </h2>
       <Link
@@ -83,7 +84,7 @@ function ProgresoPostulacion({ movimiento }: { movimiento: Movimiento }) {
   });
 
   return (
-    <div className="flex flex-col gap-2.5">
+    <AnimarAlVerse className="flex flex-col gap-2.5">
       <p className={cn("flex items-center gap-1.5 text-sm font-semibold", claseTextoTono(badge.tono))}>
         {etapa === 0 ? (
           <Send className="size-4 shrink-0" aria-hidden="true" />
@@ -107,7 +108,7 @@ function ProgresoPostulacion({ movimiento }: { movimiento: Movimiento }) {
               {indice > 0 && (
                 <span
                   aria-hidden="true"
-                  className={`absolute top-2.5 right-1/2 left-[-50%] h-0.5 ${
+                  className={`grafico-barra-x absolute top-2.5 right-1/2 left-[-50%] h-0.5 ${
                     completo || actual ? "bg-primary" : "bg-border-strong"
                   }`}
                 />
@@ -137,7 +138,7 @@ function ProgresoPostulacion({ movimiento }: { movimiento: Movimiento }) {
           );
         })}
       </ol>
-    </div>
+    </AnimarAlVerse>
   );
 }
 
@@ -265,10 +266,13 @@ function PerfilIncompleto({
     >
       <h3 className="text-lg font-extrabold">Completá tu perfil</h3>
       <div className="flex items-center gap-3">
-        <BarraProgreso
-          porcentaje={perfil.porcentaje}
-          etiqueta={`Perfil completo al ${perfil.porcentaje}%`}
-        />
+        <AnimarAlVerse className="min-w-0 flex-1">
+          <BarraProgreso
+            porcentaje={perfil.porcentaje}
+            etiqueta={`Perfil completo al ${perfil.porcentaje}%`}
+            animarIndice={0}
+          />
+        </AnimarAlVerse>
         <span className="shrink-0 text-sm font-bold text-foreground">{perfil.porcentaje}%</span>
       </div>
 
@@ -474,7 +478,11 @@ export async function TuActividad({ postulanteId }: { postulanteId: string }) {
   const mostrarTarjetaPerfil = !perfil.data || perfil.data.pendientes.length > 0;
 
   return (
-    <section aria-labelledby="tu-actividad-titulo" className="@container">
+    <section
+      aria-labelledby="tu-actividad-titulo"
+      className="@container"
+      data-aparecer-manual=""
+    >
       <EncabezadoTuActividad />
 
       <div
