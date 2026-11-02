@@ -1,4 +1,5 @@
 import type { TonoBadge } from "@/components/ui/badge";
+import { ESTILO_ETAPA } from "@/lib/estados-postulacion";
 import type { EstadoDerivacionEmpresa } from "@/lib/derivacion-estados";
 import type { Enum } from "@/types/db";
 
@@ -26,30 +27,30 @@ export type BadgePostulacion = {
   tono: TonoBadge;
 };
 
-// Colores de estado de la oficina (ronda 9): recibida gris, en revisión azul,
-// derivada teal, contratado verde, no seleccionado rojo y retirada gris claro.
-// La oferta retirada por la empresa tampoco es un rechazo: va como retirada.
+// Colores de estado: los mismos que ve el postulante y la empresa
+// (src/lib/estados-postulacion.ts). La oferta retirada por la empresa tampoco
+// es un rechazo: va como cerrada.
 export const BADGE_ESTADO_VISIBLE: Record<EstadoVisiblePostulacion, BadgePostulacion> = {
-  recibida: { label: "Recibida", tono: "neutral" },
-  en_revision: { label: "En revisión", tono: "info" },
-  derivada: { label: "Derivada", tono: "teal" },
-  contratado: { label: "Contratado", tono: "success" },
-  no_seleccionado_empresa: { label: "No seleccionado (por la empresa)", tono: "danger" },
-  no_seleccionado_oficina: { label: "No seleccionado (por la oficina)", tono: "danger" },
-  oferta_retirada: { label: "Cerrada (la empresa retiró la oferta)", tono: "apagado" },
-  retirada_postulante: { label: "Retirada por el postulante", tono: "apagado" },
+  recibida: { label: "Recibida", tono: ESTILO_ETAPA.recibida.tono },
+  en_revision: { label: "En revisión", tono: ESTILO_ETAPA.revision.tono },
+  derivada: { label: "Derivada", tono: ESTILO_ETAPA.derivada.tono },
+  contratado: { label: "Contratado", tono: ESTILO_ETAPA.seleccionado.tono },
+  no_seleccionado_empresa: { label: "No seleccionado (por la empresa)", tono: ESTILO_ETAPA.cerrado.tono },
+  no_seleccionado_oficina: { label: "No seleccionado (por la oficina)", tono: ESTILO_ETAPA.cerrado.tono },
+  oferta_retirada: { label: "Cerrada (la empresa retiró la oferta)", tono: ESTILO_ETAPA.cerrado.tono },
+  retirada_postulante: { label: "Retirada por el postulante", tono: ESTILO_ETAPA.cerrado.tono },
 };
 
 /** Filete izquierdo de la fila (Tabla con filete): el color del estado. */
 export const FILETE_ESTADO_VISIBLE: Record<EstadoVisiblePostulacion, string> = {
-  recibida: "before:bg-neutral",
-  en_revision: "before:bg-info",
-  derivada: "before:bg-teal",
-  contratado: "before:bg-success",
-  no_seleccionado_empresa: "before:bg-danger",
-  no_seleccionado_oficina: "before:bg-danger",
-  oferta_retirada: "before:bg-muted-icon",
-  retirada_postulante: "before:bg-muted-icon",
+  recibida: ESTILO_ETAPA.recibida.filete,
+  en_revision: ESTILO_ETAPA.revision.filete,
+  derivada: ESTILO_ETAPA.derivada.filete,
+  contratado: ESTILO_ETAPA.seleccionado.filete,
+  no_seleccionado_empresa: ESTILO_ETAPA.cerrado.filete,
+  no_seleccionado_oficina: ESTILO_ETAPA.cerrado.filete,
+  oferta_retirada: ESTILO_ETAPA.cerrado.filete,
+  retirada_postulante: ESTILO_ETAPA.cerrado.filete,
 };
 
 export function estadoVisiblePostulacion(

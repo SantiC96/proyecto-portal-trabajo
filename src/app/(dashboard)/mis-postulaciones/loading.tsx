@@ -5,7 +5,7 @@ import {
   EncabezadoEsqueleto,
   PastillasEsqueleto,
 } from "@/components/ui/esqueleto";
-import { ETIQUETA_FILTRO, FILTROS_MIS_POSTULACIONES } from "@/lib/mis-postulaciones";
+import { ETIQUETA_FILTRO, PASTILLAS_MIS_POSTULACIONES } from "@/lib/mis-postulaciones";
 import { LeyendaEstados } from "./mis-postulaciones-lista";
 import { EsqueletoMisPostulaciones } from "./esqueleto";
 
@@ -30,7 +30,7 @@ export default function Loading() {
       </div>
       <PastillasEsqueleto
         titulo="Estado"
-        etiquetas={["Todas", ...FILTROS_MIS_POSTULACIONES.map((f) => ETIQUETA_FILTRO[f])]}
+        etiquetas={["Todas", ...PASTILLAS_MIS_POSTULACIONES.map((f) => ETIQUETA_FILTRO[f])]}
         claseUna="sm:h-11"
       />
       <EsqueletoMisPostulaciones />

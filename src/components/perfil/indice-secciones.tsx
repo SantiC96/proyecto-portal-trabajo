@@ -145,7 +145,7 @@ export function IndiceSecciones({ secciones }: { secciones: Seccion[] }) {
                   aria-current={activa ? "true" : undefined}
                   onClick={() => setActual(s.id)}
                   className={cn(
-                    "inline-flex min-h-11 items-center gap-2 rounded-full border-[1.5px] px-4 text-[15px] font-semibold whitespace-nowrap outline-none focus-visible:shadow-[var(--sombra-foco)]",
+                    "relative inline-flex min-h-11 items-center gap-2 rounded-full border-[1.5px] px-4 text-[15px] font-semibold whitespace-nowrap outline-none focus-visible:shadow-[var(--sombra-foco)]",
                     activa
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border-campo bg-surface text-control-foreground",

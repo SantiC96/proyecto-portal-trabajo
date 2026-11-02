@@ -5,7 +5,6 @@ import {
   ChevronRight,
   Circle,
   Clock3,
-  LockKeyhole,
   Mail,
   Send,
 } from "lucide-react";
@@ -29,10 +28,10 @@ import type { FilaMiInvitacion } from "@/types/db";
 
 const ULTIMAS_POSTULACIONES = 2;
 
-function EncabezadoActividad() {
+function EncabezadoTuActividad() {
   return (
     <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-      <h2 id="tu-actividad-titulo" className="titulo-display text-[26px] leading-tight">
+      <h2 id="tu-actividad-titulo" className="text-[26px] leading-tight font-extrabold">
         Tu actividad
       </h2>
       <Link
@@ -49,7 +48,7 @@ function EncabezadoActividad() {
 function EncabezadoPostulaciones({ activas }: { activas: number | null }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h3 className="text-lg font-extrabold">Tus postulaciones</h3>
+      <h3 className="text-lg font-extrabold">Últimas postulaciones</h3>
       {activas !== null && (
         <Badge tono={activas === 0 ? "neutral" : "success"}>
           {activas === 1 ? "1 activa" : `${activas} activas`}
@@ -150,100 +149,74 @@ function FilaPostulacion({ movimiento }: { movimiento: Movimiento }) {
   );
 }
 
+
 function InvitacionPendiente({
   invitacion,
   cantidad,
-  bloqueada,
-  motivoBloqueo,
 }: {
   invitacion: FilaMiInvitacion;
   cantidad: number;
-  bloqueada: boolean;
-  motivoBloqueo?: string;
 }) {
-  const hrefOferta = `/ofertas/${invitacion.oferta_id}`;
-  const idAvisoBloqueo = `aviso-bloqueo-invitacion-${invitacion.id}`;
+  const tieneVarias = cantidad > 1;
+  const href = tieneVarias
+    ? "/invitaciones"
+    : `/ofertas/${invitacion.oferta_id}`;
 
   return (
     <section
       aria-label="Invitación pendiente"
-      className="rounded-[var(--radius-lg)] border border-border bg-surface-tinted p-4"
+      className="flex flex-1 flex-col"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h4 className="font-bold text-foreground">Invitación pendiente</h4>
-        <Badge tono="warning">Invitación</Badge>
-      </div>
-
-      <Link
-        href={hrefOferta}
-        className="mt-3 inline-block rounded-[var(--radius-sm)] font-bold text-foreground outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
-      >
-        {invitacion.oferta_titulo}
-      </Link>
-      {invitacion.empresa_nombre && (
-        <p className="mt-1 text-sm font-semibold text-muted-foreground-strong">
-          {invitacion.empresa_nombre}
-        </p>
-      )}
-      <p className="mt-1 text-sm text-muted-foreground-strong">
-        Invitación recibida: {formatFecha(invitacion.creada_en)}
-      </p>
-      <p className="mt-3 text-sm leading-relaxed text-muted-foreground-strong">
-        La Oficina de Empleo te sugirió esta oferta.
-      </p>
-
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        {bloqueada ? (
-          <button
-            type="button"
-            disabled
-            aria-describedby={motivoBloqueo ? idAvisoBloqueo : undefined}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-md)] border border-dashed border-border-strong bg-surface px-4 text-[15px] font-bold text-muted-foreground-strong"
+      <div className="flex flex-1 flex-col gap-3">
+        <div>
+          <Link
+            href={`/ofertas/${invitacion.oferta_id}`}
+            className="inline-block rounded-[var(--radius-sm)] font-bold text-foreground outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
           >
-            <LockKeyhole aria-hidden="true" className="size-4" />
-            Postularme
-          </button>
-        ) : (
-          <Link href={hrefOferta} className="btn-primario justify-center">
-            Postularme
+            {invitacion.oferta_titulo}
           </Link>
+
+          {invitacion.empresa_nombre && (
+            <p className="mt-1 text-sm font-semibold text-muted-foreground-strong">
+              {invitacion.empresa_nombre}
+            </p>
+          )}
+        </div>
+
+        <p className="text-sm text-muted-foreground-strong">
+          Invitación recibida: {formatFecha(invitacion.creada_en)}
+        </p>
+
+        <p className="text-sm leading-relaxed text-muted-foreground-strong">
+          La Oficina de Empleo te sugirió esta oferta.
+        </p>
+
+        {tieneVarias && (
+          <p className="text-sm font-medium text-muted-foreground-strong">
+            Tenés {cantidad} invitaciones pendientes para revisar.
+          </p>
         )}
-        <Link href={hrefOferta} className="btn-secundario justify-center">
-          Ver oferta
+      </div>
+
+      <div className="pt-5">
+        <Link
+          href={href}
+          className="btn-primario inline-flex w-full justify-center sm:w-auto"
+        >
+          {tieneVarias ? "Ver mis invitaciones" : "Ver invitación"}
         </Link>
       </div>
-      {bloqueada && motivoBloqueo && (
-        <p
-          id={idAvisoBloqueo}
-          className="text-sm font-semibold text-muted-foreground-strong"
-        >
-          {motivoBloqueo}
-        </p>
-      )}
-
-      {cantidad > 1 && (
-        <Link
-          href="/invitaciones"
-          className="mt-3 inline-flex min-h-11 items-center gap-1 rounded-[var(--radius-md)] text-sm font-bold text-primary outline-none hover:underline focus-visible:shadow-[var(--sombra-foco)]"
-        >
-          Ver todas las invitaciones ({cantidad})
-          <ChevronRight aria-hidden="true" className="size-4" />
-        </Link>
-      )}
     </section>
   );
 }
 
+
 function TarjetaInvitaciones({
   invitacion,
   cantidad,
-  bloqueada,
-  motivoBloqueo,
 }: {
   invitacion: FilaMiInvitacion;
   cantidad: number;
-  bloqueada: boolean;
-  motivoBloqueo?: string;
 }) {
   return (
     <article className="tarjeta order-2 flex h-full flex-col gap-4 p-4 sm:p-6 xl:order-none">
@@ -256,33 +229,7 @@ function TarjetaInvitaciones({
       <InvitacionPendiente
         invitacion={invitacion}
         cantidad={cantidad}
-        bloqueada={bloqueada}
-        motivoBloqueo={motivoBloqueo}
       />
-    </article>
-  );
-}
-
-function PerfilCompleto({ primeroEnMovil = false }: { primeroEnMovil?: boolean }) {
-  return (
-    <article
-      className={cn(
-        "tarjeta flex h-full flex-col gap-4 p-4 sm:p-6",
-        primeroEnMovil && "order-first xl:order-none",
-      )}
-    >
-      <h3 className="text-lg font-extrabold">Completá tu perfil</h3>
-      <div className="flex items-center gap-3">
-        <BarraProgreso porcentaje={100} etiqueta="Perfil completo al 100 por ciento" />
-        <span className="shrink-0 text-sm font-bold text-foreground">100%</span>
-      </div>
-      <p className="flex flex-1 items-center gap-2 rounded-[var(--radius-lg)] border border-border bg-surface-tinted p-4 font-bold text-foreground">
-        <CheckCircle2 aria-hidden="true" className="size-5 shrink-0 text-success" />
-        Perfil completo
-      </p>
-      <Link href="/perfil" className="btn-secundario mt-auto self-start">
-        Ver mi perfil
-      </Link>
     </article>
   );
 }
@@ -310,7 +257,6 @@ function PerfilIncompleto({
       id={id}
       className={cn(
         "tarjeta order-first flex h-full flex-col gap-4 p-4 sm:p-6 xl:order-none",
-        destacado && "border-primary/40 bg-surface-tinted",
       )}
     >
       <h3 className="text-lg font-extrabold">Completá tu perfil</h3>
@@ -371,8 +317,6 @@ function TarjetaPostulaciones({
   errorInvitaciones,
   invitacion,
   cantidadInvitaciones,
-  bloqueada,
-  motivoBloqueo,
   mostrarAlDia,
   accionPrimaria,
   separarInvitacion = false,
@@ -383,13 +327,11 @@ function TarjetaPostulaciones({
   errorInvitaciones: boolean;
   invitacion: FilaMiInvitacion | null;
   cantidadInvitaciones: number;
-  bloqueada: boolean;
-  motivoBloqueo?: string;
   mostrarAlDia: boolean;
   accionPrimaria: "postular" | "ver-postulaciones" | null;
   separarInvitacion?: boolean;
 }) {
-  const sinActividad = activas === 0 && (movimientos?.length ?? 0) === 0;
+  const sinPostulaciones = activas === 0 && (movimientos?.length ?? 0) === 0;
 
   return (
     <article className={cn("tarjeta flex h-full flex-col gap-4 p-4 sm:p-6", separarInvitacion && "order-last xl:order-none")}>
@@ -407,8 +349,6 @@ function TarjetaPostulaciones({
           <InvitacionPendiente
             invitacion={invitacion}
             cantidad={cantidadInvitaciones}
-            bloqueada={bloqueada}
-            motivoBloqueo={motivoBloqueo}
           />
         </>
       ) : !separarInvitacion && errorInvitaciones && cantidadInvitaciones > 0 ? (
@@ -449,7 +389,7 @@ function TarjetaPostulaciones({
       )}
 
       <div className="mt-auto flex flex-col gap-2 sm:flex-row">
-        {sinActividad && (!invitacion || separarInvitacion) ? (
+        {sinPostulaciones && (!invitacion || separarInvitacion) ? (
           <Link
             href="/ofertas"
             className={cn(
@@ -460,14 +400,16 @@ function TarjetaPostulaciones({
             Explorar ofertas
           </Link>
         ) : null}
-        {accionPrimaria === "ver-postulaciones" ? (
-          <Link href="/mis-postulaciones" className="btn-primario justify-center">
-            Ver mis postulaciones
-          </Link>
-        ) : (
-          <Link href="/mis-postulaciones" className="btn-secundario justify-center">
-            Ver mis postulaciones
-          </Link>
+        {(!sinPostulaciones || errorMovimientos) && (
+          accionPrimaria === "ver-postulaciones" ? (
+            <Link href="/mis-postulaciones" className="btn-primario justify-center">
+              Ver mis postulaciones
+            </Link>
+          ) : (
+            <Link href="/mis-postulaciones" className="btn-primario justify-center">
+              Ver mis postulaciones
+            </Link>
+          )
         )}
         {invitacion && !separarInvitacion && (
           <Link href="/ofertas" className="btn-secundario justify-center">
@@ -492,19 +434,18 @@ export async function TuActividad({ postulanteId }: { postulanteId: string }) {
     obtenerNotificacionesNoLeidasPostulante(),
   ]);
 
-  if (!indicadores.data) logError("inicio:tu_actividad:indicadores", indicadores.error);
-  if (!movimientos.data) logError("inicio:tu_actividad:movimientos", movimientos.error);
-  if (!invitaciones.data) logError("inicio:tu_actividad:invitaciones", invitaciones.error);
-  if (!perfil.data) logError("inicio:tu_actividad:perfil", perfil.error);
+  if (!indicadores.data) logError("inicio:actividad:indicadores", indicadores.error);
+  if (!movimientos.data) logError("inicio:actividad:movimientos", movimientos.error);
+  if (!invitaciones.data) logError("inicio:actividad:invitaciones", invitaciones.error);
+  if (!perfil.data) logError("inicio:actividad:perfil", perfil.error);
   if (!notificaciones.data && notificaciones.error) {
-    logError("inicio:tu_actividad:notificaciones", notificaciones.error);
+    logError("inicio:actividad:notificaciones", notificaciones.error);
   }
 
   const activas = indicadores.data?.postulaciones_activas ?? null;
   const cantidadInvitaciones = indicadores.data?.invitaciones_pendientes ?? 0;
   const invitacion = invitaciones.data?.[0] ?? null;
   const perfilIncompleto = (perfil.data?.pendientes.length ?? 0) > 0;
-  const postulacionBloqueada = perfil.data === null || perfilIncompleto;
   const hayNotificaciones = (notificaciones.data ?? 0) > 0;
   const tienePostulaciones = (activas ?? 0) > 0;
   const mostrarAlDia =
@@ -515,23 +456,30 @@ export async function TuActividad({ postulanteId }: { postulanteId: string }) {
   const perfilEsFoco =
     perfilIncompleto &&
     (cantidadInvitaciones > 0 || (tienePostulaciones && !hayNotificaciones));
-  const separarActividad =
+  const separarInvitacion =
     Boolean(invitacion) && (tienePostulaciones || perfilIncompleto);
   const accionPrimaria: "postular" | "ver-postulaciones" | null =
-    invitacion && !postulacionBloqueada
+    invitacion
       ? "postular"
       : tienePostulaciones && !perfilEsFoco
         ? "ver-postulaciones"
         : null;
+  const mostrarTarjetaPerfil = !perfil.data || perfil.data.pendientes.length > 0;
 
   return (
     <section aria-labelledby="tu-actividad-titulo" className="@container">
-      <EncabezadoActividad />
+      <EncabezadoTuActividad />
 
       <div
         className={cn(
           "mt-5 grid grid-cols-1 items-stretch gap-4",
-          separarActividad ? "@3xl:grid-cols-3" : "@3xl:grid-cols-2",
+          separarInvitacion
+            ? mostrarTarjetaPerfil
+              ? "@3xl:grid-cols-3"
+              : "@3xl:grid-cols-2"
+            : mostrarTarjetaPerfil
+              ? "@3xl:grid-cols-2"
+              : "",
         )}
       >
         <TarjetaPostulaciones
@@ -539,41 +487,32 @@ export async function TuActividad({ postulanteId }: { postulanteId: string }) {
           movimientos={movimientos.data}
           errorMovimientos={movimientos.data ? null : "error"}
           errorInvitaciones={!invitaciones.data}
-          invitacion={separarActividad ? null : invitacion}
+          invitacion={separarInvitacion ? null : invitacion}
           cantidadInvitaciones={cantidadInvitaciones}
-          bloqueada={postulacionBloqueada}
-          motivoBloqueo={
-            perfil.data
-              ? undefined
-              : "No pudimos verificar tu perfil. Intentá de nuevo en unos minutos."
-          }
           mostrarAlDia={mostrarAlDia}
           accionPrimaria={accionPrimaria}
-          separarInvitacion={separarActividad}
+          separarInvitacion={separarInvitacion}
         />
 
-        {separarActividad && invitacion && (
+        {separarInvitacion && invitacion && (
           <TarjetaInvitaciones
             invitacion={invitacion}
             cantidad={cantidadInvitaciones}
-            bloqueada={postulacionBloqueada}
           />
         )}
 
-        {perfil.data ? (
-          perfil.data.pendientes.length === 0 ? (
-            <PerfilCompleto primeroEnMovil={separarActividad} />
-          ) : (
-            <PerfilIncompleto
-              perfil={perfil.data}
-              destacado={perfilEsFoco}
-              mostrarPendientes={cantidadInvitaciones > 0}
-              beneficio={tienePostulaciones && !cantidadInvitaciones}
-              accionPrimaria={perfilEsFoco}
-              id="perfil-postulante-incompleto"
-            />
-          )
-        ) : (
+        {perfil.data && perfil.data.pendientes.length > 0 && (
+          <PerfilIncompleto
+            perfil={perfil.data}
+            destacado={perfilEsFoco}
+            mostrarPendientes={cantidadInvitaciones > 0}
+            beneficio={tienePostulaciones && !cantidadInvitaciones}
+            accionPrimaria={perfilEsFoco}
+            id="perfil-postulante-incompleto"
+          />
+        )}
+
+        {!perfil.data && (
           <article className="tarjeta flex h-full flex-col gap-4 p-4 sm:p-6">
             <h3 className="text-lg font-extrabold">Completá tu perfil</h3>
             <p className="text-sm text-muted-foreground">

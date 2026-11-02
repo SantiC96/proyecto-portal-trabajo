@@ -50,6 +50,23 @@
   --color-danger:       #b42318;
   --color-danger-hover: #912018;
   --color-violet:       #5b3a9e;
+  /* Estados de una postulación (mismos en postulante, empresa y oficina):
+     escala de verdes que se oscurece con el proceso, cada fondo con su texto
+     (AA), y un gris para lo que terminó sin selección. */
+  --color-estado-recibida:             #e6f4eb;
+  --color-estado-recibida-texto:       #00532a;
+  --color-estado-revision:             #c9e7d5;
+  --color-estado-revision-texto:       #00391c;
+  --color-estado-preentrevista:        #a6d6ba;
+  --color-estado-preentrevista-texto:  #00230f;
+  --color-estado-derivada:             #6fb88c;
+  --color-estado-derivada-texto:       #00170b;
+  --color-estado-entrevista:           #2f8554;
+  --color-estado-entrevista-texto:     #ffffff;
+  --color-estado-seleccionado:         #006833;
+  --color-estado-seleccionado-texto:   #ffffff;
+  --color-estado-cerrado:              #4f5e55;
+  --color-estado-cerrado-texto:        #ffffff;
   /* Texto de aviso sobre blanco: el amarillo no llega a AA como texto. */
   --color-warning-text: #8a5a00;
 
@@ -930,7 +947,7 @@ html[data-sidebar="colapsada"] { --ancho-sidebar: 72px; }
 }
 
 /* "Cómo funciona" y "Tu actividad": banda a todo el ancho del contenido. El
-   margen negativo es igual al padding de .app-pagina, así que no sale de
+   margen negativo es igual al padding de .app-contenido, así que no sale de
    él ni genera scroll horizontal. */
 .banda-inicio {
   margin-inline: calc(-1 * var(--relleno-contenido));

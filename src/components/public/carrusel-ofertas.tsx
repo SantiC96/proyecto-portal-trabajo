@@ -33,7 +33,7 @@ type Medida = {
 
 // El tiempo de leer una tarjeta (título, empresa, rubros, lugar y jornada)
 // antes de que pase a la siguiente.
-const INTERVALO_MS = 7000;
+const INTERVALO_MS = 5000;
 
 function suscribirVisibilidad(avisar: () => void) {
   document.addEventListener("visibilitychange", avisar);

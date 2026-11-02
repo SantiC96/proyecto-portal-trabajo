@@ -18,6 +18,7 @@ import {
   ETIQUETA_FILTRO,
   FILTROS_MIS_POSTULACIONES,
   INDICADOR_FILTRO,
+  PASTILLAS_MIS_POSTULACIONES,
   VACIO_FILTRO,
   leerFiltroMisPostulaciones,
   type FiltroMisPostulaciones,
@@ -220,7 +221,7 @@ function FiltroEstados({
 }) {
   const opciones: { valor: FiltroMisPostulaciones | null; etiqueta: string; cantidad?: number }[] = [
     { valor: null, etiqueta: "Todas", cantidad: cantidades?.todas },
-    ...FILTROS_MIS_POSTULACIONES.map((f) => ({
+    ...PASTILLAS_MIS_POSTULACIONES.map((f) => ({
       valor: f,
       etiqueta: ETIQUETA_FILTRO[f],
       cantidad: cantidades?.[f],
@@ -249,8 +250,9 @@ function FiltroEstados({
 }
 
 /**
- * Las cantidades de cada estado salen de indicadores_postulante(), los mismos
- * números del panel; "Todas", del total de postulaciones.
+ * Las cantidades salen de indicadores_postulante(), los mismos números del
+ * panel; "Todas", "Recibidas" y "En revisión" se cuentan acá, porque el
+ * indicador del panel junta recibidas y en revisión.
  */
 async function FiltroEstadosConCantidades({
   postulanteId,
@@ -262,22 +264,31 @@ async function FiltroEstadosConCantidades({
   searchParams: ParamsUrl;
 }) {
   const supabase = await createSupabaseServerClient();
-  const [indicadores, total] = await Promise.all([
-    obtenerIndicadoresPostulante(),
-    supabase
+  const contar = (estado?: "recibida" | "en_revision") => {
+    const consulta = supabase
       .from("postulaciones")
       .select("id", { count: "exact", head: true })
-      .eq("postulante_id", postulanteId),
+      .eq("postulante_id", postulanteId);
+    return estado ? consulta.eq("estado", estado) : consulta;
+  };
+  const [indicadores, total, recibidas, enRevision] = await Promise.all([
+    obtenerIndicadoresPostulante(),
+    contar(),
+    contar("recibida"),
+    contar("en_revision"),
   ]);
 
   const i = indicadores.data;
-  if (!i || total.error || total.count === null) {
-    logError("mis_postulaciones_cantidades", indicadores.error ?? total.error);
+  const errorConteo = total.error ?? recibidas.error ?? enRevision.error;
+  if (!i || errorConteo || total.count === null || recibidas.count === null || enRevision.count === null) {
+    logError("mis_postulaciones_cantidades", indicadores.error ?? errorConteo);
     return <FiltroEstados filtro={filtro} searchParams={searchParams} />;
   }
 
   const cantidades = { todas: total.count } as Cantidades;
   for (const f of FILTROS_MIS_POSTULACIONES) cantidades[f] = Number(i[INDICADOR_FILTRO[f]]);
+  cantidades.recibidas = recibidas.count;
+  cantidades["en-revision"] = enRevision.count;
 
   return <FiltroEstados filtro={filtro} searchParams={searchParams} cantidades={cantidades} />;
 }

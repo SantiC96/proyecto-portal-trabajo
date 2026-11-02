@@ -227,9 +227,9 @@ export async function registrarPostulante(
 
   if (signUpError) return wrapAuthError("registrarPostulante", signUpError);
 
-  if (!authData.user) {
-    const ref = logError("registrarPostulante:noUser", null);
-    return errConRef("ERROR_INTERNO", "No se pudo crear el usuario. Intentá de nuevo.", ref);
+  // Con el email ya registrado, Supabase responde sin error y con identities vacío.
+  if (!authData.user || authData.user.identities?.length === 0) {
+    return err("CONFLICTO", "Ya existe una cuenta con ese email.");
   }
 
   const { error: profileError } = await supabaseAdmin
@@ -333,9 +333,8 @@ export async function registrarEmpresa(data: {
 
   if (signUpError) return wrapAuthError("registrarEmpresa", signUpError);
 
-  if (!authData.user) {
-    const ref = logError("registrarEmpresa:noUser", null);
-    return errConRef("ERROR_INTERNO", "No se pudo crear el usuario. Intentá de nuevo.", ref);
+  if (!authData.user || authData.user.identities?.length === 0) {
+    return err("CONFLICTO", "Ya existe una cuenta con ese email.");
   }
 
   const { error: profileError } = await supabaseAdmin
