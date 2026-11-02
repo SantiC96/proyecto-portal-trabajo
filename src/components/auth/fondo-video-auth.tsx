@@ -30,6 +30,7 @@ export function FondoVideoAuth() {
       muted
       loop
       playsInline
+      poster="/videos/fondo-auth-poster.jpg"
       preload="metadata"
       aria-hidden="true"
       tabIndex={-1}
