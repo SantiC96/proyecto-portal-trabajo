@@ -71,6 +71,7 @@ El alcance inicial contempla un portal público de ofertas y tres actores: postu
 - Invitaciones de la Oficina a ofertas, con respuestas de interés o rechazo, selección de CV, motivo opcional e historial.
 - Panel de actividad con postulaciones recientes, invitaciones pendientes y completitud del perfil.
 - Perfil ampliado con experiencia, disponibilidad, foto y localidad; comprobante de domicilio para postulantes de Funes.
+- Posición de foto de perfil ajustable.
 - Hasta cinco CVs por cuenta, selección al postularse y conservación de los archivos asociados a postulaciones existentes; eliminación definitiva a los 30 días, salvo CVs asociados a postulaciones en curso.
 - Gestión de cursos de inserción laboral: creación por la Oficina, asignación a postulantes y seguimiento de su progreso.
 
@@ -80,6 +81,7 @@ El alcance inicial contempla un portal público de ofertas y tres actores: postu
 - Ofertas en borrador, renovación, retiro y eliminación con opción de restauración durante 30 días.
 - Candidatos guardados con notas.
 - Perfil con logo y datos de contacto.
+- Posición del logo ajustable.
 - Panel de indicadores con ofertas, vacantes, derivaciones, entrevistas y resultados por período.
 
 ### Oficina de Empleo
@@ -89,6 +91,7 @@ El alcance inicial contempla un portal público de ofertas y tres actores: postu
 - Corrección del resultado de una derivación y gestión de cuentas de la Oficina por invitación, desactivación y reactivación.
 - Indicadores por período, con tendencias, comparaciones y detalle de la actividad.
 - Modo de datos ficticios para demostraciones de los indicadores.
+- Posición de foto de perfil ajustable.
 
 ### Funcionalidades transversales
 
