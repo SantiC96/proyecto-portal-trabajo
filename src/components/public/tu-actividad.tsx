@@ -27,6 +27,7 @@ import {
 import type { FilaMiInvitacion } from "@/types/db";
 
 const ULTIMAS_POSTULACIONES = 2;
+const ULTIMAS_INVITACIONES = 2;
 
 function EncabezadoTuActividad() {
   return (
@@ -66,9 +67,14 @@ function ProgresoPostulacion({ movimiento }: { movimiento: Movimiento }) {
     movimiento.estadoEmpresa === "contratado" ||
     movimiento.estadoEmpresa === "rechazado" ||
     movimiento.estadoEmpresa === "oferta_retirada";
-  const etapa =
-    resultado ? 2 : movimiento.estado === "recibida" ? 0 : movimiento.estado === "en_revision" ? 1 : 1;
-  const pasos = ["Enviada", "En revisión", "Resultado"] as const;
+  const etapa = resultado
+    ? 3
+    : movimiento.estado === "derivada"
+      ? 2
+      : movimiento.estado === "en_revision"
+        ? 1
+        : 0;
+  const pasos = ["Enviada", "En revisión", "Derivada", "Resultado"] as const;
   const badge = badgePostulacion({
     estado: movimiento.estado,
     estadoEmpresa: movimiento.estadoEmpresa,
@@ -91,7 +97,7 @@ function ProgresoPostulacion({ movimiento }: { movimiento: Movimiento }) {
 
       <ol
         aria-label={`Etapa actual: ${pasos[etapa]}`}
-        className="grid grid-cols-3 items-start"
+        className="grid grid-cols-4 items-start"
       >
         {pasos.map((paso, indice) => {
           const completo = indice < etapa;
@@ -151,57 +157,55 @@ function FilaPostulacion({ movimiento }: { movimiento: Movimiento }) {
 
 
 function InvitacionPendiente({
-  invitacion,
+  invitaciones,
   cantidad,
 }: {
-  invitacion: FilaMiInvitacion;
+  invitaciones: FilaMiInvitacion[];
   cantidad: number;
 }) {
   const tieneVarias = cantidad > 1;
   const href = tieneVarias
     ? "/invitaciones"
-    : `/ofertas/${invitacion.oferta_id}`;
+    : `/ofertas/${invitaciones[0].oferta_id}`;
 
   return (
     <section
       aria-label="Invitación pendiente"
       className="flex flex-1 flex-col"
     >
-      <div className="flex flex-1 flex-col gap-3">
-        <div>
-          <Link
-            href={`/ofertas/${invitacion.oferta_id}`}
-            className="inline-block rounded-[var(--radius-sm)] font-bold text-foreground outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
-          >
-            {invitacion.oferta_titulo}
-          </Link>
+      <ul className="flex flex-1 flex-col">
+        {invitaciones.slice(0, ULTIMAS_INVITACIONES).map((invitacion) => (
+          <li key={invitacion.id} className="flex flex-col gap-3 border-b border-border py-4 last:border-b-0">
+            <div>
+              <Link
+                href={`/ofertas/${invitacion.oferta_id}`}
+                className="inline-block rounded-[var(--radius-sm)] font-bold text-foreground outline-none hover:text-primary hover:underline focus-visible:shadow-[var(--sombra-foco)]"
+              >
+                {invitacion.oferta_titulo}
+              </Link>
 
-          {invitacion.empresa_nombre && (
-            <p className="mt-1 text-sm font-semibold text-muted-foreground-strong">
-              {invitacion.empresa_nombre}
+              {invitacion.empresa_nombre && (
+                <p className="mt-1 text-sm font-semibold text-muted-foreground-strong">
+                  {invitacion.empresa_nombre}
+                </p>
+              )}
+            </div>
+
+            <p className="text-sm text-muted-foreground-strong">
+              Invitación recibida: {formatFecha(invitacion.creada_en)}
             </p>
-          )}
-        </div>
 
-        <p className="text-sm text-muted-foreground-strong">
-          Invitación recibida: {formatFecha(invitacion.creada_en)}
-        </p>
+            <p className="text-sm leading-relaxed text-muted-foreground-strong">
+              La Oficina de Empleo te sugirió esta oferta.
+            </p>
+          </li>
+        ))}
+      </ul>
 
-        <p className="text-sm leading-relaxed text-muted-foreground-strong">
-          La Oficina de Empleo te sugirió esta oferta.
-        </p>
-
-        {tieneVarias && (
-          <p className="text-sm font-medium text-muted-foreground-strong">
-            Tenés {cantidad} invitaciones pendientes para revisar.
-          </p>
-        )}
-      </div>
-
-      <div className="pt-5">
+      <div>
         <Link
           href={href}
-          className="btn-primario inline-flex w-full justify-center sm:w-auto"
+          className="btn-primario mt-4 inline-flex w-full justify-center sm:w-auto"
         >
           {tieneVarias ? "Ver mis invitaciones" : "Ver invitación"}
         </Link>
@@ -212,10 +216,10 @@ function InvitacionPendiente({
 
 
 function TarjetaInvitaciones({
-  invitacion,
+  invitaciones,
   cantidad,
 }: {
-  invitacion: FilaMiInvitacion;
+  invitaciones: FilaMiInvitacion[];
   cantidad: number;
 }) {
   return (
@@ -227,7 +231,7 @@ function TarjetaInvitaciones({
         </Badge>
       </div>
       <InvitacionPendiente
-        invitacion={invitacion}
+        invitaciones={invitaciones}
         cantidad={cantidad}
       />
     </article>
@@ -283,7 +287,7 @@ function PerfilIncompleto({
           </div>
         </div>
       ) : (
-        <div className="flex flex-1 flex-col justify-center rounded-[var(--radius-lg)] border border-border bg-surface-tinted p-4">
+        <div className="flex flex-1 flex-col justify-center rounded-[var(--radius-lg)] p-4">
           <p className="font-bold text-foreground">
             {sugerencia?.texto ?? "Seguí completando tu perfil"}
           </p>
@@ -299,7 +303,7 @@ function PerfilIncompleto({
         <Link
           href={sugerencia.href}
           className={cn(
-            accionPrimaria ? "btn-primario" : "btn-secundario",
+            accionPrimaria ? "btn-primario" : "btn-primario",
             "mt-auto self-start",
           )}
         >
@@ -316,6 +320,7 @@ function TarjetaPostulaciones({
   errorMovimientos,
   errorInvitaciones,
   invitacion,
+  invitaciones,
   cantidadInvitaciones,
   mostrarAlDia,
   accionPrimaria,
@@ -326,6 +331,7 @@ function TarjetaPostulaciones({
   errorMovimientos: string | null;
   errorInvitaciones: boolean;
   invitacion: FilaMiInvitacion | null;
+  invitaciones: FilaMiInvitacion[];
   cantidadInvitaciones: number;
   mostrarAlDia: boolean;
   accionPrimaria: "postular" | "ver-postulaciones" | null;
@@ -347,7 +353,7 @@ function TarjetaPostulaciones({
             </ul>
           )}
           <InvitacionPendiente
-            invitacion={invitacion}
+            invitaciones={invitaciones}
             cantidad={cantidadInvitaciones}
           />
         </>
@@ -444,7 +450,8 @@ export async function TuActividad({ postulanteId }: { postulanteId: string }) {
 
   const activas = indicadores.data?.postulaciones_activas ?? null;
   const cantidadInvitaciones = indicadores.data?.invitaciones_pendientes ?? 0;
-  const invitacion = invitaciones.data?.[0] ?? null;
+  const ultimasInvitaciones = invitaciones.data?.slice(0, ULTIMAS_INVITACIONES) ?? [];
+  const invitacion = ultimasInvitaciones[0] ?? null;
   const perfilIncompleto = (perfil.data?.pendientes.length ?? 0) > 0;
   const hayNotificaciones = (notificaciones.data ?? 0) > 0;
   const tienePostulaciones = (activas ?? 0) > 0;
@@ -488,6 +495,7 @@ export async function TuActividad({ postulanteId }: { postulanteId: string }) {
           errorMovimientos={movimientos.data ? null : "error"}
           errorInvitaciones={!invitaciones.data}
           invitacion={separarInvitacion ? null : invitacion}
+          invitaciones={ultimasInvitaciones}
           cantidadInvitaciones={cantidadInvitaciones}
           mostrarAlDia={mostrarAlDia}
           accionPrimaria={accionPrimaria}
@@ -496,7 +504,7 @@ export async function TuActividad({ postulanteId }: { postulanteId: string }) {
 
         {separarInvitacion && invitacion && (
           <TarjetaInvitaciones
-            invitacion={invitacion}
+            invitaciones={ultimasInvitaciones}
             cantidad={cantidadInvitaciones}
           />
         )}
