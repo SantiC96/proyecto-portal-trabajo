@@ -45,7 +45,7 @@ export function AparecerAlScroll({
   }, []);
 
   return (
-    <div ref={ref} className={cn("min-w-0", className)}>
+    <div ref={ref} data-aparecer-manual="" className={cn("min-w-0", className)}>
       {children}
     </div>
   );
