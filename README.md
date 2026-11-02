@@ -13,8 +13,6 @@ Portal web de la Oficina de Empleo de la Municipalidad de Funes. Conecta a las p
 
 ## Usuarios demo
 
-## Usuarios demo
-
 | Rol | Email | Contraseña |
 |---|---|---|
 | Postulante | santicancio2@gmail.com | Password123 |
