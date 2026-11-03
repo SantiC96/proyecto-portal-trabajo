@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { FondoVideoAuth } from "@/components/auth/fondo-video-auth";
 import { LoginForm } from "@/components/auth/login-form";
 import { LinkVolverAuth } from "@/components/auth/link-volver-auth";
 import { PanelMarca } from "@/components/auth/panel-marca";
@@ -33,7 +32,6 @@ export default async function LoginPage({
       />
 
       <div className="login-columna">
-        <FondoVideoAuth />
         <div className="login-columna-contenido w-full max-w-[460px]">
           {/* En el celular el link va dentro del panel verde. */}
           <div className="hidden lg:block">

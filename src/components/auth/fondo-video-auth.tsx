@@ -26,7 +26,7 @@ export function FondoVideoAuth() {
   return (
     <video
       ref={videoRef}
-      className="login-columna-video"
+      className="login-video-persistente"
       muted
       loop
       playsInline
