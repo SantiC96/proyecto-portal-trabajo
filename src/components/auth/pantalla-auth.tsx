@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
-import { FondoVideoAuth } from "@/components/auth/fondo-video-auth";
 import { LinkVolverAuth } from "@/components/auth/link-volver-auth";
 import { PanelMarca } from "@/components/auth/panel-marca";
 import { cn } from "@/lib/utils";
@@ -44,7 +43,6 @@ export function PantallaAuth({
       <PanelMarca {...panel} volver={<LinkVolverAuth claro href={volverHref} />} />
 
       <div className="login-columna">
-        {fondoVideo && <FondoVideoAuth />}
         <div className={cn("w-full max-w-[460px]", fondoVideo && "login-columna-contenido")}>
           {/* En el celular el link va dentro del panel verde. */}
           <div className="hidden lg:block">
